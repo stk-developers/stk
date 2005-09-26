@@ -1,0 +1,64 @@
+!!! InputXform -> XformInstance ???
+!!! Check that numer of states in the two models match
++ NaN appears in models for zero occupation probamilities
+!!! Wierd meaning of macro->occurances for training from network
++ Times in output labels overflow for long utterances
+
++ All SXStats features buld in SERest
++ Joint Single Pass Training and Two Model Re-estimation
++ Computation of derivatives - stacking
++ Segmentation in feature list
++ Output statistics
++ Recognition from networks (latices)
++ Network holds information about timing
++ Save(/Read) xform statistics in binary
++ Save/Read HMMs binary
++ Copy Xform
++ Use better hash that is extendable
++ MMI training
++ Software to pack mutiple accumulator files into single file
+- Re-estimation of models with more last level xforms
+- Load HMMs from individual files
+- Mixture pruning threshold
+- Advanced variance flooring (fraction of global/state (with-in class) variance, Xform specific varFloors)
+- To do something with error messages (at line in file-> (filename:line),...)
+- Sort Gaussians according to their weights
++ SREsults for KWS
+- SREsults should inform about ignored labels (not present in label list)
+- <Stream>
+- Memory for mean and variance accumulators is always alocated to double size for MMI or MPE stats (even with ML training)
+- Accumulator files always contain weight_accum_den (not very elegant)
+- Something should be done with
+- In MPE update weight_accum_den is passed using quite ugly hack that work only if mixtures are not shared by more states
+
+Documentation
+- MLF is red sequentionally -> Sort labels file records
+- ALLOWXWRDEXP switch triphone expansion on, other expansion parameters are ignored
+- Module names in config are ignored except PARAM1 and PARAM2, tool name can be used for any parameter
+
+Following wrong use of ExpandNet (mlf used insted if dictionary) result in segmentation fault
+~/STK/ExpandNet -m -e -f lab -I ctstrain04.v0.sil.mlf -y net ctstrain04.v0.sil.mlf che-04571-A_4571Af-che_046968_049030.lab
+
+Bugs:
+Wrong total likelihood is reported with Viterbi trainind
+One word insertion penalty is not added to the total score
+Unreachable nodes must be removed before sorting in LatticeLocalOptimization()
+varFloor1 works only without Xforms. Xform specific varFloors are needed
+RemoveRedundantNullNodes can cause doubled links, which leads to error
+Global Xform defined after HMMs cause error
+DC phone expansion of network with short circuit leads to infinite loop
+<Copy> accept range (from:to) larger than its output size
+
+To finish new SKT networks
+- Expanded network cannot hold information about word output symbols and
+  pronunciation probabilities (HTK place -r to arc definition)
+- Phone accuracy
+- For SVite and HERest model nodes must be of NT_Model (not NT_Phone) and must beconnected to corresponding HMM structures
+- MakeNetworkFromLabels does not treat correctly mutli-level labels
+
+Config parameter remapings:
+SOURCELABEL -> SOURCETRANSCFMT
+TARGETLABEL -> TARGETTRANSCFMT
+PARAM1 -> ALIGN
+PARAM2 -> ''
+MODELMMF -> MMF
