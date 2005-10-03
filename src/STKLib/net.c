@@ -24,7 +24,7 @@
 #endif
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
+#include <cstdio>
 #include <malloc.h>
 #include <assert.h>
 #include <ctype.h>
@@ -1277,8 +1277,9 @@ void ComputeAproximatePhoneAccuracy(Node *first, int type)
       node->phoneAccuracy = 0.0;
     } else {
       node->phoneAccuracy = -1.0;
-      overlaped = bsearch(node, corr_phn, ncorr_phns,
-                          sizeof(struct CorrPhnRec), cmp_maxstop);
+      overlaped = (CorrPhnRec*)bsearch(node, corr_phn, ncorr_phns,
+                          sizeof(struct CorrPhnRec), 
+			  cmp_maxstop);
 
       if(overlaped) {
         for(; overlaped < corr_phn + ncorr_phns &&
@@ -1649,7 +1650,7 @@ Node *ReadSTKNetwork(
   FILE *lfp,
   struct my_hsearch_data *word_hash,
   struct my_hsearch_data *phone_hash,
-  enum NotInDictAction notInDict,
+  int notInDict,
   LabelFormat labelFormat,
   long sampPeriod,
   const char *file_name,
@@ -2054,12 +2055,12 @@ Node *ReadSTKNetwork(
     node->nbacklinks = 0;
     node->backlinks  = NULL;
     node->nlinks     = 1;
-    node->links      = malloc(sizeof(Link));
+    node->links      = (Link*) malloc(sizeof(Link));
     if(node->links == NULL) Error("Insufficient memory");
     node->links[0].like = 0.0;
     node->links[0].node = first;
     first->nbacklinks = 1;
-    first->backlinks  = malloc(sizeof(Link));
+    first->backlinks  = (Link*) malloc(sizeof(Link));
     if(first->backlinks == NULL) Error("Insufficient memory");
     first->backlinks[0].like = 0.0;
     first->backlinks[0].node = node;
@@ -2078,12 +2079,12 @@ Node *ReadSTKNetwork(
     node->nlinks    = 0;
     node->links     = NULL;
     last->nlinks = 1;
-    last->links  = malloc(sizeof(Link));
+    last->links  = (Link*) malloc(sizeof(Link));
     if(last->links == NULL) Error("Insufficient memory");
     last->links[0].like = 0.0;
     last->links[0].node = node;
     node->nbacklinks = 1;
-    node->backlinks  = malloc(sizeof(Link));
+    node->backlinks  = (Link*) malloc(sizeof(Link));
     if(node->backlinks == NULL) Error("Insufficient memory");
     node->backlinks[0].like = 0.0;
     node->backlinks[0].node = last;
@@ -2470,13 +2471,13 @@ Node *ReadHTKLattice(
     node->nbacklinks = 0;
     node->backlinks  = NULL;
     node->nlinks     = 1;
-    node->links      = malloc(sizeof(Link));
+    node->links      = (Link*) malloc(sizeof(Link));
     if(node->links == NULL) Error("Insufficient memory");
     node->links[0].like = 0.0;
     node->links[0].node = first;
 
     first->nbacklinks = 1;
-    first->backlinks  = malloc(sizeof(Link));
+    first->backlinks  = (Link*) malloc(sizeof(Link));
     if(first->backlinks == NULL) Error("Insufficient memory");
     first->backlinks[0].like = 0.0;
     first->backlinks[0].node = node;
@@ -2497,13 +2498,13 @@ Node *ReadHTKLattice(
     node->links     = NULL;
 
     last->nlinks = 1;
-    last->links  = malloc(sizeof(Link));
+    last->links  = (Link*) malloc(sizeof(Link));
     if(last->links == NULL) Error("Insufficient memory");
     last->links[0].like = 0.0;
     last->links[0].node = node;
 
     node->nbacklinks = 1;
-    node->backlinks  = malloc(sizeof(Link));
+    node->backlinks  = (Link*) malloc(sizeof(Link));
     if(node->backlinks == NULL) Error("Insufficient memory");
     node->backlinks[0].like = 0.0;
     node->backlinks[0].node = last;

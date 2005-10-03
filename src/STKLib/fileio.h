@@ -28,12 +28,12 @@ HTK_Header;
   extern "C" {
 #endif
 
-int WriteHTKHeader (FILE * fp_out, HTK_Header header, BOOL swap);
-int WriteHTKFeature (FILE * fp_out, FLOAT *out, size_t fea_len, BOOL swap);
-int ReadHTKHeader (FILE * fp_in, HTK_Header *header, BOOL swap);
+int WriteHTKHeader (FILE * fp_out, HTK_Header header, bool swap);
+int WriteHTKFeature (FILE * fp_out, FLOAT *out, size_t fea_len, bool swap);
+int ReadHTKHeader (FILE * fp_in, HTK_Header *header, bool swap);
 
-int ReadHTKFeature (FILE * fp_in, FLOAT *in, size_t fea_len, BOOL swap,
-                    BOOL decompress, FLOAT *A, FLOAT *B);
+int ReadHTKFeature (FILE * fp_in, FLOAT *in, size_t fea_len, bool swap,
+                    bool decompress, FLOAT *A, FLOAT *B);
 
 int Mkdir4File(const char *file_name);
 
@@ -53,7 +53,7 @@ typedef struct {
 
 FLOAT *ReadHTKFeatures(
   char *file_name,
-  BOOL swap,
+  bool swap,
   int extLeft,
   int extRight,
   int targetKind,

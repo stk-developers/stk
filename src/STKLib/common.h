@@ -16,7 +16,7 @@
 #include <stdio.h>
 #include <float.h>
 #include <math.h>
-#define __USE_GNU
+//#define __USE_GNU
 #include <limits.h>
 #include <search.h>
 
@@ -140,7 +140,7 @@ FloatInLog FIL_Sub(FloatInLog a, FloatInLog b);
 FloatInLog FIL_Mul(FloatInLog a, FloatInLog b);
 FloatInLog FIL_Div(FloatInLog a, FloatInLog b);
 
-int isBigEndian();
+bool isBigEndian();
 
 void sigmoid_vec(FLOAT *in, FLOAT *out, int size);
 void exp_vec(FLOAT *in, FLOAT *out, int size);
@@ -191,10 +191,10 @@ FLOAT GetParamFlt(
    const char *param_name,
    FLOAT default_value);
 
-BOOL GetParamBool(
+bool GetParamBool(
    struct my_hsearch_data *config_hash,
    const char *param_name,
-   BOOL default_value);
+   bool default_value);
 
 int GetParamEnum(
    struct my_hsearch_data *config_hash,

@@ -153,7 +153,7 @@ int main(int argc, char *argv[]) {
                   *last = NULL;
                   ++nMLFs;
 
-                  weights = realloc(weights, sizeof(long) * nMLFs);
+                  weights = (long int *) realloc(weights, sizeof(long) * nMLFs);
                   weights[nMLFs-1] = 1;
 
                   if(optind < argc) {

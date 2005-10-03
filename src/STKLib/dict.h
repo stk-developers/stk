@@ -29,16 +29,19 @@ struct _Word {
                        // pronuns can be added while reading the network
 };
 
+
+union _Model {
+//    HMM  *hmm;
+    char *name;
+};
+
 struct _Pronun {
   Word  *word;
   char  *outSymbol;
   int   variant_no;
   FLOAT prob;
   int   nmodels;
-  union {
-//    HMM  *hmm;
-    char *name;
-  } *model;
+  union _Model *model;
 };
 
 #ifdef __cplusplus

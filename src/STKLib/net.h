@@ -109,6 +109,7 @@ struct _STKNetworkOutputFormat {
 };
 
 enum NotInDictAction {
+  WORD_NOT_IN_DIC_UNSET = 0,
   WORD_NOT_IN_DIC_ERROR = 1,
   WORD_NOT_IN_DIC_WARN  = 2,
   PRON_NOT_IN_DIC_ERROR = 4
@@ -173,7 +174,7 @@ Node *ReadSTKNetwork(
   FILE *lfp,
   struct my_hsearch_data *word_hash,
   struct my_hsearch_data *phone_hash,
-  enum NotInDictAction notInDict,
+  int notInDict,
   LabelFormat labelFormat,
   long sampPeriod,
   const char *file_name,

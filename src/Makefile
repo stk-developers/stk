@@ -1,9 +1,9 @@
-CFLAGS = -I/usr/X11R6/include -Wall -g -O6 -DDOUBLEPRECISION=0
+CFLAGS = -I/usr/X11R6/include -Wall -g -O2 -DDOUBLEPRECISION=0
 # -DEXPANDNET_ONLY
 XFLAGS = -DMOTIF -L/usr/X11R6/lib -lXm -lXt -lX11 -lXpm
 #LDFLAGS = -a -g -pg
 #ICCFLAGS = -O2 -tpp6 -axiMK -xiMK -parallel
-CC  = gcc
+CC  = g++
 
 
 all  : SVite SRover SERest SResults SExpand SLRatio 

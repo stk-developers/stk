@@ -285,7 +285,7 @@ void WriteAlpha(int time, Node *node, int state, Token *token)
   if(node->alphaBetaListReverse == NULL ||
      node->alphaBetaListReverse->time != time) {
     int i;
-    FWBWR *newrec = malloc(sizeof(FWBWR) +
+    FWBWR *newrec = (FWBWR*) malloc(sizeof(FWBWR) +
                            sizeof(newrec->state[0]) * (node->hmm->nstates-1));
     if(newrec == NULL) Error("Insufficient memory");
     newrec->next = node->alphaBetaListReverse;

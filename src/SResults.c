@@ -288,8 +288,8 @@ int main(int argc, char *argv[]) {
           fputs(rec ? "\n REC:" : "\n LAB:", stdout);
           for(reclptr=reclabels; reclptr!=NULL; reclptr=reclptr->next) {
             Label *reflptr = reclptr->nextLevel;
-            char *reclstr = reclptr->name ? reclptr->name : "";
-            char *reflstr = reflptr->name ? reflptr->name : "";
+            char *reclstr = (char*) (reclptr->name ? reclptr->name : "");
+            char *reflstr = (char*) (reflptr->name ? reflptr->name : "");
             int lablen = HIGHER_OF(strlen(reclstr), strlen(reflstr));
 
             printf(" %-*s", lablen, rec ? reclstr: reflstr);

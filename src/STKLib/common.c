@@ -324,10 +324,10 @@ int cubic_roots(FLOAT  a,  FLOAT  b, FLOAT  c,
 }
 */
 
-int isBigEndian()
+bool isBigEndian()
 {
   int a = 1;
-  return ((char *) &a)[0] != 1;
+  return (bool) ((char *) &a)[0] != 1;
 }
 
 int my_hcreate_r(size_t nel, struct my_hsearch_data *tab)
@@ -471,7 +471,7 @@ char *expandFilterCommand(const char *command, const char *filename)
 
    while(*chrptr++) ndollars += (*chrptr ==  *filter_wldcrd);
 
-   out = malloc(strlen(command) - ndollars + ndollars * fnlen + 1);
+   out = (char*) malloc(strlen(command) - ndollars + ndollars * fnlen + 1);
    if(out == NULL) Error("Insufficient memory");
 
    outend = out;
@@ -550,7 +550,7 @@ void InsertConfigParam(
   char *bmod, *emod;
 
 
-  e.key = malloc(strlen(param_name)+1);
+  e.key = (char*) malloc(strlen(param_name)+1);
   for(i=0; *param_name; param_name++) {
     if(*param_name != '-' && *param_name != '_') {
       e.key[i++] = toupper(*param_name);
@@ -749,10 +749,10 @@ FLOAT GetParamFlt(
   return default_value;
 }
 
-BOOL GetParamBool(
+bool GetParamBool(
    struct my_hsearch_data *config_hash,
    const char *param_name,
-   BOOL default_value)
+   bool default_value)
 {
   ENTRY *ep = GetParam(config_hash, param_name);
   if(ep == NULL) return default_value;
@@ -762,7 +762,7 @@ BOOL GetParamBool(
   if(strcmp(val, "FALSE") && strcmp(val, "F")) {
     Error("TRUE or FALSE expected for %s but found '%s'", OptOrParStr(ep),val);
   }
-  return 0;
+  return false;
 }
 
 // '...' are pairs: string and corresponding integer value , terminated by NULL
@@ -790,7 +790,7 @@ int GetParamEnum(
   if(s) return i;
 
   //To report error, create string listing all possible values
-  s = malloc(l + 1);
+  s = (char*) malloc(l + 1);
   s[0] = '\0';
   va_start(ap, default_value);
   for(i = 0; i < cnt; i++) {
@@ -840,7 +840,7 @@ int GetDerivParams(
   strcpy(chrptr, "CMEANMASK");
   *CMNMask     = GetParamStr(config_hash, paramName, NULL);
   if(*CMNMask != NULL) {
-    *CMNPath = malloc((CMNDir ? strlen(CMNDir) : 0) + npercents(*CMNMask) + 2);
+    *CMNPath = (char*) malloc((CMNDir ? strlen(CMNDir) : 0) + npercents(*CMNMask) + 2);
     if(*CMNPath == NULL) Error("Insufficient memory");
     if(CMNDir != NULL) strcat(strcpy(*CMNPath, CMNDir), "/");
     *CMNFile = *CMNPath + strlen(*CMNPath);
@@ -850,7 +850,7 @@ int GetDerivParams(
   strcpy(chrptr, "VARSCALEMASK");
   *CVNMask     = GetParamStr(config_hash, paramName, NULL);
   if(*CVNMask != NULL) {
-    *CVNPath = malloc((CVNDir ? strlen(CVNDir) : 0) + npercents(*CVNMask) + 2);
+    *CVNPath = (char*) malloc((CVNDir ? strlen(CVNDir) : 0) + npercents(*CVNMask) + 2);
     if(*CVNPath == NULL) Error("Insufficient memory");
     if(CVNDir != NULL) strcat(strcpy(*CVNPath, CVNDir), "/");
     *CVNFile = *CVNPath + strlen(*CVNPath);
@@ -958,7 +958,7 @@ int ParseOptions(
   BOOL option_must_follow = FALSE;
   char param[1024], *value, *optfmt;
   const char *optarg;
-  char *chptr, *bptr, tstr[4] = " -?\0";
+  char *chptr, *bptr, tstr[4] = " -?";
   unsigned long long option_mask = 0;
 
   #define MARK_OPTION(ch) {if(isalpha(ch)) option_mask |= 1ULL << ((ch) - 'A');}
@@ -989,7 +989,7 @@ int ParseOptions(
   for(optind = 1; optind < argc; optind++) {
     if(!strcmp(argv[optind], "--")) break;
     if(argv[optind][0] != '-' || argv[optind][1] != '-') continue;
-    bptr = malloc(strlen(toolName) + strlen(argv[optind]+2) + 2);
+    bptr = (char*) malloc(strlen(toolName) + strlen(argv[optind]+2) + 2);
     if(bptr == NULL) Error("Insufficient memory");
     strcat(strcat(strcpy(bptr, toolName), ":"), argv[optind]+2);
     value = strchr(bptr, '=');
@@ -1050,7 +1050,7 @@ int ParseOptions(
                   }
                   if(!optarg) optarg = argv[++optind];
                   if(*optfmt == 'o') {
-                    option_must_follow = 1;
+                    option_must_follow = (BOOL) 1;
                   }
                   bptr = NULL;
 
@@ -1059,7 +1059,7 @@ int ParseOptions(
                   if(*optfmt == 'l' && OPTION_MARK(opt)) {
                     bptr = strdup(GetParamStr(cfgHash, param, ""));
                     if(bptr == NULL) Error("Insufficient memory");
-                    bptr = realloc(bptr, strlen(bptr) + strlen(optarg) + 2);
+                    bptr = (char*) realloc(bptr, strlen(bptr) + strlen(optarg) + 2);
                     if(bptr == NULL) Error("Insufficient memory");
                     strcat(strcat(bptr, ","), optarg);
                     optarg = bptr;

@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
     TF_MLF, TF_MNF, TF_HTK, TF_STK, TF_ERR,
     TF_NOF, TF_MOF, //obsolote formats
   } in_transc_fmt = TF_STK, out_transc_fmt = TF_STK;
-  enum NotInDictAction notInDictAction = 0;
+  int notInDictAction = 0;
   ExpansionOptions expOptions = {0};
   STKNetworkOutputFormat out_net_fmt = {0};
   LabelFormat out_lbl_fmt = {0};
@@ -210,10 +210,10 @@ int main(int argc, char *argv[]) {
         Warning("Unknown net formating flag '%c' ignored (JMRVWXalpstv)", *cchrptr);
     }
   }
-  in_transc_fmt= GetParamEnum(&cfgHash,SNAME":SOURCETRANSCFMT", TF_STK,
+  in_transc_fmt= (TranscriptionFormat) GetParamEnum(&cfgHash,SNAME":SOURCETRANSCFMT", TF_STK,
                               "HTK", TF_HTK, "STK", TF_STK, "net", TF_NOF, NULL);
 
-  out_transc_fmt=GetParamEnum(&cfgHash,SNAME":TARGETTRANSCFMT", TF_STK,
+  out_transc_fmt= (TranscriptionFormat) GetParamEnum(&cfgHash,SNAME":TARGETTRANSCFMT", TF_STK,
                               "STK", TF_STK, "net", TF_NOF, NULL);
 
   if(GetParamBool(&cfgHash, SNAME":PRINTCONFIG", FALSE)) {
@@ -258,7 +258,7 @@ int main(int argc, char *argv[]) {
     ReadDictionary(dictionary, &dictHash, &phoneHash);
     notInDictAction  = WORD_NOT_IN_DIC_WARN;
     if(expOptions.respect_pronun_var) {
-      notInDictAction |= PRON_NOT_IN_DIC_ERROR;
+      notInDictAction |= (int) PRON_NOT_IN_DIC_ERROR;
     }
   }
   if(dictHash.nentries == 0) expOptions.no_word_expansion = 1;

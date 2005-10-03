@@ -470,7 +470,11 @@ Label *ReadLabels(
       if(unknownLabels == UL_READ) {
       current->data = current->name = NULL;
       } else if(unknownLabels == UL_INSERT) {
-        current->data = current->name = e.data = e.key = strdup(e.key);
+	// ??? naco e.key=strdup(e.key) => bordel v pameti
+	// current->data = current->name = e.data = e.key = strdup(e.key);
+	e.data = strdup(e.key);
+	current->name = (char*) e.data;
+	current->data = current->name;
 
         if(e.key == NULL || !my_hsearch_r(e, ENTER, &ep, label_hash)) {
           Error("Insufficient memory");

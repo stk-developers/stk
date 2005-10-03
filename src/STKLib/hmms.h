@@ -88,6 +88,7 @@ typedef enum {
 } UpdateMask;
 
 typedef enum {
+  KID_UNSET=-1,
   KID_BeginHMM,    KID_Use,        KID_EndHMM,    KID_NumMixes,  KID_NumStates,
   KID_StreamInfo,  KID_VecSize,    KID_NullD,     KID_PoissonD,  KID_GammaD,
   KID_RelD,        KID_GenD,       KID_DiagC,     KID_FullC,     KID_XformC,
@@ -147,7 +148,7 @@ struct _HMMSet {
   XformInstance *Xform_instances;
   
   //Reestimation params
-  UpdateMask updateMask;
+  int updateMask;
   FLOAT minMixWeight;
   Variance *varFloor;
   long minOccurances;
@@ -365,24 +366,24 @@ typedef char HMMSetNodeName[128];
 typedef void (*ScanAction)(int type, HMMSetNodeName nodeName,
                            void *data, void *userData);
 
-void ScanHMMSet(HMMSet *hmm_set, MacroTypeMask mask,
+void ScanHMMSet(HMMSet *hmm_set, int mask,
                 HMMSetNodeName nodeNameBuffer,
                 ScanAction action, void *userData);
 
-void ScanHMM(HMM *hmm, MacroTypeMask mask, HMMSetNodeName nodeName,
+void ScanHMM(HMM *hmm, int mask, HMMSetNodeName nodeName,
              ScanAction action, void *userData);
 
-void ScanState(State *state, MacroTypeMask mask, HMMSetNodeName nodeName,
+void ScanState(State *state, int mask, HMMSetNodeName nodeName,
                ScanAction action, void *userData);
 
-void ScanMixture(Mixture *mixture, MacroTypeMask mask,
+void ScanMixture(Mixture *mixture, int mask,
                  HMMSetNodeName nodeName, ScanAction action, void *userData);
 
-void ScanXformInstance(XformInstance *xformInstance, MacroTypeMask mask,
+void ScanXformInstance(XformInstance *xformInstance, int mask,
                        HMMSetNodeName nodeName, ScanAction action,
                        void *userData);
 
-void ScanXform(Xform *xform, MacroTypeMask mask, HMMSetNodeName nodeName,
+void ScanXform(Xform *xform, int mask, HMMSetNodeName nodeName,
                ScanAction action, void *userData);
 
 void WriteHMMStats(const char *stat_file, HMMSet *hmm_set);

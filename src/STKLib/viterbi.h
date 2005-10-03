@@ -49,6 +49,12 @@ typedef enum {
   FRAME_ALIGNMENT = 8
 } Alignment;
 
+typedef enum {
+  AT_ML,
+  AT_MPE,
+  AT_MFE
+} AccumType;
+
 struct _Network {
 //Subnet part
 //  int   nnodes;
@@ -87,10 +93,10 @@ struct _Network {
   int (*PassTokenInNetwork)(Token *from, Token *to, FLOAT addLogLike);
   int (*PassTokenInModel)(Token *from, Token *to, FLOAT addLogLike);
   PropagDir propagDir;
-  Alignment alignment;
+  int alignment;
   int collectAlphaBeta;
 //  int mmi_den_pass;
-  enum {AT_ML, AT_MPE, AT_MFE} accumType;
+  AccumType accumType;
   HMMSet *hmmSet;
   HMMSet *hmmSetToUpdate;
 };
@@ -107,15 +113,17 @@ struct _Token {
 #endif
 };
 
-struct _FWBWR {
- struct _FWBWR *next;
- int time;
- struct AlphaBeta {
+struct AlphaBeta {
    FLOAT alpha;
    FLOAT beta;
    FloatInLog alphaAccuracy;
    FloatInLog betaAccuracy;
- } state[1];
+};
+
+struct _FWBWR {
+ struct _FWBWR *next;
+ int time;
+ struct AlphaBeta state[1];
 };
 
 struct _WLR {

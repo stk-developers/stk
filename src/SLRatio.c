@@ -262,10 +262,10 @@ int main(int argc, char *argv[]) {
   int  *derivWinLengths;
   int startFrmExt;
   int endFrmExt;
-  BOOL fulleval;
-  BOOL swap_features;
+  bool fulleval;
+  bool swap_features;
 //  enum TranscriptionFormat {TF_HTK, TF_STK} in_transc_fmt, out_transc_fmt;
-  enum NotInDictAction notInDictAction = 0;
+  int notInDictAction = 0;
   RHFBuffer rhfbuff                    = {0};
   ExpansionOptions expOptions          = {0};
   STKNetworkOutputFormat in_net_fmt    = {0};
@@ -397,7 +397,7 @@ int main(int argc, char *argv[]) {
     ReadDictionary(dictionary, &dictHash, &phoneHash);
     notInDictAction  = WORD_NOT_IN_DIC_WARN;
     if(expOptions.respect_pronun_var) {
-      notInDictAction |= PRON_NOT_IN_DIC_ERROR;
+      notInDictAction |= (int) PRON_NOT_IN_DIC_ERROR;
     }
   }
   if(dictHash.nentries == 0) expOptions.no_word_expansion = 1;

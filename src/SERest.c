@@ -117,7 +117,7 @@ int main(int argc, char *argv[]) {
   FileListElem *file_name = NULL;
   FileListElem **last_file = &feature_files;
 
-  UpdateMask update_mask = 0;
+  int update_mask = 0;
 
   double word_penalty;
   double model_penalty;
@@ -151,7 +151,7 @@ int main(int argc, char *argv[]) {
   const char *src_lbl_ext;
   const char *src_mlf;
   const char *network_file;
-  const const char *xformList;
+  const char *xformList;
   const char *stat_file;
   char *script;
   const char *dictionary;
@@ -184,19 +184,19 @@ int main(int argc, char *argv[]) {
   int  endFrmExt;
   int  startFrmExt_alig;
   int  endFrmExt_alig;
-  BOOL viterbiTrain;
-  BOOL xfStatsBin;
-  BOOL hmms_binary;
-  BOOL alg_mixtures;
-  BOOL one_pass_reest;
-  BOOL swap_features;
-  BOOL swap_features_alig;
-  BOOL htk_compat;
-  enum {AT_ML=0, AT_MPE, AT_MFE} accum_type;
-  enum {UT_ML=0, UT_MMI, UT_MPE} update_type;
-  enum {UM_UPDATE=1, UM_DUMP=2, UM_BOTH=UM_UPDATE|UM_DUMP} update_mode;
+  bool viterbiTrain;
+  bool xfStatsBin;
+  bool hmms_binary;
+  bool alg_mixtures;
+  bool one_pass_reest;
+  bool swap_features;
+  bool swap_features_alig;
+  bool htk_compat;
+  AccumType accum_type;
+  enum Update_Type {UT_ML=0, UT_MMI, UT_MPE} update_type;
+  enum Update_Mode {UM_UPDATE=1, UM_DUMP=2, UM_BOTH=UM_UPDATE|UM_DUMP} update_mode;
   enum TranscriptionFormat {TF_HTK, TF_STK, TF_ERR} in_transc_fmt;
-  enum NotInDictAction notInDictAction = 0;
+  int notInDictAction = (NotInDictAction) WORD_NOT_IN_DIC_UNSET;
   RHFBuffer rhfbuff                  = {0};
   RHFBuffer rhfbuff_alig             = {0};
   ExpansionOptions expOptions        = {0};
@@ -214,7 +214,8 @@ int main(int argc, char *argv[]) {
     Error("Insufficient memory");
   }
   i = ParseOptions(argc, argv, optionStr, SNAME, &cfgHash);
-  htk_compat   = GetParamBool(&cfgHash,SNAME":HTKCOMPAT",       FALSE);
+  htk_compat   = GetParamBool(&cfgHash,SNAME":HTKCOMPAT", false);
+
   if(htk_compat) {
     if(argc == i) Error("HMM list file name expected");
     InsertConfigParam(&cfgHash,        SNAME":SOURCEHMMLIST", argv[i++], '-');
@@ -302,13 +303,13 @@ int main(int argc, char *argv[]) {
   trg_hmm_ext  = GetParamStr(&cfgHash, SNAME":TARGETMODELEXT",  NULL);
   trg_mmf      = GetParamStr(&cfgHash, SNAME":TARGETMMF",       NULL);
 
-  update_mode  = GetParamEnum(&cfgHash,SNAME":UPDATEMODE",     UM_UPDATE,
+  update_mode  = (Update_Mode) GetParamEnum(&cfgHash,SNAME":UPDATEMODE",     UM_UPDATE,
                    "UPDATE",UM_UPDATE,"DUMP",UM_DUMP,"BOTH",UM_BOTH, NULL);
 
-  accum_type   = GetParamEnum(&cfgHash,SNAME":ACCUMULATORTYPE", AT_ML,
+  accum_type   = (AccumType) GetParamEnum(&cfgHash,SNAME":ACCUMULATORTYPE", AT_ML,
                               "ML",AT_ML,"MPE",AT_MPE,"MFE",AT_MFE, NULL);
 
-  update_type   = GetParamEnum(&cfgHash,SNAME":UPDATETYPE",     UT_ML,
+  update_type   = (Update_Type) GetParamEnum(&cfgHash,SNAME":UPDATETYPE",     UT_ML,
                               "ML",UT_ML,"MPE",UT_MPE,"MMI",UT_MMI, NULL);
 
   E_constant   = GetParamFlt(&cfgHash, SNAME":EBWCONSTANTE",    2.0);
@@ -316,7 +317,7 @@ int main(int argc, char *argv[]) {
   I_smoothing  = GetParamFlt(&cfgHash, SNAME":ISMOOTHING",  update_type==UT_MPE
                                                             ?   50 : 200);
 
-  in_transc_fmt= GetParamEnum(&cfgHash,SNAME":SOURCETRANSCFMT",
+  in_transc_fmt= (TranscriptionFormat) GetParamEnum(&cfgHash,SNAME":SOURCETRANSCFMT",
                               !network_file && htk_compat ? TF_HTK : TF_STK,
                               "HTK", TF_HTK, "STK", TF_STK, NULL);
 
@@ -378,8 +379,8 @@ int main(int argc, char *argv[]) {
     Error("Single pass re-estimation requires even number (two sets) of feature files");
   }
 
-  char *ut_str = update_type == UT_MMI ? "MMI" :
-                 update_type == UT_MPE ? "MPE" : "Chosen type of ";
+  char *ut_str = (char*) (update_type == UT_MMI ? "MMI" :
+                 update_type == UT_MPE ? "MPE" : "Chosen type of ");
 
   if(parallel_mode == -1 &&  update_type != UT_ML) {
     Error("%s update is not possible without using parallel mode", ut_str);

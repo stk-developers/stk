@@ -24,7 +24,7 @@
 #endif
 #include "fileio.h"
 
-int WriteHTKHeader (FILE * fp_out, HTK_Header header, BOOL swap)
+int WriteHTKHeader (FILE * fp_out, HTK_Header header, bool swap)
 {
   int cc;
 
@@ -48,7 +48,7 @@ int WriteHTKHeader (FILE * fp_out, HTK_Header header, BOOL swap)
   return cc == 1 ? 0 : -1;
 }
 
-int WriteHTKFeature(FILE * fp_out, FLOAT *out, size_t fea_len, BOOL swap) {
+int WriteHTKFeature(FILE * fp_out, FLOAT *out, size_t fea_len, bool swap) {
   size_t i, cc = 0;
 #if !DOUBLEPRECISION
   if(swap) for(i = 0; i < fea_len; i++) swap4(out[i]);
@@ -67,7 +67,7 @@ int WriteHTKFeature(FILE * fp_out, FLOAT *out, size_t fea_len, BOOL swap) {
   return cc == fea_len ? 0 : -1;
 }
 
-int ReadHTKHeader (FILE * fp_in, HTK_Header * header, BOOL swap)
+int ReadHTKHeader (FILE * fp_in, HTK_Header * header, bool swap)
 {
   if(!fread(&header->nSamples,   sizeof(INT_32),  1, fp_in)) return -1;
   if(!fread(&header->sampPeriod, sizeof(INT_32),  1, fp_in)) return -1;
@@ -90,8 +90,8 @@ int ReadHTKHeader (FILE * fp_in, HTK_Header * header, BOOL swap)
 }
 
 
-int ReadHTKFeature(FILE * fp_in, FLOAT *in, size_t fea_len, BOOL swap,
-                   BOOL decompress, FLOAT *scale, FLOAT *bias)
+int ReadHTKFeature(FILE * fp_in, FLOAT *in, size_t fea_len, bool swap,
+                   bool decompress, FLOAT *scale, FLOAT *bias)
 {
   size_t i;
   if(decompress) {
@@ -171,7 +171,7 @@ int Mkdir4File(const char *file_name)
 /*
 FUNCTION
 
-  FLOAT *ReadHTKFeatures(char *file_name, BOOL swap, int extLeft, int extRight,
+  FLOAT *ReadHTKFeatures(char *file_name, bool swap, int extLeft, int extRight,
                          int targetKind, int derivOrder, int *derivWinLen,
                          HTK_Header *header);
 
@@ -277,7 +277,7 @@ void ReadCepsNormFile(const char *file, char **last_file, FLOAT **vec_buff,
 
 FLOAT *ReadHTKFeatures(
   char *file_name,
-  BOOL swap,
+  bool swap,
   int extLeft,
   int extRight,
   int targetKind,
@@ -332,8 +332,8 @@ FLOAT *ReadHTKFeatures(
       // are appended after HTK header.
 
       int coefs = header->sampSize/sizeof(INT_16);
-      buff->A = realloc(buff->A, coefs * sizeof(FLOAT_32));
-      buff->B = realloc(buff->B, coefs * sizeof(FLOAT_32));
+      buff->A = (float*) realloc(buff->A, coefs * sizeof(FLOAT_32));
+      buff->B = (float*) realloc(buff->B, coefs * sizeof(FLOAT_32));
       if(buff->A == NULL || buff->B == NULL) Error("Insufficient memory");
 
       e  = ReadHTKFeature(buff->fp, buff->A, coefs, swap, 0, 0, 0);
@@ -521,18 +521,18 @@ void ReadCepsNormFile(const char *file, char **last_file, FLOAT **vec_buff,
   FILE *fp;
   int i;
   char s1[9], s2[64];
-  char *typeStr = type == CNF_Mean     ? "MEAN" :
-                  type == CNF_Variance ? "VARIANCE" : "VARSCALE";
+  char *typeStr = (char*) (type == CNF_Mean     ? "MEAN" :
+                  type == CNF_Variance ? "VARIANCE" : "VARSCALE");
 
-  char *typeStr2 = type == CNF_Mean     ? "CMN" :
-                   type == CNF_Variance ? "CVN" : "VarScale";
+  char *typeStr2 = (char*) (type == CNF_Mean     ? "CMN" :
+                   type == CNF_Variance ? "CVN" : "VarScale");
 
   if(*last_file != NULL && !strcmp(*last_file, file)) {
     return;
   }
   free(*last_file);
   *last_file=strdup(file);
-  *vec_buff = realloc(*vec_buff, coefs * sizeof(FLOAT));
+  *vec_buff = (float*) realloc(*vec_buff, coefs * sizeof(FLOAT));
 
   if(*last_file == NULL || *vec_buff== NULL) {
     Error("Insufficient memory");

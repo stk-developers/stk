@@ -19,7 +19,7 @@
 #include "STKLib/common.h"
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
+#include <cstdio>
 #include <malloc.h>
 #ifndef WIN32
 #include <unistd.h>
@@ -123,7 +123,7 @@ int main(int argc, char *argv[]) {
   FileListElem *file_name = NULL;
   FileListElem **last_file = &feature_files;
 
-  Alignment alignment = WORD_ALIGNMENT;
+  int alignment = (Alignment) WORD_ALIGNMENT;
 
   double word_penalty;
   double model_penalty;
@@ -166,11 +166,11 @@ int main(int argc, char *argv[]) {
   int  *derivWinLengths;
   int startFrmExt;
   int endFrmExt;
-  BOOL baum_welch;
-  BOOL swap_features;
-  BOOL htk_compat;
+  bool baum_welch;
+  bool swap_features;
+  bool htk_compat;
   enum TranscriptionFormat {TF_HTK, TF_STK} in_transc_fmt, out_transc_fmt;
-  enum NotInDictAction notInDictAction = 0;
+  int  notInDictAction = WORD_NOT_IN_DIC_UNSET;
   RHFBuffer rhfbuff                    = {0};
   ExpansionOptions expOptions          = {0};
   STKNetworkOutputFormat in_net_fmt    = {0};
@@ -301,11 +301,11 @@ int main(int argc, char *argv[]) {
         Warning("Unknown net formating flag '%c' ignored (JMRVWXalpstv)", *cchrptr);
     }
   }
-  in_transc_fmt= GetParamEnum(&cfgHash,SNAME":SOURCETRANSCFMT",
+  in_transc_fmt = (TranscriptionFormat) GetParamEnum(&cfgHash,SNAME":SOURCETRANSCFMT",
                               !network_file && htk_compat ? TF_HTK : TF_STK,
                               "HTK", TF_HTK, "STK", TF_STK, NULL);
 
-  out_transc_fmt=GetParamEnum(&cfgHash,SNAME":TARGETTRANSCFMT",
+  out_transc_fmt = (TranscriptionFormat) GetParamEnum(&cfgHash,SNAME":TARGETTRANSCFMT",
                               htk_compat ? TF_HTK : TF_STK,
                               "HTK", TF_HTK, "STK", TF_STK, NULL);
 

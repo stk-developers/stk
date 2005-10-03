@@ -111,10 +111,10 @@ void ReadDictionary(
         ep->data = e.data;
       }
       new_pronun->nmodels++;
-      new_pronun->model=realloc(new_pronun->model,
+      new_pronun->model=(_Model*) realloc(new_pronun->model,
                                 new_pronun->nmodels*sizeof(*new_pronun->model));
       if(new_pronun->model == NULL) Error("Insufficient memory");
-      new_pronun->model[new_pronun->nmodels-1].name = ep->data;
+      new_pronun->model[new_pronun->nmodels-1].name = static_cast <char*> (ep->data);
     }
   }
   if(ferror(fp) || my_fclose(fp)) {

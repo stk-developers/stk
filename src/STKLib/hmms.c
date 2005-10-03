@@ -48,7 +48,7 @@ void RemoveSpaces(FILE *fp);
 void ReleaseItem(int macro_type, HMMSetNodeName, void *data, void *userData);
 void ReplaceItem(int macro_type, HMMSetNodeName, void *data, void *userData);
 
-static int checkKwd(const unsigned char *str, KeywordID kwdID);
+static int checkKwd(const char *str, KeywordID kwdID);
 
 char *Kwds[KID_MaxKwdID] = {0};
 
@@ -124,8 +124,8 @@ void InitHMMSet(HMMSet *hmm_set, int reest)
   hmm_set->last_macro          = NULL;
   hmm_set->in_vec_size         = -1;
   hmm_set->param_kind          = -1;
-  hmm_set->outPDF_kind         = -1;
-  hmm_set->dur_kind            = -1;
+  hmm_set->outPDF_kind         = KID_UNSET;
+  hmm_set->dur_kind            = KID_UNSET;
   hmm_set->nstates             = 0;
   hmm_set->nmixtures           = 0;
   hmm_set->alloc_accums        = reest;
@@ -236,17 +236,17 @@ void ReadHMMSet(const char *mmFileName, HMMSet *hmm_set, char *expectHMM)
 
           switch(type) {
            case 'h':
-             ScanHMM(ud.old_data, mtm_revpass | mtm_all, NULL,ReleaseItem,NULL);
+             ScanHMM((HMM*) ud.old_data, mtm_revpass | mtm_all, NULL,ReleaseItem,NULL);
              hash = &hmm_set->hmm_hash;
              break;
            case 's':
              ScanHMMSet(hmm_set, mtm_hmm, NULL,ReplaceItem, &ud);
-             ScanState(ud.old_data, mtm_revpass | mtm_all, NULL,ReleaseItem,NULL);
+             ScanState((State*) ud.old_data, mtm_revpass | mtm_all, NULL,ReleaseItem,NULL);
              hash = &hmm_set->state_hash;
              break;
            case 'm':
              ScanHMMSet(hmm_set, mtm_state, NULL,ReplaceItem, &ud);
-             ScanMixture(ud.old_data, mtm_revpass | mtm_all, NULL,ReleaseItem,NULL);
+             ScanMixture((Mixture*) ud.old_data, mtm_revpass | mtm_all, NULL,ReleaseItem,NULL);
              hash = &hmm_set->mixture_hash;
              break;
            case 'u':
@@ -266,12 +266,12 @@ void ReadHMMSet(const char *mmFileName, HMMSet *hmm_set, char *expectHMM)
              break;
            case 'j':
              ScanHMMSet(hmm_set, mtm_XformInstance | mtm_mixture,NULL,ReplaceItem, &ud);
-             ScanXformInstance(ud.old_data,mtm_revpass|mtm_all,NULL,ReleaseItem,NULL);
+             ScanXformInstance((XformInstance*) ud.old_data,mtm_revpass|mtm_all,NULL,ReleaseItem,NULL);
              hash = &hmm_set->Xform_instance_hash;
              break;
            case 'x':
              ScanHMMSet(hmm_set, mtm_Xform | mtm_XformInstance,NULL,ReplaceItem, &ud);
-             ScanXform(ud.old_data, mtm_revpass | mtm_all, NULL,ReleaseItem,NULL);
+             ScanXform((Xform*) ud.old_data, mtm_revpass | mtm_all, NULL,ReleaseItem,NULL);
              hash = &hmm_set->Xform_hash;
              break;
           }
@@ -305,41 +305,41 @@ void ReplaceItem(int macro_type, HMMSetNodeName nodeName, void *data, void *user
     if(ud->type == 's') {
       for(i = 0; i < hmm->nstates-2; i++) {
         if(hmm->state[i] == ud->old_data) {
-          hmm->state[i] = ud->new_data;
+          hmm->state[i] = (State*) ud->new_data;
         }
       }
     } else if(hmm->transition == ud->old_data) {
-      hmm->transition = ud->new_data;
+      hmm->transition = (Transition*) ud->new_data;
     }
   } else if(macro_type == 's') {
     State *state = (State *) data;
     if(state->outPDF_kind != KID_PDFObsVec) {
       for(i = 0; i < state->num_mixtures; i++) {
         if(state->mixture[i].estimates == ud->old_data) {
-          state->mixture[i].estimates = ud->new_data;
+          state->mixture[i].estimates = (Mixture*) ud->new_data;
         }
       }
     }
   } else if(macro_type == 'm') {
     Mixture *mixture = (Mixture *) data;
-    if(mixture->mean      == ud->old_data) mixture->mean      = ud->new_data;
-    if(mixture->variance  == ud->old_data) mixture->variance  = ud->new_data;
-    if(mixture->inputXform== ud->old_data) mixture->inputXform= ud->new_data;
+    if(mixture->mean      == ud->old_data) mixture->mean       = (Mean*)          ud->new_data;
+    if(mixture->variance  == ud->old_data) mixture->variance   = (Variance*)      ud->new_data;
+    if(mixture->inputXform== ud->old_data) mixture->inputXform = (XformInstance*) ud->new_data;
   } else if(macro_type == 'x') {
     CompositeXform *cxf = (CompositeXform *) data;
     if(cxf->xform_type == XT_COMPOSITE) {
       for(i = 0; i < cxf->nlayers; i++) {
         for(j = 0; j < cxf->layer[i].nblocks; j++) {
           if(cxf->layer[i].block[j] == ud->old_data) {
-            cxf->layer[i].block[j] = ud->new_data;
+            cxf->layer[i].block[j] = (Xform*) ud->new_data;
           }
         }
       }
     }
   } else if(macro_type == 'j') {
     XformInstance *xformInstance = (XformInstance *) data;
-    if(xformInstance->input == ud->old_data) xformInstance->input=ud->new_data;
-    if(xformInstance->xform == ud->old_data) xformInstance->xform=ud->new_data;
+    if(xformInstance->input == ud->old_data) xformInstance->input = (XformInstance*) ud->new_data;
+    if(xformInstance->xform == ud->old_data) xformInstance->xform = (Xform*)         ud->new_data;
   }
 }
 
@@ -735,8 +735,10 @@ Xform *ReadXform(FILE *fp, HMMSet *hmm_set, Macro *macro) {
     return (Xform *) ReadStackingXform(fp, hmm_set, macro);
   }
 
-  if(checkKwd(keyword, KID_NumLayers) || checkKwd(keyword, KID_NumBlocks)
-                                      || checkKwd(keyword, KID_BlockInfo)) {
+  if(checkKwd(keyword, KID_NumLayers) ||
+     checkKwd(keyword, KID_NumBlocks) ||
+     checkKwd(keyword, KID_BlockInfo))
+  {
     UngetString();
     return (Xform *) ReadCompositeXform(fp, hmm_set, macro);
   }
@@ -1134,7 +1136,7 @@ KeywordID ReadOutPDFKind(char *str)
   else if(checkKwd(str, KID_XformC))   return KID_XformC;
   else if(checkKwd(str, KID_LLTC))     return KID_LLTC;
   else if(checkKwd(str, KID_PDFObsVec))return KID_PDFObsVec;
-  else return -1;
+  else return KID_UNSET;
 }
 
 KeywordID ReadDurKind(char *str)
@@ -1143,7 +1145,7 @@ KeywordID ReadDurKind(char *str)
   else if(checkKwd(str, KID_PoissonD)) return KID_PoissonD;
   else if(checkKwd(str, KID_GammaD))   return KID_GammaD;
   else if(checkKwd(str, KID_GenD))     return KID_GenD;
-  else return -1;
+  else return KID_UNSET;
 }
 
 
@@ -1195,7 +1197,7 @@ int ReadGlobalOptions(FILE *fp, HMMSet *hmm_set)
         Error("Unsupported option '%s' (%s:%d)", keyword, current_mmf_name, current_mmf_line);
       }
 
-      hmm_set->outPDF_kind = i;
+      hmm_set->outPDF_kind = static_cast<KeywordID> (i);
       ret = 1;
     } else if((i = ReadDurKind(keyword)) != -1) {
       if(hmm_set->dur_kind != -1 && hmm_set->dur_kind != i) {
@@ -1204,7 +1206,7 @@ int ReadGlobalOptions(FILE *fp, HMMSet *hmm_set)
       if(i != KID_NullD) {
         Error("Unsupported option '%s' (%s:%d)", keyword, current_mmf_name, current_mmf_line);
       }
-      hmm_set->dur_kind = i;
+      hmm_set->dur_kind = static_cast<KeywordID> (i);
       ret = 1;
     } else if(checkKwd(keyword, KID_HMMSetID)) {
       ret = 1;
@@ -1233,7 +1235,11 @@ int ReadGlobalOptions(FILE *fp, HMMSet *hmm_set)
         ud.type     = 'j';
 
         ScanHMMSet(hmm_set, mtm_XformInstance|mtm_mixture,NULL,ReplaceItem, &ud);
-        ScanXformInstance(ud.old_data,mtm_revpass|mtm_all,NULL,ReleaseItem,NULL);
+        ScanXformInstance(static_cast<XformInstance*>(ud.old_data),
+	                  mtm_revpass|mtm_all,
+			  NULL,
+			  ReleaseItem,
+			  NULL);
 
         for(i = 0; i < hmm_set->Xform_instance_hash.nentries; i++) {
           if(hmm_set->Xform_instance_hash.entry[i]->data == ud.old_data) {
@@ -1377,9 +1383,9 @@ void ComputeGConst(Mixture *mix)
 }
 
 
-int checkKwd(const unsigned char *str, KeywordID kwdID)
+int checkKwd(const char *str, KeywordID kwdID)
 {
-  const unsigned char *chptr;
+  const char *chptr;
   if(str[0] == ':') {
     hmm_read_binary = 1;
     return str[1] == kwdID;
@@ -1678,14 +1684,14 @@ void WriteHMMSet(const char *mmfName, const char *out_mmf_dir,
       PutNLn(fp, binary);
     } else {
       switch(macro->type) {
-        case 'x': WriteXform(fp, binary, hmm_set, macro->data);         break;
-        case 'j': WriteXformInstance(fp, binary, hmm_set, macro->data); break;
-        case 'u': WriteMean(fp, binary, hmm_set, macro->data);          break;
-        case 'v': WriteVariance(fp, binary, hmm_set, macro->data);      break;
-        case 't': WriteTransition(fp, binary, hmm_set, macro->data);    break;
-        case 'm': WriteMixture(fp, binary, hmm_set, macro->data);       break;
-        case 's': WriteState(fp, binary, hmm_set, macro->data);         break;
-        case 'h': WriteHMM(fp, binary, hmm_set, macro->data);           break;
+        case 'x': WriteXform        (fp, binary, hmm_set, static_cast <Xform*>         (macro->data)); break;
+        case 'j': WriteXformInstance(fp, binary, hmm_set, static_cast <XformInstance*> (macro->data)); break;
+        case 'u': WriteMean         (fp, binary, hmm_set, static_cast <Mean*>          (macro->data)); break;
+        case 'v': WriteVariance     (fp, binary, hmm_set, static_cast <Variance*>      (macro->data)); break;
+        case 't': WriteTransition   (fp, binary, hmm_set, static_cast <Transition*>    (macro->data)); break;
+        case 'm': WriteMixture      (fp, binary, hmm_set, static_cast <Mixture*>       (macro->data)); break;
+        case 's': WriteState        (fp, binary, hmm_set, static_cast <State*>         (macro->data)); break;
+        case 'h': WriteHMM          (fp, binary, hmm_set, static_cast <HMM*>           (macro->data)); break;
       }
     }
   }
@@ -2780,7 +2786,7 @@ void UpdateStacks(HMMSet *hmm_set, FLOAT *obs, int time,  PropagDir dir) {
   }
 }
 
-void ScanHMMSet(HMMSet *hmm_set, MacroTypeMask mask, HMMSetNodeName nodeName,
+void ScanHMMSet(HMMSet *hmm_set, int mask, HMMSetNodeName nodeName,
                 ScanAction action, void *userData)
 {
   Macro *macro;
@@ -2797,11 +2803,11 @@ void ScanHMMSet(HMMSet *hmm_set, MacroTypeMask mask, HMMSetNodeName nodeName,
     switch(macro->type) {
       case mt_Xform:
         if(!(mask & mtm_Xform)) break;
-        ScanXform(macro->data, mask, nodeName, action, userData);
+        ScanXform(static_cast <Xform*> (macro->data), mask, nodeName, action, userData);
         break;
       case mt_XformInstance:
         if(!(mask & (mtm_Xform | mtm_XformInstance))) break;
-        ScanXformInstance(macro->data, mask, nodeName, action, userData);
+        ScanXformInstance(static_cast <XformInstance*> (macro->data), mask, nodeName, action, userData);
         break;
       case mt_mean:
         if(!(mask & mtm_mean)) break;
@@ -2817,22 +2823,22 @@ void ScanHMMSet(HMMSet *hmm_set, MacroTypeMask mask, HMMSetNodeName nodeName,
         break;
       case mt_mixture:
         if(!(mask & (mtm_all & ~(mtm_state | mtm_hmm | mtm_transition)))) break;
-        ScanMixture(macro->data, mask, nodeName, action, userData);
+        ScanMixture(static_cast <Mixture*> (macro->data), mask, nodeName, action, userData);
         break;
       case mt_state:
         if(!(mask & (mtm_all & ~(mtm_hmm | mtm_transition)))) break;
-        ScanState(macro->data, mask, nodeName, action, userData);
+        ScanState(static_cast <State*> (macro->data), mask, nodeName, action, userData);
         break;
       case mt_hmm:
         if(!(mask & mtm_all)) break;
-        ScanHMM(macro->data, mask, nodeName, action, userData);
+        ScanHMM(static_cast <HMM*> (macro->data), mask, nodeName, action, userData);
         break;
       default: assert(0);
     }
   }
 }
 
-void ScanHMM(HMM *hmm, MacroTypeMask mask, HMMSetNodeName nodeName,
+void ScanHMM(HMM *hmm, int mask, HMMSetNodeName nodeName,
              ScanAction action, void *userData)
 {
   int i, n = 0;
@@ -2868,7 +2874,7 @@ void ScanHMM(HMM *hmm, MacroTypeMask mask, HMMSetNodeName nodeName,
   }
 }
 
-void ScanState(State *state, MacroTypeMask mask, HMMSetNodeName nodeName,
+void ScanState(State *state, int mask, HMMSetNodeName nodeName,
                ScanAction action, void *userData)
 {
   int i, n = 0;
@@ -2900,7 +2906,7 @@ void ScanState(State *state, MacroTypeMask mask, HMMSetNodeName nodeName,
   }
 }
 
-void ScanMixture(Mixture *mixture, MacroTypeMask mask,
+void ScanMixture(Mixture *mixture, int mask,
                  HMMSetNodeName nodeName, ScanAction action, void *userData)
 {
   int n = 0;
@@ -2938,7 +2944,7 @@ void ScanMixture(Mixture *mixture, MacroTypeMask mask,
   }
 }
 
-void ScanXformInstance(XformInstance *xformInstance, MacroTypeMask mask,
+void ScanXformInstance(XformInstance *xformInstance, int mask,
                        HMMSetNodeName nodeName, ScanAction action,
                        void *userData)
 {
@@ -2974,7 +2980,7 @@ void ScanXformInstance(XformInstance *xformInstance, MacroTypeMask mask,
   }
 }
 
-void ScanXform(Xform *xform, MacroTypeMask mask, HMMSetNodeName nodeName,
+void ScanXform(Xform *xform, int mask, HMMSetNodeName nodeName,
                ScanAction action, void *userData)
 {
   int n = 0;
