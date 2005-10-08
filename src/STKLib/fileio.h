@@ -13,8 +13,11 @@
 #ifndef FILEIO_H
 #define FILEIO_H
 
+#include <string>
 #include <stdio.h>
 #include "common.h"
+
+using namespace std;
 
 typedef struct {
     INT_32 nSamples;              /* Structure for HTK header */
@@ -24,9 +27,11 @@ typedef struct {
 }
 HTK_Header;
 
+
 #ifdef __cplusplus
   extern "C" {
 #endif
+
 
 int WriteHTKHeader (FILE * fp_out, HTK_Header header, bool swap);
 int WriteHTKFeature (FILE * fp_out, FLOAT *out, size_t fea_len, bool swap);
@@ -68,5 +73,92 @@ FLOAT *ReadHTKFeatures(
 #ifdef __cplusplus
 }
 #endif
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// File class
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// File class is an interface to common file I/O operation in STK. It gives
+/// virtual methods to be later redefined separately for input and output.
+////////////////////////////////////////////////////////////////////////////////
+class STK_FStream
+{
+protected:
+	/// Holds physical file name
+	string fName;
+
+	/// Pointer to the C FILE structure
+	FILE* fStream;
+
+	/// Holds info whether the file is open or not
+	bool isopen;
+
+public:
+	/// A constructor
+	STK_FStream();
+
+	/// Abstract method to open the file
+	virtual int open(const string& filename) = 0;
+
+	/// Closes the file
+	virtual void close();
+
+	/// Returns whether the file is open or not
+	bool is_open() const {return isopen;};
+
+	/// @brief Returns a pointer to the FILE* structure
+  ///
+	/// It is not safe to give direc access to the FILE structure
+	/// so const function is given
+	FILE* fp() {return fStream;}
+};
+
+
+class mystream : public ifstream
+{
+public:
+  string fName;
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// IFile class
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// IFile class encapsulates file input operations.
+////////////////////////////////////////////////////////////////////////////////
+class STK_IFStream : public STK_FStream
+{
+public:
+	~STK_IFStream();
+
+	/// Opens the file for input
+	int open(const string& filename);
+};
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// OFile class
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// OFile class encapsulates file output operations.
+////////////////////////////////////////////////////////////////////////////////
+class STK_OFStream : public STK_FStream
+{
+public:
+	~STK_OFStream();
+
+	/// Opens the file for output
+	int open(const string& filename);
+};
+
+
 
 #endif // FILEIO_H
