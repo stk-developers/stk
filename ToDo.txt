@@ -30,6 +30,8 @@
 - Accumulator files always contain weight_accum_den (not very elegant)
 - Something should be done with
 - In MPE update weight_accum_den is passed using quite ugly hack that work only if mixtures are not shared by more states
+- _Z online computation
+- Discarding mixture components with low occupancy
 
 Documentation
 - MLF is red sequentionally -> Sort labels file records
@@ -48,6 +50,7 @@ RemoveRedundantNullNodes can cause doubled links, which leads to error
 Global Xform defined after HMMs cause error
 DC phone expansion of network with short circuit leads to infinite loop
 <Copy> accept range (from:to) larger than its output size
+HPARM{1,2} in not recognized (only SPARM{1,2})
 
 To finish new SKT networks
 - Expanded network cannot hold information about word output symbols and
