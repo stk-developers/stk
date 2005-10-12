@@ -1,3 +1,9 @@
+
+
+/** @file stkstream.h
+ *  This is an STK C++ Library header.
+ */
+
 #ifndef _STKBUF_H
 #define _STKBUF_H
 
@@ -106,6 +112,7 @@ namespace STK
 			 *  @brief  Opens a stream.
 			 *  @param  fName  The name of the file.
 			 *  @param  m      The open mode flags.
+			 *  @param  filter The filter command to use
 			 *  @return  @c this on success, NULL on failure
 			 *
 			 *  If a file is already open, this function immediately fails.
@@ -131,6 +138,7 @@ namespace STK
 			 *  @brief  Opens an external file.
 			 *  @param  fName  The name of the file.
 			 *  @param  m      The open mode flags.
+			 *  @param  filter The filter command to use
 			 *  @return  @c this on success, NULL on failure
 			 *
 			 *  If a file is already open, this function immediately fails.
@@ -162,12 +170,6 @@ namespace STK
 			*/
 			virtual
 			~basic_stkbuf() {close();};
-
-			/**
-			 *  @brief  Returns true if the external file is open.
-			 */
-			//bool
-			//is_open() const { this->_M_file.is_open();}
 
 			/// Returns the file name
 			const string name() const {return filename;}
@@ -243,7 +245,8 @@ namespace STK
 		*  @brief  Opens an external file.
 		*  @param  s  The name of the file.
 		*  @param  mode  The open mode flags.
-		*
+		*  @param  filter The filter command to use
+			 *
 		*  Calls @c std::basic_filebuf::open(s,mode|in).  If that function
 		*  fails, @c failbit is set in the stream's error state.
 		*

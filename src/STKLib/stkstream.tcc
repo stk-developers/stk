@@ -5,7 +5,6 @@
 
 namespace STK
 {
-	//bool basic_stkbuf::expandFilterCommand(const string & fName, const string & filter, string & command)
 	char * expandFilterCommand(const char *command, const char *filename)
 	{
 
@@ -107,15 +106,16 @@ namespace STK
 	basic_stkbuf<_CharT, _Traits>::
 	open(const string & fName, ios::openmode m, const string & filter)
 	{
+		basic_stkbuf<_CharT, _Traits> * _ret = NULL;
+
 		// we need to assure, that the stream is not open
 		if (!this->is_open())
 		{
 
+
 			char mstr[4] = {'\0', '\0', '\0', '\0'};
 			int __p_mode = 0;
 			int __rw_mode = 0;
-
-			basic_stkbuf<_CharT, _Traits> * _ret = 0;
 
 			// now we decide, what kind of file we open
 
@@ -202,7 +202,7 @@ namespace STK
 						_ret = this;
 					}
 					else
-						_ret = 0;
+						_ret = NULL;
 				}
 			}
 
@@ -212,6 +212,8 @@ namespace STK
 				superopen(fileptr, m);
 			}
 		} //if (!isopen)
+
+		return _ret;
 	}
 
 	//******************************************************************************
