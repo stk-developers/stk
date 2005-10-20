@@ -180,7 +180,7 @@ namespace STK
 					if (fileptr = popen(command, mstr))
 					{
 						filename = fName;
-						this->filter = pipe | filter;
+						this->filter = filter;
 						mode     = m;
 						stream_type = t_pipe;
 						_ret = this;
