@@ -11,6 +11,7 @@
  ***************************************************************************/
 
 #include "common.h"
+#include "filmatch.h"
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -20,6 +21,8 @@
 #include <ctype.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+
+#include <string>
 
 
 
@@ -1122,6 +1125,8 @@ int npercents(const char *str)
   return ret;
 }
 
+
+
 int process_mask(const char *normstr, const char *wildcard, char *substr)
 {
   char *hlpptr;
@@ -1130,35 +1135,122 @@ int process_mask(const char *normstr, const char *wildcard, char *substr)
 
   *substr = '\0';
 
-  if((hlpptr = (char *) memchr(wildcard, '*', endwc-wildcard)) == NULL) {
-    return !((endwc-wildcard != endns-normstr) || 
+  printf("%s %s\n", normstr, wildcard);
+
+  if((hlpptr = (char *) memchr(wildcard, '*', endwc-wildcard)) == NULL) {//hvezdicka neni
+    return !((endwc-wildcard != endns-normstr) ||
              memcmpw(normstr, wildcard, endns-normstr, &substr));
   }
 
-  if((hlpptr-wildcard > endns-normstr) || 
-     memcmpw(normstr, wildcard, hlpptr-wildcard, &substr)) {
-    return 0;
+  if((hlpptr-wildcard > endns-normstr) ||
+     memcmpw(normstr, wildcard, hlpptr-wildcard, &substr)) {// retezec je kratsi nez pozice prvni hvezdicky
+    return 0;//je * o..x nebo 1..x
   }
   wildcard = hlpptr;
-  
+
   for(;;) {
-    while(*wildcard == '*') wildcard++;
-    if(!*wildcard) return 1;
-    if(!*normstr)  return 0;
+    while(*wildcard == '*') wildcard++; //najdi prvni znak za hvezdickou
+    if(!*wildcard) return 1;//konec wildcard retezce (za serii hvezdicek jsou jen hvezdicky az do konce)
+    if(!*normstr)  return 0;//konec porovnavaneho
     if((hlpptr = (char *) memchr(wildcard, '*', endwc-wildcard)) == NULL) {
       return !((endwc-wildcard > endns-normstr) ||
                memcmpw(endns-(endwc-wildcard), wildcard, endwc-wildcard, &substr));
     }
-    
+
     do {
       if((endns-normstr) < (hlpptr-wildcard)) return 0;
       normstr = (char *) ((*wildcard == '?' || *wildcard == '%')
-                ? normstr 
+                ? normstr
                 : memchr(normstr, *wildcard, endns-normstr-(hlpptr-wildcard)+1));
       if(!normstr || !*normstr) return 0;
     } while(memcmpw(normstr++, wildcard, hlpptr-wildcard, &substr));
-    
+
     normstr += hlpptr - wildcard - 1;
     wildcard = hlpptr;
   }
 }
+
+#include <string>
+#include <stdexcept>
+#include <iostream>
+
+using std::string;
+
+using namespace std;
+/**
+ *  @brief Returns true if rString matches rWildcard and fills substr with
+ *         corresponding %%% matched pattern
+ *  @param rString    String to be parsed
+ *  @param rWildcard  String containing wildcard pattern
+ *  @param Substr     The mathced %%% pattern is stored here
+ *
+ *  This is a C++ extension to the original process_mask function.
+ *
+ */
+bool
+ProcessMask(const std::string & rString,
+            const std::string & rWildcard,
+                  std::string & rSubstr)
+{
+  char *  substr;
+  int     percent_count        = 0;
+  int     ret ;
+  size_t  pos                  = 0;
+
+  std::cout << rWildcard << " " <<rString << std::endl;
+
+  // let's find how many % to allocate enough space for the return substring
+  while ((pos = rWildcard.find('%', pos)) != rWildcard.npos)
+  {
+    percent_count++;
+    pos++;
+  }
+
+  // allocate space for the substring
+  substr = new char[percent_count + 1];
+
+  // parse the string
+  if (ret = match(rWildcard.c_str(), rString.c_str(), substr))
+  {
+    rSubstr = substr;
+  }
+  delete[] substr;
+  return ret;
+} // ProcessMask
+
+
+//*****************************************************************************
+void
+ParseHTKString(const std::string & rIn, std::string & rOut)
+{
+  int ret_val;
+
+  // the new string will be at most as long as the original, so we allocate
+  // space
+  char * new_str = new char[rIn.size() + 1];
+  strcpy(new_str, rIn.c_str());
+
+  // there might be some error message returned, so we reserve at least
+  // 30 bytes
+  char * tmp_str;
+
+  // call the function
+  if (!(ret_val = getHTKstr(new_str, &tmp_str)))
+  {
+    rOut = new_str;
+  }
+
+  else if ((ret_val == -1) || (ret_val == -2))
+  {
+    throw std::logic_error(tmp_str);
+  }
+
+  else
+  {
+    throw std::logic_error("Unexpected error parsing HTK string");
+  }
+
+}
+
+
+

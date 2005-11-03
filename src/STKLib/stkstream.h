@@ -106,7 +106,7 @@ namespace STK
 			* deferred initialization
 			*/
 			basic_stkbuf() : std::basic_filebuf<_CharT, _Traits>(),
-				filename(""), filter(""), fileptr(0), stream_type(t_undef){}
+				filter(""), filename(""), fileptr(0), stream_type(t_undef){}
 
 			/**
 			 *  @brief  Opens a stream.
@@ -239,7 +239,7 @@ namespace STK
 		 *  .c_str() before passing it to this constructor.
 		*/
 		istkstream(const string& fName, ios::openmode m=ios::out, const string & filter=""):
-			stkios(fName, ios::in, filter) {}
+			stkios() {this->open(fName, ios::in, filter);}
 
 		/**
 		*  @brief  Opens an external file.
@@ -281,7 +281,17 @@ namespace STK
 		std::__c_file*
 		file() {return buf.file();}
 
-	}; // class istkstream
+    /**
+     *  @brief  Reads a single line
+     *
+     *  This is a specialized function as std::getline does not provide a way to
+     *  read multiple end-of-line symbols (we need both '\n' and EOF to delimit
+     *  the line)
+     */
+    void
+    GetLine(string & rLine);
+
+  }; // class istkstream
 
 
 	/**

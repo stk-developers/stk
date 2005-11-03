@@ -5,8 +5,13 @@ XFLAGS = -DMOTIF -L/usr/X11R6/lib -lXm -lXt -lX11 -lXpm
 #ICCFLAGS = -O2 -tpp6 -axiMK -xiMK -parallel
 CC  = g++
 
+test : test.cc STKLib/common.o STKLib/labelreader.o STKLib/filmatch.o
 
-all  : SVite SRover SERest SResults SExpand SLRatio 
+filmatch : STKLib/filmatch.c STKLib/filmatch.h
+	$(CC) -o filmatch -DTEST=0 STKLib/filmatch.c
+
+all  : SVite SRover SERest SResults SExpand SLRatio
+
 
 
 SFea2OutP : STKLib/common.o STKLib/fileio.o STKLib/hmms.o STKLib/viterbi.o STKLib/net.o -lm
@@ -31,6 +36,7 @@ SExpand  : STKLib/common.o STKLib/labels.o STKLib/dict.o STKLib/net.o -lm
 #wfst2net   : STKLib/common.o -lm
 SERestX :  SERest.o STKLib/common.o STKLib/fileio.o STKLib/hmms.o STKLib/viterbi.c STKLib/labels.o STKLib/net.o STKLib/dict.o STKLib/imagesc.o
 	$(CC) $(CFLAGS) $(XFLAGS) -o SERestX SERest.o STKLib/common.o STKLib/fileio.o STKLib/hmms.o STKLib/viterbi.c STKLib/labels.o STKLib/net.o STKLib/dict.o STKLib/imagesc.o -lm
+
 
 clean:
 	-rm -f *.o STKLib/*.o SVite SFea2OutP SRover SERest SLRatio SResults SExpand SCombAcc SMMIUpdate
@@ -69,3 +75,4 @@ STKLib/net.o: STKLib/hmms.h STKLib/labels.h STKLib/common.h STKLib/dict.h
 STKLib/net.o: STKLib/net.h
 STKLib/viterbi.o: STKLib/viterbi.h STKLib/hmms.h STKLib/labels.h
 STKLib/viterbi.o: STKLib/common.h STKLib/dict.h STKLib/net.h
+

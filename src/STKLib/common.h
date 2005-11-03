@@ -19,6 +19,9 @@
 //#define __USE_GNU
 #include <limits.h>
 #include <search.h>
+#include <string>
+
+
 
 #ifndef M_PI
 #define M_PI 3.1415926535897932384626433832795
@@ -228,6 +231,33 @@ FileListElem **AddFileElem(FileListElem **last, char *fileElem);
 
 int npercents(const char *str);
 int process_mask(const char *normstr, const char *wildcard, char *substr);
+
+
+/**
+ *  @brief Returns true if rString matches rWildcard and fills substr with
+ *         corresponding %%% matched pattern
+ *  @param rString    String to be parsed
+ *  @param rWildcard  String containing wildcard pattern
+ *  @param Substr     The mathced %%% pattern is stored here
+ *
+ *  This is a C++ extension to the original process_mask function.
+ *
+ */
+bool
+ProcessMask(const std::string & rString,
+            const std::string & rWildcard,
+                  std::string & rSubstr);
+
+/**
+ *  @brief Parses HTK string according to HTK Book string definition
+ *  @param rIn String to parse
+ *  @param rOut String to store the output
+ *
+ *  This is a C++ extension to the original @see getHTKstr function.
+ */
+void
+ParseHTKString(const std::string & rIn, std::string & rOut);
+
 
 #ifdef __cplusplus
 }

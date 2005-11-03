@@ -7,243 +7,266 @@
 #include <stdexcept>
 #include <cblas.h>
 
+#include <iostream>
+
 #define CHECKSIZE
 
 
-//	class matrix_error : public std::logic_error {};/
-//	class matrix_sizes_error : public matrix_error {};
+//  class matrix_error : public std::logic_error {};/
+//  class matrix_sizes_error : public matrix_error {};
 
 /// defines a storage type
 typedef enum
 {
-	STORAGE_UNDEFINED = 0,
-	STORAGE_REGULAR,
-	STORAGE_TRANSPOSED
+  STORAGE_UNDEFINED = 0,
+  STORAGE_REGULAR,
+  STORAGE_TRANSPOSED
 } storage_type;
 
 
-	/**
-	 *  @brief Provides a matrix abstraction class
-	 *
-	 *  This class provides a way to work with matrices in STK.
-	 *  It encapsulates basic operations and memory optimizations.
-	 *
-	 */
-	template<typename _ElemT>
-		class basic_stkmatrix
-		{
-		public:
-			/// defines a type of this
-			typedef basic_stkmatrix<_ElemT>    __this_type;
+  // declare the class so the header knows about it
+  template<typename _ElemT>
+    class basic_stkmatrix;
 
 
-		protected:
-			/// keeps info about data layout in the memory
-			storage_type storageType;
+  // we need to declare the friend << operator here
+  template<typename _ElemT>
+    std::ostream & operator << (std::ostream & out, const basic_stkmatrix<_ElemT> & m);
 
 
-			//@{
-			/// these atributes store the real matrix size as it is stored in memory
-			/// including memalignment
-			size_t  M_rows;       ///< Number of rows
-			size_t  M_cols;       ///< Number of columns
-			size_t  M_realCols;   ///< true number of columns for the internal matrix.
-			                      ///< This number may differ from M_cols as memory
-														///< alignment might be used
-			size_t  M_size;       ///< Total size of data block in bytes
-			size_t  M_skip;       ///< Bytes to skip (memalign...)
-
-			size_t  T_rows;       ///< Real number of rows (available to the user)
-			size_t  T_cols;       ///< Real number of columns
-			//@}
-
-			/// data memory area
-			_ElemT *  data;
+  /**
+   *  @brief Provides a matrix abstraction class
+   *
+   *  This class provides a way to work with matrices in STK.
+   *  It encapsulates basic operations and memory optimizations.
+   *
+   */
+  template<typename _ElemT>
+    class basic_stkmatrix
+    {
+    public:
+      /// defines a type of this
+      typedef basic_stkmatrix<_ElemT>    __this_type;
 
 
-		public:
-			// Constructors
-
-			/// Empty constructor
-			basic_stkmatrix<_ElemT> (): storageType(STORAGE_UNDEFINED) {}
-
-			/// Copy constructor
-			basic_stkmatrix<_ElemT> (const __this_type & t);
-
-			/// Basic constructor
-			basic_stkmatrix<_ElemT> (const size_t r,
-															 const size_t c,
-															 const storage_type st = STORAGE_REGULAR);
+    protected:
+      /// keeps info about data layout in the memory
+      storage_type storageType;
 
 
-			/// Destructor
-			~basic_stkmatrix<_ElemT> ();
+      //@{
+      /// these atributes store the real matrix size as it is stored in memory
+      /// including memalignment
+      size_t  M_rows;       ///< Number of rows
+      size_t  M_cols;       ///< Number of columns
+      size_t  M_realCols;   ///< true number of columns for the internal matrix.
+                            ///< This number may differ from M_cols as memory
+                            ///< alignment might be used
+      size_t  M_size;       ///< Total size of data block in bytes
+      size_t  M_skip;       ///< Bytes to skip (memalign...)
+
+      size_t  T_rows;       ///< Real number of rows (available to the user)
+      size_t  T_cols;       ///< Real number of columns
+      //@}
+
+      /// data memory area
+      _ElemT *  data;
 
 
-			/// Returns number of rows in the matrix
-			virtual size_t
-			rows() const
-			{
-				return T_rows;
-			}
+    public:
+      // Constructors
 
-			/// Returns number of columns in the matrix
-			virtual size_t
-			cols() const
-			{
-				return T_cols;
-			}
+      /// Empty constructor
+      basic_stkmatrix<_ElemT> (): storageType(STORAGE_UNDEFINED) {}
 
+      /// Copy constructor
+      basic_stkmatrix<_ElemT> (const __this_type & t);
 
-			/// Returns the way the matrix is stored in memory
-			storage_type
-			storage() const
-			{
-				return storageType;
-			}
+      /// Basic constructor
+      basic_stkmatrix<_ElemT> (const size_t r,
+                               const size_t c,
+                               const storage_type st = STORAGE_REGULAR);
+
+      /// Destructor
+      ~basic_stkmatrix<_ElemT> ();
 
 
-			/**
-			 *  @brief Adds values of matrix a to this element by element
-			 *  @param a Matrix to be added to this
-			 *  @return Reference to this
-			 */
-			__this_type &
-			operator += (const __this_type & a);
+      /// Returns number of rows in the matrix
+      size_t
+      rows() const
+      {
+        return T_rows;
+      }
 
-			/**
-			 *  @brief Performs vector multiplication on a and b and and adds the
-			 *         result to this (elem by elem)
-			 */
-			__this_type &
-			AddVectorMult(const __this_type & a, const __this_type & b);
-
-
-			/**
-			 *  @brief Gives access to the matrix memory area
-			 *  @return pointer to the first field
-			 */
-			virtual _ElemT *
-			operator () () const {return data;};
-
-			/**
-			 *  @brief Gives access to a specified matrix row
-			 *  @return pointer to the first field of the row
-			 */
-			virtual _ElemT *
-			row (const size_t r)
-			{
-				return data + (r * M_realCols);
-			}
-
-			/**
-			 *  @brief Gives access to matrix elements (row, col)
-			 *  @return pointer to the desired field
-			 */
-			virtual _ElemT *
-			operator () (const size_t r, const size_t c);
-
-			void printOut();
-
-		}; // class basic_stkmatrix
+      /// Returns number of columns in the matrix
+      size_t
+      cols() const
+      {
+        return T_cols;
+      }
 
 
+      /// Returns the way the matrix is stored in memory
+      storage_type
+      storage() const
+      {
+        return storageType;
+      }
 
-	/**
-	 *  @brief Provides a window matrix abstraction class
-	 *
-	 *  This class provides a way to work with matrix cutouts in STK.
-	 *  It encapsulates basic operations and memory optimizations.
-	 *
-	 */
-	template<typename _ElemT>
-		class basic_stkwinmatrix : public basic_stkmatrix<_ElemT>
-		{
-		private:
-			/// points to the original begining of the data array
-			/// The data atribute points now to the begining of the window
-			_ElemT * subdata;
 
-			size_t T_rows;    ///< Real number of window rows
-			size_t T_cols;    ///< Real number of window columns
-			size_t T_rowOff;  ///< First row of the window
-			size_t T_colOff;  ///< First column of the window
+      /**
+       *  @brief Adds values of matrix a to this element by element
+       *  @param a Matrix to be added to this
+       *  @return Reference to this
+       */
+      __this_type &
+      operator += (const __this_type & a);
 
-			size_t M_skip;    ///< Columns to skip in the memory
+      /**
+       *  @brief Performs vector multiplication on a and b and and adds the
+       *         result to this (elem by elem)
+       */
+      __this_type &
+      AddVectorMult(const __this_type & a, const __this_type & b);
+
+
+      /**
+       *  @brief Gives access to the matrix memory area
+       *  @return pointer to the first field
+       */
+      _ElemT *
+      operator () () {return data;};
+
+      /**
+       *  @brief Gives access to a specified matrix row
+       *  @return pointer to the first field of the row
+       */
+      _ElemT *
+      row (const size_t r)
+      {
+        return data + (r * M_realCols);
+      }
+
+      /**
+       *  @brief Gives access to matrix elements (row, col)
+       *  @return pointer to the desired field
+       */
+      _ElemT *
+      operator () (const size_t r, const size_t c);
+
+
+      friend std::ostream & operator << <> (std::ostream & out, const __this_type & m);
+
+      void printOut();
+
+    }; // class basic_stkmatrix
 
 
 
-		public:
-			/// defines a type of this
-			typedef basic_stkwinmatrix<_ElemT>    __this_type;
+  /**
+   *  @brief Provides a window matrix abstraction class
+   *
+   *  This class provides a way to work with matrix cutouts in STK.
+   *  It encapsulates basic operations and memory optimizations.
+   *
+   */
+  template<typename _ElemT>
+    class basic_stkwinmatrix : public basic_stkmatrix<_ElemT>
+    {
+    protected:
+      /// points to the original begining of the data array
+      /// The data atribute points now to the begining of the window
+      _ElemT * orig_data;
+
+      //@{
+      /// these atributes store the real matrix size as it is stored in memory
+      /// including memalignment
+      size_t  orig_M_rows;       ///< Number of rows
+      size_t  orig_M_cols;       ///< Number of columns
+      size_t  orig_M_realCols;   ///< true number of columns for the internal matrix.
+                                 ///< This number may differ from M_cols as memory
+                                 ///< alignment might be used
+      size_t  orig_M_size;       ///< Total size of data block in bytes
+      size_t  orig_M_skip;       ///< Bytes to skip (memalign...)
+
+      size_t  orig_T_rows;       ///< Original number of window rows
+      size_t  orig_T_cols;       ///< Original number of window columns
+
+      size_t T_rowOff;           ///< First row of the window
+      size_t T_colOff;           ///< First column of the window
+      //@}
 
 
-			/// Empty constructor
-			basic_stkwinmatrix() : basic_stkmatrix<_ElemT>() {};
-
-			/// Copy constructor
-			basic_stkwinmatrix<_ElemT> (const __this_type & t);
-
-			/// Basic constructor
-			basic_stkwinmatrix<_ElemT> (const size_t r,
-																	const size_t c,
-																	const storage_type st = STORAGE_REGULAR):
-				basic_stkmatrix<_ElemT>(r, c, st),
-				T_rows(r),   T_cols(c),
-				T_rowOff(0), T_colOff(0), M_skip(basic_stkmatrix<_ElemT>::M_skip)
-			{
-				subdata = basic_stkmatrix<_ElemT>::data;
-			}
-
-
-			void
-			setSize(const size_t _ro,
-							const size_t _r,
-							const size_t _co=0,
-							const size_t _c=basic_stkmatrix<_ElemT>::T_cols);
-
-			/**
-			 *  @brief Resets the window to the default (full) size
-			 */
-			void
-			reset ()
-			{
-				subdata  = basic_stkmatrix<_ElemT>::data;
-
-				T_rows   = basic_stkmatrix<_ElemT>::T_rows;
-				T_cols   = basic_stkmatrix<_ElemT>::T_cols;
-				T_rowOff = 0;
-				T_colOff = 0;
-				M_skip   = basic_stkmatrix<_ElemT>::M_skip;
-			}
-
-			/**
-			 *  @brief Gives access to the matrix memory area
-			 *  @return pointer to the first field
-			 */
-			virtual _ElemT *
-			operator () () const {return subdata;};
-
-
-			/**
-			 *  @brief Gives access to a specified matrix row
-			 *  @return pointer to the first field of the row
-			 */
-			//virtual _ElemT *
-			//row (const size_t r);
-
-			/// this operator will print out the whole matrix
-			//friend ostream& operator << (ostream & out, __this_type & m);
-			//void printOut();
+    public:
+      /// defines a type of this
+      typedef basic_stkwinmatrix<_ElemT>    __this_type;
 
 
 
+      /// Empty constructor
+      basic_stkwinmatrix() : basic_stkmatrix<_ElemT>() {};
 
-		};
+      /// Copy constructor
+      basic_stkwinmatrix<_ElemT> (const __this_type & t);
+
+      /// Basic constructor
+      basic_stkwinmatrix<_ElemT> (const size_t r,
+                                  const size_t c,
+                                  const storage_type st = STORAGE_REGULAR):
+        basic_stkmatrix<_ElemT>(r, c, st), // create the base class
+        orig_M_rows    (basic_stkmatrix<_ElemT>::M_rows),
+        orig_M_cols    (basic_stkmatrix<_ElemT>::M_cols),
+        orig_M_realCols(basic_stkmatrix<_ElemT>::M_realCols),
+        orig_M_size    (basic_stkmatrix<_ElemT>::M_size),
+        orig_M_skip    (basic_stkmatrix<_ElemT>::M_skip),
+        orig_T_rows    (basic_stkmatrix<_ElemT>::T_rows),                    // copy the original values
+        orig_T_cols    (basic_stkmatrix<_ElemT>::T_cols),
+        T_rowOff(0), T_colOff(0)          // set the offset
+
+      {
+        orig_data = basic_stkmatrix<_ElemT>::data;
+      }
+
+      /// The destructor
+      ~basic_stkwinmatrix<_ElemT>()
+      {
+        basic_stkmatrix<_ElemT>::data = this->orig_data;
+      }
+
+      /// sets the size of the window (whole rows)
+      void
+      setSize(const size_t _ro,
+              const size_t _r);
+
+
+      /// sets the size of the window
+      void
+      setSize(const size_t _ro,
+              const size_t _r,
+              const size_t _co,
+              const size_t _c);
+
+      /**
+       *  @brief Resets the window to the default (full) size
+       */
+      void
+      reset ()
+      {
+        basic_stkmatrix<_ElemT>::data      =  orig_data;
+        basic_stkmatrix<_ElemT>::T_rows    =  orig_T_rows;                        // copy the original values
+        basic_stkmatrix<_ElemT>::T_cols    =  orig_T_cols;
+        basic_stkmatrix<_ElemT>::M_rows    =  orig_M_rows;
+        basic_stkmatrix<_ElemT>::M_cols    =  orig_M_cols;
+        basic_stkmatrix<_ElemT>::M_realCols=  orig_M_realCols;
+        basic_stkmatrix<_ElemT>::M_size    =  orig_M_size;
+        basic_stkmatrix<_ElemT>::M_skip    =  orig_M_skip;
+
+        T_rowOff = 0;
+        T_colOff = 0;
+      }
+    };
 
 // we need to include the implementation
 #include "stkmatrix.tcc"
-
-
 
 #endif //#ifndef __STKMATRIX_H
