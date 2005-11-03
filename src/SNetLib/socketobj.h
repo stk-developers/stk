@@ -1,14 +1,20 @@
 #ifndef SOCKETOBJ_H
 #define SOCKETOBJ_H
 
-class Socketobj{
-  private:
+#include <sys/socket.h>
 
-  public:
-    void receiveInt();
-    void sendInt();
-    void receiveData();
-    void sendData();
-};
+namespace SNet{
+
+  class Socketobj{
+    private:
+      int mSocket;                            ///< Socket identifier
+    public:
+      int receiveInt();                       ///< Receives one integer from socket
+      void sendInt(int data);                 ///< Sends one integer to socket
+      void receiveData(char* data, int n);    ///< Receives N bytes to array DATA using socket
+      void sendData(char* data, int n);       ///< Sends N bytes from array DATA using socket
+  };
+
+} // namespace
 
 #endif

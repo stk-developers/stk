@@ -1,13 +1,16 @@
 #include"socketobj.h"
 
-void Socketobj::receiveInt(){
+using namespace SNet;
+
+int Socketobj::receiveInt(){
+  return 0;
 }
 
-void Socketobj::sendInt(){
+void Socketobj::sendInt(int data){
 }
 
-void Socketobj::receiveData(){
+void Socketobj::receiveData(char* data, int n){
 }
 
-void Socketobj::sendData(){
+void Socketobj::sendData(char* data, int n){
 }

@@ -1,26 +1,30 @@
 #ifndef NLAYER_H
 #define NLAYER_H
 
-#include"nlayer.h"
-
+// :TODO: Include real matrixes from STK
 typedef float* Matrix;
 typedef float* WindowMatrix;
 
+namespace SNet{
+
+/// One neural net layer (Consists of linear transformation, biases and non-linearity)
 class NLayer{
   private:
-    int outFunc;
+    int mOutFunc;            ///< Output function
 
-    Matrix weights;
-    Matrix biases;
-    Matrix changesWeights;
-    Matrix changesBiases;
-    Matrix *recWeights;
-    Matrix *recBiases;
-    Matrix in;
-    Matrix out;
-    Matrix error;
+    Matrix mWeights;         ///< Matrix of weights (MxN where N is size of next layer, transposed in memory)
+    Matrix mBiases;          ///< Bias vector
+    Matrix mChangesWeights;  ///< Changes matrix of weights computed during forward pass
+    Matrix mChangesBiases;   ///< Changes bias vector computed during forward pass
+    Matrix* mpRecWeights;    ///< Pointer to weights matrixes received from clients
+    Matrix* mpRecBiases;     ///< Pointer to bias vectors received from clients
+    Matrix mIn;              ///< Matrix of layer input vectors (first layer uses window of input cache)
+    Matrix mOut;             ///< Matrix of layer output vectors (last layer uses window of input cache)
+    Matrix mError;           ///< Layer error matrix (errors before non-linearity)
   public:
 
 };
+
+} // namespace
 
 #endif
