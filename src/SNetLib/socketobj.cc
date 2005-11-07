@@ -2,15 +2,15 @@
 
 using namespace SNet;
 
-int Socketobj::receiveInt(){
+int SocketObj::ReceiveInt(){
   return 0;
 }
 
-void Socketobj::sendInt(int data){
+void SocketObj::SendInt(int data){
 }
 
-void Socketobj::receiveData(char* data, int n){
+void SocketObj::ReceiveData(char* data, int n){
 }
 
-void Socketobj::sendData(char* data, int n){
+void SocketObj::SendData(char* data, int n){
 }

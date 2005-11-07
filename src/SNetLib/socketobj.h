@@ -4,17 +4,16 @@
 #include <sys/socket.h>
 
 namespace SNet{
-
-  class Socketobj{
+  /// Object for sockets
+  class SocketObj{
     private:
       int mSocket;                            ///< Socket identifier
     public:
-      int receiveInt();                       ///< Receives one integer from socket
-      void sendInt(int data);                 ///< Sends one integer to socket
-      void receiveData(char* data, int n);    ///< Receives N bytes to array DATA using socket
-      void sendData(char* data, int n);       ///< Sends N bytes from array DATA using socket
+      int ReceiveInt();                       ///< Receives one integer from socket
+      void SendInt(int data);                 ///< Sends one integer to socket
+      void ReceiveData(char* data, int n);    ///< Receives N bytes to array DATA using socket
+      void SendData(char* data, int n);       ///< Sends N bytes from array DATA using socket
   };
-
 } // namespace
 
 #endif
