@@ -25,6 +25,9 @@
 #include <string>
 
 
+// :WARNING: default HTK compatibility is set to false
+bool gHtkCompatible = false;
+
 
 void _Error_(const char *func, const char *file, int line, char *msg, ...) {
   va_list ap;
@@ -75,8 +78,9 @@ static char *parmKindNames[] = {
 
 int ReadParmKind(const char *str, BOOL checkBrackets)
 {
-  int  i, parmKind=0;
-  int  slen = strlen(str);
+  unsigned int  i;
+  int           parmKind =0;
+  int           slen     = strlen(str);
 
   if(checkBrackets) {
     if(str[0] != '<' || str[slen-1] != '>') {
@@ -276,23 +280,25 @@ void softmax_vec(FLOAT *in, FLOAT *out, int size)
 }
 
 int ParmKind2Str(int parmKind, char *outstr) {
-    if((parmKind & 0x003F) >= sizeof(parmKindNames)/sizeof(parmKindNames[0])) {
-      return 0;
-    }
 
-    strcpy (outstr, parmKindNames[parmKind & 0x003F]);
+  // :KLUDGE: Absolutely no idea what this is...
+  if ((parmKind & 0x003F) >= sizeof(parmKindNames)/sizeof(parmKindNames[0])) {
+    return 0;
+  }
 
-    if (parmKind & PARAMKIND_E) strcat (outstr, "_E");
-    if (parmKind & PARAMKIND_N) strcat (outstr, "_N");
-    if (parmKind & PARAMKIND_D) strcat (outstr, "_D");
-    if (parmKind & PARAMKIND_A) strcat (outstr, "_A");
-    if (parmKind & PARAMKIND_C) strcat (outstr, "_C");
-    if (parmKind & PARAMKIND_Z) strcat (outstr, "_Z");
-    if (parmKind & PARAMKIND_K) strcat (outstr, "_K");
-    if (parmKind & PARAMKIND_0) strcat (outstr, "_0");
-    if (parmKind & PARAMKIND_V) strcat (outstr, "_V");
-    if (parmKind & PARAMKIND_T) strcat (outstr, "_T");
-    return 1;
+  strcpy (outstr, parmKindNames[parmKind & 0x003F]);
+
+  if (parmKind & PARAMKIND_E) strcat (outstr, "_E");
+  if (parmKind & PARAMKIND_N) strcat (outstr, "_N");
+  if (parmKind & PARAMKIND_D) strcat (outstr, "_D");
+  if (parmKind & PARAMKIND_A) strcat (outstr, "_A");
+  if (parmKind & PARAMKIND_C) strcat (outstr, "_C");
+  if (parmKind & PARAMKIND_Z) strcat (outstr, "_Z");
+  if (parmKind & PARAMKIND_K) strcat (outstr, "_K");
+  if (parmKind & PARAMKIND_0) strcat (outstr, "_0");
+  if (parmKind & PARAMKIND_V) strcat (outstr, "_V");
+  if (parmKind & PARAMKIND_T) strcat (outstr, "_T");
+  return 1;
 }
 
 /*
@@ -349,7 +355,10 @@ int my_hcreate_r(size_t nel, struct my_hsearch_data *tab)
 int my_hsearch_r(ENTRY item, ACTION action, ENTRY **ret,
                  struct my_hsearch_data *tab)
 {
-  int i, cc;
+  unsigned int i;
+  int          cc;
+
+
   if(action == ENTER && tab->nentries == tab->tabsize) {
     struct hsearch_data newtab;
     ENTRY **epp;
@@ -369,7 +378,7 @@ int my_hsearch_r(ENTRY item, ACTION action, ENTRY **ret,
 
     tab->tabsize *= 2;
 
-    for(i = 0; i < tab->nentries; i++) {
+    for (i = 0; i < tab->nentries; i++) {
       cc = hsearch_r(*tab->entry[i], ENTER, ret, &newtab); assert(cc);
       tab->entry[i] = *ret;
     }
@@ -390,7 +399,8 @@ int my_hsearch_r(ENTRY item, ACTION action, ENTRY **ret,
 
 void my_hdestroy_r(struct my_hsearch_data *tab, int freeKeys)
 {
-  int i;
+  unsigned int i;
+
   if(freeKeys) {
     for(i = 0; i < tab->nentries; i++) free(tab->entry[i]->key);
   }
@@ -651,7 +661,8 @@ void ReadConfig(const char *file_name, struct my_hsearch_data *config_hash)
 
 void CheckCommandLineParamUse(struct my_hsearch_data *config_hash)
 {
-  int i;
+  unsigned int i;
+
   for(i = 0; i < config_hash->nentries; i++) {
     char *value = (char *) config_hash->entry[i]->data;
     if(value[0] != ' ' && value[1] != 'C') {
@@ -665,8 +676,11 @@ void CheckCommandLineParamUse(struct my_hsearch_data *config_hash)
 
 void PrintConfig(struct my_hsearch_data *config_hash)
 {
-  int i;
-  char *par, *key, *val;
+  unsigned int i;
+  char         *par;
+  char         *key;
+  char         *val;
+
   printf("\nConfiguration Parameters[%d]\n", config_hash->nentries);
   for(i = 0; i < config_hash->nentries; i++) {
     key = (char *) config_hash->entry[i]->key;
@@ -951,17 +965,23 @@ const char *hlist_ofilter;
 const char *MMF_ofilter;
 
 int ParseOptions(
-  int argc,
-  char *argv[],
-  const char *optionMapping,
-  const char *toolName,
-  struct my_hsearch_data *cfgHash)
+  int          argc,
+  char *       argv[],
+  const char *  optionMapping,
+  const char *  toolName,
+  struct my_hsearch_data * cfgHash)
 {
-  int i, opt = '?', optind;
-  BOOL option_must_follow = FALSE;
-  char param[1024], *value, *optfmt;
-  const char *optarg;
-  char *chptr, *bptr, tstr[4] = " -?";
+  int          i;
+  int          opt = '?';
+  int          optind;
+  BOOL         option_must_follow = FALSE;
+  char         param[1024];
+  char *       value;
+  char *       optfmt;
+  const char * optarg;
+  char *       chptr;
+  char *       bptr;
+  char         tstr[4] = " -?";
   unsigned long long option_mask = 0;
 
   #define MARK_OPTION(ch) {if(isalpha(ch)) option_mask |= 1ULL << ((ch) - 'A');}
@@ -1032,7 +1052,7 @@ int ParseOptions(
       while(isspace(*chptr)) chptr++;
       value = chptr;
       while(*chptr && !isspace(*chptr)) chptr++;
-      assert(chptr-value+1 < sizeof(param));
+      assert(static_cast<unsigned int>(chptr-value+1) < sizeof(param));
       strncat(strcat(strcpy(param, toolName), ":"), value, chptr-value);
       param[chptr-value+strlen(toolName)+1] = '\0';
       switch(*optfmt) {
@@ -1176,81 +1196,78 @@ int process_mask(const char *normstr, const char *wildcard, char *substr)
 
 using std::string;
 
-using namespace std;
-/**
- *  @brief Returns true if rString matches rWildcard and fills substr with
- *         corresponding %%% matched pattern
- *  @param rString    String to be parsed
- *  @param rWildcard  String containing wildcard pattern
- *  @param Substr     The mathced %%% pattern is stored here
- *
- *  This is a C++ extension to the original process_mask function.
- *
- */
-bool
-ProcessMask(const std::string & rString,
-            const std::string & rWildcard,
-                  std::string & rSubstr)
-{
-  char *  substr;
-  int     percent_count        = 0;
-  int     ret ;
-  size_t  pos                  = 0;
-
-  std::cout << rWildcard << " " <<rString << std::endl;
-
-  // let's find how many % to allocate enough space for the return substring
-  while ((pos = rWildcard.find('%', pos)) != rWildcard.npos)
+  /**
+   *  @brief Returns true if rString matches rWildcard and fills substr with
+   *         corresponding %%% matched pattern
+   *  @param rString    String to be parsed
+   *  @param rWildcard  String containing wildcard pattern
+   *  @param Substr     The mathced %%% pattern is stored here
+   *
+   *  This is a C++ extension to the original process_mask function.
+   *
+   */
+  bool
+  ProcessMask(const std::string & rString,
+              const std::string & rWildcard,
+                    std::string & rSubstr)
   {
-    percent_count++;
-    pos++;
-  }
+    char *  substr;
+    int     percent_count        = 0;
+    int     ret ;
+    size_t  pos                  = 0;
 
-  // allocate space for the substring
-  substr = new char[percent_count + 1];
+    // let's find how many % to allocate enough space for the return substring
+    while ((pos = rWildcard.find('%', pos)) != rWildcard.npos)
+    {
+      percent_count++;
+      pos++;
+    }
 
-  // parse the string
-  if (ret = match(rWildcard.c_str(), rString.c_str(), substr))
+    // allocate space for the substring
+    substr = new char[percent_count + 1];
+
+    // parse the string
+    if (ret = match(rWildcard.c_str(), rString.c_str(), substr))
+    {
+      rSubstr = substr;
+    }
+    delete[] substr;
+    return ret;
+  } // ProcessMask
+
+
+  //*****************************************************************************
+  void
+  ParseHTKString(const std::string & rIn, std::string & rOut)
   {
-    rSubstr = substr;
+    int ret_val;
+
+    // the new string will be at most as long as the original, so we allocate
+    // space
+    char * new_str = new char[rIn.size() + 1];
+    strcpy(new_str, rIn.c_str());
+
+    // there might be some error message returned, so we reserve at least
+    // 30 bytes
+    char * tmp_str;
+
+    // call the function
+    if (!(ret_val = getHTKstr(new_str, &tmp_str)))
+    {
+      rOut = new_str;
+    }
+
+    else if ((ret_val == -1) || (ret_val == -2))
+    {
+      throw std::logic_error(tmp_str);
+    }
+
+    else
+    {
+      throw std::logic_error("Unexpected error parsing HTK string");
+    }
+
   }
-  delete[] substr;
-  return ret;
-} // ProcessMask
-
-
-//*****************************************************************************
-void
-ParseHTKString(const std::string & rIn, std::string & rOut)
-{
-  int ret_val;
-
-  // the new string will be at most as long as the original, so we allocate
-  // space
-  char * new_str = new char[rIn.size() + 1];
-  strcpy(new_str, rIn.c_str());
-
-  // there might be some error message returned, so we reserve at least
-  // 30 bytes
-  char * tmp_str;
-
-  // call the function
-  if (!(ret_val = getHTKstr(new_str, &tmp_str)))
-  {
-    rOut = new_str;
-  }
-
-  else if ((ret_val == -1) || (ret_val == -2))
-  {
-    throw std::logic_error(tmp_str);
-  }
-
-  else
-  {
-    throw std::logic_error("Unexpected error parsing HTK string");
-  }
-
-}
 
 
 

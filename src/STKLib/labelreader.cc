@@ -144,14 +144,11 @@ namespace STK
     // current search position within the str
     size_t     prev             = rLabel.size() + 1;
 
-    cerr << "mDepths.size = " << mDepths.size() << endl;
     // we will walk through the set depts bacwards so we begin at the end and move
     // to the front...
     std::set<DepthType>::reverse_iterator ri    (this->mDepths.end());
     std::set<DepthType>::reverse_iterator rlast (this->mDepths.begin());
     LabelHashType::iterator               lab;
-
-    cout << "Searchin in Hash.." << endl;
 
     // we perform the search until we run to the end of the set or we find something
     while ((!found) && (ri != rlast))
@@ -249,11 +246,8 @@ namespace STK
     LabelListType::iterator   lab   = mLabelList.begin();
     LabelListType::iterator   limit;
 
-    cerr <<(int)limitSearch << "Searchin in List.. "  <<  "<<" << endl;
-
     if (limitSearch && (rLS.miLabelListLimit != NULL))
     {
-      cout << "Limiting search... " << endl;
       limit = rLS.miLabelListLimit;
       limit++;
     }
@@ -261,8 +255,6 @@ namespace STK
     {
       limit = this->mLabelList.end();
     }
-
-    cerr <<(int)limitSearch << "Searchin in List.. "  <<  "<<" << endl;
 
     // we perform sequential search until we run to the end of the list or we find
     // something
@@ -297,15 +289,12 @@ namespace STK
     // try to find the label in the Hash
     if (FindInHash(rLabel, rLS))
     {
-      cerr << "Found in Hash in  mLabelStore.Find ... ("<< rLabel << ",...) " << endl;
-
       // we look in the list, but we limit the search.
       FindInList(rLabel, rLS, true);
       return true;
     } //if (this->mLabelStore.FindInHash(rLabel, label_stream))
     else
     {
-      cerr << "Not found in Hash in  mLabelStore.Find ... ("<< rLabel << ",...) " << endl;
       // we didn't find it in the hash so we look in the list
       return FindInList(rLabel, rLS);
     }
@@ -327,6 +316,147 @@ namespace STK
       delete mStreamList.front();
       mStreamList.pop_front();
     }
+  }
+
+
+
+  //****************************************************************************
+  bool
+  LabelReader::
+  RegisterMLF(const string & rFName)
+  {
+    istkstream *   new_stream = new istkstream;
+
+    // open the MLF
+    new_stream->open(rFName);
+
+    // if OK, we add it to the MLF list
+    if (new_stream->good())
+    {
+      // add to the list
+      mStreamList.push_back(new_stream);
+      return true;
+    }    // if (new_stream.good())
+    else // else we delete the object and trow an error
+    {
+      delete new_stream;
+      throw std::logic_error("Cannot open " + rFName);
+      return false;
+    }
+  }; //RegisterMLF
+
+
+
+  //****************************************************************************
+  bool
+  LabelReader::
+  JumpToNextDefinition()
+  {
+    string buffer;
+    bool   in_mlf_def= false;
+    bool   done      = false;
+    bool   read_lines = true;
+
+    // we start reading
+    if (mpCurStream == NULL)
+    {
+      if (!mStreamList.empty())
+      {
+        miCurStream = mStreamList.begin();
+        mpCurStream = *miCurStream;
+        mStateFlags = 0;
+      }
+      else
+      {
+        return false;
+      }
+    }
+
+    // done when next label reached
+    while (!done)
+    {
+      // read lines
+      while (read_lines)
+      {
+        // maybe there's EOL set... then we know, that next read line might be
+        if (getline(*mpCurStream, buffer))
+        {
+          // maybe there's EOL set which means that current line is the MLF
+          // definition
+          if (this->EOL())
+          {
+            read_lines = false;
+            done       = true;
+
+            ParseHTKString(buffer, mCurLabelName);
+            mLabelStore.Insert(mCurLabelName, mpCurStream);   // insert into the storage
+            this->Clear();                                    // clear all flags
+            return true;
+          } // if (this->EOL())
+
+          // this was the initial MLF string ID
+          else if (buffer == "#!MLF!#")
+          {
+            // we assume that next line is MLF_DEF, so we try to read it
+            if (getline(*mpCurStream, buffer))
+            {
+              read_lines = false;
+              done       = true;
+
+              ParseHTKString(buffer, mCurLabelName);
+              mLabelStore.Insert(mCurLabelName, mpCurStream);   // insert into the storage
+              this->Clear();                                    // clear all flags
+              return true;
+            }
+            else
+            {
+              read_lines = false;
+            }
+          }
+          // this was the final period
+          else if (buffer == ".")
+          {
+            // we assume that next line is MLF_DEF, so we try to read it
+            if (getline(*mpCurStream, buffer))
+            {
+              read_lines = false;
+              done       = true;
+
+              // store the parsed string into the member atribute
+              ParseHTKString(buffer, mCurLabelName);
+              mLabelStore.Insert(mCurLabelName, mpCurStream);   // insert into the storage
+              this->Clear();                                    // clear all flags
+              return true;
+            }
+            else
+            {
+              read_lines = false;
+            }
+          }
+        }
+        else
+        {
+          read_lines = false;
+        }
+      } // while (read_lines)
+
+      // if not done, we move to the next stream and read there
+      if (!done)
+      {
+        miCurStream++;
+        mpCurStream = *miCurStream;
+        done = (miCurStream == mStreamList.end());
+      }
+
+      read_lines = true;
+    }
+
+    // if we got to this point, we didn't find any label definition line
+    // so we assume we are at the very end of the file. We return false to indicate
+    // we didn't jump to next block and we set the mIsHashed to true, because so far
+    // we went through all MLF definitions an hashed each
+    mIsHashed = true;
+    return false;
   }
 
 
@@ -361,71 +491,19 @@ namespace STK
     string                     mask_string;
     bool                       skip_next_reading = false;
 
-    // we will use this enum to move in the MLF parsing automaton states
-    LabelReadingState state = STATE_MLF_BEGIN;
-
     // read the MLFs and parse them
     while (!found && !IsHashed())
     {
-      // read the line
-      if (!skip_next_reading)
+      // if we cannot jump to next definition, it means that
+      // we cannot move any further so searching ends...
+      if (this->JumpToNextDefinition())
       {
-        GetLine(line);
+        found = ProcessMask(rLabel, mCurLabelName, mask_string);
       }
-
-      // next reading should not be skipped
-      skip_next_reading = false;
-
-      // finite automaton
-      switch (state)
+      else
       {
-        case STATE_MLF_BEGIN:
-        {
-          // we consider other than #!MLF!# to be MLFDef string
-          if (line != "#!MLF!#")
-          {
-            // we want to skip next reading as the line is supposed
-            // to be label definition
-            skip_next_reading = true;
-          }
-          state             = STATE_MLF_DEF;
-          break;
-        } // case MLF_BEGIN:
-
-        // MLF definition
-        case STATE_MLF_DEF:
-        {
-          // decide what kind of definition we encountered
-          // we only want to hash immediate definition
-          if (MlfDefinition(line) == MLF_DEF_IMMEDIATE_TRANSCRIPTION)
-          {
-            // we store the string in internal mode, not HTK format
-            ParseHTKString(line, tmp_line);
-            // insert into the storage
-            mLabelStore.Insert(tmp_line, mpCurStream);
-
-            if (found = ProcessMask(rLabel, tmp_line, mask_string))
-            {
-              mMatchedPattern     = tmp_line;
-              mMatchedPatternMask = mask_string;
-            }
-
-            // chante state
-            state = STATE_MLF_BODY;
-          }
-          break;
-        }
-
-        case STATE_MLF_BODY:
-        {
-          // reading '.' means go to next MLF_DEF
-          if (line == ".")
-          {
-            state = STATE_MLF_DEF;
-          }
-          break;
-        }
-      } // switch (state)
+        return false;
+      }
     }
     return found;
   }
@@ -450,6 +528,7 @@ namespace STK
                                 // stream
     {
       mpCurStream = mpTempStream;
+      mCurLabelName = rLabel;
       return true;
     }
 
@@ -471,10 +550,11 @@ namespace STK
     if ((mpTempStream != NULL) && (typeid(mpTempStream) == typeid(istkstream)))
     {
       // if we want to read from the same label, we only rewind
-      if (dynamic_cast<istkstream *>(mpTempStream)->name() == rLabel)
+      if (dynamic_cast<istkstream *>(mpCurStream)->name() == rLabel)
       {
         // rewind the stream to the begining and read again
-        mpTempStream->seekg(0, ios::beg);
+        mpCurStream->clear();
+        mpCurStream->seekg(0, ios::beg);
         return true;
       }
       // else we delete the object and continue searching
@@ -488,9 +568,11 @@ namespace STK
     // try to find the label in the Hash
     if (FindInLabelStore(rLabel, label_stream))
     {
-      cerr << "Found in LabelStore ... " << endl;
-      this->mpCurStream = label_stream.mpStream;
-      this->mpCurStream->seekg(label_stream.mStreamPos);
+      //cerr << "Found in LabelStore ... " << endl;
+      mpCurStream = label_stream.mpStream;
+      mpCurStream->clear();
+      mpCurStream->seekg(label_stream.mStreamPos);
+      mCurLabelName = mLabelStore.MatchedPattern();
       found = true;
     } //if (this->mLabelStore.FindInHash(rLabel, label_stream))
     else
@@ -509,34 +591,15 @@ namespace STK
         }
       } // else (this->mIsHashed)
     } // else (FindInLabelStore(rLabel, label_stream))
+
+    if (found)
+    {
+      this->Clear(); // clear state flags
+    }
+
     return found;
   }; // Open(const string & rLabel)
 
-
-  //****************************************************************************
-  bool
-  LabelReader::
-  RegisterMLF(const string & rFName)
-  {
-    istkstream *   new_stream = new istkstream;
-
-    // open the MLF
-    new_stream->open(rFName);
-
-    // if OK, we add it to the MLF list
-    if (new_stream->good())
-    {
-      // add to the list
-      mStreamList.push_back(new_stream);
-      return true;
-    }    // if (new_stream.good())
-    else // else we delete the object and trow an error
-    {
-      delete new_stream;
-      throw std::logic_error("Cannot open " + rFName);
-      return false;
-    }
-  }; //RegisterMLF
 
 
   //****************************************************************************
@@ -544,72 +607,33 @@ namespace STK
   LabelReader::
   GetLine(std::string & rLine)
   {
-    bool ret;
-
-    // we start reading
-    if (this->mpCurStream == NULL)
+    // only if
+    if (this->Good())
     {
-      if (!this->mStreamList.empty())
+      if (std::getline(*(this->mpCurStream), mLineBuffer))
       {
-        this->miCurStream = this->mStreamList.begin();
-        this->mpCurStream = *(this->miCurStream);
+        rLine = mLineBuffer;
+
+        if (rLine == ".")
+        {
+          this->mStateFlags |= LabelReader::FLAG_EOL;
+          return false;
+        }
+
+        else if (this->mpCurStream->eof())
+        {
+          this->mStateFlags |= LabelReader::FLAG_EOL;
+        }
+
+        return true;
       }
       else
-      {
-        return false;
-      }
-    }
-
-    // if we encountered end of stream, we switch to the next stream in list
-    if (this->mpCurStream->eof())
-    {
-      // move to the next stream
-      (this->miCurStream)++;
-
-      if (this->miCurStream == mStreamList.end())
-      {
-        mIsHashed = true;
-        return false;
-      }
-      else
-      {
-        this->mpCurStream = *(this->miCurStream);
-      }
-    }
-
-    // read the line here. we check for eof, EOL (end of label), etc
-    if (std::getline(*(this->mpCurStream), rLine))
-    {
-      if (this->mpCurStream->eof() || (rLine == "."))
       {
         this->mStateFlags |= LabelReader::FLAG_EOL;
-
-        if (this->mpCurStream->eof())
-        {
-          // move to the next stream
-          (this->miCurStream)++;
-
-          if (this->miCurStream == mStreamList.end())
-          {
-            mIsHashed = true;
-          }
-          else
-          {
-            mpCurStream = *(miCurStream);
-            mpTempStream->seekg(0, ios::beg);
-          }
-        }
       }
-      else
-      {
-        this->mStateFlags &= !(LabelReader::FLAG_EOL);
-      }
-      return true;
     }
-    else
-    {
-      return false;
-    }
+
+    return false;
   }
 
 
@@ -618,98 +642,11 @@ namespace STK
   LabelReader::
   HashAll()
   {
-    // we will use this to iterate through the stream list
-    StreamListType::iterator   cur_stream_it = this->mStreamList.begin();
-    istream *                  cur_stream;
-    std::streampos             cur_stream_pos;
-    string                     line;
-    string                     tmp_line;
-    bool                       skip_next_reading = false;
-
-    // we will use this enum to move in the MLF parsing automaton states
-    enum
-    {
-      MLF_BEGIN,     // we begin parsing
-      MLF_DEF,       // this is where label block is defined
-      MLF_BODY,
-    } state = MLF_BEGIN;
-
-    // Go through the streamlist and parse the files
-    while (cur_stream_it != this->mStreamList.end())
-    {
-      cur_stream     = *cur_stream_it;
-      cur_stream_pos = cur_stream->tellg();
-
-      // parse the file
-      while (!cur_stream->eof())
-      {
-        // get current line position
-        cur_stream_pos = cur_stream->tellg();
-
-        // read the line
-        if (!skip_next_reading)
-        {
-          std::getline(*cur_stream, line);
-        }
-
-        // next reading should not be skipped
-        skip_next_reading = false;
-
-        // finite automaton
-        switch (state)
-        {
-          case MLF_BEGIN:
-          {
-            // we consider other than #!MLF!# to be MLFDef string
-            if (line != "#!MLF!#")
-            {
-              // we want to skip next reading as the line is supposed
-              // to be label definition
-              skip_next_reading = true;
-            }
-            state             = MLF_DEF;
-            break;
-          } // case MLF_BEGIN:
-
-          // MLF definition
-          case MLF_DEF:
-          {
-            // decide what kind of definition we encountered
-            // we only want to hash immediate definition
-            if (MlfDefinition(line) == MLF_DEF_IMMEDIATE_TRANSCRIPTION)
-            {
-              // we store the string in internal mode, not HTK format
-              ParseHTKString(line, tmp_line);
-              // insert into the storage
-              this->mLabelStore.Insert(tmp_line, cur_stream);
-              // chante state
-              state = MLF_BODY;
-            }
-            break;
-          }
-
-          case MLF_BODY:
-          {
-            // reading '.' means go to next MLF_DEF
-            if (line == ".")
-            {
-              state = MLF_DEF;
-            }
-            break;
-          }
-        } // switch (state)
-      }
-
-
-
-      // move to the next stream
-      cur_stream_it++;
-    } // while (cur_stream_it != this->mStreamList.end())
-
-    // if we got to this point, no error occured so say that we have Hashed all
-    this->mIsHashed = true;
-  }; // HashAll(..)
-
+    // do nothing but go through all registered MLF's. Hashing is performed
+    // automatically
+    while (JumpToNextDefinition())
+      ;
+  }
 
 }; // namespace STK
 

@@ -21,6 +21,7 @@
 /*
    Wildcard Pattern Matching
 */
+
 /*
 #ifndef BOOL
 # define BOOL int
@@ -28,6 +29,7 @@
 # define FALSE
 #endif
 */
+
 /* match defines */
 #define MATCH_PATTERN  6    /* bad pattern */
 #define MATCH_LITERAL  5    /* match failure on literal match */

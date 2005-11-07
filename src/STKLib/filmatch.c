@@ -25,6 +25,7 @@
 
 
 #include "filmatch.h"
+#include "common.h"
 
 //#define TEST
 int matche_after_star (register const char *pattern, register const char *text, register char *s);
@@ -43,8 +44,9 @@ bool is_pattern (const char *p)
             case '?':
             case '*':
             case '%':
+              return true;
             case '[':
-                return true;
+              return !gHtkCompatible;
         }
     }
     return false;
@@ -69,90 +71,102 @@ bool is_pattern (const char *p)
 
 bool is_valid_pattern (const char *p, int *error_type)
 {
-    
-    /* init error_type */
-    *error_type = PATTERN_VALID;
-    
-    /* loop through pattern to EOS */
-    while( *p ) {
 
-        /* determine pattern type */
-        switch( *p ) {
+/* init error_type */
+*error_type = PATTERN_VALID;
 
-            /* the [..] construct must be well formed */
-            case '[':
+  /* loop through pattern to EOS */
+  while( *p )
+  {
+    /* determine pattern type */
+    switch( *p )
+    {
+      /* the [..] construct must be well formed */
+      case '[':
+      {
+        if (!gHtkCompatible)
+        {
+          p++;
+
+          /* if the next character is ']' then bad pattern */
+          if ( *p == ']' ) {
+            *error_type = PATTERN_EMPTY;
+            return false;
+          }
+
+          /* if end of pattern here then bad pattern */
+          if ( !*p )
+          {
+            *error_type = PATTERN_CLOSE;
+            return false;
+          }
+
+          /* loop to end of [..] construct */
+          while( *p != ']' )
+          {
+            /* check for literal escape */
+            if( *p == '\\' )
+            {
                 p++;
 
-                /* if the next character is ']' then bad pattern */
-                if ( *p == ']' ) {
-                    *error_type = PATTERN_EMPTY;
-                    return false;
-                }
-                
                 /* if end of pattern here then bad pattern */
-                if ( !*p ) {
-                    *error_type = PATTERN_CLOSE;
+                if ( !*p++ ) {
+                    *error_type = PATTERN_ESC;
                     return false;
                 }
+            }
+            else
+                p++;
 
-                /* loop to end of [..] construct */
-                while( *p != ']' ) {
+            /* if end of pattern here then bad pattern */
+            if ( !*p )
+            {
+              *error_type = PATTERN_CLOSE;
+              return false;
+            }
 
-                    /* check for literal escape */
-                    if( *p == '\\' ) {
-                        p++;
+            /* if this a range */
+            if( *p == '-' )
+            {
+              /* we must have an end of range */
+              if ( !*++p || *p == ']' )
+              {
+                *error_type = PATTERN_RANGE;
+                return false;
+              }
+              else
+              {
 
-                        /* if end of pattern here then bad pattern */
-                        if ( !*p++ ) {
-                            *error_type = PATTERN_ESC;
-                            return false;
-                        }
-                    }
-                    else
-                        p++;
+                /* check for literal escape */
+                if( *p == '\\' )
+                    p++;
 
-                    /* if end of pattern here then bad pattern */
-                    if ( !*p ) {
-                        *error_type = PATTERN_CLOSE;
-                        return false;
-                    }
-
-                    /* if this a range */
-                    if( *p == '-' ) {
-
-                        /* we must have an end of range */
-                        if ( !*++p || *p == ']' ) {
-                            *error_type = PATTERN_RANGE;
-                            return false;
-                        }
-                        else {
-
-                            /* check for literal escape */
-                            if( *p == '\\' )
-                                p++;
-
-                            /* if end of pattern here then bad pattern */
-                            if ( !*p++ ) {
-                                *error_type = PATTERN_ESC;
-                                return false;
-                            }
-                        }
-                    }
+                /* if end of pattern here then bad pattern */
+                if ( !*p++ )
+                {
+                    *error_type = PATTERN_ESC;
+                    return false;
                 }
-                break;
+              }
+            }
+          }
+          break;
+        }
+      } //case '[':
 
-            /* all other characters are valid pattern elements */
-            case '*':
-            case '?':
-            case '%':
-            default:
-                p++;                              /* "normal" character */
-                break;
-         }
-     }
 
-     return true;
-}
+      /* all other characters are valid pattern elements */
+      case '*':
+      case '?':
+      case '%':
+      default:
+        p++;                              /* "normal" character */
+        break;
+    } // switch( *p )
+  } // while( *p )
+
+  return true;
+} //bool is_valid_pattern (const char *p, int *error_type)
 
 
 /*----------------------------------------------------------------------------
@@ -225,6 +239,8 @@ int matche ( register const char *p, register const char *t, register char *s )
 
             /* [..] construct, single member/exclusion character match */
             case '[': {
+              if (!gHtkCompatible)
+              {
 
                 /* move to beginning of range */
                 p++;
@@ -335,7 +351,8 @@ int matche ( register const char *p, register const char *t, register char *s )
                 }
 
                 break;
-            }
+              }
+            } // case ']'
 
             /* must match this character exactly */
             default:

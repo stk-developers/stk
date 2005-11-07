@@ -279,16 +279,16 @@ ParseHTKString(const std::string & rIn, std::string & rOut);
 #define PARAMKIND_PLP      11
 #define PARAMKIND_ANON     12
 
-#define PARAMKIND_E   0000100 // has energy
-#define PARAMKIND_N   0000200 // absolute energy suppressed
-#define PARAMKIND_D   0000400 // has delta coefficients
-#define PARAMKIND_A   0001000 // has acceleration coefficients
-#define PARAMKIND_C   0002000 // is compressed
-#define PARAMKIND_Z   0004000 // has zero mean static coef.
-#define PARAMKIND_K   0010000 // has CRC checksum
-#define PARAMKIND_0   0020000 // has 0'th cepstral coef.  cccccc
-#define PARAMKIND_V   0040000 // has VQ codebook index
-#define PARAMKIND_T   0100000 // has triple delta coefficients
+#define PARAMKIND_E   0000100 /// has energy
+#define PARAMKIND_N   0000200 /// absolute energy suppressed
+#define PARAMKIND_D   0000400 /// has delta coefficients
+#define PARAMKIND_A   0001000 /// has acceleration coefficients
+#define PARAMKIND_C   0002000 /// is compressed
+#define PARAMKIND_Z   0004000 /// has zero mean static coef.
+#define PARAMKIND_K   0010000 /// has CRC checksum
+#define PARAMKIND_0   0020000 /// has 0'th cepstral coef.  cccccc
+#define PARAMKIND_V   0040000 /// has VQ codebook index
+#define PARAMKIND_T   0100000 /// has triple delta coefficients
 
 extern const char *filter_wldcrd;
 extern const char *script_filter;
@@ -297,5 +297,9 @@ extern const char *MMF_filter;
 extern const char *parm_ofilter;
 extern const char *hlist_ofilter;
 extern const char *MMF_ofilter;
+
+/// Sets application HTK compatibility. If true, all functions work to
+/// be HTK compatible.
+extern bool       gHtkCompatible;
 
 #endif // COMMON_H
