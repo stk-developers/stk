@@ -262,7 +262,7 @@ namespace STK
     {
       if (ProcessMask(rLabel, (*lab)->first, str))
       {
-        found               = true;
+        found = true;
       }
       else
       {

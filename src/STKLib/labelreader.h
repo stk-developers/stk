@@ -60,10 +60,19 @@ namespace STK
    */
   class LabelStream
   {
-  public:
-    LabelStream() : miLabelListLimit(NULL) {}
+    void *                   data;
 
-    ~LabelStream() {}
+  public:
+    LabelStream() : miLabelListLimit(NULL), mpSubDirDef(NULL) {}
+
+    ~LabelStream()
+    {
+      if (mpSubDirDef == NULL)
+        delete pSubDirDef();
+    }
+
+    /// definition type
+    MlfDefType                mDefType;
 
     /// pointer to the stream
     istream *                 mpStream;
@@ -79,6 +88,12 @@ namespace STK
      *  after list label, in which case the list label is prefered
      */
     LabelListType::iterator   miLabelListLimit;
+
+    istream *
+    pSubDirDef()
+    {
+      return static_cast<istream *> (data);
+    }
   };
 
 
