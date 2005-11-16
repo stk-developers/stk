@@ -26,12 +26,12 @@ typedef enum
 
   // declare the class so the header knows about it
   template<typename _ElemT>
-    class basic_stkmatrix;
+    class Matrix;
 
 
   // we need to declare the friend << operator here
   template<typename _ElemT>
-    std::ostream & operator << (std::ostream & out, const basic_stkmatrix<_ElemT> & m);
+    std::ostream & operator << (std::ostream & out, const Matrix<_ElemT> & m);
 
 
   /**
@@ -42,11 +42,11 @@ typedef enum
    *
    */
   template<typename _ElemT>
-    class basic_stkmatrix
+    class Matrix
     {
     public:
       /// defines a type of this
-      typedef basic_stkmatrix<_ElemT>    __this_type;
+      typedef Matrix<_ElemT>    ThisType;
 
 
     protected:
@@ -77,18 +77,18 @@ typedef enum
       // Constructors
 
       /// Empty constructor
-      basic_stkmatrix<_ElemT> (): storageType(STORAGE_UNDEFINED) {}
+      Matrix<_ElemT> (): storageType(STORAGE_UNDEFINED) {}
 
       /// Copy constructor
-      basic_stkmatrix<_ElemT> (const __this_type & t);
+      Matrix<_ElemT> (const ThisType & t);
 
       /// Basic constructor
-      basic_stkmatrix<_ElemT> (const size_t r,
+      Matrix<_ElemT> (const size_t r,
                                const size_t c,
                                const storage_type st = STORAGE_REGULAR);
 
       /// Destructor
-      ~basic_stkmatrix<_ElemT> ();
+      ~Matrix<_ElemT> ();
 
 
       /// Returns number of rows in the matrix
@@ -119,15 +119,15 @@ typedef enum
        *  @param a Matrix to be added to this
        *  @return Reference to this
        */
-      __this_type &
-      operator += (const __this_type & a);
+      ThisType &
+      operator += (const ThisType & a);
 
       /**
        *  @brief Performs vector multiplication on a and b and and adds the
        *         result to this (elem by elem)
        */
-      __this_type &
-      AddVectorMult(const __this_type & a, const __this_type & b);
+      ThisType &
+      AddVectorMult(const ThisType & a, const ThisType & b);
 
 
       /**
@@ -155,11 +155,12 @@ typedef enum
       operator () (const size_t r, const size_t c);
 
 
-      friend std::ostream & operator << <> (std::ostream & out, const __this_type & m);
+      friend std::ostream & operator << <> (std::ostream & out, const ThisType &
+m);
 
       void printOut();
 
-    }; // class basic_stkmatrix
+    }; // class Matrix
 
 
 
@@ -171,7 +172,7 @@ typedef enum
    *
    */
   template<typename _ElemT>
-    class basic_stkwinmatrix : public basic_stkmatrix<_ElemT>
+    class WindowMatrix : public Matrix<_ElemT>
     {
     protected:
       /// points to the original begining of the data array
@@ -199,37 +200,36 @@ typedef enum
 
     public:
       /// defines a type of this
-      typedef basic_stkwinmatrix<_ElemT>    __this_type;
-
+      typedef WindowMatrix<_ElemT>    ThisType;
 
 
       /// Empty constructor
-      basic_stkwinmatrix() : basic_stkmatrix<_ElemT>() {};
+      WindowMatrix() : Matrix<_ElemT>() {};
 
       /// Copy constructor
-      basic_stkwinmatrix<_ElemT> (const __this_type & t);
+      WindowMatrix<_ElemT> (const ThisType & t);
 
       /// Basic constructor
-      basic_stkwinmatrix<_ElemT> (const size_t r,
+      WindowMatrix<_ElemT> (const size_t r,
                                   const size_t c,
                                   const storage_type st = STORAGE_REGULAR):
-        basic_stkmatrix<_ElemT>(r, c, st), // create the base class
+        Matrix<_ElemT>(r, c, st), // create the base class
         T_rowOff(0), T_colOff(0),          // set the offset
-        orig_T_rows    (basic_stkmatrix<_ElemT>::T_rows),                    // copy the original values
-        orig_T_cols    (basic_stkmatrix<_ElemT>::T_cols),
-        orig_M_rows    (basic_stkmatrix<_ElemT>::M_rows),
-        orig_M_cols    (basic_stkmatrix<_ElemT>::M_cols),
-        orig_M_realCols(basic_stkmatrix<_ElemT>::M_realCols),
-        orig_M_size    (basic_stkmatrix<_ElemT>::M_size),
-        orig_M_skip    (basic_stkmatrix<_ElemT>::M_skip)
+        orig_T_rows    (Matrix<_ElemT>::T_rows),   // copy the original values
+        orig_T_cols    (Matrix<_ElemT>::T_cols),
+        orig_M_rows    (Matrix<_ElemT>::M_rows),
+        orig_M_cols    (Matrix<_ElemT>::M_cols),
+        orig_M_realCols(Matrix<_ElemT>::M_realCols),
+        orig_M_size    (Matrix<_ElemT>::M_size),
+        orig_M_skip    (Matrix<_ElemT>::M_skip)
       {
-        orig_data = basic_stkmatrix<_ElemT>::data;
+        orig_data = Matrix<_ElemT>::data;
       }
 
       /// The destructor
-      ~basic_stkwinmatrix<_ElemT>()
+      ~WindowMatrix<_ElemT>()
       {
-        basic_stkmatrix<_ElemT>::data = this->orig_data;
+        Matrix<_ElemT>::data = this->orig_data;
       }
 
       /// sets the size of the window (whole rows)
@@ -251,14 +251,14 @@ typedef enum
       void
       reset ()
       {
-        basic_stkmatrix<_ElemT>::data      =  orig_data;
-        basic_stkmatrix<_ElemT>::T_rows    =  orig_T_rows;                        // copy the original values
-        basic_stkmatrix<_ElemT>::T_cols    =  orig_T_cols;
-        basic_stkmatrix<_ElemT>::M_rows    =  orig_M_rows;
-        basic_stkmatrix<_ElemT>::M_cols    =  orig_M_cols;
-        basic_stkmatrix<_ElemT>::M_realCols=  orig_M_realCols;
-        basic_stkmatrix<_ElemT>::M_size    =  orig_M_size;
-        basic_stkmatrix<_ElemT>::M_skip    =  orig_M_skip;
+        Matrix<_ElemT>::data      =  orig_data;
+        Matrix<_ElemT>::T_rows    =  orig_T_rows; // copy the original values
+        Matrix<_ElemT>::T_cols    =  orig_T_cols;
+        Matrix<_ElemT>::M_rows    =  orig_M_rows;
+        Matrix<_ElemT>::M_cols    =  orig_M_cols;
+        Matrix<_ElemT>::M_realCols=  orig_M_realCols;
+        Matrix<_ElemT>::M_size    =  orig_M_size;
+        Matrix<_ElemT>::M_skip    =  orig_M_skip;
 
         T_rowOff = 0;
         T_colOff = 0;

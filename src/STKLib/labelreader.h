@@ -60,7 +60,8 @@ namespace STK
    */
   class LabelStream
   {
-    void *                   data;
+    void *                   pData;
+    void *                   mpSubDirDef;
 
   public:
     LabelStream() : miLabelListLimit(NULL), mpSubDirDef(NULL) {}
@@ -92,7 +93,7 @@ namespace STK
     istream *
     pSubDirDef()
     {
-      return static_cast<istream *> (data);
+      return static_cast<istream *> (mpSubDirDef);
     }
   };
 
@@ -231,14 +232,14 @@ namespace STK
     StreamListType::iterator  miCurStream;
 
     /// current istream to read from
-    istream *                 mpCurStream;
+    std::istream *            mpCurStream;
 
     /// this is a temporary stream. Non-NULL pointer indicates that the stream
     /// should be closed and the stream object deleted after usage.
-    istream *                 mpTempStream;
+    std::istream *            mpTempStream;
 
     /// holds current label name
-    string                    mCurLabelName;
+    std::string               mCurLabelName;
 
     /// the labels are hashed here
     LabelStore                mLabelStore;

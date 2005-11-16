@@ -5,23 +5,21 @@ XFLAGS = -DMOTIF -L/usr/X11R6/lib -lXm -lXt -lX11 -lXpm
 #ICCFLAGS = -O2 -tpp6 -axiMK -xiMK -parallel
 CC  = g++
 
-test : test.cc STKLib/common.o STKLib/labelreader.o STKLib/filmatch.o
+//test : test.cc STKLib/common.o STKLib/labelreader.o STKLib/filmatch.o
 
-filmatch : STKLib/filmatch.c STKLib/filmatch.h
-	$(CC) -o filmatch -DTEST=0 STKLib/filmatch.c
 
 all  : SVite SRover SERest SResults SExpand SLRatio
 
 
 
-SFea2OutP : STKLib/common.o STKLib/fileio.o STKLib/hmms.o STKLib/viterbi.o STKLib/net.o -lm
-SVite      : STKLib/common.o STKLib/fileio.o STKLib/hmms.o STKLib/viterbi.o STKLib/labels.o STKLib/net.o STKLib/dict.o -lm
-SLRatio    : STKLib/common.o STKLib/fileio.o STKLib/hmms.o STKLib/viterbi.o STKLib/labels.o STKLib/net.o STKLib/dict.o -lm
-SERest     : STKLib/common.o STKLib/fileio.o STKLib/hmms.o STKLib/viterbi.o STKLib/labels.o STKLib/net.o STKLib/dict.o -lm
-SFeaCat    : STKLib/common.o STKLib/fileio.o STKLib/hmms.o -lm
-SRover     : STKLib/common.o STKLib/labels.o -lm
-SResults   : STKLib/common.o STKLib/labels.o -lm
-SExpand  : STKLib/common.o STKLib/labels.o STKLib/dict.o STKLib/net.o -lm
+SFea2OutP : STKLib/common.o STKLib/filmatch.o STKLib/fileio.o STKLib/hmms.o STKLib/viterbi.o STKLib/net.o -lm
+SVite      : STKLib/common.o STKLib/filmatch.o STKLib/fileio.o STKLib/hmms.o STKLib/viterbi.o STKLib/labels.o STKLib/net.o STKLib/dict.o -lm
+SLRatio    : STKLib/common.o STKLib/filmatch.o STKLib/fileio.o STKLib/hmms.o STKLib/viterbi.o STKLib/labels.o STKLib/net.o STKLib/dict.o -lm
+SERest     : STKLib/common.o STKLib/filmatch.o STKLib/fileio.o STKLib/hmms.o STKLib/viterbi.o STKLib/labels.o STKLib/net.o STKLib/dict.o -lm
+SFeaCat    : STKLib/common.o STKLib/filmatch.o STKLib/fileio.o STKLib/hmms.o -lm
+SRover     : STKLib/common.o STKLib/filmatch.o STKLib/labels.o -lm
+SResults   : STKLib/common.o STKLib/filmatch.o STKLib/labels.o -lm
+SExpand  : STKLib/common.o STKLib/filmatch.o STKLib/labels.o STKLib/dict.o STKLib/net.o -lm
 # STKLib/hmms.o STKLib/viterbi.o
 
 #SCompV     : STKLib/common.o STKLib/fileio.o STKLib/hmms.o STKLib/viterbi.o -lm
