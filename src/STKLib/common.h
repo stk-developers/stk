@@ -79,6 +79,9 @@
 #define access _access
 #endif
 
+
+#define UINT_16 unsigned short
+#define UINT_32 unsigned long
 #define INT_16 short
 #define INT_32 long
 #define FLOAT_32 float

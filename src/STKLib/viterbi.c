@@ -721,11 +721,14 @@ void TokenPropagationInNetwork(Network *net)
 
         for(i = 0; i < nlinks; i++) {
           FLOAT lmLike = links[i].like * net->lmScale;
-          if(node->exitToken->like + lmLike > net->beamThresh &&
-            (/*links[i].node->start == UNDEF_TIME ||*/
-             links[i].node->start <= net->time) &&
-            (  links[i].node->stop  == UNDEF_TIME ||
-             links[i].node->stop  >= net->time)) {
+          if(node->exitToken->like + lmLike > net->beamThresh 
+          && (/*links[i].node->start == UNDEF_TIME ||*/
+                links[i].node->start <= net->time) 
+	  && (  links[i].node->stop  == UNDEF_TIME ||
+                links[i].node->stop  >= net->time)
+	  && (net->SearchPaths != Network::SP_TrueOnly      || 
+	     (node->type & NT_True)                || 
+	     !(links[i].node->type & NT_Model))) {
 #ifdef TRACE_TOKENS
           printf("Node %d -> Node %d ", node->aux, links[i].node->aux);
 #endif
@@ -789,8 +792,9 @@ void TokenPropagationInModels(Network *net, FLOAT *observation)
 
     hmm = node->hmm;
 
-    if((/*node->start != UNDEF_TIME &&*/node->start >= net->time) ||
-         (node->stop  != UNDEF_TIME &&  node->stop  <  net->time)) {
+    if((/*node->start != UNDEF_TIME &&*/node->start >= net->time)
+    || (  node->stop  != UNDEF_TIME &&  node->stop  <  net->time)
+    || net->SearchPaths == Network::SP_TrueOnly && !(node->type & NT_True)) {
       for(i = 0; i < hmm->nstates-1; i++) {
         KillToken(&node->tokens[i]);
       }
@@ -1456,6 +1460,256 @@ struct FWBWRet ForwardBackward(Network *net, FLOAT *obsMx, int nFrames)
   return ret;
 }
 
+FLOAT MCEReest(Network *net, FLOAT *obsMx, FLOAT *obsMx2, int nFrames, FLOAT weight, FLOAT sigSlope)
+{
+  struct FWBWRet fwbw;
+  FLOAT TP, P, F;
+
+//  FLOAT updateDir;
+  int i, j, k;
+  int t;
+  HMMSet *hmmsAlig = net->hmmSet;
+  HMMSet *hmmsUpdt = net->hmmSetToUpdate;
+  Node *node;
+
+  net->accumType = AT_ML;
+  net->PassTokenInModel   = &PassTokenSum;
+  net->PassTokenInNetwork = &PassTokenSum;
+  net->propagDir          = FORWARD;
+  net->alignment          = NO_ALIGNMENT;
+
+  net->SearchPaths        = Network::SP_TrueOnly;
+  ResetXformInstances(net->hmmSet);
+
+  net->time = 0; // Must not be set to -net->hmmSet->totalDelay yet
+                 // otherwise token cannot enter first model node
+                 // with start set to 0
+  TokenPropagationInit(net);
+  net->time = -net->hmmSet->totalDelay;
+
+  for(t = 0; t < nFrames+hmmsAlig->totalDelay; t++) {
+    ViterbiStep(net, obsMx + hmmsAlig->in_vec_size * t);
+  }
+
+  TP = net->last->exitToken->like;
+  ViterbiDone(net, NULL);
+
+  if(TP <= LOG_MIN) return LOG_0;
+
+
+  ////////////////// Denominator accumulation //////////////////
+  net->SearchPaths = Network::SP_All;
+
+  fwbw = ForwardBackward(net, obsMx, nFrames);
+  P = fwbw.totLike;
+
+  assert(P >= TP);
+
+  F = TP - LogSub(P, TP);
+printf("MCE distance: %g; ", F);
+  F = exp(-sigSlope * F);
+  F = (sigSlope*F) / SQR(1+F);
+printf("weight: %g\n", F);
+  weight *= F;
+
+  if(P < LOG_MIN) return LOG_0;
+
+  for(node = net->first; node != NULL; node = node->next) {
+    if(node->type & NT_Model && node->alphaBetaList != NULL &&
+       node->alphaBetaList->time == 0) {
+      node->alphaBetaListReverse = node->alphaBetaList;
+      node->alphaBetaList = node->alphaBetaList->next;
+    }
+  }
+
+  ResetXformInstances(hmmsAlig);
+
+  if(hmmsAlig != hmmsUpdt) {
+    ResetXformInstances(hmmsUpdt);
+  }
+
+  for(i = 0; i < hmmsAlig->totalDelay; i++) {
+    UpdateStacks(hmmsAlig, obsMx+hmmsAlig->in_vec_size*i,
+                 i-hmmsAlig->totalDelay, FORWARD);
+  }
+
+  if(hmmsAlig != hmmsUpdt) {
+    for(i = 0; i < hmmsUpdt->totalDelay; i++) {
+      UpdateStacks(hmmsUpdt, obsMx2+hmmsUpdt->in_vec_size*i,
+                   i-hmmsUpdt->totalDelay, FORWARD);
+    }
+  }
+
+
+  // net->mixPCache might be used to cache likelihoods of mixtures of target
+  // models. Reallocate the cache to fit mixtures of both models and reset it.
+  k = HIGHER_OF(hmmsUpdt->nmixtures, hmmsAlig->nmixtures);
+  net->mixPCache = (Cache *) realloc(net->mixPCache, k * sizeof(Cache));
+  if(net->mixPCache == NULL) Error("Insufficient memory");
+
+  for(i = 0; i < k; i++) net->mixPCache[i].time = UNDEF_TIME;
+
+// Update accumulators
+  for(net->time = 0; net->time < nFrames; net->time++) {//for every frame
+    FLOAT *obs  =obsMx +hmmsAlig->in_vec_size*(net->time+hmmsAlig->totalDelay);
+    FLOAT *obs2 =obsMx2+hmmsUpdt->in_vec_size*(net->time+hmmsUpdt->totalDelay);
+    UpdateStacks(hmmsAlig, obs, net->time, FORWARD);
+    if(hmmsAlig != hmmsUpdt) {
+      UpdateStacks(hmmsUpdt, obs2, net->time, FORWARD);
+    }
+
+    for(node = net->first; node != NULL; node = node->next) { //for every model
+//    for(k=0; k < net->nnodes; k++) {
+//      Node *node = &net->nodes[k];
+      if(node->type & NT_Model &&
+         node->alphaBetaList != NULL &&
+         node->alphaBetaList->time == net->time+1) {
+
+        struct AlphaBeta *st;
+        int Nq       = node->hmm->nstates;
+        st = node->alphaBetaList->state;
+
+        for(j = 1; j < Nq - 1; j++) {                   //for every emitting state
+          if(st[j].alpha + st[j].beta - P > MIN_LOG_WEGIHT) {
+            assert(node->alphaBetaListReverse->time == net->time);
+
+            ReestState(net, node, j-1,
+                       (st[j].alpha + st[j].beta - P)  * net->ocpScale,
+                        -weight, obs, obs2);
+          }
+        }
+        if(node->alphaBetaListReverse) free(node->alphaBetaListReverse);
+        node->alphaBetaListReverse = node->alphaBetaList;
+        node->alphaBetaList = node->alphaBetaList->next;
+      }
+    }
+  }
+
+  for(node = net->first; node != NULL; node = node->next) {
+    if(node->alphaBetaListReverse != NULL)
+      free(node->alphaBetaListReverse);
+  }
+
+
+  ////////////////// Numerator accumulation //////////////////
+  net->SearchPaths = Network::SP_TrueOnly;
+
+
+  ForwardBackward(net, obsMx, nFrames);
+
+  for(node = net->first; node != NULL; node = node->next) {
+    if(node->type & NT_Model && node->alphaBetaList != NULL &&
+       node->alphaBetaList->time == 0) {
+      node->alphaBetaListReverse = node->alphaBetaList;
+      node->alphaBetaList = node->alphaBetaList->next;
+    }
+  }
+
+  ResetXformInstances(hmmsAlig);
+
+  if(hmmsAlig != hmmsUpdt) {
+    ResetXformInstances(hmmsUpdt);
+  }
+
+  for(i = 0; i < hmmsAlig->totalDelay; i++) {
+    UpdateStacks(hmmsAlig, obsMx+hmmsAlig->in_vec_size*i,
+                 i-hmmsAlig->totalDelay, FORWARD);
+  }
+
+  if(hmmsAlig != hmmsUpdt) {
+    for(i = 0; i < hmmsUpdt->totalDelay; i++) {
+      UpdateStacks(hmmsUpdt, obsMx2+hmmsUpdt->in_vec_size*i,
+                   i-hmmsUpdt->totalDelay, FORWARD);
+    }
+  }
+
+
+  // net->mixPCache might be used to cache likelihoods of mixtures of target
+  // models. Reallocate the cache to fit mixtures of both models and reset it.
+  k = HIGHER_OF(hmmsUpdt->nmixtures, hmmsAlig->nmixtures);
+  net->mixPCache = (Cache *) realloc(net->mixPCache, k * sizeof(Cache));
+  if(net->mixPCache == NULL) Error("Insufficient memory");
+
+  for(i = 0; i < k; i++) net->mixPCache[i].time = UNDEF_TIME;
+
+// Update accumulators
+  for(net->time = 0; net->time < nFrames; net->time++) {//for every frame
+    FLOAT *obs  =obsMx +hmmsAlig->in_vec_size*(net->time+hmmsAlig->totalDelay);
+    FLOAT *obs2 =obsMx2+hmmsUpdt->in_vec_size*(net->time+hmmsUpdt->totalDelay);
+    UpdateStacks(hmmsAlig, obs, net->time, FORWARD);
+    if(hmmsAlig != hmmsUpdt) {
+      UpdateStacks(hmmsUpdt, obs2, net->time, FORWARD);
+    }
+
+    for(node = net->first; node != NULL; node = node->next) { //for every model
+//    for(k=0; k < net->nnodes; k++) {
+//      Node *node = &net->nodes[k];
+      if(node->type & NT_Model &&
+         node->alphaBetaList != NULL &&
+         node->alphaBetaList->time == net->time+1) {
+
+        struct AlphaBeta *st;
+        int Nq       = node->hmm->nstates;
+        FLOAT *aq    = node->hmm->        transition->matrix;
+        FLOAT *aqacc = node->hmmToUpdate->transition->matrix + SQR(Nq);
+//        int qt_1 = (net->nNetStates * net->time) + node->estate_id;
+//        int qt = qt_1 + net->nNetStates;
+
+        st = node->alphaBetaList->state;
+
+        if(//!net->mmi_den_pass &&
+           st[Nq-1].alpha + st[Nq-1].beta - TP > MIN_LOG_WEGIHT) {
+          for(i = 0; i < Nq - 1; i++) {
+            LOG_INC(aqacc[i * Nq + Nq-1], aq[i * Nq + Nq-1]  * net->tranScale +
+                                         (st[i].alpha                         +
+                                          st[Nq-1].beta - TP) * net->ocpScale);
+          }
+        }
+
+        for(j = 1; j < Nq - 1; j++) {                   //for every emitting state
+          if(st[j].alpha + st[j].beta - TP > MIN_LOG_WEGIHT) {
+            FLOAT bjtO =net->outPCache[hmmsAlig->nstates * net->time +
+                                       node->hmm->state[j-1]->state_id].value;
+            // ForwardBackward() set net->outPCache to contain out prob. for all frames
+
+            assert(node->alphaBetaListReverse->time == net->time);
+
+//            if(!net->mmi_den_pass) {
+            for(i = 0; i < Nq - 1; i++) {
+              LOG_INC(aqacc[i * Nq + j],
+                      aq[i * Nq + j]    * net->tranScale +
+                      (node->alphaBetaListReverse->state[i].alpha +
+                      bjtO              * net->outpScale +
+                      st[j].beta - TP)   * net->ocpScale);
+            }
+//            }
+
+            ReestState(net, node, j-1,
+                       (st[j].alpha + st[j].beta - TP)  * net->ocpScale,
+                        weight, obs, obs2);
+
+// For True MCE
+//            ReestState(net, node, j-1,
+//                       (st[j].alpha + st[j].beta - TP + LogAdd(TP,P) - P)  * net->ocpScale,
+//                        weight, obs, obs2);
+
+          }
+        }
+        if(node->alphaBetaListReverse) free(node->alphaBetaListReverse);
+        node->alphaBetaListReverse = node->alphaBetaList;
+        node->alphaBetaList = node->alphaBetaList->next;
+      }
+    }
+  }
+
+  for(node = net->first; node != NULL; node = node->next) {
+    if(node->alphaBetaListReverse != NULL)
+      free(node->alphaBetaListReverse);
+  }
+
+  net->accumType = AT_MCE;
+  return TP;
+}
 
 FLOAT BaumWelchReest(Network *net, FLOAT *obsMx, FLOAT *obsMx2, int nFrames, FLOAT weight)
 {

@@ -50,9 +50,10 @@ typedef enum {
 } Alignment;
 
 typedef enum {
-  AT_ML,
+  AT_ML=0,
   AT_MPE,
-  AT_MFE
+  AT_MFE,
+  AT_MCE
 } AccumType;
 
 struct _Network {
@@ -88,6 +89,7 @@ struct _Network {
   FLOAT outpScale;
   FLOAT ocpScale;
   FLOAT pruningThresh;
+  enum {SP_All, SP_TrueOnly} SearchPaths;
 
   FLOAT (*OutputProbability)(State *state, FLOAT *observation, Network *network);
   int (*PassTokenInNetwork)(Token *from, Token *to, FLOAT addLogLike);
@@ -172,6 +174,14 @@ FLOAT *StateOccupationProbability(
   int nFrames,
   FLOAT **outProbOrMahDist,
   int getMahalDist);
+  
+FLOAT MCEReest(
+  Network *net,
+  FLOAT *obsMx,
+  FLOAT *obsMx2,
+  int nFrames,
+  FLOAT weight,
+  FLOAT sigSlope);
 
 FLOAT BaumWelchReest(
   Network *net,

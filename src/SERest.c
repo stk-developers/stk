@@ -131,6 +131,7 @@ int main(int argc, char *argv[]) {
   double stprn_limit;
   double min_variance;
   double min_mix_wght;
+  double sig_slope;
   double E_constant;
   double h_constant;
   double I_smoothing;
@@ -307,11 +308,12 @@ int main(int argc, char *argv[]) {
                    "UPDATE",UM_UPDATE,"DUMP",UM_DUMP,"BOTH",UM_BOTH, NULL);
 
   accum_type   = (AccumType) GetParamEnum(&cfgHash,SNAME":ACCUMULATORTYPE", AT_ML,
-                              "ML",AT_ML,"MPE",AT_MPE,"MFE",AT_MFE, NULL);
+                              "ML",AT_ML,"MPE",AT_MPE,"MCE",AT_MCE,"MFE",AT_MFE, NULL);
 
   update_type   = (Update_Type) GetParamEnum(&cfgHash,SNAME":UPDATETYPE",     UT_ML,
                               "ML",UT_ML,"MPE",UT_MPE,"MMI",UT_MMI, NULL);
 
+  sig_slope    = GetParamFlt(&cfgHash, SNAME":MCESIGSLOPE",     1.0);
   E_constant   = GetParamFlt(&cfgHash, SNAME":EBWCONSTANTE",    2.0);
   h_constant   = GetParamFlt(&cfgHash, SNAME":EBWCONSTANTH",    2.0);
   I_smoothing  = GetParamFlt(&cfgHash, SNAME":ISMOOTHING",  update_type==UT_MPE
@@ -485,6 +487,7 @@ int main(int argc, char *argv[]) {
     } else {
       int nFrames;
       char *phys_fn = (one_pass_reest ? file_name->next : file_name)->physical;
+      char *lgcl_fn = (one_pass_reest ? file_name->next : file_name)->logical;
 
       // read sentence weight definition if any ( physical_file.fea[s,e]{weight} )
       if((chrptr = strrchr(phys_fn, '{')) != NULL &&
@@ -493,9 +496,8 @@ int main(int argc, char *argv[]) {
       } else {
         sentWeight = 1.0;
       }
-
-      if(cmn_mask) process_mask(file_name->logical, cmn_mask, cmn_file);
-      if(cvn_mask) process_mask(file_name->logical, cvn_mask, cvn_file);
+      if(cmn_mask) process_mask(lgcl_fn, cmn_mask, cmn_file);
+      if(cvn_mask) process_mask(lgcl_fn, cvn_mask, cvn_file);
       obsMx = ReadHTKFeatures(phys_fn, swap_features,
                               startFrmExt, endFrmExt, targetKind,
                               derivOrder, derivWinLengths, &header,
@@ -579,9 +581,15 @@ int main(int argc, char *argv[]) {
       net.ocpScale     = occprb_scale;
       net.pruningThresh= state_pruning > 0.0 ? state_pruning : -LOG_0;
       net.accumType    = accum_type;
+      
+      double prn_step  = stprn_step;
+      double prn_limit = stprn_limit;
 
       if(GetParamBool(&cfgHash, SNAME":NFRAMEOUTPNORM", FALSE)) {
-        outprb_scale = 1.0 / nFrames;
+        net.outpScale = outprb_scale / nFrames;
+        net.pruningThresh /= nFrames;
+        prn_step          /= nFrames;
+        prn_limit         /= nFrames;
       }
 
       FLOAT P;
@@ -592,16 +600,18 @@ int main(int argc, char *argv[]) {
           P = LOG_MIN;
           break;
         }
-printf("Using weight: %f", sentWeight);
-        P = !viterbiTrain
-          ? BaumWelchReest(&net, obsMx_alig, obsMx, nFrames, sentWeight)
-          : ViterbiReest(  &net, obsMx_alig, obsMx, nFrames, sentWeight);
-
+        if(accum_type == AT_MCE) {
+          P = MCEReest(&net, obsMx_alig, obsMx, nFrames, sentWeight, sig_slope);
+        } else {
+          P = !viterbiTrain
+            ? BaumWelchReest(&net, obsMx_alig, obsMx, nFrames, sentWeight)
+            : ViterbiReest(  &net, obsMx_alig, obsMx, nFrames, sentWeight);
+        }
         if(P > LOG_MIN) break;
 
         if(net.pruningThresh <= LOG_MIN ||
-          stprn_step <= 0.0 ||
-          (net.pruningThresh += stprn_step) > stprn_limit ) {
+          prn_step <= 0.0 ||
+          (net.pruningThresh += prn_step) > prn_limit) {          
           Warning("Overpruning or bad data, skipping file %s",
                   file_name->physical);
           break;

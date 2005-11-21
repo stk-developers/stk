@@ -23,7 +23,7 @@ typedef struct {
     INT_32 nSamples;              /* Structure for HTK header */
     INT_32 sampPeriod;
     INT_16 sampSize;
-    INT_16 sampKind;
+    UINT_16 sampKind;
 }
 HTK_Header;
 

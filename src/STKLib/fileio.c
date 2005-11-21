@@ -71,8 +71,8 @@ int ReadHTKHeader (FILE * fp_in, HTK_Header * header, bool swap)
 {
   if(!fread(&header->nSamples,   sizeof(INT_32),  1, fp_in)) return -1;
   if(!fread(&header->sampPeriod, sizeof(INT_32),  1, fp_in)) return -1;
-  if(!fread(&header->sampSize,   sizeof(INT_16), 1, fp_in)) return -1;
-  if(!fread(&header->sampKind,   sizeof(INT_16), 1, fp_in)) return -1;
+  if(!fread(&header->sampSize,   sizeof(INT_16),  1, fp_in)) return -1;
+  if(!fread(&header->sampKind,   sizeof(UINT_16), 1, fp_in)) return -1;
 
   if(swap) {
     swap4(header->nSamples);
