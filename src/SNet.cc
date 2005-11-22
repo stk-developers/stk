@@ -61,7 +61,6 @@ char *optionStr =
 " -o r   TARGETMODELEXT"
 " -B n   SAVEBINARY=TRUE"
 " -D n   PRINTCONFIG=TRUE" 
-//" -G r   SOURCETRANSCFMT"
 " -H l   SOURCEMMF"
 " -I r   SOURCEMLF"
 " -L r   SOURCETRANSCDIR"
@@ -90,7 +89,6 @@ int main(int argc, char *argv[]) {
   FileListElem **last_file = &feature_files;
 
 
-//  const char *src_hmm_list;
   const char *src_hmm_dir;
   const char *src_hmm_ext;
         char *src_mmf;
@@ -294,9 +292,7 @@ int main(int argc, char *argv[]) {
 
       //Get next NN input vector by propagating vector from feature file
       //through NNet_input transformation.
-      //!!!tStart(COMP);
       obs = XformPass(NNet_input, obs, time, FORWARD);
-      //!!!tEnd(COMP);
       //Input of NN is not yet read because of NNet_input delay
       if(time <= 0) continue;
 
@@ -322,6 +318,7 @@ int main(int argc, char *argv[]) {
         continue;
 
       // Go further only if cache is full
+      /*
       if(prog->SERVER){
         waitForOthers(barrier, 1, -1); // *1* wait for actual caches from all clients
 
@@ -351,6 +348,7 @@ int main(int argc, char *argv[]) {
         break;
       }
       info->actualCache = 0;
+      */
     }
 
     totFrames  += nFrames;
@@ -366,6 +364,7 @@ int main(int argc, char *argv[]) {
   /// END - MAIN FILE LOOP
 
   // Get actual cache size, same as in loop -^
+  /*
   if(prog->SERVER){
     waitForOthers(barrier, 1, -1); // *1* wait for actual caches from all clients
     info->actualCache = min(info->actualCache, info->clientCaches, prog->numberOfClients);
@@ -419,16 +418,16 @@ int main(int argc, char *argv[]) {
     printf("Client finished...\n");
   }
   if(!prog->CLIENT){
-    /*printf("     TIME: All %6.3f, Compution %6.3f, Files %6.3f",
+    printf("     TIME: All %6.3f, Compution %6.3f, Files %6.3f",
            timer_add[ALL], timer_add[COMP], timer_add[FILES]);
     if(!prog->CV)
       printf(" (wasted %5.2f%%)\n", 100.0-((100.0*(timer_add[COMP]+timer_add[FILES]))/timer_add[ALL]));
     else
-      printf("\n");*/
+      printf("\n");
   }
   tPrint(ALL);
   tPrint(COMP);
-
+*/
   if(trace_flag & 2) {
     TraceLog("Total number of frames: %d", totFrames);
   }
