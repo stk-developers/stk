@@ -67,12 +67,12 @@ char *optionStr =
 " -V n   PRINTVERSION=TRUE";
 
 int main(int argc, char *argv[]) {
-  HMMSet hset;
+  ModelSet hset;
   FILE *sfp, *ofp = NULL;
   FLOAT *obsMx, *obs;
   HTK_Header header;
   int i, fcnt = 0;
-  XformInstance *input = NULL;
+  XFormInstance *input = NULL;
   char line[1024];
   char outFile[1024];
   struct my_hsearch_data cfgHash;
@@ -103,7 +103,8 @@ int main(int argc, char *argv[]) {
 
   if(argc == 1) usage(argv[0]);
 
-  InitHMMSet(&hset, 1);
+  //InitHMMSet(&hset, 1);
+  hset.Init(MODEL_SET_WITH_ACCUM);
 
   if(!my_hcreate_r(100,  &cfgHash)) {
     Error("Insufficient memory");
@@ -156,16 +157,16 @@ int main(int argc, char *argv[]) {
     my_fclose(sfp);
   }
   for(src_mmf=strtok(src_mmf, ","); src_mmf != NULL; src_mmf=strtok(NULL, ",")) {
-    ReadHMMSet(src_mmf, &hset, NULL);
+    hset.ParseMmf(src_mmf, NULL);
   }
   if(src_hmm_list) ReadHMMList(&hset,     src_hmm_list, src_hmm_dir, src_hmm_ext);
 
   if(inputName != NULL) {
-    Macro *macro = FindMacro(&hset.Xform_instance_hash, inputName);
+    Macro *macro = FindMacro(&hset.mXFormInstanceHash, inputName);
     if(macro == NULL) Error("Undefined source input '%s'", inputName);
-    input = (XformInstance *) macro->data;
-  } else if(hset.inputXform) {
-    input = hset.inputXform;
+    input = (XFormInstance *) macro->data;
+  } else if(hset.inputXForm) {
+    input = hset.inputXForm;
   }
 
   for(file_name=feature_files; file_name != NULL; file_name=file_name->next) {
@@ -178,9 +179,9 @@ int main(int argc, char *argv[]) {
     vec_size = header.sampSize / sizeof(float);
     out_size = input ? input->out_size : vec_size;
 
-    if(hset.in_vec_size != -1 && hset.in_vec_size != vec_size) {
+    if(hset.mInputVectorSize != -1 && hset.mInputVectorSize != vec_size) {
       Error("Vector size [%d] in '%s' is incompatible with HMM set [%d]",
-            header.sampSize/sizeof(float), file_name->physical, hset.in_vec_size);
+            header.sampSize/sizeof(float), file_name->physical, hset.mInputVectorSize);
     }
     MakeFileName(outFile, file_name->logical, out_dir, out_ext);
 
@@ -193,22 +194,22 @@ int main(int argc, char *argv[]) {
     if(WriteHTKHeader(ofp, header, 1)) {
       Error("Cannot write to output feature file: '%s'", outFile);
     }
-    time = -hset.totalDelay;
-    ResetXformInstances(&hset);
+    time = -hset.mTotalDelay;
+    ResetXFormInstances(&hset);
 
     for(i = 0; i < header.nSamples; i++) {
       UpdateStacks(&hset, obsMx + i * vec_size, ++time, FORWARD);
       if(time <= 0) continue;
 
-      obs = XformPass(input, obsMx + i * vec_size, time, FORWARD);
+      obs = XFormPass(input, obsMx + i * vec_size, time, FORWARD);
 
       if(WriteHTKFeature (ofp, obs, out_size, swap_fea_out)) {
         Error("Cannot write to output feature file: '%s'", outFile);
       }
     }
-    totFrames += header.nSamples - hset.totalDelay;
+    totFrames += header.nSamples - hset.mTotalDelay;
 
-    if(trace_flag & 1) TraceLog("[%d frames]", header.nSamples-hset.totalDelay);
+    if(trace_flag & 1) TraceLog("[%d frames]", header.nSamples-hset.mTotalDelay);
     fclose(ofp);
     free(obsMx);
   }

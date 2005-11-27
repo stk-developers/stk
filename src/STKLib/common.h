@@ -131,10 +131,6 @@ struct _FileListElem
 //#define Error(...) _Error_(__func__, __FILE__, __LINE__, __VA_ARGS__)
 //#define Warning(...) _Warning_(__func__, __FILE__, __LINE__, __VA_ARGS__)
 
-#ifdef __cplusplus
-  extern "C" {
-#endif
-
 //void _Error_(const char *func, const char *file, int line, char *msg, ...);
 //void _Warning_(const char *func, const char *file, int line, char *msg, ...);
 //void TraceLog(char *msg, ...);
@@ -262,10 +258,6 @@ ProcessMask(const std::string & rString,
             const std::string & rWildcard,
                   std::string & rSubstr);
 
-
-#ifdef __cplusplus
-}
-#endif
 
 #define LOG_INC(a, b) ((a) = LogAdd((a),(b)))
 

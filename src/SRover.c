@@ -358,7 +358,7 @@ int main(int argc, char *argv[]) {
           }
         }
 
-        if(best_candidate->label->name) {
+        if(best_candidate->label->mpName) {
           Label label = *best_candidate->label;
           label.next  = label.nextLevel = NULL;
           label.score = best_voting_score;

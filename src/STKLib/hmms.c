@@ -330,7 +330,7 @@ void ReplaceItem(int macro_type, HMMSetNodeName nodeName, void *data, void *user
     CompositeXForm *cxf = (CompositeXForm *) data;
     if (cxf->xform_type == XT_COMPOSITE) 
     {
-      for (i = 0; i < cxf->nlayers; i++) 
+      for (i = 0; i < cxf->mNLayers; i++) 
       {
         for(j = 0; j < cxf->layer[i].nblocks; j++) 
         {
@@ -786,7 +786,7 @@ CompositeXForm *ReadCompositeXForm(FILE *fp, ModelSet *hmm_set, Macro *macro) {
 
   ret->memorySize = 0;
   ret->delay      = 0;
-  ret->nlayers    = nlayers;
+  ret->mNLayers    = nlayers;
 
   for(i=0; i<nlayers; i++) ret->layer[i].block = NULL;
 
@@ -1040,7 +1040,7 @@ int Is1Layer1BlockLinearXForm(XForm *xform)
   if(cxf == NULL)                                   return 0;
   if(cxf->xform_type == XT_LINEAR)                  return 1;
   if(cxf->xform_type != XT_COMPOSITE)               return 0;
-  if(cxf->nlayers > 1 || cxf->layer[0].nblocks > 1) return 0;
+  if(cxf->mNLayers > 1 || cxf->layer[0].nblocks > 1) return 0;
   return Is1Layer1BlockLinearXForm(cxf->layer[0].block[0]);
 }
 
@@ -1383,8 +1383,8 @@ void ReleaseItem(int macro_type,HMMSetNodeName nodeName,void *data,void *userDat
     int i;
   CompositeXForm *cxf = (CompositeXForm *) data;
   if(macro_type == 'x' && cxf->xform_type == XT_COMPOSITE) {
-    for(i = 0; i < cxf->nlayers-1; i++) free(cxf->layer[i].out_vec);
-    for(i = 0; i < cxf->nlayers;   i++) free(cxf->layer[i].block);
+    for(i = 0; i < cxf->mNLayers-1; i++) free(cxf->layer[i].out_vec);
+    for(i = 0; i < cxf->mNLayers;   i++) free(cxf->layer[i].block);
   }
   if(macro_type == 'j') free(((XFormInstance *) data)->memory);
 
@@ -1920,7 +1920,7 @@ void WriteXFormInstance(FILE *fp, int binary, ModelSet *hmm_set, XFormInstance *
 
   CompositeXForm *cxf = (CompositeXForm *) xformInstance->xform;
   if(xformInstance->input != NULL || cxf == NULL || cxf->mpMacro ||
-     cxf->xform_type != XT_COMPOSITE || cxf->nlayers != 1) {
+     cxf->xform_type != XT_COMPOSITE || cxf->mNLayers != 1) {
     isHTKCompatible = 0;
   } else for(i = 0; i < cxf->layer[0].nblocks; i++) {
     if(cxf->layer[0].block[i]->xform_type != XT_LINEAR) {
@@ -1993,7 +1993,7 @@ void WriteCompositeXForm(FILE *fp, int binary, ModelSet *hmm_set, CompositeXForm
 {
   int i, j, isHTKCompatible = 1;
 
-  if(xform->mpMacro || xform->nlayers != 1) {
+  if(xform->mpMacro || xform->mNLayers != 1) {
     isHTKCompatible = 0;
   } else for(i = 0; i < xform->layer[0].nblocks; i++) {
     if(xform->layer[0].block[i]->xform_type != XT_LINEAR) {
@@ -2001,14 +2001,14 @@ void WriteCompositeXForm(FILE *fp, int binary, ModelSet *hmm_set, CompositeXForm
       break;
     }
   }
-  if(xform->nlayers > 1) {
+  if(xform->mNLayers > 1) {
     PutKwd(fp, binary, KID_NumLayers);
-    PutInt(fp, binary, xform->nlayers);
+    PutInt(fp, binary, xform->mNLayers);
     PutNLn(fp, binary);
   }
 
-  for(i=0; i < xform->nlayers; i++) {
-    if(xform->nlayers > 1) {
+  for(i=0; i < xform->mNLayers; i++) {
+    if(xform->mNLayers > 1) {
       PutKwd(fp, binary, KID_Layer);
       PutInt(fp, binary, i+1);
       PutNLn(fp, binary);
@@ -2830,9 +2830,9 @@ FLOAT *CompositeXFormEval(CompositeXForm *xform, FLOAT *in_vec, FLOAT *out_vec,
 {
   int i, j;
 
-  for(i = 0; i < xform->nlayers; i++) {
+  for(i = 0; i < xform->mNLayers; i++) {
     FLOAT *in =  i == 0                ? in_vec  : xform->layer[i-1].out_vec;
-    FLOAT *out = i == xform->nlayers-1 ? out_vec : xform->layer[i]  .out_vec;
+    FLOAT *out = i == xform->mNLayers-1 ? out_vec : xform->layer[i]  .out_vec;
     
     for(j = 0; j < xform->layer[i].nblocks; j++) {
       XFormEval(xform->layer[i].block[j], in, out, memory, dir);
@@ -3094,7 +3094,7 @@ void ScanXForm(XForm *xform, int mask, HMMSetNodeName nodeName,
     CompositeXForm *cxf = (CompositeXForm *) xform;
     int i, j;
 
-    for(i=0; i < cxf->nlayers; i++) {
+    for(i=0; i < cxf->mNLayers; i++) {
       for(j = 0; j < cxf->layer[i].nblocks; j++) {
         if(!cxf->layer[i].block[j]->mpMacro) {
           if(n > 0) snprintf(chptr, n, ".part[%d,%d]", i+1, j+1);

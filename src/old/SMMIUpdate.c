@@ -117,7 +117,8 @@ int main(int argc, char *argv[]) {
 
   if(argc == 1) usage(argv[0]);
 
-  InitHMMSet(&hset, 1);
+  //InitHMMSet(&hset, 1);
+  hset.Init(MODEL_SET_WITH_ACCUM);
 
   for(;;) {
     int opt = getopt(argc, argv, "-eh:l:m:o:s:t:u:v:w:ABH:M:S:T:U:V");
@@ -285,10 +286,10 @@ int main(int argc, char *argv[]) {
 
 
   if(xform_list_file != NULL) {
-    ReadXformList(&hset, xform_list_file);
+    ReadXFormList(&hset, xform_list_file);
   }
 
-  AllocateAccumulatorsForXformStats(&hset);
+  AllocateAccumulatorsForXFormStats(&hset);
 
   hset.MMIUpdate = update_type;
 
@@ -305,8 +306,8 @@ int main(int argc, char *argv[]) {
 
   if((hset.updateMask & (UM_MEAN | UM_VARIANCE)) &&
      !hset.allMixuresUpdatableFromStatAccums) {
-    Warning("Statistic are estimated for Xform not being "
-            "a single linear Xform on the input of a mixture. "
+    Warning("Statistic are estimated for XForm not being "
+            "a single linear XForm on the input of a mixture. "
             "Means and variances will not be updated");
     hset.updateMask &= ~(UM_MEAN | UM_VARIANCE);
   }
@@ -347,16 +348,16 @@ int main(int argc, char *argv[]) {
 
   if(stat_file) WriteHMMStats(stat_file, &hset);
 
-  Macro *macro = FindMacro(&hset.variance_hash, "varFloor1");
+  Macro *macro = FindMacro(&hset.mVarianceHash, "varFloor1");
 
     if(macro != NULL || (float) min_variance > 0.0) {
       Variance *tmpvar = macro ? (Variance *) macro->data : NULL;
-//      assert(!tmpvar || hset.in_vec_size == tmpvar->vec_size);
+//      assert(!tmpvar || hset.mInputVectorSize == tmpvar->vec_size);
 
-      hset.varFloor = (Variance *) malloc(sizeof(Variance)+((tmpvar ? tmpvar->vec_size : hset.in_vec_size)-1)*sizeof(FLOAT));
+      hset.varFloor = (Variance *) malloc(sizeof(Variance)+((tmpvar ? tmpvar->vec_size : hset.mInputVectorSize)-1)*sizeof(FLOAT));
       if(hset.varFloor == NULL) Error("Insufficient memory");
 
-      hset.varFloor->vec_size = tmpvar ? tmpvar->vec_size : hset.in_vec_size;
+      hset.varFloor->vec_size = tmpvar ? tmpvar->vec_size : hset.mInputVectorSize;
 
       for(i = 0; i < hset.varFloor->vec_size; i++) {
         if(macro) {
@@ -368,11 +369,11 @@ int main(int argc, char *argv[]) {
       }
     }
 
-  // Required by WriteXformStatsAndRunCommands and UpdateHMMSetFromAccums
-  ScanHMMSet(&hset, mtm_mean|mtm_variance, NULL, NormalizeStatsForXform, 0);
+  // Required by WriteXFormStatsAndRunCommands and UpdateHMMSetFromAccums
+  ScanHMMSet(&hset, mtm_mean|mtm_variance, NULL, NormalizeStatsForXForm, 0);
 
   if(hset.updateMask & UM_XFSTATS) {
-    WriteXformStatsAndRunCommands(out_hmm_dir, stats_binary, &hset);
+    WriteXFormStatsAndRunCommands(out_hmm_dir, stats_binary, &hset);
   }
 
   if(hset.updateMask != UM_XFSTATS) {

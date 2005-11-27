@@ -27,7 +27,7 @@
 #include "getopt.h"
 #endif
 
-void ReadXformList(HMMSet *hmm_set, char *xformListFileName);
+void ReadXFormList(HMMSet *hmm_set, char *xformListFileName);
 
 void usage(char *progname)
 {
@@ -93,7 +93,8 @@ int main(int argc, char *argv[]) {
 
   if(argc == 1) usage(argv[0]);
 
-  InitHMMSet(&hset, 1);
+  //InitHMMSet(&hset, 1);
+  hset.Init(1);
 
   for(;;) {
     int opt = getopt(argc, argv, "-h:l:ns:AH:M:T:V");
@@ -181,10 +182,10 @@ int main(int argc, char *argv[]) {
 
 
   if(xform_list_file != NULL) {
-    ReadXformList(&hset, xform_list_file);
+    ReadXFormList(&hset, xform_list_file);
   }
 
-  AllocateAccumulatorsForXformStats(&hset);
+  AllocateAccumulatorsForXFormStats(&hset);
   ResetAccumsForHMMSet(&hset);
 
   for(i=0,file_name=acc_files;file_name!=NULL;i++,file_name=file_name->next) {

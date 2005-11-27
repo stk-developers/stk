@@ -48,7 +48,7 @@ void usage(char *progname)
 
 int main(int argc, char *argv[]) {
   HTK_Header header;
-  HMMSet hset;
+  ModelSet hset;
   FILE *sfp, *ofp = NULL;
   FLOAT  *obsMx;
   FLOAT *opp;
@@ -88,7 +88,8 @@ int main(int argc, char *argv[]) {
 
   if(argc == 1) usage(argv[0]);
 
-  InitHMMSet(&hset, 0);
+  //InitHMMSet(&hset, 0);
+  hset.Init();
 
   for(;;) {
     int opt = getopt(argc, argv, "-l:y:ADH:NS:T:V");
@@ -103,7 +104,7 @@ int main(int argc, char *argv[]) {
       case 'N': swap_features = 0;     break;
       case 'V': print_version = 1;     break;
 
-      case 'H': ReadHMMSet(optarg, &hset, NULL); break;
+      case 'H': hset.ParseMmf(optarg, NULL); break;
 
       case 1:   *last = (StrListElem *) malloc(sizeof(StrListElem)+strlen(optarg));
                 if(!*last) Error("Insufficient memory");
@@ -174,7 +175,7 @@ int main(int argc, char *argv[]) {
 
   if(print_version) puts("Version: "VERSION"\n");
   if(feature_files == NULL) return 0;
-  if((opp = (FLOAT *) malloc(hset.nstates * sizeof(float))) == NULL) {
+  if((opp = (FLOAT *) malloc(hset.mNStates * sizeof(float))) == NULL) {
     Error("Insufficient memory");
   }
 
@@ -187,9 +188,9 @@ int main(int argc, char *argv[]) {
                             startFrmExt, endFrmExt, targetKind,
                             derivOrder, derivWinLengths, &header);
 
-    if(hset.in_vec_size != header.sampSize / sizeof(float)) {
+    if(hset.mInputVectorSize != header.sampSize / sizeof(float)) {
       Error("Vector size [%d] in '%s' is incompatible with HMM set [%d]",
-            header.sampSize/sizeof(float), file_name->physical, hset.in_vec_size);
+            header.sampSize/sizeof(float), file_name->physical, hset.mInputVectorSize);
     }
 
     MakeFileName(outFile, file_name->logical, out_dir, out_ext);
@@ -199,43 +200,43 @@ int main(int argc, char *argv[]) {
     }
 
     header.sampKind = 9;
-    header.sampSize = hset.nstates * sizeof(float);
+    header.sampSize = hset.mNStates * sizeof(float);
 
     if(WriteHTKHeader(ofp, header, 1)) {
       Error("Cannot write to output probability file: '%s'", outFile);
     }
 
-    time = -hset.totalDelay;
-    ResetXformInstances(&hset);
+    time = -hset.mTotalDelay;
+    ResetXFormInstances(&hset);
 
     for(i = 0; i < header.nSamples; i++) {
-      UpdateStacks(&hset, obsMx + i * hset.in_vec_size, ++time, FORWARD);
+      UpdateStacks(&hset, obsMx + i * hset.mInputVectorSize, ++time, FORWARD);
       if(time <= 0) continue;
 
-      for(m = 0; m < hset.hmm_hash.nentries; m++) {
-        macro = (Macro *) hset.hmm_hash.entry[m]->data;
-        if(*(Macro **)macro->data != macro) continue;
+      for(m = 0; m < hset.mHmmHash.nentries; m++) {
+        macro = (Macro *) hset.mHmmHash.entry[m]->data;
+        if(macro->mpData->mpMacro != macro) continue;
 
-        for(j = 0; j < ((HMM *) macro->data)->nstates-2; j++) {
-          State *state = ((HMM *) macro->data)->state[j];
-          if(!state->macro) { // take only non-shared states
-            opp[state->state_id] =
-              DiagCGaussianMixtureDensity(state, obsMx + i * hset.in_vec_size, NULL);
+        for(j = 0; j < ((Hmm *) macro->data)->mNStates-2; j++) {
+          State *state = ((Hmm *) macro->data)->state[j];
+          if(!state->mpMacro) { // take only non-shared states
+            opp[state->mID] =
+              DiagCGaussianMixtureDensity(state, obsMx + i * hset.mInputVectorSize, NULL);
           }
         }
       }
 
-      for(m = 0; m < hset.state_hash.nentries; m++) {
+      for(m = 0; m < hset.mStateHash.nentries; m++) {
         State * state;
-        macro = (Macro *) hset.state_hash.entry[m]->data;
-        if(*(Macro **)macro->data != macro) continue;
+        macro = (Macro *) hset.mStateHash.entry[m]->data;
+        if(macro->mpData->mpMacro != macro) continue;
 
         state = (State *) macro->data;
-        opp[state->state_id] =
-          DiagCGaussianMixtureDensity(state, obsMx + i * hset.in_vec_size, NULL);
+        opp[state->mID] =
+          DiagCGaussianMixtureDensity(state, obsMx + i * hset.mInputVectorSize, NULL);
       }
 
-      if(WriteHTKFeature (ofp, opp, hset.nstates, 1)) {
+      if(WriteHTKFeature (ofp, opp, hset.mNStates, 1)) {
         Error("Cannot write to output probability file: '%s'", outFile);
       }
     }

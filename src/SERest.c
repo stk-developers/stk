@@ -95,16 +95,25 @@ char *optionStr =
 " -X r   SOURCETRANSCEXT";
 
 int main(int argc, char *argv[]) {
-  HMMSet hset, *hset_alig = NULL;
-  Network net;
-  FILE *sfp, *ilfp = NULL;
-  FLOAT *obsMx, *obsMx_alig, sentWeight;
-  HTK_Header header, header_alig;
-  int i, fcnt = 0;
-  Label *labels;
-  char line[1024];
-  char label_file[1024];
-  char *chrptr;
+  ModelSet            hset;
+  ModelSet *          hset_alig = NULL;
+  Network             net;
+  FILE *              sfp;
+  FILE *              ilfp = NULL;
+  FLOAT *             obsMx;
+  FLOAT *             obsMx_alig;
+  FLOAT               sentWeight;
+  HTK_Header          header;
+  HTK_Header          header_alig;
+  Label *             labels;
+  
+  int                 i;
+  int                 fcnt = 0;
+  
+  char                line[1024];
+  char                label_file[1024];
+  char *              chrptr;
+  
 //  struct my_hsearch_data labelHash;
   struct my_hsearch_data nonCDphHash, phoneHash, dictHash, cfgHash;
 
@@ -207,8 +216,9 @@ int main(int argc, char *argv[]) {
 
   if(argc == 1) usage(argv[0]);
 
-  InitHMMSet(&hset, 1);
-
+  //InitHMMSet(&hset, 1);
+  hset.Init(MODEL_SET_WITH_ACCUM);
+  
   if(!my_hcreate_r(100,  &dictHash)
   || !my_hcreate_r(100,  &phoneHash)
   || !my_hcreate_r(100,  &cfgHash)) {
@@ -360,24 +370,36 @@ int main(int argc, char *argv[]) {
     }
     my_fclose(sfp);
   }
-  for(src_mmf=strtok(src_mmf, ","); src_mmf != NULL; src_mmf=strtok(NULL, ",")) {
-    ReadHMMSet(src_mmf, &hset, NULL);
+  
+  for (src_mmf=strtok(src_mmf, ","); src_mmf != NULL; src_mmf=strtok(NULL, ",")) 
+  {
+    hset.ParseMmf(src_mmf, NULL);
+    //ReadHMMSet(src_mmf, &hset, NULL);
   }
-  if(alg_hmm_list != NULL || alg_mmf != NULL) {
-    hset_alig = (HMMSet *) malloc(sizeof(HMMSet));
+  
+  if(alg_hmm_list != NULL || alg_mmf != NULL) 
+  {
+    hset_alig = (ModelSet *) malloc(sizeof(ModelSet));
     if(!hset_alig) Error("Insufficient memory");
 
-    InitHMMSet(hset_alig, 0);
+    //InitHMMSet(hset_alig, 0);
+    hset_alig->Init();
 
-    for(alg_mmf=strtok(alg_mmf, ","); alg_mmf != NULL; alg_mmf=strtok(NULL, ",")) {
-      ReadHMMSet(alg_mmf, hset_alig, NULL);
+    for(alg_mmf=strtok(alg_mmf, ","); alg_mmf != NULL; alg_mmf=strtok(NULL, ",")) 
+    {
+      hset_alig->ParseMmf(alg_mmf, NULL);
+      //ReadHMMSet(alg_mmf, hset_alig, NULL);
     }
-  } else {
+  } 
+  else 
+  {
     hset_alig = &hset;
   }
+  
   if(parallel_mode == 0) one_pass_reest = 0;
 
-  if((nfeature_files & 1) && one_pass_reest) {
+  if((nfeature_files & 1) && one_pass_reest) 
+  {
     Error("Single pass re-estimation requires even number (two sets) of feature files");
   }
 
@@ -407,9 +429,9 @@ int main(int argc, char *argv[]) {
                   in_transc_fmt == TF_STK  ? net_filter    :
                                              label_filter;
 
-  if(xformList != NULL) ReadXformList(&hset, xformList);
+  if(xformList != NULL) ReadXFormList(&hset, xformList);
 
-  AllocateAccumulatorsForXformStats(&hset);
+  AllocateAccumulatorsForXFormStats(&hset);
 
   if(network_file) { // Unsupervised training
     //!!! Currently, it is not possible to get here !!!
@@ -444,8 +466,8 @@ int main(int argc, char *argv[]) {
 
   if((hset.updateMask & (UM_MEAN | UM_VARIANCE)) &&
      !hset.allMixuresUpdatableFromStatAccums) {
-    Warning("Statistic are estimated for Xform not being "
-            "a single linear Xform on the input of a mixture. "
+    Warning("Statistic are estimated for XForm not being "
+            "a single linear XForm on the input of a mixture. "
             "Means and variances will not be updated");
     hset.updateMask &= ~(UM_MEAN | UM_VARIANCE);
   }
@@ -503,16 +525,16 @@ int main(int argc, char *argv[]) {
                               derivOrder, derivWinLengths, &header,
                               cmn_path, cvn_path, cvg_file, &rhfbuff);
 
-      if(hset.in_vec_size != header.sampSize / sizeof(float)) {
+      if(hset.mInputVectorSize != header.sampSize / sizeof(float)) {
         Error("Vector size [%d] in '%s' is incompatible with source HMM set [%d]",
-              header.sampSize/sizeof(float), phys_fn, hset.in_vec_size);
+              header.sampSize/sizeof(float), phys_fn, hset.mInputVectorSize);
       }
-      nFrames = header.nSamples - hset.totalDelay;
+      nFrames = header.nSamples - hset.mTotalDelay;
 
 //      for(i = 0; i < nFrames; i++) {
 //        int j;
-//        for(j = 0; j < hset.in_vec_size; j++) {
-//          printf("%5.2f ", obsMx[i * hset.in_vec_size +j]);
+//        for(j = 0; j < hset.mInputVectorSize; j++) {
+//          printf("%5.2f ", obsMx[i * hset.mInputVectorSize +j]);
 //        }
 //        puts("");
 //      }
@@ -525,23 +547,23 @@ int main(int argc, char *argv[]) {
                                      derivOrder_alig, derivWinLengths_alig, &header_alig,
                                      cmn_path_alig, cvn_path_alig, cvg_file_alig, &rhfbuff_alig);
 
-        if(hset_alig->in_vec_size != header_alig.sampSize/sizeof(float)) {
+        if(hset_alig->mInputVectorSize != header_alig.sampSize/sizeof(float)) {
           Error("Vector size [%d] in '%s' is incompatible with alignment HMM set [%d]",
-                header_alig.sampSize/sizeof(float), file_name->physical, hset_alig->in_vec_size);
+                header_alig.sampSize/sizeof(float), file_name->physical, hset_alig->mInputVectorSize);
         }
-        if(nFrames != header_alig.nSamples - hset_alig->totalDelay) {
-          if(hset_alig->totalDelay != hset.totalDelay) {
+        if(nFrames != header_alig.nSamples - hset_alig->mTotalDelay) {
+          if(hset_alig->mTotalDelay != hset.mTotalDelay) {
             printf("HPARM1 frames: %d+%ld+%d, alignment model delay: %d\n"
                    "HPARM2 frames: %d+%ld+%d, source model delay: %d\n",
                    startFrmExt_alig, header_alig.nSamples-startFrmExt_alig-endFrmExt_alig,
-                   endFrmExt_alig, hset_alig->totalDelay,
+                   endFrmExt_alig, hset_alig->mTotalDelay,
                    startFrmExt, header.nSamples-startFrmExt-endFrmExt,
-                   endFrmExt, hset.totalDelay);
+                   endFrmExt, hset.mTotalDelay);
           }
           Error("Mismatch in number of frames in single pass re-estimation "
                 "feature file pair: '%s' <-> '%s'%s",
                 file_name->next->physical, file_name->physical,
-                hset_alig->totalDelay != hset.totalDelay ?
+                hset_alig->mTotalDelay != hset.mTotalDelay ?
                 ". Consider different delays of alignment/source HMM set!":"");
         }
       } else {
@@ -560,7 +582,7 @@ int main(int argc, char *argv[]) {
           labels = ReadLabels(ilfp, dictionary ? &dictHash : &phoneHash,
                                     dictionary ? UL_ERROR : UL_INSERT, in_lbl_fmt,
                                     header.sampPeriod, label_file, src_mlf, NULL);
-          node = MakeNetworkFromLabels(labels, dictionary ? NT_Word : NT_Phone);
+          node = MakeNetworkFromLabels(labels, dictionary ? NT : NT_Phone);
           ReleaseLabels(labels);
         } else if(in_transc_fmt == TF_STK) {
           node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash, 0, in_lbl_fmt,
@@ -640,26 +662,38 @@ int main(int argc, char *argv[]) {
       TraceLog("Total log posterior: %e", totLogPosterior);
     }
   }
+  
+  printf("Before WriteHMMStats...\n");
+  
   if(stat_file) WriteHMMStats(stat_file, &hset);
 
+  printf("After WriteHMMStats...\n");
+  
+  printf("Before DistributeMacroOccurances...\n");
   if(parallel_mode != 0) DistributeMacroOccurances(&hset);
+  printf("After DistributeMacroOccurances...\n");
 
-  if(parallel_mode > 0 || update_mode & UM_DUMP) {
+  if(parallel_mode > 0 || update_mode & UM_DUMP) 
+  {  
     char accfn[32];
     snprintf(accfn, sizeof(accfn)-1, "SER%d.acc", HIGHER_OF(parallel_mode, 0));
+    printf("Before WriteAccums...\n");
     WriteAccums(accfn, trg_hmm_dir, &hset, totFrames, totLogLike);
+    printf("After WriteAccums...\n");
   }
-  if(parallel_mode <= 0 && update_mode & UM_UPDATE) {
-    Macro *macro = FindMacro(&hset.variance_hash, "varFloor1");
+  if(parallel_mode <= 0 && update_mode & UM_UPDATE) 
+  {
+    Macro *macro = FindMacro(&hset.mVarianceHash, "varFloor1");
 
-    if(macro != NULL || (float) min_variance > 0.0) {
-      Variance *tmpvar = macro ? (Variance *) macro->data : NULL;
-//      assert(!tmpvar || hset.in_vec_size == tmpvar->vec_size);
+    if(macro != NULL || (float) min_variance > 0.0) 
+    {
+      Variance *tmpvar = macro ? (Variance *) macro->mpData : NULL;
+//      assert(!tmpvar || hset.mInputVectorSize == tmpvar->vec_size);
 
-      hset.varFloor = (Variance *) malloc(sizeof(Variance)+((tmpvar ? tmpvar->vec_size : hset.in_vec_size)-1)*sizeof(FLOAT));
+      hset.varFloor = (Variance *) malloc(sizeof(Variance)+((tmpvar ? tmpvar->vec_size : hset.mInputVectorSize)-1)*sizeof(FLOAT));
       if(hset.varFloor == NULL) Error("Insufficient memory");
 
-      hset.varFloor->vec_size = tmpvar ? tmpvar->vec_size : hset.in_vec_size;
+      hset.varFloor->vec_size = tmpvar ? tmpvar->vec_size : hset.mInputVectorSize;
 
       for(i = 0; i < hset.varFloor->vec_size; i++) {
         if(macro) {
@@ -670,15 +704,18 @@ int main(int argc, char *argv[]) {
         }
       }
     }
-    // Required by WriteXformStatsAndRunCommands and UpdateHMMSetFromAccums
-    ScanHMMSet(&hset, mtm_mean|mtm_variance, NULL, NormalizeStatsForXform, 0);
+    
+    printf("Before ScanHMMSet...\n");
+    // Required by WriteXFormStatsAndRunCommands and UpdateHMMSetFromAccums
+    ScanHMMSet(&hset, mtm_mean|mtm_variance, NULL, NormalizeStatsForXForm, 0);
+    printf("After ScanHMMSet...\n");
 
     if(hset.updateMask & UM_XFSTATS) {
-      WriteXformStatsAndRunCommands(trg_hmm_dir, xfStatsBin, &hset);
+      WriteXFormStatsAndRunCommands(trg_hmm_dir, xfStatsBin, &hset);
     }
     if(hset.updateMask != UM_XFSTATS) {
       if(hset.updateMask & UM_XFORM) {
-        ReadXformStats(trg_hmm_dir, xfStatsBin, &hset);
+        ReadXFormStats(trg_hmm_dir, xfStatsBin, &hset);
       }
       UpdateHMMSetFromAccums(trg_hmm_dir, &hset);
       WriteHMMSet(trg_mmf, trg_hmm_dir, trg_hmm_ext, hmms_binary, &hset);

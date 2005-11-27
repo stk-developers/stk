@@ -267,12 +267,12 @@ int main(int argc, char *argv[]) {
       AlingTranscriptions(&reclabels, reflabels, NULL);
 
       for(tlptr=reclabels; tlptr!=NULL; tlptr=tlptr->next) {
-        if(tlptr->nextLevel->name != tlptr->name) err = 1;
+        if(tlptr->nextLevel->mpName != tlptr->mpName) err = 1;
 
-        if(!tlptr->nextLevel->name) ins++;
+        if(!tlptr->nextLevel->mpName) ins++;
         else {
-          if(!tlptr->name) del++;
-          else if(tlptr->nextLevel->name != tlptr->name) sub++;
+          if(!tlptr->mpName) del++;
+          else if(tlptr->nextLevel->mpName != tlptr->mpName) sub++;
           tot++;
         }
       }
@@ -288,8 +288,8 @@ int main(int argc, char *argv[]) {
           fputs(rec ? "\n REC:" : "\n LAB:", stdout);
           for(reclptr=reclabels; reclptr!=NULL; reclptr=reclptr->next) {
             Label *reflptr = reclptr->nextLevel;
-            char *reclstr = (char*) (reclptr->name ? reclptr->name : "");
-            char *reflstr = (char*) (reflptr->name ? reflptr->name : "");
+            char *reclstr = (char*) (reclptr->mpName ? reclptr->mpName : "");
+            char *reflstr = (char*) (reflptr->mpName ? reflptr->mpName : "");
             int lablen = HIGHER_OF(strlen(reclstr), strlen(reflstr));
 
             printf(" %-*s", lablen, rec ? reclstr: reflstr);
@@ -330,7 +330,7 @@ int main(int argc, char *argv[]) {
         for(tlptr2 = tlptr;
             tlptr2 && ((tlptr2->start+tlptr2->stop)/2) <= ltab[i]->stop;
             tlptr2 = tlptr2->next) {
-          if(ltab[i]->name == tlptr2->name) {
+          if(ltab[i]->mpName == tlptr2->mpName) {
             kwd_tab[nkwds].is_hit = 1;
             break;
           }

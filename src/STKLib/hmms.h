@@ -199,7 +199,7 @@
     bool                      mAllocAccums;
     int                       mTotalDelay;
     int                       allMixuresUpdatableFromStatAccums;
-    bool                      isHTKCopatible; // Models use no extension with respecto to HTK
+    bool                      mIsHTKCopatible; // Models use no extension with respecto to HTK
     
     KeywordID                 outPDF_kind;
     KeywordID                 dur_kind;
@@ -254,7 +254,7 @@
     size_t                    mNStates;
     Transition *              mpTransition;
     State **                  mpState;
-    State      *              state[1];
+    State *                   state[1];
     
   public:
     /// Constructor
@@ -376,12 +376,13 @@
   };
 
 
-  class XFormStatCache {
+  class XFormStatCache 
+  {
   public:
-    XFormStatCache *upperLevelStats;
-    XForm          *xform;
-    int            norm;
-    FLOAT          *stats;
+    XFormStatCache *        upperLevelStats;
+    XForm *                 xform;
+    int                     norm;
+    FLOAT *                 stats;
   };
 
   class XFormInstance : public MacroData 
@@ -402,7 +403,8 @@
     //stackSize * (xform ? xform->out_size : hmm_set->mInputVectorSize)
   };
 
-  typedef enum {
+  typedef enum 
+  {
     XT_LINEAR,
     XT_COPY,
     XT_BIAS,
@@ -415,24 +417,24 @@
   class XForm : public MacroData 
   {
   public:
-    XFormType xform_type;
-    int in_size;
-    int out_size;
-    int memorySize;
-    int delay;
+    XFormType           xform_type;
+    int                 in_size;
+    int                 out_size;
+    int                 memorySize;
+    int                 delay;
   };
 
   class CompositeXForm : public XForm 
   {
   public:
-    int   nlayers;
+    int                 mNLayers;
     
     struct
     {
-      FLOAT *out_vec;
-      int   nblocks;
-      XForm **block;
-    } layer[1];
+      FLOAT *           out_vec;
+      int               nblocks;
+      XForm **          block;
+    }           layer[1];
   };
   
   class LinearXForm : public XForm 

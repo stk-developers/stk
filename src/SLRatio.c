@@ -45,7 +45,7 @@ LRTrace *MakeLRTraceTable(Network *net, int *nWords, Token **filler_end)
   *nWords = 0;
 
   for(node=net->first; node != NULL; node = node->next) {
-    if(node->type == (NT_Word | NT_Sticky) && node->pronun == NULL) break;
+    if(node->type == (NT | NT_Sticky) && node->pronun == NULL) break;
   }
   if(node == NULL) {
     Error("Network contains no null node with flag=F (reference model end)");
@@ -53,7 +53,7 @@ LRTrace *MakeLRTraceTable(Network *net, int *nWords, Token **filler_end)
   *filler_end = node->exitToken;
 
   for(node=net->first; node != NULL; node = node->next) {
-    if(node->type == (NT_Word | NT_Sticky) && node->pronun != NULL) ++*nWords;
+    if(node->type == (NT | NT_Sticky) && node->pronun != NULL) ++*nWords;
   }
   if(*nWords == 0) {
     Error("Network contains no word nodes with flag=K, (keyword model end)");
@@ -62,7 +62,7 @@ LRTrace *MakeLRTraceTable(Network *net, int *nWords, Token **filler_end)
     Error("Insufficient memory");
   }
   for(i = 0, node=net->first; node != NULL; node = node->next) {
-    if(node->type == (NT_Word | NT_Sticky) && node->pronun != NULL) {
+    if(node->type == (NT | NT_Sticky) && node->pronun != NULL) {
       lrt[i].wordEnd = node;
       i++;
     }
@@ -79,7 +79,7 @@ void PutCandidateToLabels(LRTrace *lrt, FLOAT scoreThreshold, FILE *lfp,
      Label label = init_label;
      label.start = lrt->candidateStartTime;
      label.stop  = lrt->candidateEndTime;
-     label.name  = lrt->wordEnd->pronun->word->name;
+     label.mpName  = lrt->wordEnd->pronun->word->mpName;
      label.score = lrt->candidateLR;
 
      WriteLabels(lfp, &label, out_lbl_fmt, sampPeriod, label_file, out_MLF);
@@ -203,7 +203,7 @@ char *optionStr =
 
 int main(int argc, char *argv[]) {
   HTK_Header header;
-  HMMSet hset;
+  ModelSet hset;
   Network net;
   FILE *sfp, *lfp = NULL, *ilfp = NULL;
   FLOAT  *obsMx;
@@ -280,7 +280,8 @@ int main(int argc, char *argv[]) {
 
   if(argc == 1) usage(argv[0]);
 
-  InitHMMSet(&hset, 0);
+  //InitHMMSet(&hset, 0);
+  hset.Init();
 
   if(!my_hcreate_r(100,  &dictHash)
   || !my_hcreate_r(100,  &phoneHash)
@@ -388,7 +389,7 @@ int main(int argc, char *argv[]) {
     my_fclose(sfp);
   }
   for(mmf=strtok(mmf, ","); mmf != NULL; mmf=strtok(NULL, ",")) {
-    ReadHMMSet(mmf, &hset, NULL);
+    hset.ParseMmf(mmf, NULL);
   }
   if(hmm_list != NULL) ReadHMMList(&hset, hmm_list, hmm_dir, hmm_ext);
   nonCDphHash = MakeCIPhoneHash(&hset);
@@ -432,9 +433,9 @@ int main(int argc, char *argv[]) {
                             derivOrder, derivWinLengths, &header,
                             cmn_path, cvn_path, cvg_file, &rhfbuff);
 
-    if(hset.in_vec_size != header.sampSize / sizeof(float)) {
+    if(hset.mInputVectorSize != header.sampSize / sizeof(float)) {
       Error("Vector size [%d] in '%s' is incompatible with HMM set [%d]",
-            header.sampSize/sizeof(float), file_name->physical, hset.in_vec_size);
+            header.sampSize/sizeof(float), file_name->physical, hset.mInputVectorSize);
     }
     if(!network_file) {
       Node *node = NULL;
@@ -482,12 +483,12 @@ int main(int argc, char *argv[]) {
     if(trace_flag & 2) {
       printf("Node# %13s", "Filler");
       for(j = 0; j < nWords; j++) {
-        printf(" %13s", lrt[j].wordEnd->pronun->word->name);
+        printf(" %13s", lrt[j].wordEnd->pronun->word->mpName);
       }
       puts("");
     }
     for(i = 0; i < header.nSamples; i++) {
-      ViterbiStep(&net, obsMx + i * hset.in_vec_size);
+      ViterbiStep(&net, obsMx + i * hset.mInputVectorSize);
 
       if(trace_flag & 2) {
         printf("      %13e", filler_end->like);
@@ -540,7 +541,7 @@ int main(int argc, char *argv[]) {
     CloseOutputLabelFile(lfp, out_MLF);
 
     if(trace_flag & 1) {
-      TraceLog("[%d frames]", header.nSamples - hset.totalDelay);
+      TraceLog("[%d frames]", header.nSamples - hset.mTotalDelay);
     }
     if(!network_file) {
       ReleaseNetwork(&net);

@@ -104,84 +104,97 @@ char *optionStr =
 " -V n   PRINTVERSION=TRUE"
 " -X r   SOURCETRANSCEXT";
 
-int main(int argc, char *argv[]) {
-  HTK_Header header;
-  HMMSet hset;
-  Network net;
-  FILE *sfp, *lfp = NULL, *ilfp = NULL;
-  FLOAT  *obsMx;
-  FLOAT like;
-  int i, fcnt = 0;
-  Label *labels;
-  char line[1024];
-  char label_file[1024];
-  const char *cchrptr;
-  struct my_hsearch_data nonCDphHash, phoneHash, dictHash, cfgHash;
+int main(int argc, char *argv[]) 
+{
+  HTK_Header                    header;
+  ModelSet                      hset;
+  Network                       net;
+  FILE *                        sfp;
+  FILE *                        lfp = NULL;
+  FILE *                        ilfp = NULL;
+  FLOAT *                       obsMx;
+  FLOAT                         like;
+  int                           i;
+  int                           fcnt = 0;
+  Label *                       labels;
+  char                          line[1024];
+  char                          label_file[1024];
+  const char *                  cchrptr;
+  int                           nfeature_files = 0;
+  
+  struct my_hsearch_data        nonCDphHash;
+  struct my_hsearch_data        phoneHash;
+  struct my_hsearch_data        dictHash;
+  struct my_hsearch_data        cfgHash;
+  
+  FileListElem *                feature_files = NULL;
+  FileListElem *                file_name = NULL;
+  FileListElem **               last_file = &feature_files;
+  
+  int                           alignment = (Alignment) WORD_ALIGNMENT;
 
-  FileListElem *feature_files = NULL;
-  int nfeature_files = 0;
-  FileListElem *file_name = NULL;
-  FileListElem **last_file = &feature_files;
-
-  int alignment = (Alignment) WORD_ALIGNMENT;
-
-  double word_penalty;
-  double model_penalty;
-  double grammar_scale;
-  double transp_scale;
-  double outprb_scale;
-  double pronun_scale;
-  double occprb_scale;
-  double state_pruning;
-  double stprn_step;
-  double stprn_limit;
-//double word_pruning;
-  const char *hmm_dir;
-  const char *hmm_ext;
-  const char *out_lbl_dir;
-  const char *out_lbl_ext;
-  const char *in_lbl_dir;
-  const char *in_lbl_ext;
-  const char *out_MLF;
-  const char *in_MLF;
-  const char *network_file;
-  const char *hmm_list;
-  const char *dictionary;
-  char *script;
-  char *mmf;
-  const char *label_filter;
-  const char *net_filter;
-  const char *label_ofilter;
-  const char *net_ofilter;
-        char *cmn_path;
-        char *cmn_file;
-  const char *cmn_mask;
-        char *cvn_path;
-        char *cvn_file;
-  const char *cvn_mask;
-  const char *cvg_file;
-  int  trace_flag;
-  int  targetKind;
-  int  derivOrder;
-  int  *derivWinLengths;
-  int startFrmExt;
-  int endFrmExt;
-  bool baum_welch;
-  bool swap_features;
-  bool htk_compat;
+  double                        word_penalty;
+  double                        model_penalty;
+  double                        grammar_scale;
+  double                        transp_scale;
+  double                        outprb_scale;
+  double                        pronun_scale;
+  double                        occprb_scale;
+  double                        state_pruning;
+  double                        stprn_step;
+  double                        stprn_limit;  
+//double  word_pruning;
+         
+  const  char *                 hmm_dir;
+  const  char *                 hmm_ext;
+  const  char *                 out_lbl_dir;
+  const char *                  out_lbl_ext;
+  const char *                  in_lbl_dir;
+  const char *                  in_lbl_ext;
+  const char *                  out_MLF;
+  const char *                  in_MLF;
+  const char *                  network_file;
+  const char *                  hmm_list;
+  const char *                  dictionary;
+  char *                        script;
+  char *                        mmf;
+  const char *                  label_filter;
+  const char *                  net_filter;
+  const char *                  label_ofilter;
+  const char *                  net_ofilter;
+        char *                  cmn_path;
+        char *                  cmn_file;
+  const char *                  cmn_mask;
+        char *                  cvn_path;
+        char *                  cvn_file;
+  const char *                  cvn_mask;
+  const char *                  cvg_file;
+  int                           trace_flag;
+  int                           targetKind;
+  int                           derivOrder;
+  int  *                        derivWinLengths;
+  int                           startFrmExt;
+  int                           endFrmExt;
+  bool                          baum_welch;
+  bool                          swap_features;
+  bool                          htk_compat;
   enum TranscriptionFormat {TF_HTK, TF_STK} in_transc_fmt, out_transc_fmt;
-  int  notInDictAction = WORD_NOT_IN_DIC_UNSET;
-  RHFBuffer rhfbuff                    = {0};
-  ExpansionOptions expOptions          = {0};
-  STKNetworkOutputFormat in_net_fmt    = {0};
-  STKNetworkOutputFormat out_net_fmt   = {0};
-  LabelFormat out_lbl_fmt              = {0};
-  LabelFormat in_lbl_fmt               = {0};
+  int                           notInDictAction = WORD_NOT_IN_DIC_UNSET;
+  
+  RHFBuffer                     rhfbuff     = {0};
+  ExpansionOptions              expOptions  = {0};
+  STKNetworkOutputFormat        in_net_fmt  = {0};
+  STKNetworkOutputFormat        out_net_fmt = {0};
+  LabelFormat                   out_lbl_fmt = {0};
+  LabelFormat                   in_lbl_fmt  = {0};
+  
+  
   in_lbl_fmt.TIMES_OFF = 1;
 
   if(argc == 1) usage(argv[0]);
 
-  InitHMMSet(&hset, 0);
+  //InitHMMSet(&hset, 0);
+  hset.Init();
 
   if(!my_hcreate_r(100,  &dictHash)
   || !my_hcreate_r(100,  &phoneHash)
@@ -196,7 +209,7 @@ int main(int argc, char *argv[]) {
     if(argc == i) Error("HMM list file name expected");
     InsertConfigParam(&cfgHash, SNAME":SOURCEHMMLIST",    argv[i++], '-');
   }
-  for(; i < argc; i++) {
+ for(; i < argc; i++) {
     last_file = AddFileElem(last_file, argv[i]);
     nfeature_files++;
   }
@@ -336,7 +349,7 @@ int main(int argc, char *argv[]) {
     my_fclose(sfp);
   }
   for(mmf=strtok(mmf, ","); mmf != NULL; mmf=strtok(NULL, ",")) {
-    ReadHMMSet(mmf, &hset, NULL);
+    hset.ParseMmf(mmf, NULL);
   }
   if(hmm_list != NULL) ReadHMMList(&hset, hmm_list, hmm_dir, hmm_ext);
   nonCDphHash = MakeCIPhoneHash(&hset);
@@ -386,8 +399,10 @@ int main(int argc, char *argv[]) {
       TraceLog("Processing file %d/%d '%s'", ++fcnt,
                  nfeature_files,file_name->physical);
     }
+    
     if(cmn_mask) process_mask(file_name->logical, cmn_mask, cmn_file);
     if(cvn_mask) process_mask(file_name->logical, cvn_mask, cvn_file);
+    
     obsMx = ReadHTKFeatures(file_name->physical, swap_features,
                             startFrmExt, endFrmExt, targetKind,
                             derivOrder, derivWinLengths, &header,
@@ -400,11 +415,13 @@ int main(int argc, char *argv[]) {
     fclose(lfp);
     exit(0); */
 
-    if(hset.in_vec_size != header.sampSize / sizeof(float)) {
+    if(hset.mInputVectorSize != static_cast<int>(header.sampSize / sizeof(float))) {
       Error("Vector size [%d] in '%s' is incompatible with HMM set [%d]",
-            header.sampSize/sizeof(float), file_name->physical, hset.in_vec_size);
+            header.sampSize/sizeof(float), file_name->physical, hset.mInputVectorSize);
     }
-    if(!network_file) {
+    
+    if(!network_file) 
+    {
       Node *node = NULL;
       strcpy(label_file, file_name->logical);
       ilfp = OpenInputLabelFile(label_file, in_lbl_dir,
@@ -416,7 +433,7 @@ int main(int argc, char *argv[]) {
         labels = ReadLabels(ilfp, dictionary ? &dictHash : &phoneHash,
                                   dictionary ? UL_ERROR : UL_INSERT, in_lbl_fmt,
                                   header.sampPeriod, label_file, in_MLF, NULL);
-        node = MakeNetworkFromLabels(labels, dictionary ? NT_Word : NT_Phone);
+        node = MakeNetworkFromLabels(labels, dictionary ? NT : NT_Phone);
         ReleaseLabels(labels);
       } else if(in_transc_fmt == TF_STK) {
         node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash, notInDictAction,
@@ -451,7 +468,7 @@ int main(int argc, char *argv[]) {
       net.PassTokenInModel   = baum_welch ? &PassTokenSum : &PassTokenMax;
 
       for(i = 0; i < header.nSamples; i++) {
-        ViterbiStep(&net, obsMx + i * hset.in_vec_size);
+        ViterbiStep(&net, obsMx + i * hset.mInputVectorSize);
       }
       like = ViterbiDone(&net, &labels);
 
@@ -468,10 +485,10 @@ int main(int argc, char *argv[]) {
     }
     if(trace_flag & 1 && labels) {
       Label *label;
-      int nFrames = header.nSamples - hset.totalDelay;
+      int nFrames = header.nSamples - hset.mTotalDelay;
       for(label = labels; label->nextLevel != NULL; label = label->nextLevel);
       for(; label != NULL; label = label->next) {
-        fprintf(stdout, "%s ", label->name);
+        fprintf(stdout, "%s ", label->mpName);
       }
       TraceLog(" ==  [%d frames] %f", nFrames, like / nFrames);
     }
@@ -484,7 +501,7 @@ int main(int argc, char *argv[]) {
     } else {
       Node *node = MakeNetworkFromLabels(labels,
                                          alignment & (MODEL_ALIGNMENT|STATE_ALIGNMENT)
-                                         ? NT_Model : NT_Word);
+                                         ? NT_Model : NT);
       WriteSTKNetwork(lfp, node, out_net_fmt, header.sampPeriod, label_file, out_MLF);
       FreeNetwork(node);
     }
@@ -503,10 +520,14 @@ int main(int argc, char *argv[]) {
   my_hdestroy_r(&phoneHash,   1);
   my_hdestroy_r(&nonCDphHash, 0);
   FreeDictionary(&dictHash);
-  for(i = 0; i < cfgHash.nentries; i++) free(cfgHash.entry[i]->data);
+  
+  for (unsigned int i = 0; i < cfgHash.nentries; i++) 
+    free(cfgHash.entry[i]->data);
+  
   my_hdestroy_r(&cfgHash, 1);
 
-  while(feature_files) {
+  while(feature_files) 
+  {
     file_name     = feature_files;
     feature_files = feature_files->next;
     free(file_name);
