@@ -387,18 +387,19 @@
   class XFormInstance : public MacroData 
   {
   public:
-    XFormInstance *input;
-    XForm *xform;
-    int time;
-    XFormInstance  *next; // Chain of all instances
-    XFormStatCache *xformStatCache;
-    int nxformStatCaches;
-    int out_size;
-    int statCacheTime;
-    char *memory;
-    int totalDelay;
+    XFormInstance *       input;
+    XForm *               xform;
+    int                   time;
+    XFormInstance  *      next; // Chain of all instances
+    XFormStatCache *      xformStatCache;
+    int                   nxformStatCaches;
+    int                   out_size;
+    int                   statCacheTime;
+    char *                memory;
+    int                   mTotalDelay;
     
-    FLOAT out_vec[1]; //stackSize * (xform ? xform->out_size : hmm_set->mInputVectorSize)
+    FLOAT                 out_vec[1]; 
+    //stackSize * (xform ? xform->out_size : hmm_set->mInputVectorSize)
   };
 
   typedef enum {

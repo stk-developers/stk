@@ -1468,8 +1468,8 @@ FLOAT MCEReest(Network *net, FLOAT *obsMx, FLOAT *obsMx2, int nFrames, FLOAT wei
 //  FLOAT updateDir;
   int i, j, k;
   int t;
-  HMMSet *hmmsAlig = net->hmmSet;
-  HMMSet *hmmsUpdt = net->hmmSetToUpdate;
+  ModelSet *hmmsAlig = net->hmmSet;
+  ModelSet *hmmsUpdt = net->hmmSetToUpdate;
   Node *node;
 
   net->accumType = AT_ML;
@@ -1479,16 +1479,16 @@ FLOAT MCEReest(Network *net, FLOAT *obsMx, FLOAT *obsMx2, int nFrames, FLOAT wei
   net->alignment          = NO_ALIGNMENT;
 
   net->SearchPaths        = Network::SP_TrueOnly;
-  ResetXformInstances(net->hmmSet);
+  ResetXFormInstances(net->hmmSet);
 
   net->time = 0; // Must not be set to -net->hmmSet->totalDelay yet
                  // otherwise token cannot enter first model node
                  // with start set to 0
   TokenPropagationInit(net);
-  net->time = -net->hmmSet->totalDelay;
+  net->time = -net->hmmSet->mTotalDelay;
 
-  for(t = 0; t < nFrames+hmmsAlig->totalDelay; t++) {
-    ViterbiStep(net, obsMx + hmmsAlig->in_vec_size * t);
+  for(t = 0; t < nFrames+hmmsAlig->mTotalDelay; t++) {
+    ViterbiStep(net, obsMx + hmmsAlig->mInputVectorSize * t);
   }
 
   TP = net->last->exitToken->like;
@@ -1522,28 +1522,28 @@ printf("weight: %g\n", F);
     }
   }
 
-  ResetXformInstances(hmmsAlig);
+  ResetXFormInstances(hmmsAlig);
 
   if(hmmsAlig != hmmsUpdt) {
-    ResetXformInstances(hmmsUpdt);
+    ResetXFormInstances(hmmsUpdt);
   }
 
-  for(i = 0; i < hmmsAlig->totalDelay; i++) {
-    UpdateStacks(hmmsAlig, obsMx+hmmsAlig->in_vec_size*i,
-                 i-hmmsAlig->totalDelay, FORWARD);
+  for(i = 0; i < hmmsAlig->mTotalDelay; i++) {
+    UpdateStacks(hmmsAlig, obsMx+hmmsAlig->mInputVectorSize*i,
+                 i-hmmsAlig->mTotalDelay, FORWARD);
   }
 
   if(hmmsAlig != hmmsUpdt) {
-    for(i = 0; i < hmmsUpdt->totalDelay; i++) {
-      UpdateStacks(hmmsUpdt, obsMx2+hmmsUpdt->in_vec_size*i,
-                   i-hmmsUpdt->totalDelay, FORWARD);
+    for(i = 0; i < hmmsUpdt->mTotalDelay; i++) {
+      UpdateStacks(hmmsUpdt, obsMx2+hmmsUpdt->mInputVectorSize*i,
+                   i-hmmsUpdt->mTotalDelay, FORWARD);
     }
   }
 
 
   // net->mixPCache might be used to cache likelihoods of mixtures of target
   // models. Reallocate the cache to fit mixtures of both models and reset it.
-  k = HIGHER_OF(hmmsUpdt->nmixtures, hmmsAlig->nmixtures);
+  k = HIGHER_OF(hmmsUpdt->mNMixtures, hmmsAlig->mNMixtures);
   net->mixPCache = (Cache *) realloc(net->mixPCache, k * sizeof(Cache));
   if(net->mixPCache == NULL) Error("Insufficient memory");
 
@@ -1551,8 +1551,8 @@ printf("weight: %g\n", F);
 
 // Update accumulators
   for(net->time = 0; net->time < nFrames; net->time++) {//for every frame
-    FLOAT *obs  =obsMx +hmmsAlig->in_vec_size*(net->time+hmmsAlig->totalDelay);
-    FLOAT *obs2 =obsMx2+hmmsUpdt->in_vec_size*(net->time+hmmsUpdt->totalDelay);
+    FLOAT *obs  =obsMx +hmmsAlig->mInputVectorSize*(net->time+hmmsAlig->mTotalDelay);
+    FLOAT *obs2 =obsMx2+hmmsUpdt->mInputVectorSize*(net->time+hmmsUpdt->mTotalDelay);
     UpdateStacks(hmmsAlig, obs, net->time, FORWARD);
     if(hmmsAlig != hmmsUpdt) {
       UpdateStacks(hmmsUpdt, obs2, net->time, FORWARD);
@@ -1566,7 +1566,7 @@ printf("weight: %g\n", F);
          node->alphaBetaList->time == net->time+1) {
 
         struct AlphaBeta *st;
-        int Nq       = node->hmm->nstates;
+        int Nq       = node->hmm->mNStates;
         st = node->alphaBetaList->state;
 
         for(j = 1; j < Nq - 1; j++) {                   //for every emitting state
@@ -1605,28 +1605,28 @@ printf("weight: %g\n", F);
     }
   }
 
-  ResetXformInstances(hmmsAlig);
+  ResetXFormInstances(hmmsAlig);
 
   if(hmmsAlig != hmmsUpdt) {
-    ResetXformInstances(hmmsUpdt);
+    ResetXFormInstances(hmmsUpdt);
   }
 
-  for(i = 0; i < hmmsAlig->totalDelay; i++) {
-    UpdateStacks(hmmsAlig, obsMx+hmmsAlig->in_vec_size*i,
-                 i-hmmsAlig->totalDelay, FORWARD);
+  for(i = 0; i < hmmsAlig->mTotalDelay; i++) {
+    UpdateStacks(hmmsAlig, obsMx+hmmsAlig->mInputVectorSize*i,
+                 i-hmmsAlig->mTotalDelay, FORWARD);
   }
 
   if(hmmsAlig != hmmsUpdt) {
-    for(i = 0; i < hmmsUpdt->totalDelay; i++) {
-      UpdateStacks(hmmsUpdt, obsMx2+hmmsUpdt->in_vec_size*i,
-                   i-hmmsUpdt->totalDelay, FORWARD);
+    for(i = 0; i < hmmsUpdt->mTotalDelay; i++) {
+      UpdateStacks(hmmsUpdt, obsMx2+hmmsUpdt->mInputVectorSize*i,
+                   i-hmmsUpdt->mTotalDelay, FORWARD);
     }
   }
 
 
   // net->mixPCache might be used to cache likelihoods of mixtures of target
   // models. Reallocate the cache to fit mixtures of both models and reset it.
-  k = HIGHER_OF(hmmsUpdt->nmixtures, hmmsAlig->nmixtures);
+  k = HIGHER_OF(hmmsUpdt->mNMixtures, hmmsAlig->mNMixtures);
   net->mixPCache = (Cache *) realloc(net->mixPCache, k * sizeof(Cache));
   if(net->mixPCache == NULL) Error("Insufficient memory");
 
@@ -1634,8 +1634,8 @@ printf("weight: %g\n", F);
 
 // Update accumulators
   for(net->time = 0; net->time < nFrames; net->time++) {//for every frame
-    FLOAT *obs  =obsMx +hmmsAlig->in_vec_size*(net->time+hmmsAlig->totalDelay);
-    FLOAT *obs2 =obsMx2+hmmsUpdt->in_vec_size*(net->time+hmmsUpdt->totalDelay);
+    FLOAT *obs  =obsMx +hmmsAlig->mInputVectorSize*(net->time+hmmsAlig->mTotalDelay);
+    FLOAT *obs2 =obsMx2+hmmsUpdt->mInputVectorSize*(net->time+hmmsUpdt->mTotalDelay);
     UpdateStacks(hmmsAlig, obs, net->time, FORWARD);
     if(hmmsAlig != hmmsUpdt) {
       UpdateStacks(hmmsUpdt, obs2, net->time, FORWARD);
@@ -1649,9 +1649,9 @@ printf("weight: %g\n", F);
          node->alphaBetaList->time == net->time+1) {
 
         struct AlphaBeta *st;
-        int Nq       = node->hmm->nstates;
-        FLOAT *aq    = node->hmm->        transition->matrix;
-        FLOAT *aqacc = node->hmmToUpdate->transition->matrix + SQR(Nq);
+        int Nq       = node->hmm->mNStates;
+        FLOAT *aq    = node->hmm->        mpTransition->matrix;
+        FLOAT *aqacc = node->hmmToUpdate->mpTransition->matrix + SQR(Nq);
 //        int qt_1 = (net->nNetStates * net->time) + node->estate_id;
 //        int qt = qt_1 + net->nNetStates;
 
@@ -1668,8 +1668,8 @@ printf("weight: %g\n", F);
 
         for(j = 1; j < Nq - 1; j++) {                   //for every emitting state
           if(st[j].alpha + st[j].beta - TP > MIN_LOG_WEGIHT) {
-            FLOAT bjtO =net->outPCache[hmmsAlig->nstates * net->time +
-                                       node->hmm->state[j-1]->state_id].value;
+            FLOAT bjtO =net->outPCache[hmmsAlig->mNStates * net->time +
+                                       node->hmm->state[j-1]->mID].value;
             // ForwardBackward() set net->outPCache to contain out prob. for all frames
 
             assert(node->alphaBetaListReverse->time == net->time);
