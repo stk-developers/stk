@@ -29,35 +29,6 @@
 bool gHtkCompatible = false;
 
 
-void _Error_(const char *func, const char *file, int line, char *msg, ...) {
-  va_list ap;
-  va_start(ap, msg);
-  fflush(stdout);
-  fprintf(stderr, "ERROR (%s:%d) %s: ", file, line, func);
-  vfprintf(stderr, msg, ap);
-  fputc('\n', stderr);
-  va_end(ap);
-  exit(1);
-}
-
-void _Warning_(const char *func, const char *file, int line, char *msg, ...) {
-  va_list ap;
-  va_start(ap, msg);
-  fflush(stdout);
-  fprintf(stderr, "WARNING (%s:%d) %s: ", file, line, func);
-  vfprintf(stderr, msg, ap);
-  fputc('\n', stderr);
-  va_end(ap);
-}
-
-void TraceLog(char *msg, ...) {
-  va_list ap;
-  va_start(ap, msg);
-  fflush(stderr);
-  vfprintf(stdout, msg, ap);
-  fputc('\n', stdout);
-  va_end(ap);
-}
 
 
 static char *parmKindNames[] = {
@@ -279,25 +250,26 @@ void softmax_vec(FLOAT *in, FLOAT *out, int size)
   for(i = 0; i < size; i++) out[i] *= sum;
 }
 
-int ParmKind2Str(int parmKind, char *outstr) {
-
+int ParmKind2Str(int parmKind, char * pOutString) 
+{
   // :KLUDGE: Absolutely no idea what this is...
-  if ((parmKind & 0x003F) >= sizeof(parmKindNames)/sizeof(parmKindNames[0])) {
+  if ((parmKind & 0x003F) >= sizeof(parmKindNames)/sizeof(parmKindNames[0])) 
+  {
     return 0;
   }
 
-  strcpy (outstr, parmKindNames[parmKind & 0x003F]);
+  strcpy(pOutString, parmKindNames[parmKind & 0x003F]);
 
-  if (parmKind & PARAMKIND_E) strcat (outstr, "_E");
-  if (parmKind & PARAMKIND_N) strcat (outstr, "_N");
-  if (parmKind & PARAMKIND_D) strcat (outstr, "_D");
-  if (parmKind & PARAMKIND_A) strcat (outstr, "_A");
-  if (parmKind & PARAMKIND_C) strcat (outstr, "_C");
-  if (parmKind & PARAMKIND_Z) strcat (outstr, "_Z");
-  if (parmKind & PARAMKIND_K) strcat (outstr, "_K");
-  if (parmKind & PARAMKIND_0) strcat (outstr, "_0");
-  if (parmKind & PARAMKIND_V) strcat (outstr, "_V");
-  if (parmKind & PARAMKIND_T) strcat (outstr, "_T");
+  if (parmKind & PARAMKIND_E) strcat(pOutString, "_E");
+  if (parmKind & PARAMKIND_N) strcat(pOutString, "_N");
+  if (parmKind & PARAMKIND_D) strcat(pOutString, "_D");
+  if (parmKind & PARAMKIND_A) strcat(pOutString, "_A");
+  if (parmKind & PARAMKIND_C) strcat(pOutString, "_C");
+  if (parmKind & PARAMKIND_Z) strcat(pOutString, "_Z");
+  if (parmKind & PARAMKIND_K) strcat(pOutString, "_K");
+  if (parmKind & PARAMKIND_0) strcat(pOutString, "_0");
+  if (parmKind & PARAMKIND_V) strcat(pOutString, "_V");
+  if (parmKind & PARAMKIND_T) strcat(pOutString, "_T");
   return 1;
 }
 
@@ -400,9 +372,12 @@ int my_hsearch_r(ENTRY item, ACTION action, ENTRY **ret,
 void my_hdestroy_r(struct my_hsearch_data *tab, int freeKeys)
 {
   unsigned int i;
-
   if(freeKeys) {
-    for(i = 0; i < tab->nentries; i++) free(tab->entry[i]->key);
+    for(i = 0; i < tab->nentries; i++)
+      // :TODO: O. Glembek
+      // There is something wrong here... This free causes SIGABRT
+      // (used valgrind --leak-check=full to analyze)
+      free(tab->entry[i]->key);
   }
   hdestroy_r(&tab->tab);
   free(tab->entry);

@@ -22,7 +22,7 @@ typedef struct _Word Word;
 typedef struct _Pronun Pronun;
 
 struct _Word {
-  char *name;
+  char *mpName;
   Pronun **pronuns;
   int npronunsInDict;  // Number of word pronuns found in dictionary file
   int npronuns;        // Can be higher than npronunsInDict as new empty
@@ -30,9 +30,10 @@ struct _Word {
 };
 
 
-union _Model {
-//    HMM  *hmm;
-    char *name;
+union _Model 
+{
+//    Hmm  *hmm;
+    char *mpName;
 };
 
 struct _Pronun {

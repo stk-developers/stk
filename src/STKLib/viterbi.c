@@ -42,7 +42,7 @@ WLR *firstWLR;
 
 void SortNodes(Network *net);
 
-void PhoneNodesToModelNodes(Node *first, HMMSet *hmms, HMMSet *hmmsToUpdate)
+void PhoneNodesToModelNodes(Node *first, ModelSet *hmms, ModelSet *hmmsToUpdate)
 {
   Node *node;
 
@@ -54,26 +54,26 @@ void PhoneNodesToModelNodes(Node *first, HMMSet *hmms, HMMSet *hmmsToUpdate)
 
       node->type &= ~NT_Phone;
       node->type |= NT_Model;
-      macro = FindMacro(&hmms->hmm_hash, node->name);
+      macro = FindMacro(&hmms->mHmmHash, node->mpName);
       if(macro == NULL) {
-        Error("Model %s not defined in %sHMM set", node->name,
+        Error("Model %s not defined in %sHMM set", node->mpName,
               hmmsToUpdate != hmms ? "alignment " : "");
       }
-      node->hmm = node->hmmToUpdate = (HMM *) macro->data;
+      node->hmm = node->hmmToUpdate = (Hmm *) macro->mpData;
 
       if(hmmsToUpdate != hmms) {
-        macro = FindMacro(&hmmsToUpdate->hmm_hash, node->name);
+        macro = FindMacro(&hmmsToUpdate->mHmmHash, node->mpName);
         if(macro == NULL) {
-          Error("Model %s not defined in HMM set", node->name,
+          Error("Model %s not defined in HMM set", node->mpName,
                 hmmsToUpdate != hmms ? "" : "target ");
         }
-        node->hmmToUpdate = (HMM *) macro->data;
+        node->hmmToUpdate = (Hmm *) macro->mpData;
       }
     }
   }
 }
 
-void InitNetwork(Network *net, Node *first, HMMSet *hmms, HMMSet *hmmsToUpdate) {
+void InitNetwork(Network *net, Node *first, ModelSet *hmms, ModelSet *hmmsToUpdate) {
   Node *node;
   int maxStatesInModel = 0;
   int i;
@@ -90,12 +90,12 @@ void InitNetwork(Network *net, Node *first, HMMSet *hmms, HMMSet *hmmsToUpdate) 
 #endif
     int numOfTokens = 1;
     if(node->type & NT_Model) {
-      numOfTokens = node->hmm->nstates;
-      node->hmmToUpdate->macro->occurances++;
-      if(node->hmm->transition->matrix[numOfTokens - 1] > LOG_MIN) {
+      numOfTokens = node->hmm->mNStates;
+      node->hmmToUpdate->mpMacro->mOccurances++;
+      if(node->hmm->mpTransition->matrix[numOfTokens - 1] > LOG_MIN) {
         node->type |= NT_Tee;
       }
-    } else if(node->type & NT_Word) {
+    } else if(node->type & NT) {
       numOfTokens = 1;
     } else Error("Fatal: Incorect node type");
 
@@ -106,7 +106,7 @@ void InitNetwork(Network *net, Node *first, HMMSet *hmms, HMMSet *hmmsToUpdate) 
     node->estate_id = net->nNetStates;
 
     if(node->type & NT_Model) {
-      int nstates = node->hmm->nstates;
+      int nstates = node->hmm->mNStates;
 
       if(maxStatesInModel < nstates) maxStatesInModel = nstates;
       assert(nstates >= 2); // two non-emiting states
@@ -117,8 +117,8 @@ void InitNetwork(Network *net, Node *first, HMMSet *hmms, HMMSet *hmmsToUpdate) 
   SortNodes(net);
 
   net->auxTokens = (Token *) malloc((maxStatesInModel-1) * sizeof(Token));
-  net->outPCache = (Cache *) malloc(hmms->nstates   * sizeof(Cache));
-  net->mixPCache = (Cache *) malloc(hmms->nmixtures * sizeof(Cache));
+  net->outPCache = (Cache *) malloc(hmms->mNStates   * sizeof(Cache));
+  net->mixPCache = (Cache *) malloc(hmms->mNStates * sizeof(Cache));
 
   if(net->auxTokens == NULL ||
      net->outPCache == NULL || net->mixPCache == NULL) {
@@ -286,11 +286,11 @@ void WriteAlpha(int time, Node *node, int state, Token *token)
      node->alphaBetaListReverse->time != time) {
     int i;
     FWBWR *newrec = (FWBWR*) malloc(sizeof(FWBWR) +
-                           sizeof(newrec->state[0]) * (node->hmm->nstates-1));
+                           sizeof(newrec->state[0]) * (node->hmm->mNStates-1));
     if(newrec == NULL) Error("Insufficient memory");
     newrec->next = node->alphaBetaListReverse;
     newrec->time = time;
-    for(i=0; i<node->hmm->nstates; i++) {
+    for(i=0; i<node->hmm->mNStates; i++) {
       newrec->state[i].alpha = newrec->state[i].beta = LOG_0;
     }
     node->alphaBetaListReverse = newrec;
@@ -568,7 +568,7 @@ void TokenPropagationInit(Network *net)
 //  for(i=0; i < net->nnodes; i++) {
 //  node = &net->nodes[i];
   for(node = net->first; node != NULL; node = node->next) {
-    int numOfTokens = (node->type & NT_Model) ? node->hmm->nstates : 1;
+    int numOfTokens = (node->type & NT_Model) ? node->hmm->mNStates : 1;
 
     for(j=0; j < numOfTokens; j++) {
       node->tokens[j].like = LOG_0;
@@ -582,13 +582,13 @@ void TokenPropagationInit(Network *net)
   }
 
   if(net->outPCache != NULL) {
-    for(i = 0; i < net->hmmSet->nstates; i++) {
+    for(i = 0; i < net->hmmSet->mNStates; i++) {
       net->outPCache[i].time = UNDEF_TIME;
     }
   }
 
   if(net->mixPCache != NULL) {
-    for(i = 0; i < net->hmmSet->nmixtures; i++) {
+    for(i = 0; i < net->hmmSet->mNStates; i++) {
       net->mixPCache[i].time = UNDEF_TIME;
     }
   }
@@ -619,7 +619,7 @@ void TokenPropagationInit(Network *net)
   if(net->collectAlphaBeta && !FORWARD_PASS) {
     for(node = net->first; node != NULL; node = node->next) {
       if(!(node->type & NT_Model)) continue;
-      BackwardPruning(net->time, node, node->hmm->nstates-1);
+      BackwardPruning(net->time, node, node->hmm->mNStates-1);
     }
   }
 
@@ -676,8 +676,8 @@ void TokenPropagationInNetwork(Network *net)
 
         if(!(net->collectAlphaBeta && !FORWARD_PASS && // backward pruning
           BackwardPruning(net->time, node, 0))) {   // after forward pass
-        HMM *hmm = node->hmm;
-        FLOAT transP = hmm->transition->matrix[hmm->nstates - 1];
+        Hmm *hmm = node->hmm;
+        FLOAT transP = hmm->mpTransition->matrix[hmm->mNStates - 1];
   #ifdef TRACE_TOKENS
         printf("Tee model State 0 -> Exit State ");
   #endif
@@ -694,13 +694,13 @@ void TokenPropagationInNetwork(Network *net)
       if(node->type & NT_Model) {
         if(net->collectAlphaBeta) {
           if(FORWARD_PASS) {
-            WriteAlpha(net->time, node, node->hmm->nstates-1, node->exitToken);
+            WriteAlpha(net->time, node, node->hmm->mNStates-1, node->exitToken);
           } else {
             WriteBeta(net->time, node, 0, node->exitToken);
           }
         }
         node->exitToken->like += net->mPenalty;
-      } else if(node->type & NT_Word && node->pronun != NULL) {
+      } else if(node->type & NT && node->pronun != NULL) {
         node->exitToken->like += net->wPenalty +
                                  net->pronScale * node->pronun->prob;
         /*if(node->exitToken->like < net->wordThresh) {
@@ -709,7 +709,7 @@ void TokenPropagationInNetwork(Network *net)
       }
 
       if(node->exitToken->like > net->beamThresh) {
-        if(node->type & NT_Word && node->pronun != NULL &&
+        if(node->type & NT && node->pronun != NULL &&
            net->alignment & WORD_ALIGNMENT) {
           AddWordLinkRecord(node->exitToken, node, -1, net->time);
         } else if(node->type & NT_Model && net->alignment & MODEL_ALIGNMENT) {
@@ -758,8 +758,8 @@ void TokenPropagationInNetwork(Network *net)
     } else {
       for(node = net->activeModels; node != NULL; node = node->nextActiveModel) {
         if(/*!(node->type & NT_Model) ||*/ node->tokens[0].like < LOG_MIN
-          || BackwardPruning(net->time, node, node->hmm->nstates-1)) continue;
-        WriteBeta(net->time, node, node->hmm->nstates-1, &node->tokens[0]);
+          || BackwardPruning(net->time, node, node->hmm->mNStates-1)) continue;
+        WriteBeta(net->time, node, node->hmm->mNStates-1, &node->tokens[0]);
       }
     }
   }
@@ -774,7 +774,7 @@ void TokenPropagationInNetwork(Network *net)
 void TokenPropagationInModels(Network *net, FLOAT *observation)
 {
   Node *node;
-  HMM *hmm;
+  Hmm *hmm;
   int winingToken = 0;
   int i, j, from, to;
 //  int estate_id;
@@ -795,7 +795,7 @@ void TokenPropagationInModels(Network *net, FLOAT *observation)
     if((/*node->start != UNDEF_TIME &&*/node->start >= net->time)
     || (  node->stop  != UNDEF_TIME &&  node->stop  <  net->time)
     || net->SearchPaths == Network::SP_TrueOnly && !(node->type & NT_True)) {
-      for(i = 0; i < hmm->nstates-1; i++) {
+      for(i = 0; i < hmm->mNStates-1; i++) {
         KillToken(&node->tokens[i]);
       }
       DeactivateModel(net, node);
@@ -810,7 +810,7 @@ void TokenPropagationInModels(Network *net, FLOAT *observation)
       node->tokens[0].accuracy = FIL_Add(node->tokens[0].accuracy, fil_lmpa);
     }
 
-    for(i = 0; i < hmm->nstates-1; i++) {
+    for(i = 0; i < hmm->mNStates-1; i++) {
       assert(!IS_ACTIVE(net->auxTokens[i]));
       if(IS_ACTIVE(node->tokens[i])) {
         net->auxTokens[i] = node->tokens[i];
@@ -821,10 +821,10 @@ void TokenPropagationInModels(Network *net, FLOAT *observation)
 
     int keepModelActive = FALSE;
 
-    assert(!IS_ACTIVE(node->tokens[hmm->nstates-1]));
+    assert(!IS_ACTIVE(node->tokens[hmm->mNStates-1]));
 
-    for(j = 1; j < hmm->nstates-1; j++) {
-      state_idx = (FORWARD_PASS ? j : hmm->nstates-1 - j);
+    for(j = 1; j < hmm->mNStates-1; j++) {
+      state_idx = (FORWARD_PASS ? j : hmm->mNStates-1 - j);
 
       if(net->collectAlphaBeta &&
         !FORWARD_PASS &&
@@ -832,15 +832,15 @@ void TokenPropagationInModels(Network *net, FLOAT *observation)
         continue; // backward pruning after forward pass
       }
 
-      for(i = 0; i < hmm->nstates-1; i++) {
-        from = FORWARD_PASS ? i : hmm->nstates-1 - j;
-        to   = FORWARD_PASS ? j : hmm->nstates-1 - i;
+      for(i = 0; i < hmm->mNStates-1; i++) {
+        from = FORWARD_PASS ? i : hmm->mNStates-1 - j;
+        to   = FORWARD_PASS ? j : hmm->mNStates-1 - i;
 
         assert(!IS_ACTIVE(net->auxTokens[i]) || node->isActive);
 
-        if(hmm->transition->matrix[from * hmm->nstates + to] > LOG_MIN &&
+        if(hmm->mpTransition->matrix[from * hmm->mNStates + to] > LOG_MIN &&
           IS_ACTIVE(net->auxTokens[i])) {
-          FLOAT transP = hmm->transition->matrix[from * hmm->nstates + to];
+          FLOAT transP = hmm->mpTransition->matrix[from * hmm->mNStates + to];
 
 #ifdef TRACE_TOKENS
           printf("Model %d State %d -> State %d ",  node->aux, i, j);
@@ -882,7 +882,7 @@ void TokenPropagationInModels(Network *net, FLOAT *observation)
            (winingToken != j || net->alignment & FRAME_ALIGNMENT)) {
            AddWordLinkRecord(&node->tokens[j], node,
                              (FORWARD_PASS ? winingToken
-                                           : hmm->nstates-1 - winingToken)-1,
+                                           : hmm->mNStates-1 - winingToken)-1,
                              net->time-1);
         }
 
@@ -895,26 +895,26 @@ void TokenPropagationInModels(Network *net, FLOAT *observation)
       }
     }
 
-    for(i = 0; i < hmm->nstates-1; i++) {
+    for(i = 0; i < hmm->mNStates-1; i++) {
       KillToken(&net->auxTokens[i]);
     }
 
     if(!keepModelActive) DeactivateModel(net, node);
 
-    state_idx = (FORWARD_PASS ? hmm->nstates - 1 : 0);
-    assert(!IS_ACTIVE(node->tokens[hmm->nstates - 1]));
+    state_idx = (FORWARD_PASS ? hmm->mNStates - 1 : 0);
+    assert(!IS_ACTIVE(node->tokens[hmm->mNStates - 1]));
 
     if(!keepModelActive ||
        (net->collectAlphaBeta && !FORWARD_PASS &&
         BackwardPruning(net->time-1, node, state_idx))) {
       // backward pruning after forward pass
       continue;
-      //KillToken(&node->tokens[hmm->nstates - 1]);
+      //KillToken(&node->tokens[hmm->mNStates - 1]);
     }
 
-    for(i = 1; i < hmm->nstates-1; i++) {
+    for(i = 1; i < hmm->mNStates-1; i++) {
       from = FORWARD_PASS ? i : 0;
-      to   = FORWARD_PASS ? hmm->nstates-1 : hmm->nstates-1 - i;
+      to   = FORWARD_PASS ? hmm->mNStates-1 : hmm->mNStates-1 - i;
 
       if(IS_ACTIVE(node->tokens[i])) {
         if(!net->bestToken || net->bestToken->like < node->tokens[i].like) {
@@ -922,13 +922,13 @@ void TokenPropagationInModels(Network *net, FLOAT *observation)
           net->bestNode  = node;
         }
 
-        if(hmm->transition->matrix[from * hmm->nstates + to] > LOG_MIN) {
-          FLOAT transP = hmm->transition->matrix[from * hmm->nstates + to];
+        if(hmm->mpTransition->matrix[from * hmm->mNStates + to] > LOG_MIN) {
+          FLOAT transP = hmm->mpTransition->matrix[from * hmm->mNStates + to];
 #ifdef TRACE_TOKENS
           printf("Model %d State %d -> Exit State ",  node->aux, i);
 #endif
           if(net->PassTokenInModel(&node->tokens[i],
-                                  &node->tokens[hmm->nstates - 1],
+                                  &node->tokens[hmm->mNStates - 1],
                                   transP * net->tranScale)) {
             winingToken = i;
           }
@@ -936,21 +936,21 @@ void TokenPropagationInModels(Network *net, FLOAT *observation)
       }
     }
 
-    if(IS_ACTIVE(node->tokens[hmm->nstates - 1])) {
+    if(IS_ACTIVE(node->tokens[hmm->mNStates - 1])) {
       if(net->accumType == AT_MPE && !FORWARD_PASS) {
         FloatInLog fil_lmpa =
-          {node->tokens[hmm->nstates - 1].like + log(fabs(node->phoneAccuracy)),
+          {node->tokens[hmm->mNStates - 1].like + log(fabs(node->phoneAccuracy)),
            node->phoneAccuracy < 0};
 
-        node->tokens[hmm->nstates - 1].accuracy =
-          FIL_Add(node->tokens[hmm->nstates - 1].accuracy, fil_lmpa);
+        node->tokens[hmm->mNStates - 1].accuracy =
+          FIL_Add(node->tokens[hmm->mNStates - 1].accuracy, fil_lmpa);
       }
 
   //    ActivateNode(net, node);
       if(net->alignment & STATE_ALIGNMENT) {
-        AddWordLinkRecord(&node->tokens[hmm->nstates - 1], node,
+        AddWordLinkRecord(&node->tokens[hmm->mNStates - 1], node,
                           (FORWARD_PASS ? winingToken :
-                                          hmm->nstates-1 - winingToken-1)-1,
+                                          hmm->mNStates-1 - winingToken-1)-1,
                           net->time);
       }
     }
@@ -976,7 +976,7 @@ void TokenPropagationDone(Network *net)
       continue;
     }
 
-    numOfTokens = node->hmm->nstates;
+    numOfTokens = node->hmm->mNStates;
 
     for(j=0; j < numOfTokens; j++) {
       KillToken(&node->tokens[j]);
@@ -1128,19 +1128,19 @@ FLOAT DiagCGaussianDensity(Mixture *mix, FLOAT  *obs, Network *net)
   FLOAT like = 0.0;
   int j;
 
-  if(net && net->mixPCache[mix->mixture_id].time == net->time) {
-    return net->mixPCache[mix->mixture_id].value;
+  if(net && net->mixPCache[mix->mID].time == net->time) {
+    return net->mixPCache[mix->mID].value;
   }
 
-  for(j = 0; j < mix->mean->vec_size; j++) {
-    like += SQR(obs[j] - mix->mean->vector[j]) * mix->variance->vector[j];
+  for(j = 0; j < mix->mpMean->vec_size; j++) {
+    like += SQR(obs[j] - mix->mpMean->vector[j]) * mix->mpVariance->vector[j];
   }
 
-  like = -0.5 * (mix->g_const + like);
+  like = -0.5 * (mix->mGConst + like);
 
   if(net) {
-    net->mixPCache[mix->mixture_id].time  = net->time;
-    net->mixPCache[mix->mixture_id].value = like;
+    net->mixPCache[mix->mID].time  = net->time;
+    net->mixPCache[mix->mID].value = like;
   }
 
   return like;
@@ -1157,15 +1157,15 @@ FLOAT DiagCGaussianMixtureDensity(State *state, FLOAT *obs, Network *net)
 
   assert(state->outPDF_kind == KID_DiagC);
 
-  if(net && net->outPCache[state->state_id].time == net->time) {
-    return net->outPCache[state->state_id].value;
+  if(net && net->outPCache[state->mID].time == net->time) {
+    return net->outPCache[state->mID].value;
   }
 
   for(i = 0; i < state->num_mixtures; i++) {
     FLOAT glike;
     Mixture *mix = state->mixture[i].estimates;
 
-    obs = XformPass(mix->inputXform, obs,
+    obs = XFormPass(mix->mpInputXForm, obs,
                     net ? net->time : UNDEF_TIME,
                     net ? net->propagDir : FORWARD);
 
@@ -1179,15 +1179,15 @@ FLOAT DiagCGaussianMixtureDensity(State *state, FLOAT *obs, Network *net)
 #endif
 
   if(net) {
-    net->outPCache[state->state_id].time = net->time;
-    net->outPCache[state->state_id].value = like;
+    net->outPCache[state->mID].time = net->time;
+    net->outPCache[state->mID].value = like;
   }
   return like;
 }
 
 FLOAT FromObservationAtStateId(State *state, FLOAT *obs, Network *net)
 {
-  obs = XformPass(net->hmmSet->inputXform, obs,
+  obs = XFormPass(net->hmmSet->mpInputXForm, obs,
                   net ? net->time : UNDEF_TIME,
                   net ? net->propagDir : FORWARD);
   assert(obs != NULL);
@@ -1216,12 +1216,12 @@ Label *GetLabels(Token *token)
     if(wlr->node->type & NT_Model) {
       li = wlr->state_idx >= 0 ? 0 : 1;
       tmp->data = wlr->node->hmm;
-      tmp->name = wlr->node->hmm->macro->name;
+      tmp->mpName = wlr->node->hmm->mpMacro->mpName;
       tmp->nextLevel = level[li+1] ? level[li+1] : level[2];
     } else if(wlr->node->pronun->outSymbol) {
       li = 2;
       tmp->data = wlr->node->pronun->word;
-      tmp->name = wlr->node->pronun->outSymbol;
+      tmp->mpName = wlr->node->pronun->outSymbol;
       tmp->nextLevel = NULL;
     } else {
       free(tmp);
@@ -1237,7 +1237,7 @@ Label *GetLabels(Token *token)
           Error("Insufficient memory");
         }
         tmp2->nextLevel = level[li];
-        tmp2->name  = level[li]->name;
+        tmp2->mpName  = level[li]->mpName;
         tmp2->score = level[li]->score;
         tmp2->stop  = level[li]->stop;
         tmp2->id    = level[li]->id;
@@ -1267,13 +1267,13 @@ void ViterbiInit(Network *net)
   net->PassTokenInModel   = &PassTokenMax;
   net->PassTokenInNetwork = &PassTokenMax;
   net->propagDir = FORWARD;
-  ResetXformInstances(net->hmmSet);
+  ResetXFormInstances(net->hmmSet);
 
-  net->time = 0; // Must not be set to -net->hmmSet->totalDelay yet
+  net->time = 0; // Must not be set to -net->hmmSet->mTotalDelay yet
                  // otherwise token cannot enter first model node
                  // with start set to 0
   TokenPropagationInit(net);
-  net->time = -net->hmmSet->totalDelay;
+  net->time = -net->hmmSet->mTotalDelay;
 }
 
 #ifdef DEBUG_MSGS
@@ -1329,7 +1329,7 @@ FLOAT ViterbiDone(Network *net, Label **labels)
 }
 
 
-/*void BaumWelchInit(HMMSet *hmms) {
+/*void BaumWelchInit(ModelSet *hmms) {
   ResetAccumsForHMMSet(hmms);
 }*/
 
@@ -1343,15 +1343,15 @@ struct FWBWRet ForwardBackward(Network *net, FLOAT *obsMx, int nFrames)
   int i;
   Cache *outPCache;
   struct FWBWRet ret;
-  HMMSet *hmms = net->hmmSet;
+  ModelSet *hmms = net->hmmSet;
 
-  outPCache = (Cache *) malloc(nFrames * hmms->nstates * sizeof(Cache));
+  outPCache = (Cache *) malloc(nFrames * hmms->mNStates * sizeof(Cache));
 
   if(outPCache == NULL) {
     Error("Insufficient memory");
   }
 
-  for(i = 0; i < nFrames * hmms->nstates; i++) {
+  for(i = 0; i < nFrames * hmms->mNStates; i++) {
     outPCache[i].time  = UNDEF_TIME;
     outPCache[i].value = LOG_0;
   }
@@ -1367,24 +1367,24 @@ struct FWBWRet ForwardBackward(Network *net, FLOAT *obsMx, int nFrames)
   //Forward Pass
   net->propagDir = FORWARD;
   net->collectAlphaBeta = 1;
-  net->time = -hmms->totalDelay;
+  net->time = -hmms->mTotalDelay;
 
-  ResetXformInstances(net->hmmSet);
-  for(i = 0; i < hmms->totalDelay; i++) {
+  ResetXFormInstances(net->hmmSet);
+  for(i = 0; i < hmms->mTotalDelay; i++) {
     net->time++;
-    UpdateStacks(hmms, obsMx + hmms->in_vec_size * i, net->time, FORWARD);
+    UpdateStacks(hmms, obsMx + hmms->mInputVectorSize * i, net->time, FORWARD);
   }
 
   TokenPropagationInit(net);
 
-  for(i = hmms->totalDelay; i < nFrames+hmms->totalDelay; i++) {
+  for(i = hmms->mTotalDelay; i < nFrames+hmms->mTotalDelay; i++) {
     net->time++;
-    net->outPCache = outPCache + hmms->nstates * (net->time-1);
+    net->outPCache = outPCache + hmms->mNStates * (net->time-1);
 
-    UpdateStacks(net->hmmSet, obsMx + hmms->in_vec_size * i,
+    UpdateStacks(net->hmmSet, obsMx + hmms->mInputVectorSize * i,
                  net->time, net->propagDir);
 
-    TokenPropagationInModels(net,  obsMx + hmms->in_vec_size * i);
+    TokenPropagationInModels(net,  obsMx + hmms->mInputVectorSize * i);
     TokenPropagationInNetwork(net);
   }
 
@@ -1401,11 +1401,11 @@ struct FWBWRet ForwardBackward(Network *net, FLOAT *obsMx, int nFrames)
 
   //Backward Pass
   net->propagDir = BACKWARD;
-  net->time = nFrames+hmms->totalDelay;
+  net->time = nFrames+hmms->mTotalDelay;
 
-  for(i = nFrames + hmms->totalDelay - 1; i >= nFrames; i--) {
+  for(i = nFrames + hmms->mTotalDelay - 1; i >= nFrames; i--) {
 //  We do not need any features, in backward prop. All output probab. are cached.
-//  UpdateStacks(hmms, obsMx + hmms->in_vec_size * i,
+//  UpdateStacks(hmms, obsMx + hmms->mInputVectorSize * i,
 //                 net->time, BACKWARD);
     net->time--;
   }
@@ -1414,13 +1414,13 @@ struct FWBWRet ForwardBackward(Network *net, FLOAT *obsMx, int nFrames)
   TokenPropagationInit(net);
 
   for(i = nFrames-1; i >= 0; i--) {
-    net->outPCache = outPCache + hmms->nstates * (net->time-1);
+    net->outPCache = outPCache + hmms->mNStates * (net->time-1);
 
 //  We do not need any features, in backward prop. All output probab. are cached.
-//  UpdateStacks(net->hmmSet, obsMx + hmms->in_vec_size * i,     |
+//  UpdateStacks(net->hmmSet, obsMx + hmms->mInputVectorSize * i,     |
 //                 net->time, net->propagDir);                   |
 //                                                               V
-    TokenPropagationInModels(net,  NULL); //obsMx + hmms->in_vec_size * i);
+    TokenPropagationInModels(net,  NULL); //obsMx + hmms->mInputVectorSize * i);
     net->time--;
     TokenPropagationInNetwork(net);
   }
@@ -1716,8 +1716,8 @@ FLOAT BaumWelchReest(Network *net, FLOAT *obsMx, FLOAT *obsMx2, int nFrames, FLO
   struct FWBWRet fwbw;
   FLOAT P, updateDir;
   int i, j, k;
-  HMMSet *hmmsAlig = net->hmmSet;
-  HMMSet *hmmsUpdt = net->hmmSetToUpdate;
+  ModelSet *hmmsAlig = net->hmmSet;
+  ModelSet *hmmsUpdt = net->hmmSetToUpdate;
   Node *node;
 
   fwbw = ForwardBackward(net, obsMx, nFrames);
@@ -1737,28 +1737,28 @@ FLOAT BaumWelchReest(Network *net, FLOAT *obsMx, FLOAT *obsMx2, int nFrames, FLO
     }
   }
 
-  ResetXformInstances(hmmsAlig);
+  ResetXFormInstances(hmmsAlig);
 
   if(hmmsAlig != hmmsUpdt) {
-    ResetXformInstances(hmmsUpdt);
+    ResetXFormInstances(hmmsUpdt);
   }
 
-  for(i = 0; i < hmmsAlig->totalDelay; i++) {
-    UpdateStacks(hmmsAlig, obsMx+hmmsAlig->in_vec_size*i,
-                 i-hmmsAlig->totalDelay, FORWARD);
+  for(i = 0; i < hmmsAlig->mTotalDelay; i++) {
+    UpdateStacks(hmmsAlig, obsMx+hmmsAlig->mInputVectorSize*i,
+                 i-hmmsAlig->mTotalDelay, FORWARD);
   }
 
   if(hmmsAlig != hmmsUpdt) {
-    for(i = 0; i < hmmsUpdt->totalDelay; i++) {
-      UpdateStacks(hmmsUpdt, obsMx2+hmmsUpdt->in_vec_size*i,
-                   i-hmmsUpdt->totalDelay, FORWARD);
+    for(i = 0; i < hmmsUpdt->mTotalDelay; i++) {
+      UpdateStacks(hmmsUpdt, obsMx2+hmmsUpdt->mInputVectorSize*i,
+                   i-hmmsUpdt->mTotalDelay, FORWARD);
     }
   }
 
 
   // net->mixPCache might be used to cache likelihoods of mixtures of target
   // models. Reallocate the cache to fit mixtures of both models and reset it.
-  k = HIGHER_OF(hmmsUpdt->nmixtures, hmmsAlig->nmixtures);
+  k = HIGHER_OF(hmmsUpdt->mNStates, hmmsAlig->mNStates);
   net->mixPCache = (Cache *) realloc(net->mixPCache, k * sizeof(Cache));
   if(net->mixPCache == NULL) Error("Insufficient memory");
 
@@ -1766,8 +1766,8 @@ FLOAT BaumWelchReest(Network *net, FLOAT *obsMx, FLOAT *obsMx2, int nFrames, FLO
 
 // Update accumulators
   for(net->time = 0; net->time < nFrames; net->time++) {//for every frame
-    FLOAT *obs  =obsMx +hmmsAlig->in_vec_size*(net->time+hmmsAlig->totalDelay);
-    FLOAT *obs2 =obsMx2+hmmsUpdt->in_vec_size*(net->time+hmmsUpdt->totalDelay);
+    FLOAT *obs  =obsMx +hmmsAlig->mInputVectorSize*(net->time+hmmsAlig->mTotalDelay);
+    FLOAT *obs2 =obsMx2+hmmsUpdt->mInputVectorSize*(net->time+hmmsUpdt->mTotalDelay);
     UpdateStacks(hmmsAlig, obs, net->time, FORWARD);
     if(hmmsAlig != hmmsUpdt) {
       UpdateStacks(hmmsUpdt, obs2, net->time, FORWARD);
@@ -1781,9 +1781,9 @@ FLOAT BaumWelchReest(Network *net, FLOAT *obsMx, FLOAT *obsMx2, int nFrames, FLO
          node->alphaBetaList->time == net->time+1) {
 
         struct AlphaBeta *st;
-        int Nq       = node->hmm->nstates;
-        FLOAT *aq    = node->hmm->        transition->matrix;
-        FLOAT *aqacc = node->hmmToUpdate->transition->matrix + SQR(Nq);
+        int Nq       = node->hmm->mNStates;
+        FLOAT *aq    = node->hmm->        mpTransition->matrix;
+        FLOAT *aqacc = node->hmmToUpdate->mpTransition->matrix + SQR(Nq);
 //        int qt_1 = (net->nNetStates * net->time) + node->estate_id;
 //        int qt = qt_1 + net->nNetStates;
 
@@ -1811,8 +1811,8 @@ FLOAT BaumWelchReest(Network *net, FLOAT *obsMx, FLOAT *obsMx2, int nFrames, FLO
 
 #endif
 //            int qt_1   = qt - net->nNetStates;
-            FLOAT bjtO =net->outPCache[hmmsAlig->nstates * net->time +
-                                       node->hmm->state[j-1]->state_id].value;
+            FLOAT bjtO =net->outPCache[hmmsAlig->mNStates * net->time +
+                                       node->hmm->state[j-1]->mID].value;
             // ForwardBackward() set net->outPCache to contain out prob. for all frames
 
             assert(node->alphaBetaListReverse->time == net->time);
@@ -1886,13 +1886,13 @@ FLOAT ViterbiReest(Network *net, FLOAT *obsMx, FLOAT *obsMx2, int nFrames, FLOAT
   Node *prevnode = NULL;
   FLOAT P;
   Cache *outPCache;
-  HMMSet *hmmsAlig = net->hmmSet;
-  HMMSet *hmmsUpdt = net->hmmSetToUpdate;
+  ModelSet *hmmsAlig = net->hmmSet;
+  ModelSet *hmmsUpdt = net->hmmSetToUpdate;
 
-  outPCache = (Cache *) malloc(nFrames * hmmsAlig->nstates * sizeof(Cache));
+  outPCache = (Cache *) malloc(nFrames * hmmsAlig->mNStates * sizeof(Cache));
   if(outPCache == NULL) Error("Insufficient memory");
 
-  for(t = 0; t < nFrames * hmmsAlig->nstates; t++) {
+  for(t = 0; t < nFrames * hmmsAlig->mNStates; t++) {
     outPCache[t].time  = UNDEF_TIME;
     outPCache[t].value = LOG_0;
   }
@@ -1901,13 +1901,13 @@ FLOAT ViterbiReest(Network *net, FLOAT *obsMx, FLOAT *obsMx2, int nFrames, FLOAT
   net->outPCache = NULL;
   net->alignment = STATE_ALIGNMENT;
   ViterbiInit(net);
-  nFrames += hmmsAlig->totalDelay;
+  nFrames += hmmsAlig->mTotalDelay;
 
   for(t = 0; t < nFrames; t++) {
-    if(t >= hmmsAlig->totalDelay) {
-      net->outPCache = outPCache + hmmsAlig->nstates*(t-hmmsAlig->totalDelay);
+    if(t >= hmmsAlig->mTotalDelay) {
+      net->outPCache = outPCache + hmmsAlig->mNStates*(t-hmmsAlig->mTotalDelay);
     }
-    ViterbiStep(net, obsMx + hmmsAlig->in_vec_size * t);
+    ViterbiStep(net, obsMx + hmmsAlig->mInputVectorSize * t);
   }
 
   net->outPCache = outPCache;
@@ -1917,10 +1917,10 @@ FLOAT ViterbiReest(Network *net, FLOAT *obsMx, FLOAT *obsMx2, int nFrames, FLOAT
     return LOG_0;
   }
 
-  ResetXformInstances(hmmsAlig);
+  ResetXFormInstances(hmmsAlig);
 
   if(hmmsAlig != hmmsUpdt) {
-    ResetXformInstances(hmmsUpdt);
+    ResetXFormInstances(hmmsUpdt);
   }
 
   // invert order of WRLs
@@ -1933,14 +1933,14 @@ FLOAT ViterbiReest(Network *net, FLOAT *obsMx, FLOAT *obsMx2, int nFrames, FLOAT
   }
 
 
-  for(net->time = -hmmsAlig->totalDelay; net->time < 0; net->time++) {
-    FLOAT *obs = obsMx+hmmsAlig->in_vec_size*(net->time+hmmsAlig->totalDelay);
+  for(net->time = -hmmsAlig->mTotalDelay; net->time < 0; net->time++) {
+    FLOAT *obs = obsMx+hmmsAlig->mInputVectorSize*(net->time+hmmsAlig->mTotalDelay);
     UpdateStacks(hmmsAlig, obs, net->time, FORWARD);
   }
 
   if(hmmsAlig != hmmsUpdt) {
-    FLOAT *obs2= obsMx2+hmmsUpdt->in_vec_size*(net->time+hmmsUpdt->totalDelay);
-    for(net->time = -hmmsUpdt->totalDelay; net->time < 0; net->time++) {
+    FLOAT *obs2= obsMx2+hmmsUpdt->mInputVectorSize*(net->time+hmmsUpdt->mTotalDelay);
+    for(net->time = -hmmsUpdt->mTotalDelay; net->time < 0; net->time++) {
       UpdateStacks(hmmsUpdt, obs2, net->time, FORWARD);
     }
   }
@@ -1948,8 +1948,8 @@ FLOAT ViterbiReest(Network *net, FLOAT *obsMx, FLOAT *obsMx2, int nFrames, FLOAT
 // Update accumulators
   for(wlr = net->last->exitToken->wlr; wlr != NULL; wlr = wlr->next) {
     Node *node   = wlr->node;
-    int Nq       = node->hmmToUpdate->nstates;
-    FLOAT *aqacc = node->hmmToUpdate->transition->matrix + SQR(Nq);
+    int Nq       = node->hmmToUpdate->mNStates;
+    FLOAT *aqacc = node->hmmToUpdate->mpTransition->matrix + SQR(Nq);
     int currstate = wlr->state_idx+1;
     int nextstate = (wlr->next && node == wlr->next->node)
                     ? wlr->next->state_idx+1 : Nq-1;
@@ -1970,8 +1970,8 @@ FLOAT ViterbiReest(Network *net, FLOAT *obsMx, FLOAT *obsMx2, int nFrames, FLOAT
 
     for(; net->time < wlr->time; net->time++) {
       //for every frame of segment
-      FLOAT *obs =obsMx +hmmsAlig->in_vec_size*(net->time+hmmsAlig->totalDelay);
-      FLOAT *obs2=obsMx2+hmmsUpdt->in_vec_size*(net->time+hmmsUpdt->totalDelay);
+      FLOAT *obs =obsMx +hmmsAlig->mInputVectorSize*(net->time+hmmsAlig->mTotalDelay);
+      FLOAT *obs2=obsMx2+hmmsUpdt->mInputVectorSize*(net->time+hmmsUpdt->mTotalDelay);
 
       UpdateStacks(hmmsAlig, obs, net->time, FORWARD);
       if(hmmsAlig != hmmsUpdt) {
@@ -1986,14 +1986,14 @@ FLOAT ViterbiReest(Network *net, FLOAT *obsMx, FLOAT *obsMx2, int nFrames, FLOAT
   return P;
 }
 
-void UpdateXformStatCache(XformStatCache *xfsc,
-                          Xform *topXform,       //to locate positions in input vector
+void UpdateXFormStatCache(XFormStatCache *xfsc,
+                          XForm *topXForm,       //to locate positions in input vector
                           FLOAT *input) {
   int i, j, size = xfsc->xform->in_size;
 
-  if(topXform == NULL) return;
+  if(topXForm == NULL) return;
 
-  if(topXform == xfsc->xform) {
+  if(topXForm == xfsc->xform) {
     if(xfsc->norm > 0) {
       for(i=0; i < size; i++) {
         xfsc->stats[i] += input[i];
@@ -2010,16 +2010,16 @@ void UpdateXformStatCache(XformStatCache *xfsc,
       }
     }
     xfsc->norm++;
-  } else if(topXform->xform_type == XT_COMPOSITE) {
-    CompositeXform *cxf = (CompositeXform *) topXform;
+  } else if(topXForm->xform_type == XT_COMPOSITE) {
+    CompositeXForm *cxf = (CompositeXForm *) topXForm;
     for(i=0; i<cxf->layer[0].nblocks; i++) {
-      UpdateXformStatCache(xfsc, cxf->layer[0].block[i], input);
+      UpdateXFormStatCache(xfsc, cxf->layer[0].block[i], input);
       input += cxf->layer[0].block[i]->in_size;
     }
   }
 }
 
-void UpdateXformInstanceStatCaches(XformInstance *xformInstance,
+void UpdateXFormInstanceStatCaches(XFormInstance *xformInstance,
                                    FLOAT *observation, int time)
 {
   int i, j;
@@ -2032,11 +2032,11 @@ void UpdateXformInstanceStatCaches(XformInstance *xformInstance,
   if(xformInstance->nxformStatCaches == 0) return;
 
   if(xformInstance->input) {
-    UpdateXformInstanceStatCaches(xformInstance->input, observation, time);
+    UpdateXFormInstanceStatCaches(xformInstance->input, observation, time);
   }
 
   for(i = 0; i < xformInstance->nxformStatCaches; i++) {
-    XformStatCache *xfsc = &xformInstance->xformStatCache[i];
+    XFormStatCache *xfsc = &xformInstance->xformStatCache[i];
 
     if(xfsc->upperLevelStats != NULL &&
        xfsc->upperLevelStats->stats == xfsc->stats) { //just link to upper level?
@@ -2044,9 +2044,9 @@ void UpdateXformInstanceStatCaches(XformInstance *xformInstance,
       continue;
     }
 
-    obs = XformPass(xformInstance->input, observation, time, FORWARD);
+    obs = XFormPass(xformInstance->input, observation, time, FORWARD);
     xfsc->norm = 0;
-    UpdateXformStatCache(xfsc, xformInstance->xform, obs);
+    UpdateXFormStatCache(xfsc, xformInstance->xform, obs);
     if(xfsc->upperLevelStats != NULL) {
       int size = xfsc->xform->in_size;
       for(j = 0; j < size + size*(size+1)/2; j++) {
@@ -2071,7 +2071,7 @@ void ReestState(Network *net, Node *node,
     // Occupation probabilities of mixtures are computed using target model
     state = state2; obs = obs2;
   } else if (state->num_mixtures <= state2->num_mixtures) {
-    bjtO = net->outPCache[net->hmmSet->nstates * net->time + state->state_id].value;
+    bjtO = net->outPCache[net->hmmSet->mNStates * net->time + state->mID].value;
   }
 
   nmixtures = LOWER_OF(state->num_mixtures, state2->num_mixtures);
@@ -2084,7 +2084,7 @@ void ReestState(Network *net, Node *node,
     for(m = 0; m < nmixtures; m++) {
       Mixture *mix = state->mixture[m].estimates;
       FLOAT cjm    = state->mixture[m].weight;
-      FLOAT *xobs  = XformPass(mix->inputXform, obs, net->time, FORWARD);
+      FLOAT *xobs  = XFormPass(mix->mpInputXForm, obs, net->time, FORWARD);
       FLOAT bjmtO  = DiagCGaussianDensity(mix, xobs, net);
       bjtO  = LogAdd(bjtO, cjm + bjmtO);
     }
@@ -2093,19 +2093,19 @@ void ReestState(Network *net, Node *node,
   for(m = 0; m < nmixtures; m++) {                  //for every emitting state
     Mixture *mix = state->mixture[m].estimates;
     FLOAT cjm    = state->mixture[m].weight;
-    FLOAT *xobs  = XformPass(mix->inputXform, obs, net->time, FORWARD);
+    FLOAT *xobs  = XFormPass(mix->mpInputXForm, obs, net->time, FORWARD);
     FLOAT bjmtO  = DiagCGaussianDensity(mix, xobs, net);
     FLOAT Lqjmt  = logPriorProb - bjtO + cjm + bjmtO;
 
     if(Lqjmt > MIN_LOG_WEGIHT) {
       Mixture *mix       = state2->mixture[m].estimates;
-      int vec_size       = mix->mean->vec_size;
-      FLOAT *mnvec       = mix->mean->vector;
-      FLOAT *mnacc       = mix->mean->vector     +     vec_size;
-      FLOAT *vvacc       = mix->variance->vector +     vec_size;
-      FLOAT *vmacc       = mix->variance->vector + 2 * vec_size;
-      XformInstance *ixf = mix->inputXform;
-      FLOAT *xobs        = XformPass(ixf, obs2, net->time, FORWARD);
+      int vec_size       = mix->mpMean->vec_size;
+      FLOAT *mnvec       = mix->mpMean->vector;
+      FLOAT *mnacc       = mix->mpMean->vector     +     vec_size;
+      FLOAT *vvacc       = mix->mpVariance->vector +     vec_size;
+      FLOAT *vmacc       = mix->mpVariance->vector + 2 * vec_size;
+      XFormInstance *ixf = mix->mpInputXForm;
+      FLOAT *xobs        = XFormPass(ixf, obs2, net->time, FORWARD);
 
 /*      if(net->mmi_den_pass) {
         mnacc += vec_size + 1;
@@ -2140,15 +2140,15 @@ void ReestState(Network *net, Node *node,
 
       if(ixf == NULL || ixf->nxformStatCaches == 0) continue;
 
-      UpdateXformInstanceStatCaches(ixf, obs2, net->time);
+      UpdateXFormInstanceStatCaches(ixf, obs2, net->time);
 
       for(i = 0; i < ixf->nxformStatCaches; i++) {
-        XformStatCache *xfsc = &ixf->xformStatCache[i];
-        Variance *var  = state2->mixture[m].estimates->variance;
-        Mean     *mean = state2->mixture[m].estimates->mean;
+        XFormStatCache *xfsc = &ixf->xformStatCache[i];
+        Variance *var  = state2->mixture[m].estimates->mpVariance;
+        Mean     *mean = state2->mixture[m].estimates->mpMean;
 
         for(j = 0; j < var->nxformStatAccums; j++) {
-          XformStatAccum *xfsa = &var->xformStatAccum[j];
+          XFormStatAccum *xfsa = &var->xformStatAccum[j];
           if(xfsa->xform == xfsc->xform) {
             int size = xfsc->xform->in_size;
             for(k = 0; k < size+size*(size+1)/2; k++) {
@@ -2160,7 +2160,7 @@ void ReestState(Network *net, Node *node,
         }
 
         for(j = 0; j < mean->nxformStatAccums; j++) {
-          XformStatAccum *xfsa = &mean->xformStatAccum[j];
+          XFormStatAccum *xfsa = &mean->xformStatAccum[j];
           if(xfsa->xform == xfsc->xform) {
             int size = xfsc->xform->in_size;
             for(k = 0; k < size; k++) {
@@ -2176,7 +2176,7 @@ void ReestState(Network *net, Node *node,
 }
 
 
-/*FLOAT *StateOccupationProbability(Network *net, FLOAT *obsMx, HMMSet *hmms,
+/*FLOAT *StateOccupationProbability(Network *net, FLOAT *obsMx, ModelSet *hmms,
                                   int nFrames, FLOAT **outProbOrMahDist, int getMahalDist)
 {
   int i, j, k;
@@ -2187,7 +2187,7 @@ void ReestState(Network *net, Node *node,
 
   FLOAT *beta = (FLOAT *) malloc(net->nNetStates * (nFrames+1) * sizeof(FLOAT));
   FLOAT *alfa = (FLOAT *) malloc(net->nNetStates * (nFrames+1) * sizeof(FLOAT));
-  Cache *outPCache = (Cache *) malloc(nFrames * hmms->nstates * sizeof(Cache));
+  Cache *outPCache = (Cache *) malloc(nFrames * hmms->mNStates * sizeof(Cache));
 
   if(outPCache == NULL || beta == NULL || alfa == NULL) {
     Error("Insufficient memory");
@@ -2204,7 +2204,7 @@ void ReestState(Network *net, Node *node,
 
   nEmitingStates = net->nNetStates - 2 * nNetModels;
 
-  for(i = 0; i < nFrames * hmms->nstates; i++) {
+  for(i = 0; i < nFrames * hmms->mNStates; i++) {
     outPCache[i].time = UNDEF_TIME;
     outPCache[i].value = LOG_0;
   }
@@ -2238,8 +2238,8 @@ void ReestState(Network *net, Node *node,
 
   for(i = nFrames-1; i >= 0; i--) {
 
-    net->outPCache = outPCache + hmms->nstates * i;
-    TokenPropagationInModels(net,  obsMx + hmms->in_vec_size * i,
+    net->outPCache = outPCache + hmms->mNStates * i;
+    TokenPropagationInModels(net,  obsMx + hmms->mInputVectorSize * i,
                              beta + net->nNetStates * net->time,
                              NULL);
 
@@ -2249,21 +2249,21 @@ void ReestState(Network *net, Node *node,
       for(k=0; k < net->nnodes; k++) {
         Node *node = &net->nodes[k];
         if(node->type & NT_Model) {
-          for(j = 0; j < node->hmm->nstates - 2; j++, state_counter++) {
+          for(j = 0; j < node->hmm->mNStates - 2; j++, state_counter++) {
             FLOAT tmpf = net->OutputProbability(node->hmm->state[j],
-                                       obsMx + hmms->in_vec_size * i, net);
+                                       obsMx + hmms->mInputVectorSize * i, net);
             switch(getMahalDist) {
               case 0:
                 break;
               case 1:
-               tmpf = log((tmpf / -0.5) - node->hmm->state[j]->mixture[0].estimates->g_const) * -0.5;
+               tmpf = log((tmpf / -0.5) - node->hmm->state[j]->mixture[0].estimates->mGConst) * -0.5;
                break;
               case 2:
-               tmpf = log((tmpf / -0.5) - node->hmm->state[j]->mixture[0].estimates->g_const) * -1;
+               tmpf = log((tmpf / -0.5) - node->hmm->state[j]->mixture[0].estimates->mGConst) * -1;
                break;
               case 3:
-               tmpf += node->hmm->state[j]->mixture[0].estimates->g_const * 0.5;
-//               tmpf /= hmms->in_vec_size;
+               tmpf += node->hmm->state[j]->mixture[0].estimates->mGConst * 0.5;
+//               tmpf /= hmms->mInputVectorSize;
                break;
             }
 
@@ -2300,9 +2300,9 @@ void ReestState(Network *net, Node *node,
                        alfa + net->nNetStates * net->time);
 
   for(i = 0; i < nFrames; i++) {
-    net->outPCache = outPCache + hmms->nstates * i;
+    net->outPCache = outPCache + hmms->mNStates * i;
     net->time++;
-    TokenPropagationInModels(net,  obsMx + hmms->in_vec_size * i,
+    TokenPropagationInModels(net,  obsMx + hmms->mInputVectorSize * i,
                              beta + net->nNetStates * net->time,
                              alfa + net->nNetStates * net->time);
 
@@ -2327,7 +2327,7 @@ void ReestState(Network *net, Node *node,
     for(k=0; k < net->nnodes; k++) {
       Node *node = &net->nodes[k];
       if(node->type & NT_Model) {
-        for(j = 0; j < node->hmm->nstates - 2; j++, state_counter++) {
+        for(j = 0; j < node->hmm->mNStates - 2; j++, state_counter++) {
           int idx = (net->nNetStates * i) + node->estate_id + j + 1;
           FLOAT occp = beta[idx] + alfa[idx] - totalLike;
           occupProb[(i-1) * nEmitingStates + state_counter] = occp < LOG_MIN ?
@@ -2358,7 +2358,7 @@ WLR *TimePruning(Network *net, int frame_delay)
   for(node = net->first; node != NULL; node = node->next) {
     if(!(node->type & NT_Model)) continue;
 
-    for(i = 0; i < node->hmm->nstates-1; i++) {
+    for(i = 0; i < node->hmm->mNStates-1; i++) {
       if(IS_ACTIVE(node->tokens[i])) {
         Token *token = &node->tokens[i];
 

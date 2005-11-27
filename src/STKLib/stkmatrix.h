@@ -28,6 +28,14 @@ typedef enum
   template<typename _ElemT>
     class Matrix;
 
+  // declare the class so the header knows about it
+  template<typename _ElemT>
+    class AlignedMatrix;
+
+  // declare the class so the header knows about it
+  template<typename _ElemT>
+    class Matrix;
+    
 
   // we need to declare the friend << operator here
   template<typename _ElemT>

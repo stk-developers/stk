@@ -10,8 +10,8 @@
  *  Searching diagram is <a href="../../Documentation/figures/eps/hashing.eps">doc/Documentation/figures/hashing.eps</a>
  */
 
-#ifndef _labelreader_h
-#define _labelreader_h
+#ifndef STK_labelreader_h
+#define STK_labelreader_h
 
 #include <map>
 #include <list>

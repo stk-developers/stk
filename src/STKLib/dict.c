@@ -54,7 +54,7 @@ void ReadDictionary(
       e.key  = strdup(word_name);
       word = (Word *) malloc(sizeof(Word));
       if(e.key == NULL || word  == NULL) Error("Insufficient memory");
-      word->name = e.key;
+      word->mpName = e.key;
       word->npronuns = 0;
       word->pronuns   = NULL;
       e.data = word;
@@ -73,7 +73,7 @@ void ReadDictionary(
 
     word->pronuns[word->npronuns-1] = new_pronun;
     new_pronun->word       = word;
-    new_pronun->outSymbol  = word->name;
+    new_pronun->outSymbol  = word->mpName;
     new_pronun->nmodels    = 0;
     new_pronun->model      = NULL;
     new_pronun->variant_no = word->npronuns;
@@ -114,7 +114,7 @@ void ReadDictionary(
       new_pronun->model=(_Model*) realloc(new_pronun->model,
                                 new_pronun->nmodels*sizeof(*new_pronun->model));
       if(new_pronun->model == NULL) Error("Insufficient memory");
-      new_pronun->model[new_pronun->nmodels-1].name = static_cast <char*> (ep->data);
+      new_pronun->model[new_pronun->nmodels-1].mpName = static_cast <char*> (ep->data);
     }
   }
   if(ferror(fp) || my_fclose(fp)) {

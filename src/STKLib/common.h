@@ -13,6 +13,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#include "Error.h"
 #include <stdio.h>
 #include <float.h>
 #include <math.h>
@@ -21,7 +22,7 @@
 #include <search.h>
 #include <string>
 
-
+using namespace STK;
 
 #ifndef M_PI
 #define M_PI 3.1415926535897932384626433832795
@@ -86,47 +87,57 @@
 #define INT_32 long
 #define FLOAT_32 float
 
-typedef enum {
+/// This type will be used for flag passing
+typedef unsigned int    FlagType;
+
+
+typedef enum 
+{
   FALSE = 0,
   TRUE  = 1
 } BOOL;
 
-typedef enum {
+typedef enum 
+{
   FORWARD,
   BACKWARD
 } PropagDir;
 
-struct my_hsearch_data {
-  ENTRY **entry;
-  size_t nentries;
+struct my_hsearch_data 
+{
+  ENTRY **            entry;
+  size_t              nentries;
 
 //private
   struct hsearch_data tab;
-  size_t tabsize;
+  size_t              tabsize;
 };
 
-struct readline_data {
+struct readline_data 
+{
   char *buffer;
   int  size;
 };
 
 typedef struct _FileListElem FileListElem;
-struct _FileListElem {
+
+struct _FileListElem 
+{
   FileListElem *next;
   char *physical;
   char logical[1];
 };
 
-#define Error(...) _Error_(__func__, __FILE__, __LINE__, __VA_ARGS__)
-#define Warning(...) _Warning_(__func__, __FILE__, __LINE__, __VA_ARGS__)
+//#define Error(...) _Error_(__func__, __FILE__, __LINE__, __VA_ARGS__)
+//#define Warning(...) _Warning_(__func__, __FILE__, __LINE__, __VA_ARGS__)
 
 #ifdef __cplusplus
   extern "C" {
 #endif
 
-void _Error_(const char *func, const char *file, int line, char *msg, ...);
-void _Warning_(const char *func, const char *file, int line, char *msg, ...);
-void TraceLog(char *msg, ...);
+//void _Error_(const char *func, const char *file, int line, char *msg, ...);
+//void _Warning_(const char *func, const char *file, int line, char *msg, ...);
+//void TraceLog(char *msg, ...);
 int ReadParmKind(const char *str, BOOL checkBrackets);
 int ParmKind2Str(int parmKind, char *outstr);
 void MakeFileName(char *outFileName, const char* inFileName,
@@ -250,16 +261,6 @@ bool
 ProcessMask(const std::string & rString,
             const std::string & rWildcard,
                   std::string & rSubstr);
-
-/**
- *  @brief Parses HTK string according to HTK Book string definition
- *  @param rIn String to parse
- *  @param rOut String to store the output
- *
- *  This is a C++ extension to the original @see getHTKstr function.
- */
-void
-ParseHTKString(const std::string & rIn, std::string & rOut);
 
 
 #ifdef __cplusplus

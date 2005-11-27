@@ -19,7 +19,8 @@
 
 using namespace std;
 
-typedef struct {
+typedef struct 
+{
     INT_32 nSamples;              /* Structure for HTK header */
     INT_32 sampPeriod;
     INT_16 sampSize;
@@ -33,9 +34,9 @@ HTK_Header;
 #endif
 
 
-int WriteHTKHeader (FILE * fp_out, HTK_Header header, bool swap);
+int WriteHTKHeader  (FILE * fp_out, HTK_Header header, bool swap);
 int WriteHTKFeature (FILE * fp_out, FLOAT *out, size_t fea_len, bool swap);
-int ReadHTKHeader (FILE * fp_in, HTK_Header *header, bool swap);
+int ReadHTKHeader   (FILE * fp_in, HTK_Header *header, bool swap);
 
 int ReadHTKFeature (FILE * fp_in, FLOAT *in, size_t fea_len, bool swap,
                     bool decompress, FLOAT *A, FLOAT *B);

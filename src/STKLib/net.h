@@ -25,7 +25,7 @@ typedef struct _FWBWR FWBWR;
 
 enum NodeType {
   NT_Undef  = 0x00,
-  NT_Word   = 0x01,
+  NT   = 0x01,
   NT_Model  = 0x02,
   NT_Phone  = 0x04,
   NT_Subnet = 0x08,
@@ -34,17 +34,19 @@ enum NodeType {
   NT_True   = 0x40
 };
 
-struct _Link {
+struct _Link 
+{
   Node *node;
   FLOAT like;
 };
 
-struct _Node {
+struct _Node 
+{
 //  union {
-    char   *name;
+    char   *mpName;
 //    struct {
-      HMM  *hmm;
-      HMM  *hmmToUpdate;
+      Hmm  *hmm;
+      Hmm  *hmmToUpdate;
 //    };
     Pronun *pronun;
 //    SubNet *subnet;

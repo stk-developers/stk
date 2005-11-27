@@ -276,58 +276,83 @@ void ReadCepsNormFile(const char *file, char **last_file, FLOAT **vec_buff,
                       int sampKind, enum CNFileType type, int coefs);
 
 FLOAT *ReadHTKFeatures(
-  char *file_name,
-  bool swap,
-  int extLeft,
-  int extRight,
-  int targetKind,
-  int derivOrder,
-  int *derivWinLen,
-  HTK_Header *header,
-  const char *cmn_file,
-  const char *cvn_file,
-  const char *cvg_file,
-  RHFBuffer *buff)
+  char *                file_name,
+  bool                  swap,
+  int                   extLeft,
+  int                   extRight,
+  int                   targetKind,
+  int                   derivOrder,
+  int *                 derivWinLen,
+  HTK_Header *          header,
+  const char *          cmn_file,
+  const char *          cvn_file,
+  const char *          cvg_file,
+  RHFBuffer *           buff)
 {
-  FLOAT *feaMx;
-  int fromFrame, toFrame, totFrames, trg_vec_size, src_vec_size, i, j, k, e;
-  int srcDerivOrder, loSrcTgzDerOrd, coefs, trgE, trg0, trgN, srcE, src0, srcN;
-  int comp, coefSize;
-  char *chptr;
+  FLOAT *               feaMx;
+  int                   fromFrame;
+  int                   toFrame;
+  int                   totFrames;
+  int                   trg_vec_size;
+  int                   src_vec_size;
+  int                   i;
+  int                   j;
+  int                   k;
+  int                   e;
+  int                   srcDerivOrder;
+  int                   loSrcTgzDerOrd;
+  int                   coefs;
+  int                   trgE;
+  int                   trg0;
+  int                   trgN;
+  int                   srcE;
+  int                   src0;
+  int                   srcN;
+  int                   comp;
+  int                   coefSize;
+  char *                chptr;
 
   // remove final spaces from file name
-  for(i = strlen(file_name)-1; i >= 0 && isspace(file_name[i]); i--) {
+  for(i = strlen(file_name)-1; i >= 0 && isspace(file_name[i]); i--) 
     file_name[i] = '\0';
-  }
-
+  
   // read frame range definition if any ( physical_file.fea[s,e] )
   if((chptr = strrchr(file_name, '[')) == NULL ||
-     ((i=0), sscanf(chptr, "[%d,%d]%n", &fromFrame, &toFrame, &i), chptr[i] != '\0')) {
+     ((i=0), sscanf(chptr, "[%d,%d]%n", &fromFrame, &toFrame, &i), chptr[i] != '\0')) 
+  {
     chptr = NULL;
   }
-  if(chptr != NULL) *chptr = '\0';
+  
+  if (chptr != NULL) 
+    *chptr = '\0';
 
-  if(strcmp(file_name, "-") && buff->last_file_name &&
-    !strcmp(buff->last_file_name, file_name)) {
+  if (strcmp(file_name, "-") && buff->last_file_name &&
+      !strcmp(buff->last_file_name, file_name)) 
+  {
     *header = buff->last_header;
-  } else {
-    if(buff->last_file_name) {
-      if(buff->fp != stdin) fclose(buff->fp);
+  } 
+  else 
+  {
+    if (buff->last_file_name) 
+    {
+      if (buff->fp != stdin) fclose(buff->fp);
       free(buff->last_file_name);
       buff->last_file_name = NULL;
     }
-    if(!strcmp(file_name, "-")) {
+    
+    if (!strcmp(file_name, "-")) 
       buff->fp = stdin;
-    } else {
+    else 
       buff->fp = fopen(file_name, "rb");
-    }
-    if(buff->fp == NULL) {
+    
+    if (buff->fp == NULL) 
       Error("Cannot open feature file: '%s'", file_name);
-    }
-    if(ReadHTKHeader(buff->fp, header, swap)) {
+    
+    if (ReadHTKHeader(buff->fp, header, swap)) 
       Error("Invalid HTK header in feature file: '%s'", file_name);
-    }
-    if(header->sampKind & PARAMKIND_C) {
+    
+    if (header->sampKind & PARAMKIND_C) 
+    {
       // File is in compressed form, scale and bias vectors
       // are appended after HTK header.
 
@@ -341,14 +366,20 @@ FLOAT *ReadHTKFeatures(
       if(e) Error("Cannot read feature file: '%s'", file_name);
       header->nSamples -= 2 * sizeof(FLOAT_32) / sizeof(INT_16);
     }
-    if((buff->last_file_name = strdup(file_name)) == NULL) {
+    
+    if((buff->last_file_name = strdup(file_name)) == NULL) 
+    {
       Error("Insufficient memory");
     }
+    
     buff->last_header = *header;
   }
-  if(chptr != NULL) *chptr = '[';
+  
+  if (chptr != NULL) 
+    *chptr = '[';
 
-  if(chptr == NULL) { // Range [s,e] was not specified
+  if (chptr == NULL) 
+  { // Range [s,e] was not specified
     fromFrame = 0;
     toFrame   = header->nSamples-1;
   }
@@ -361,7 +392,7 @@ FLOAT *ReadHTKFeatures(
   comp =  PARAMKIND_C & header->sampKind;
   header->sampKind &= ~PARAMKIND_C;
 
-  if(targetKind == PARAMKIND_ANON) {
+  if (targetKind == PARAMKIND_ANON) {
     targetKind = header->sampKind;
   } else if((targetKind & 077) == PARAMKIND_ANON) {
     targetKind &= ~077;
@@ -388,7 +419,8 @@ FLOAT *ReadHTKFeatures(
      (trgN && !trgE && !trg0) || (trgN && !derivOrder) ||
      (srcN && !srcDerivOrder && derivOrder) ||
      ((header->sampKind & 077) != (targetKind & 077) &&
-      (header->sampKind & 077) != PARAMKIND_ANON)) {
+      (header->sampKind & 077) != PARAMKIND_ANON)) 
+  {
     char srcParmKind[64], trgParmKind[64];
     ParmKind2Str(header->sampKind, srcParmKind);
     ParmKind2Str(targetKind,       trgParmKind);

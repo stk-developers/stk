@@ -99,8 +99,8 @@ struct _Network {
   int collectAlphaBeta;
 //  int mmi_den_pass;
   AccumType accumType;
-  HMMSet *hmmSet;
-  HMMSet *hmmSetToUpdate;
+  ModelSet *hmmSet;
+  ModelSet *hmmSetToUpdate;
 };
 
 #define IS_ACTIVE(token) ((token).like > LOG_MIN)
@@ -147,19 +147,19 @@ struct _WLR {
 
 void LoadRecognitionNetwork(
   char *netFileName,
-  HMMSet *hmms,
+  ModelSet *hmms,
   Network *net);
 
 void ReadRecognitionNetwork(
   FILE *fp,
-  HMMSet *hmms,
+  ModelSet *hmms,
   Network *network,
   LabelFormat labelFormat,
   long sampPeriod,
   const char *file_name,
   const char *in_MLF);
 
-void InitNetwork(Network *net, Node *first, HMMSet *hmms, HMMSet *hmmsToUptade);
+void InitNetwork(Network *net, Node *first, ModelSet *hmms, ModelSet *hmmsToUptade);
 void ReleaseNetwork(Network *network);
 void ViterbiInit(Network *network);
 void ViterbiStep(Network *network, FLOAT *observation);
@@ -170,7 +170,7 @@ void KillToken(Token *token);
 FLOAT *StateOccupationProbability(
   Network *network,
   FLOAT *observationMx,
-  HMMSet *hmmset,
+  ModelSet *hmmset,
   int nFrames,
   FLOAT **outProbOrMahDist,
   int getMahalDist);

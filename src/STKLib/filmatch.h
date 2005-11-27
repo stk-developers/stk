@@ -86,7 +86,7 @@
 
 bool match (const char *pattern, const char *text, char *s);
 
-int     matche(const register char *pattern, const register char *text, register char *s);
+int  matche(const register char *pattern, const register char *text, register char *s);
 
 /*----------------------------------------------------------------------------
 *

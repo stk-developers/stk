@@ -241,6 +241,11 @@ namespace STK
 		istkstream(const string& fName, ios::openmode m=ios::out, const string & filter=""):
 			stkios() {this->open(fName, ios::in, filter);}
 
+    ~istkstream() 
+    {
+      this->close();
+    }
+      
 		/**
 		*  @brief  Opens an external file.
 		*  @param  s  The name of the file.

@@ -36,7 +36,7 @@ struct _Label {
   Label *next;
   long long start;
   long long stop;
-  char  *name;
+  char  *mpName;
   void  *data; // Set by ReadInputLabelFile to 'data' member of label_hash item
   int   id;
   FLOAT score;
