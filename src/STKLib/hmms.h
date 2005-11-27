@@ -426,7 +426,9 @@
   {
   public:
     int   nlayers;
-    struct {
+    
+    struct
+    {
       FLOAT *out_vec;
       int   nblocks;
       XForm **block;

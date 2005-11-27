@@ -52,33 +52,33 @@ typedef enum
 
     protected:
       /// keeps info about data layout in the memory
-      storage_type storageType;
+      storage_type mStorageType;
 
 
       //@{
       /// these atributes store the real matrix size as it is stored in memory
       /// including memalignment
-      size_t  M_rows;       ///< Number of rows
-      size_t  M_cols;       ///< Number of columns
-      size_t  M_realCols;   ///< true number of columns for the internal matrix.
-                            ///< This number may differ from M_cols as memory
+      size_t  mMRows;       ///< Number of rows
+      size_t  mMCols;       ///< Number of columns
+      size_t  mMRealCols;   ///< true number of columns for the internal matrix.
+                            ///< This number may differ from mMCols as memory
                             ///< alignment might be used
-      size_t  M_size;       ///< Total size of data block in bytes
-      size_t  M_skip;       ///< Bytes to skip (memalign...)
+      size_t  mMSize;       ///< Total size of data block in bytes
+      size_t  mMSkip;       ///< Bytes to skip (memalign...)
 
-      size_t  T_rows;       ///< Real number of rows (available to the user)
-      size_t  T_cols;       ///< Real number of columns
+      size_t  mTRows;       ///< Real number of rows (available to the user)
+      size_t  mTCols;       ///< Real number of columns
       //@}
 
       /// data memory area
-      _ElemT *  data;
+      _ElemT * mpData;
 
 
     public:
       // Constructors
 
       /// Empty constructor
-      Matrix<_ElemT> (): storageType(STORAGE_UNDEFINED) {}
+      Matrix<_ElemT> (): mStorageType(STORAGE_UNDEFINED) {}
 
       /// Copy constructor
       Matrix<_ElemT> (const ThisType & t);
@@ -96,14 +96,14 @@ typedef enum
       size_t
       rows() const
       {
-        return T_rows;
+        return mTRows;
       }
 
       /// Returns number of columns in the matrix
       size_t
       cols() const
       {
-        return T_cols;
+        return mTCols;
       }
 
 
@@ -111,7 +111,7 @@ typedef enum
       storage_type
       storage() const
       {
-        return storageType;
+        return mStorageType;
       }
 
 
@@ -136,7 +136,7 @@ typedef enum
        *  @return pointer to the first field
        */
       _ElemT *
-      operator () () {return data;};
+      operator () () {return mpData;};
 
       /**
        *  @brief Gives access to a specified matrix row
@@ -145,7 +145,7 @@ typedef enum
       _ElemT *
       row (const size_t r)
       {
-        return data + (r * M_realCols);
+        return mpData + (r * mMRealCols);
       }
 
       /**
@@ -156,8 +156,8 @@ typedef enum
       operator () (const size_t r, const size_t c);
 
 
-      friend std::ostream & operator << <> (std::ostream & out, const ThisType &
-m);
+      friend std::ostream & 
+      operator << <> (std::ostream & out, const ThisType &m);
 
       void printOut();
 
@@ -177,26 +177,26 @@ m);
     {
     protected:
       /// points to the original begining of the data array
-      /// The data atribute points now to the begining of the window
+      /// The mpData atribute points now to the begining of the window
       _ElemT * orig_data;
 
-      //@{
+      ///@{
       /// these atributes store the real matrix size as it is stored in memory
       /// including memalignment
-      size_t  orig_M_rows;       ///< Number of rows
-      size_t  orig_M_cols;       ///< Number of columns
-      size_t  orig_M_realCols;   ///< true number of columns for the internal matrix.
-                                 ///< This number may differ from M_cols as memory
-                                 ///< alignment might be used
-      size_t  orig_M_size;       ///< Total size of data block in bytes
-      size_t  orig_M_skip;       ///< Bytes to skip (memalign...)
+      size_t  mOrigMRows;       ///< Number of rows
+      size_t  mOrigMCols;       ///< Number of columns
+      size_t  mOrigMRealCols;   ///< true number of columns for the internal matrix.
+                                ///< This number may differ from mMCols as memory
+                                ///< alignment might be used
+      size_t  mOrigMSize;       ///< Total size of mpData block in bytes
+      size_t  mOrigMSkip;       ///< Bytes to skip (memalign...)
 
-      size_t  orig_T_rows;       ///< Original number of window rows
-      size_t  orig_T_cols;       ///< Original number of window columns
+      size_t  mOrigTRows;       ///< Original number of window rows
+      size_t  mOrigTCols;       ///< Original number of window columns
 
-      size_t T_rowOff;           ///< First row of the window
-      size_t T_colOff;           ///< First column of the window
-      //@}
+      size_t  mTRowOffset;      ///< First row of the window
+      size_t  mTColOffset;      ///< First column of the window
+      ///@}
 
 
     public:
@@ -215,22 +215,22 @@ m);
                                   const size_t c,
                                   const storage_type st = STORAGE_REGULAR):
         Matrix<_ElemT>(r, c, st), // create the base class
-        T_rowOff(0), T_colOff(0),          // set the offset
-        orig_T_rows    (Matrix<_ElemT>::T_rows),   // copy the original values
-        orig_T_cols    (Matrix<_ElemT>::T_cols),
-        orig_M_rows    (Matrix<_ElemT>::M_rows),
-        orig_M_cols    (Matrix<_ElemT>::M_cols),
-        orig_M_realCols(Matrix<_ElemT>::M_realCols),
-        orig_M_size    (Matrix<_ElemT>::M_size),
-        orig_M_skip    (Matrix<_ElemT>::M_skip)
+        mTRowOffset(0), mTColOffset(0),          // set the offset
+        mOrigTRows    (Matrix<_ElemT>::T_rows),   // copy the original values
+        mOrigTCols    (Matrix<_ElemT>::T_cols),
+        mOrigMRows    (Matrix<_ElemT>::M_rows),
+        mOrigMCols    (Matrix<_ElemT>::M_cols),
+        mOrigMRealCols(Matrix<_ElemT>::M_realCols),
+        mOrigMSize    (Matrix<_ElemT>::M_size),
+        mOrigMSkip    (Matrix<_ElemT>::M_skip)
       {
-        orig_data = Matrix<_ElemT>::data;
+        orig_data = Matrix<_ElemT>::mpData;
       }
 
       /// The destructor
       ~WindowMatrix<_ElemT>()
       {
-        Matrix<_ElemT>::data = this->orig_data;
+        Matrix<_ElemT>::mpData = this->orig_data;
       }
 
       /// sets the size of the window (whole rows)
@@ -252,17 +252,17 @@ m);
       void
       reset ()
       {
-        Matrix<_ElemT>::data      =  orig_data;
-        Matrix<_ElemT>::T_rows    =  orig_T_rows; // copy the original values
-        Matrix<_ElemT>::T_cols    =  orig_T_cols;
-        Matrix<_ElemT>::M_rows    =  orig_M_rows;
-        Matrix<_ElemT>::M_cols    =  orig_M_cols;
-        Matrix<_ElemT>::M_realCols=  orig_M_realCols;
-        Matrix<_ElemT>::M_size    =  orig_M_size;
-        Matrix<_ElemT>::M_skip    =  orig_M_skip;
+        Matrix<_ElemT>::mpData    =  orig_data;
+        Matrix<_ElemT>::mTRows    =  mOrigTRows; // copy the original values
+        Matrix<_ElemT>::mTCols    =  mOrigTCols;
+        Matrix<_ElemT>::mMRows    =  mOrigMRows;
+        Matrix<_ElemT>::mMCols    =  mOrigMCols;
+        Matrix<_ElemT>::mMRealCols=  mOrigMRealCols;
+        Matrix<_ElemT>::mMSize    =  mOrigMSize;
+        Matrix<_ElemT>::mMSkip    =  mOrigMSkip;
 
-        T_rowOff = 0;
-        T_colOff = 0;
+        mTRowOffset = 0;
+        mTColOffset = 0;
       }
     };
 

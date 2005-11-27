@@ -21,7 +21,7 @@ namespace STK
     void * _data;
 
     // at this moment, nothing is clear
-    storageType = STORAGE_UNDEFINED;
+    mStorageType = STORAGE_UNDEFINED;
 
     // if we store transposed, we swap the rows and cols
     // we assume that the user does not specify STORAGE_UNDEFINED
@@ -42,18 +42,18 @@ namespace STK
     {
       this->data        = static_cast<_ElemT *> (_data);
 
-      this->storageType = _st;
-      this->M_rows      = _rows;
-      this->M_cols      = _cols;
-      this->M_realCols  = _realcols;
-      this->M_skip      = _skip;
-      this->M_size      = _size;
+      this->mStorageType = _st;
+      this->mMRows      = _rows;
+      this->mMCols      = _cols;
+      this->mMRealCols  = _realcols;
+      this->mMSkip      = _skip;
+      this->mMSize      = _size;
 
-      this->T_rows      = _r;
-      this->T_cols      = _c;
+      this->mTRows      = _r;
+      this->mTCols      = _c;
 
       // set all bytes to 0
-      memset(this->data, this->M_size, 0);
+      memset(this->mpData, this->mMSize, 0);
     }
     else
     {
@@ -74,22 +74,22 @@ namespace STK
       void * _data;
 
       // first allocate the memory
-      // this->data = new char[t.M_size];
+      // this->mpData = new char[t.mMSize];
       // allocate the memory and set the right dimensions and parameters
-      if (!posix_memalign(&_data, 16, t.M_size))
+      if (!posix_memalign(&_data, 16, t.mMSize))
       {
-        this->data  = static_cast<_ElemT *> (_data);
+        this->mpData  = static_cast<_ElemT *> (_data);
 
         // copy the memory block
-        memcpy(this->data, t.data, t.M_size);
+        memcpy(this->mpData, t.mpData, t.mMSize);
 
         // set the parameters
-        this->storageType = t.storageType;
-        this->M_rows      = t.M_rows;
-        this->M_cols      = t.M_cols;
-        this->M_realCols  = t.M_realCols;
-        this->M_skip      = t.M_skip;
-        this->M_size      = t.M_size;
+        this->mStorageType = t.mStorageType;
+        this->mMRows      = t.mMRows;
+        this->mMCols      = t.mMCols;
+        this->mMRealCols  = t.mMRealCols;
+        this->mMSkip      = t.mMSkip;
+        this->mMSize      = t.mMSize;
       }
       else
       {
@@ -108,7 +108,7 @@ namespace STK
   {
 #ifdef CHECKSIZE
     // the sizes must match, else throw an exception
-    if (a.M_size != this->M_size)
+    if (a.mMSize != this->mMSize)
       throw std::logic_error("Sizes of matrices must be identical");
 #endif
 
@@ -123,10 +123,10 @@ namespace STK
   Matrix<_ElemT>::
   ~Matrix<_ElemT> ()
   {
-    // we need to free the data block if it was defined
-    if (storageType != STORAGE_UNDEFINED)
+    // we need to free the mpData block if it was defined
+    if (mStorageType != STORAGE_UNDEFINED)
     {
-      free(data);
+      free(mpData);
     }
   }
 
@@ -136,13 +136,13 @@ namespace STK
   Matrix<_ElemT>::
   operator ()(const size_t r, const size_t c)
   {
-    if (this->storageType == STORAGE_REGULAR)
+    if (this->mStorageType == STORAGE_REGULAR)
     {
-      return (this->data + r * this->M_realCols + c);
+      return (this->mpData + r * this->mMRealCols + c);
     }
-    else if (this->storageType == STORAGE_TRANSPOSED)
+    else if (this->mStorageType == STORAGE_TRANSPOSED)
     {
-      return (this->data + c * this->M_realCols + r);
+      return (this->mpData + c * this->mMRealCols + r);
     }
     else
       return NULL;
@@ -164,22 +164,22 @@ namespace STK
         void * _data;
 
         // first allocate the memory
-        // this->data = new char[t.M_size];
+        // this->mpData = new char[t.mMSize];
         // allocate the memory and set the right dimensions and parameters
-        if (!posix_memalign(&_data, 16, t.M_size))
+        if (!posix_memalign(&_data, 16, t.mMSize))
         {
-          this->data  = static_cast<_ElemT *> (_data);
+          this->mpData  = static_cast<_ElemT *> (_data);
 
           // copy the memory block
-          memcpy(this->data, t.data, t.M_size);
+          memcpy(this->mpData, t.mpData, t.mMSize);
 
           // set the parameters
-          this->storageType = t.storageType;
-          this->M_rows      = t.M_rows;
-          this->M_cols      = t.M_cols;
-          this->M_realCols  = t.M_realCols;
-          this->M_skip      = t.M_skip;
-          this->M_size      = t.M_size;
+          this->mStorageType = t.mStorageType;
+          this->mMRows      = t.mMRows;
+          this->mMCols      = t.mMCols;
+          this->mMRealCols  = t.mMRealCols;
+          this->mMSkip      = t.mMSkip;
+          this->mMSize      = t.mMSize;
         }
         else
         {
@@ -197,27 +197,27 @@ namespace STK
     setSize(const size_t rowOff,
             const size_t rows)
     {
-      if (Matrix<_ElemT>::storageType == STORAGE_REGULAR)
+      if (Matrix<_ElemT>::mStorageType == STORAGE_REGULAR)
       {
         // point to the begining of window
-        Matrix<_ElemT>::data   = this->orig_data + this->orig_M_realCols * rowOff;
-        Matrix<_ElemT>::T_rows = rows;
-        Matrix<_ElemT>::T_cols = this->orig_T_cols;
-        Matrix<_ElemT>::M_rows = rows;
-        Matrix<_ElemT>::M_cols = this->orig_M_cols;
-        Matrix<_ElemT>::M_realCols = this->orig_M_realCols;
-        Matrix<_ElemT>::M_skip = this->orig_M_skip;
+        Matrix<_ElemT>::mpData   = this->orig_data + this->mOrigMRealCols * rowOff;
+        Matrix<_ElemT>::mTRows = rows;
+        Matrix<_ElemT>::mTCols = this->mOrigTCols;
+        Matrix<_ElemT>::mMRows = rows;
+        Matrix<_ElemT>::mMCols = this->mOrigMCols;
+        Matrix<_ElemT>::mMRealCols = this->mOrigMRealCols;
+        Matrix<_ElemT>::mMSkip = this->mOrigMSkip;
       }
-      else if (Matrix<_ElemT>::storageType == STORAGE_TRANSPOSED)
+      else if (Matrix<_ElemT>::mStorageType == STORAGE_TRANSPOSED)
       {
         // point to the begining of window
-        Matrix<_ElemT>::data   = this->orig_data + rowOff;
-        Matrix<_ElemT>::T_rows = rows;
-        Matrix<_ElemT>::T_cols = this->orig_T_cols;
-        Matrix<_ElemT>::M_rows = this->orig_M_cols;
-        Matrix<_ElemT>::M_cols = rows;
-        Matrix<_ElemT>::M_realCols = this->orig_M_realCols;
-        Matrix<_ElemT>::M_skip = this->orig_M_realCols - rows;
+        Matrix<_ElemT>::mpData   = this->orig_data + rowOff;
+        Matrix<_ElemT>::mTRows = rows;
+        Matrix<_ElemT>::mTCols = this->mOrigTCols;
+        Matrix<_ElemT>::mMRows = this->mOrigMCols;
+        Matrix<_ElemT>::mMCols = rows;
+        Matrix<_ElemT>::mMRealCols = this->mOrigMRealCols;
+        Matrix<_ElemT>::mMSkip = this->mOrigMRealCols - rows;
       }
     }
 
@@ -231,29 +231,29 @@ namespace STK
             const size_t colOff,
             const size_t cols)
     {
-      if (Matrix<_ElemT>::storageType == STORAGE_REGULAR)
+      if (Matrix<_ElemT>::mStorageType == STORAGE_REGULAR)
       {
         // point to the begining of window
-        Matrix<_ElemT>::data   = this->orig_data +
+        Matrix<_ElemT>::mpData   = this->orig_data +
                                           this->orig_realCols * rowOff +
                                           cols;
-        Matrix<_ElemT>::T_rows = rows;
-        Matrix<_ElemT>::T_cols = cols;
-        Matrix<_ElemT>::M_rows = rows;
-        Matrix<_ElemT>::M_cols = cols;
-        Matrix<_ElemT>::M_realCols = this->orig_M_realCols;
-        Matrix<_ElemT>::M_skip = this->orig_realCols - cols;
+        Matrix<_ElemT>::mTRows = rows;
+        Matrix<_ElemT>::mTCols = cols;
+        Matrix<_ElemT>::mMRows = rows;
+        Matrix<_ElemT>::mMCols = cols;
+        Matrix<_ElemT>::mMRealCols = this->mOrigMRealCols;
+        Matrix<_ElemT>::mMSkip = this->orig_realCols - cols;
       }
-      else if (Matrix<_ElemT>::storageType == STORAGE_TRANSPOSED)
+      else if (Matrix<_ElemT>::mStorageType == STORAGE_TRANSPOSED)
       {
         // point to the begining of window
-        Matrix<_ElemT>::data   = this->orig_data + rowOff;
-        Matrix<_ElemT>::T_rows = rows;
-        Matrix<_ElemT>::T_cols = this->orig_T_cols;
-        Matrix<_ElemT>::M_rows = this->orig_M_cols;
-        Matrix<_ElemT>::M_cols = rows;
-        Matrix<_ElemT>::M_realCols = this->orig_M_realCols;
-        Matrix<_ElemT>::M_skip = this->orig_realCols - rows;
+        Matrix<_ElemT>::mpData   = this->orig_data + rowOff;
+        Matrix<_ElemT>::mTRows = rows;
+        Matrix<_ElemT>::mTCols = this->mOrigTCols;
+        Matrix<_ElemT>::mMRows = this->mOrigMCols;
+        Matrix<_ElemT>::mMCols = rows;
+        Matrix<_ElemT>::mMRealCols = this->mOrigMRealCols;
+        Matrix<_ElemT>::mMSkip = this->orig_realCols - rows;
       }
 
     }
@@ -278,7 +278,7 @@ namespace STK
           data ++;
         }
 
-        data += rM.M_skip;
+        data += rM.mMSkip;
 
         rOut << std::endl;
       }
