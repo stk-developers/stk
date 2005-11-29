@@ -49,11 +49,11 @@ void PhoneNodesToModelNodes(Node *first, ModelSet *hmms, ModelSet *hmmsToUpdate)
   if(hmmsToUpdate == NULL) hmmsToUpdate = hmms;
 
   for(node = first; node != NULL; node = node->next) {
-    if(node->type & NT_Phone) {
+    if(node->mType & NT_Phone) {
       Macro *macro;
 
-      node->type &= ~NT_Phone;
-      node->type |= NT_Model;
+      node->mType &= ~NT_Phone;
+      node->mType |= NT_Model;
       macro = FindMacro(&hmms->mHmmHash, node->mpName);
       if(macro == NULL) {
         Error("Model %s not defined in %sHMM set", node->mpName,
@@ -89,13 +89,13 @@ void InitNetwork(Network *net, Node *first, ModelSet *hmms, ModelSet *hmmsToUpda
     node->aux2 = 0;
 #endif
     int numOfTokens = 1;
-    if(node->type & NT_Model) {
+    if(node->mType & NT_Model) {
       numOfTokens = node->hmm->mNStates;
       node->hmmToUpdate->mpMacro->mOccurances++;
       if(node->hmm->mpTransition->matrix[numOfTokens - 1] > LOG_MIN) {
-        node->type |= NT_Tee;
+        node->mType |= NT_Tee;
       }
-    } else if(node->type & NT) {
+    } else if(node->mType & NT) {
       numOfTokens = 1;
     } else Error("Fatal: Incorect node type");
 
@@ -105,7 +105,7 @@ void InitNetwork(Network *net, Node *first, ModelSet *hmms, ModelSet *hmmsToUpda
     node->exitToken = &node->tokens[numOfTokens-1];
     node->estate_id = net->nNetStates;
 
-    if(node->type & NT_Model) {
+    if(node->mType & NT_Model) {
       int nstates = node->hmm->mNStates;
 
       if(maxStatesInModel < nstates) maxStatesInModel = nstates;
@@ -194,7 +194,7 @@ void SortNodes(Network *net)
     i = 0;
 
     while(*curPtr) {
-      if((((*curPtr)->type & NT_Model) && !((*curPtr)->type & NT_Tee))
+      if((((*curPtr)->mType & NT_Model) && !((*curPtr)->mType & NT_Tee))
         || (*curPtr)->aux == 0) {
         for(j = 0; j < (*curPtr)->nlinks; j++) {
           (*curPtr)->links[j].node->aux--;
@@ -212,7 +212,7 @@ void SortNodes(Network *net)
     if(short_curcuit) {
 //      fprintf(stderr, "Nodes in loop: ");
 //      for(curPtr = &chain; *curPtr; curPtr = &(*curPtr)->next)
-//        fprintf(stderr, "%d %d", *curPtr - net->nodes, (*curPtr)->type);
+//        fprintf(stderr, "%d %d", *curPtr - net->nodes, (*curPtr)->mType);
 //      fprintf(stderr, "\n");
       Error("Loop of non-emiting nodes found in network");
     }
@@ -245,7 +245,7 @@ void SortNodes(Network *net)
     Node **curPtr = &chain;
 
     while(*curPtr) {
-      if((((*curPtr)->type & NT_Model) && !((*curPtr)->type & NT_Tee))
+      if((((*curPtr)->mType & NT_Model) && !((*curPtr)->mType & NT_Tee))
         || (*curPtr)->aux == 0) {
         for(j = 0; j < (*curPtr)->nbacklinks; j++) {
           (*curPtr)->backlinks[j].node->aux--;
@@ -339,7 +339,7 @@ void FreeFWBWRecords(Network *net)
 {
   Node *node;
   for(node = net->first; node != NULL; node = node->next) {
-    if(!(node->type & NT_Model)) continue;
+    if(!(node->mType & NT_Model)) continue;
 
     while(node->alphaBetaList) {
       FWBWR *fwbwr = node->alphaBetaList;
@@ -375,8 +375,8 @@ int HasCycle(Network *net) {
 
     for(i=0; i <nlinks; i++)
       if(links[i].node->aux2 == HasCycleCounter &&
-         (!(links[i].node->type & NT_Model)
-         || links[i].node->type & NT_Tee)) {
+         (!(links[i].node->mType & NT_Model)
+         || links[i].node->mType & NT_Tee)) {
         printf("Active node %d listed after his non-model succesor %d\n",
                node - net->first, links[i].node - net->first);
 
@@ -398,8 +398,8 @@ int AllWordSuccessorsAreActive(Network *net) {
 
       if(links[i].node->aux2 != HasCycleCounter &&
          links[i].node != (FORWARD_PASS ? net->last : net->first) &&
-         (!(links[i].node->type & NT_Model)
-         || links[i].node->type & NT_Tee)) {
+         (!(links[i].node->mType & NT_Model)
+         || links[i].node->mType & NT_Tee)) {
         printf("Active node %d has nonactive non-model succesor %d\n",
                node - net->first, links[i].node - net->first);
         return 0;
@@ -416,12 +416,12 @@ void MarkWordNodesLeadingFrom(Network *net, Node *node)
 
   for(i = 0; i < nlinks; i++) {
     Node *lnode = links[i].node;
-    if((lnode->type & NT_Model && !(lnode->type & NT_Tee))
+    if((lnode->mType & NT_Model && !(lnode->mType & NT_Tee))
        || (lnode == (FORWARD_PASS ? net->last : net->first))) continue;
     if(lnode->isActiveNode > 0) continue;
 
     if(lnode->isActive) {
-      assert(lnode->type & NT_Tee);
+      assert(lnode->mType & NT_Tee);
       continue;
     }
 
@@ -440,12 +440,12 @@ Node *ActivateWordNodesLeadingFrom(Network *net, Node *node)
 
   for(i = 0; i < nlinks; i++) {
     Node *lnode = links[i].node;
-    if((lnode->type & NT_Model && !(lnode->type & NT_Tee))
+    if((lnode->mType & NT_Model && !(lnode->mType & NT_Tee))
        || (lnode == (FORWARD_PASS ? net->last : net->first))) continue;
     if(lnode->isActiveNode++ > 0) continue;
 
     if(lnode->isActive) {
-      assert(lnode->type & NT_Tee);
+      assert(lnode->mType & NT_Tee);
       continue;
     }
 
@@ -477,7 +477,7 @@ void ActivateModel(Network *net, Node *node)
   net->activeModels = node;
 
   if(node->isActiveNode) {
-    assert(node->type & NT_Tee);
+    assert(node->mType & NT_Tee);
     return;
   }
 
@@ -504,11 +504,11 @@ void DeactivateWordNodesLeadingFrom(Network *net, Node *node)
 
   for(i = 0; i < nlinks; i++) {
     Node *lnode = links[i].node;
-    if(lnode->type & NT_Model && !(lnode->type & NT_Tee)) continue;
-    assert(!(lnode->type & NT_Tee) || lnode->isActiveNode);
+    if(lnode->mType & NT_Model && !(lnode->mType & NT_Tee)) continue;
+    assert(!(lnode->mType & NT_Tee) || lnode->isActiveNode);
     if(--lnode->isActiveNode) continue;
 
-    if(lnode->type & NT_Tee && lnode->isActive) return;
+    if(lnode->mType & NT_Tee && lnode->isActive) return;
 
     DeactivateWordNodesLeadingFrom(net, lnode);
 
@@ -539,7 +539,7 @@ void DeactivateModel(Network *net, Node *node)
   }
 
   assert(!HasCycle(net));
-  if(node->type & NT_Tee && node->isActiveNode) return;
+  if(node->mType & NT_Tee && node->isActiveNode) return;
 
   node->isActiveNode = 0;
   DeactivateWordNodesLeadingFrom(net, node);
@@ -568,7 +568,7 @@ void TokenPropagationInit(Network *net)
 //  for(i=0; i < net->nnodes; i++) {
 //  node = &net->nodes[i];
   for(node = net->first; node != NULL; node = node->next) {
-    int numOfTokens = (node->type & NT_Model) ? node->hmm->mNStates : 1;
+    int numOfTokens = (node->mType & NT_Model) ? node->hmm->mNStates : 1;
 
     for(j=0; j < numOfTokens; j++) {
       node->tokens[j].like = LOG_0;
@@ -611,14 +611,14 @@ void TokenPropagationInit(Network *net)
 
   if(net->collectAlphaBeta && FORWARD_PASS) {
     for(node = net->first; node != NULL; node = node->next) {
-      if(!(node->type & NT_Model)) continue;
+      if(!(node->mType & NT_Model)) continue;
       node->alphaBetaList = node->alphaBetaListReverse = NULL;
     }
   }
   // Needed to load last FWBWRs to alphaBetaList
   if(net->collectAlphaBeta && !FORWARD_PASS) {
     for(node = net->first; node != NULL; node = node->next) {
-      if(!(node->type & NT_Model)) continue;
+      if(!(node->mType & NT_Model)) continue;
       BackwardPruning(net->time, node, node->hmm->mNStates-1);
     }
   }
@@ -669,8 +669,8 @@ void TokenPropagationInNetwork(Network *net)
       node != NULL;
       node = FORWARD_PASS ? node->next : node->backnext) { //*/
   for(node = net->activeNodes; node != NULL; node = node->nextActiveNode) {
-    if((node->type & NT_Tee) && IS_ACTIVE(node->tokens[0])) {
-//        assert(node->isActiveNode || (node->type & NT_Tee && node->isActive));
+    if((node->mType & NT_Tee) && IS_ACTIVE(node->tokens[0])) {
+//        assert(node->isActiveNode || (node->mType & NT_Tee && node->isActive));
 //        for(Xnode = net->activeNodes; Xnode && Xnode != node; Xnode = Xnode->nextActiveNode);
 //        assert(Xnode);
 
@@ -687,11 +687,11 @@ void TokenPropagationInNetwork(Network *net)
     }
 
     if(IS_ACTIVE(*node->exitToken)) {
-//      assert(node->isActiveNode || (node->type & NT_Tee && node->isActive));
+//      assert(node->isActiveNode || (node->mType & NT_Tee && node->isActive));
 //      for(Xnode = net->activeNodes; Xnode && Xnode != node; Xnode = Xnode->nextActiveNode);
 //      assert(Xnode);
 
-      if(node->type & NT_Model) {
+      if(node->mType & NT_Model) {
         if(net->collectAlphaBeta) {
           if(FORWARD_PASS) {
             WriteAlpha(net->time, node, node->hmm->mNStates-1, node->exitToken);
@@ -700,7 +700,7 @@ void TokenPropagationInNetwork(Network *net)
           }
         }
         node->exitToken->like += net->mPenalty;
-      } else if(node->type & NT && node->pronun != NULL) {
+      } else if(node->mType & NT && node->pronun != NULL) {
         node->exitToken->like += net->wPenalty +
                                  net->pronScale * node->pronun->prob;
         /*if(node->exitToken->like < net->wordThresh) {
@@ -709,10 +709,10 @@ void TokenPropagationInNetwork(Network *net)
       }
 
       if(node->exitToken->like > net->beamThresh) {
-        if(node->type & NT && node->pronun != NULL &&
+        if(node->mType & NT && node->pronun != NULL &&
            net->alignment & WORD_ALIGNMENT) {
           AddWordLinkRecord(node->exitToken, node, -1, net->time);
-        } else if(node->type & NT_Model && net->alignment & MODEL_ALIGNMENT) {
+        } else if(node->mType & NT_Model && net->alignment & MODEL_ALIGNMENT) {
           AddWordLinkRecord(node->exitToken, node, -1, net->time);
         }
 
@@ -724,17 +724,17 @@ void TokenPropagationInNetwork(Network *net)
           if(node->exitToken->like + lmLike > net->beamThresh 
           && (/*links[i].node->start == UNDEF_TIME ||*/
                 links[i].node->start <= net->time) 
-	  && (  links[i].node->stop  == UNDEF_TIME ||
+    && (  links[i].node->stop  == UNDEF_TIME ||
                 links[i].node->stop  >= net->time)
-	  && (net->SearchPaths != Network::SP_TrueOnly      || 
-	     (node->type & NT_True)                || 
-	     !(links[i].node->type & NT_Model))) {
+    && (net->SearchPaths != Network::SP_TrueOnly      || 
+       (node->mType & NT_True)                || 
+       !(links[i].node->mType & NT_Model))) {
 #ifdef TRACE_TOKENS
           printf("Node %d -> Node %d ", node->aux, links[i].node->aux);
 #endif
             net->PassTokenInNetwork(node->exitToken,
                                     &links[i].node->tokens[0], lmLike);
-            if(links[i].node->type & NT_Model) {
+            if(links[i].node->mType & NT_Model) {
               ActivateModel(net, links[i].node);
             } else {
               assert(links[i].node->isActiveNode ||
@@ -743,7 +743,7 @@ void TokenPropagationInNetwork(Network *net)
           }
         }
       }
-      if(!(node->type & NT_Sticky)) KillToken(node->exitToken);
+      if(!(node->mType & NT_Sticky)) KillToken(node->exitToken);
     }
 
   }
@@ -752,12 +752,12 @@ void TokenPropagationInNetwork(Network *net)
   if(net->collectAlphaBeta) {
     if(FORWARD_PASS) {
       for(node = net->activeModels; node != NULL; node = node->nextActiveModel) {
-        if(/*!(node->type & NT_Model) ||*/ node->tokens[0].like < LOG_MIN) continue;
+        if(/*!(node->mType & NT_Model) ||*/ node->tokens[0].like < LOG_MIN) continue;
         WriteAlpha(net->time, node, 0, &node->tokens[0]);
       }
     } else {
       for(node = net->activeModels; node != NULL; node = node->nextActiveModel) {
-        if(/*!(node->type & NT_Model) ||*/ node->tokens[0].like < LOG_MIN
+        if(/*!(node->mType & NT_Model) ||*/ node->tokens[0].like < LOG_MIN
           || BackwardPruning(net->time, node, node->hmm->mNStates-1)) continue;
         WriteBeta(net->time, node, node->hmm->mNStates-1, &node->tokens[0]);
       }
@@ -788,13 +788,13 @@ void TokenPropagationInModels(Network *net, FLOAT *observation)
 
   for(node = net->activeModels; node != NULL; node = node->nextActiveModel) {
 //  for(node = net->first; node != NULL; node = node->next) {
-//    if(!(node->type & NT_Model)) continue;
+//    if(!(node->mType & NT_Model)) continue;
 
     hmm = node->hmm;
 
     if((/*node->start != UNDEF_TIME &&*/node->start >= net->time)
     || (  node->stop  != UNDEF_TIME &&  node->stop  <  net->time)
-    || net->SearchPaths == Network::SP_TrueOnly && !(node->type & NT_True)) {
+    || net->SearchPaths == Network::SP_TrueOnly && !(node->mType & NT_True)) {
       for(i = 0; i < hmm->mNStates-1; i++) {
         KillToken(&node->tokens[i]);
       }
@@ -866,7 +866,7 @@ void TokenPropagationInModels(Network *net, FLOAT *observation)
           WriteBeta(net->time, node, state_idx, &node->tokens[j]);
         }
 
-        if(net->accumType == AT_MFE && node->type & NT_True) {
+        if(net->accumType == AT_MFE && node->mType & NT_True) {
           FloatInLog fil_like = {node->tokens[j].like, 0};
           node->tokens[j].accuracy = FIL_Add(node->tokens[j].accuracy, fil_like);
         }
@@ -971,7 +971,7 @@ void TokenPropagationDone(Network *net)
     for(node = net->first; node != NULL; node = node->next) {
     int numOfTokens;
 
-    if(!(node->type & NT_Model)) {
+    if(!(node->mType & NT_Model)) {
       assert(!IS_ACTIVE(*node->exitToken));
       continue;
     }
@@ -1213,7 +1213,7 @@ Label *GetLabels(Token *token)
     tmp->stop  = wlr->time;
     tmp->id    = wlr->state_idx;
 
-    if(wlr->node->type & NT_Model) {
+    if(wlr->node->mType & NT_Model) {
       li = wlr->state_idx >= 0 ? 0 : 1;
       tmp->data = wlr->node->hmm;
       tmp->mpName = wlr->node->hmm->mpMacro->mpName;
@@ -1330,7 +1330,8 @@ FLOAT ViterbiDone(Network *net, Label **labels)
 
 
 /*void BaumWelchInit(ModelSet *hmms) {
-  ResetAccumsForHMMSet(hmms);
+  //ResetAccumsForHMMSet(hmms);
+  hmms.ResetAccums();
 }*/
 
 struct FWBWRet {
@@ -1448,7 +1449,7 @@ struct FWBWRet ForwardBackward(Network *net, FLOAT *obsMx, int nFrames)
 
   Node *node;
   for(node = net->first; node != NULL; node = node->next) {
-    if(!(node->type & NT_Model)) continue;
+    if(!(node->mType & NT_Model)) continue;
 
     while(node->alphaBetaListReverse) {
       FWBWR *fwbwr = node->alphaBetaListReverse;
@@ -1515,7 +1516,7 @@ printf("weight: %g\n", F);
   if(P < LOG_MIN) return LOG_0;
 
   for(node = net->first; node != NULL; node = node->next) {
-    if(node->type & NT_Model && node->alphaBetaList != NULL &&
+    if(node->mType & NT_Model && node->alphaBetaList != NULL &&
        node->alphaBetaList->time == 0) {
       node->alphaBetaListReverse = node->alphaBetaList;
       node->alphaBetaList = node->alphaBetaList->next;
@@ -1561,7 +1562,7 @@ printf("weight: %g\n", F);
     for(node = net->first; node != NULL; node = node->next) { //for every model
 //    for(k=0; k < net->nnodes; k++) {
 //      Node *node = &net->nodes[k];
-      if(node->type & NT_Model &&
+      if(node->mType & NT_Model &&
          node->alphaBetaList != NULL &&
          node->alphaBetaList->time == net->time+1) {
 
@@ -1598,7 +1599,7 @@ printf("weight: %g\n", F);
   ForwardBackward(net, obsMx, nFrames);
 
   for(node = net->first; node != NULL; node = node->next) {
-    if(node->type & NT_Model && node->alphaBetaList != NULL &&
+    if(node->mType & NT_Model && node->alphaBetaList != NULL &&
        node->alphaBetaList->time == 0) {
       node->alphaBetaListReverse = node->alphaBetaList;
       node->alphaBetaList = node->alphaBetaList->next;
@@ -1644,7 +1645,7 @@ printf("weight: %g\n", F);
     for(node = net->first; node != NULL; node = node->next) { //for every model
 //    for(k=0; k < net->nnodes; k++) {
 //      Node *node = &net->nodes[k];
-      if(node->type & NT_Model &&
+      if(node->mType & NT_Model &&
          node->alphaBetaList != NULL &&
          node->alphaBetaList->time == net->time+1) {
 
@@ -1730,7 +1731,7 @@ FLOAT BaumWelchReest(Network *net, FLOAT *obsMx, FLOAT *obsMx2, int nFrames, FLO
 #endif
 
   for(node = net->first; node != NULL; node = node->next) {
-    if(node->type & NT_Model && node->alphaBetaList != NULL &&
+    if(node->mType & NT_Model && node->alphaBetaList != NULL &&
        node->alphaBetaList->time == 0) {
       node->alphaBetaListReverse = node->alphaBetaList;
       node->alphaBetaList = node->alphaBetaList->next;
@@ -1776,7 +1777,7 @@ FLOAT BaumWelchReest(Network *net, FLOAT *obsMx, FLOAT *obsMx2, int nFrames, FLO
     for(node = net->first; node != NULL; node = node->next) { //for every model
 //    for(k=0; k < net->nnodes; k++) {
 //      Node *node = &net->nodes[k];
-      if(node->type & NT_Model &&
+      if(node->mType & NT_Model &&
          node->alphaBetaList != NULL &&
          node->alphaBetaList->time == net->time+1) {
 
@@ -2012,7 +2013,7 @@ void UpdateXFormStatCache(XFormStatCache *xfsc,
     xfsc->norm++;
   } else if(topXForm->xform_type == XT_COMPOSITE) {
     CompositeXForm *cxf = (CompositeXForm *) topXForm;
-    for(i=0; i<cxf->layer[0].nblocks; i++) {
+    for(i=0; i<cxf->layer[0].mNBlocks; i++) {
       UpdateXFormStatCache(xfsc, cxf->layer[0].block[i], input);
       input += cxf->layer[0].block[i]->in_size;
     }
@@ -2248,7 +2249,7 @@ void ReestState(Network *net, Node *node,
 
       for(k=0; k < net->nnodes; k++) {
         Node *node = &net->nodes[k];
-        if(node->type & NT_Model) {
+        if(node->mType & NT_Model) {
           for(j = 0; j < node->hmm->mNStates - 2; j++, state_counter++) {
             FLOAT tmpf = net->OutputProbability(node->hmm->state[j],
                                        obsMx + hmms->mInputVectorSize * i, net);
@@ -2326,7 +2327,7 @@ void ReestState(Network *net, Node *node,
 
     for(k=0; k < net->nnodes; k++) {
       Node *node = &net->nodes[k];
-      if(node->type & NT_Model) {
+      if(node->mType & NT_Model) {
         for(j = 0; j < node->hmm->mNStates - 2; j++, state_counter++) {
           int idx = (net->nNetStates * i) + node->estate_id + j + 1;
           FLOAT occp = beta[idx] + alfa[idx] - totalLike;
@@ -2356,7 +2357,7 @@ WLR *TimePruning(Network *net, int frame_delay)
   }
 
   for(node = net->first; node != NULL; node = node->next) {
-    if(!(node->type & NT_Model)) continue;
+    if(!(node->mType & NT_Model)) continue;
 
     for(i = 0; i < node->hmm->mNStates-1; i++) {
       if(IS_ACTIVE(node->tokens[i])) {

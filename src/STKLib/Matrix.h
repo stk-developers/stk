@@ -62,8 +62,8 @@ namespace STK
       size_t  mMRows;       ///< Number of rows
       size_t  mMCols;       ///< Number of columns
       size_t  mMRealCols;   ///< true number of columns for the internal matrix.
-                             ///< This number may differ from M_cols as memory
-                             ///< alignment might be used
+                            ///< This number may differ from M_cols as memory
+                            ///< alignment might be used
       size_t  mMSize;       ///< Total size of data block in bytes
       size_t  mMSkip;       ///< Bytes to skip (memalign...)
 

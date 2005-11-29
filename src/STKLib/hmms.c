@@ -41,7 +41,6 @@ XForm *         ReadXForm(FILE *fp, ModelSet *hmm_set, Macro *macro);
 int             ReadGlobalOptions(FILE *fp, ModelSet *hmm_set);
 Macro *         AddMacroToHMMSet(char type, const char *name, ModelSet *hmm_set);
 Macro *         FindMacro(struct my_hsearch_data *macro_hash, const char *name);
-void            ComputeGConst(Mixture *mix);
 char *          GetString(FILE *fp, int eofNotExpected);
 void            UngetString(void);
 int             GetInt(FILE *fp);
@@ -109,11 +108,13 @@ struct
 };
 
 
-typedef struct {
-  void *old_data;
-  void *new_data;
-  int  type;
-} ReplaceItem_UserData;
+class ReplaceItem_UserData
+{
+public:
+  void *    old_data;
+  void *    new_data;
+  int       mType;
+};
 
 void ReadHMMSet(const char *mmFileName, ModelSet *hmm_set, char *expectHMM)
 {
@@ -213,7 +214,7 @@ void ReadHMMSet(const char *mmFileName, ModelSet *hmm_set, char *expectHMM)
           ReplaceItem_UserData ud;
           ud.old_data = macro->mpData;
           ud.new_data = data;
-          ud.type     = type;
+          ud.mType     = type;
 
           switch(type) {
            case 'h':
@@ -286,7 +287,7 @@ void ReplaceItem(int macro_type, HMMSetNodeName nodeName, void *data, void *user
   {
     Hmm *hmm = (Hmm *) data;
     
-    if(ud->type == 's') 
+    if(ud->mType == 's') 
     {
       for (i = 0; i < hmm->mNStates-2; i++) 
       {
@@ -332,7 +333,7 @@ void ReplaceItem(int macro_type, HMMSetNodeName nodeName, void *data, void *user
     {
       for (i = 0; i < cxf->mNLayers; i++) 
       {
-        for(j = 0; j < cxf->layer[i].nblocks; j++) 
+        for(j = 0; j < cxf->layer[i].mNBlocks; j++) 
         {
           if(cxf->layer[i].block[j] == ud->old_data) 
           {
@@ -825,7 +826,7 @@ CompositeXForm *ReadCompositeXForm(FILE *fp, ModelSet *hmm_set, Macro *macro) {
     }
 
     ret->layer[layer_id-1].block   = block;
-    ret->layer[layer_id-1].nblocks = nblocks;
+    ret->layer[layer_id-1].mNBlocks = nblocks;
     for(j = 0; j < nblocks; j++) block[j] = NULL;
 
     layer_delay = 0;
@@ -859,7 +860,7 @@ CompositeXForm *ReadCompositeXForm(FILE *fp, ModelSet *hmm_set, Macro *macro) {
   for(i=0; i<nlayers; i++) {
     int layer_in_size  = 0, layer_out_size = 0;
 
-    for(j=0; j < ret->layer[i].nblocks; j++) {
+    for(j=0; j < ret->layer[i].mNBlocks; j++) {
       layer_in_size  += ret->layer[i].block[j]->in_size;
       layer_out_size += ret->layer[i].block[j]->out_size;
     }
@@ -1027,7 +1028,7 @@ int IsXFormIn1stLayer(XForm *xform, XForm *topXForm)
 
   if(topXForm->xform_type == XT_COMPOSITE) {
     CompositeXForm *cxf = (CompositeXForm *) topXForm;
-    for(i=0; i<cxf->layer[0].nblocks; i++) {
+    for(i=0; i<cxf->layer[0].mNBlocks; i++) {
       if(IsXFormIn1stLayer(xform, cxf->layer[0].block[i])) return 1;
     }
   }
@@ -1040,7 +1041,7 @@ int Is1Layer1BlockLinearXForm(XForm *xform)
   if(cxf == NULL)                                   return 0;
   if(cxf->xform_type == XT_LINEAR)                  return 1;
   if(cxf->xform_type != XT_COMPOSITE)               return 0;
-  if(cxf->mNLayers > 1 || cxf->layer[0].nblocks > 1) return 0;
+  if(cxf->mNLayers > 1 || cxf->layer[0].mNBlocks > 1) return 0;
   return Is1Layer1BlockLinearXForm(cxf->layer[0].block[0]);
 }
 
@@ -1258,7 +1259,7 @@ int ReadGlobalOptions(FILE *fp, ModelSet *hmm_set)
         ReplaceItem_UserData ud;
         ud.old_data = macro->mpData;
         ud.new_data = inputXForm;
-        ud.type     = 'j';
+        ud.mType     = 'j';
 
         ScanHMMSet(hmm_set, mtm_XFormInstance|mtm_mixture,NULL,ReplaceItem, &ud);
         ScanXFormInstance(static_cast<XFormInstance*>(ud.old_data),
@@ -1311,7 +1312,8 @@ Macro *AddMacroToHMMSet(char type, const char *name, ModelSet *hmm_set)
          type == 'x' ? &hmm_set->mXFormHash : NULL;
 
 
-  if(hash == NULL) {
+  if(hash == NULL) 
+  {
     return NULL;
   }
 
@@ -1342,16 +1344,21 @@ Macro *AddMacroToHMMSet(char type, const char *name, ModelSet *hmm_set)
 //  macro->next = *first;
 //  *first = macro;
   macro->mOccurances = 0;
-  macro->type = type;
+  macro->mType = type;
 //List of all macros is made to be able to save macros in proper order
   macro->nextAll = NULL;
-  macro->prevAll = hmm_set->last_macro;
-  if(!hmm_set->first_macro /* => !hmm_set->last_macro  */) {
-    hmm_set->first_macro = macro;
-  } else {
-    hmm_set->last_macro->nextAll = macro;
+  macro->prevAll = hmm_set->mpLastMacro;
+  
+  if(!hmm_set->mpFirstMacro /* => !hmm_set->mpLastMacro  */) 
+  {
+    hmm_set->mpFirstMacro = macro;
+  } 
+  else 
+  {
+    hmm_set->mpLastMacro->nextAll = macro;
   }
-  hmm_set->last_macro = macro;
+  
+  hmm_set->mpLastMacro = macro;
 //  puts("AddMacroToHMMSet exit");
   return macro;
 }
@@ -1380,9 +1387,12 @@ void ReleaseMacroHash(struct my_hsearch_data *macro_hash)
 
 void ReleaseItem(int macro_type,HMMSetNodeName nodeName,void *data,void *userData)
 {
-    int i;
+  int i;
+  
   CompositeXForm *cxf = (CompositeXForm *) data;
-  if(macro_type == 'x' && cxf->xform_type == XT_COMPOSITE) {
+  
+  if(macro_type == 'x' && cxf->xform_type == XT_COMPOSITE) 
+  {
     for(i = 0; i < cxf->mNLayers-1; i++) free(cxf->layer[i].out_vec);
     for(i = 0; i < cxf->mNLayers;   i++) free(cxf->layer[i].block);
   }
@@ -1395,6 +1405,7 @@ void ReleaseHMMSet(ModelSet *hmm_set)
 {
   int i;
 
+  
   ScanHMMSet(hmm_set, mtm_revpass | mtm_all, NULL, ReleaseItem, NULL);
 
   ReleaseMacroHash(&hmm_set->mHmmHash);
@@ -1696,7 +1707,7 @@ void WriteHMMSet(const char *mmfName, const char *out_mmf_dir,
   char *lastFileName = NULL;
   int waitingForNonXForm = 1;
 
-  for(macro = hmm_set->first_macro; macro != NULL; macro = macro->nextAll) {
+  for(macro = hmm_set->mpFirstMacro; macro != NULL; macro = macro->nextAll) {
     if(macro->mpFileName == NULL) continue; // Artificial macro not read from file
 
     if(lastFileName == NULL || (!mmfName && strcmp(lastFileName, macro->mpFileName))) {
@@ -1724,18 +1735,18 @@ void WriteHMMSet(const char *mmfName, const char *out_mmf_dir,
     } 
     else 
     {
-      fprintf(fp, "~%c \"%s\"", macro->type, macro->mpName);
+      fprintf(fp, "~%c \"%s\"", macro->mType, macro->mpName);
       PutNLn(fp, binary);
     }
 
     if (macro->mpData->mpMacro != macro) 
     {
-      fprintf(fp, " ~%c \"%s\"", macro->type, (macro->mpData->mpMacro)->mpName);
+      fprintf(fp, " ~%c \"%s\"", macro->mType, (macro->mpData->mpMacro)->mpName);
       PutNLn(fp, binary);
     } 
     else 
     {
-      switch(macro->type) 
+      switch(macro->mType) 
       {
         case 'x': WriteXForm        (fp, binary, hmm_set, static_cast <XForm*>         (macro->mpData)); break;
         case 'j': WriteXFormInstance(fp, binary, hmm_set, static_cast <XFormInstance*> (macro->mpData)); break;
@@ -1922,7 +1933,7 @@ void WriteXFormInstance(FILE *fp, int binary, ModelSet *hmm_set, XFormInstance *
   if(xformInstance->input != NULL || cxf == NULL || cxf->mpMacro ||
      cxf->xform_type != XT_COMPOSITE || cxf->mNLayers != 1) {
     isHTKCompatible = 0;
-  } else for(i = 0; i < cxf->layer[0].nblocks; i++) {
+  } else for(i = 0; i < cxf->layer[0].mNBlocks; i++) {
     if(cxf->layer[0].block[i]->xform_type != XT_LINEAR) {
       isHTKCompatible = 0;
       break;
@@ -1995,7 +2006,7 @@ void WriteCompositeXForm(FILE *fp, int binary, ModelSet *hmm_set, CompositeXForm
 
   if(xform->mpMacro || xform->mNLayers != 1) {
     isHTKCompatible = 0;
-  } else for(i = 0; i < xform->layer[0].nblocks; i++) {
+  } else for(i = 0; i < xform->layer[0].mNBlocks; i++) {
     if(xform->layer[0].block[i]->xform_type != XT_LINEAR) {
       isHTKCompatible = 0;
       break;
@@ -2016,22 +2027,22 @@ void WriteCompositeXForm(FILE *fp, int binary, ModelSet *hmm_set, CompositeXForm
 
     if(isHTKCompatible) {
       PutKwd(fp, binary, KID_BlockInfo);
-      PutInt(fp, binary, xform->layer[i].nblocks);
+      PutInt(fp, binary, xform->layer[i].mNBlocks);
       PutNLn(fp, binary);
 
-      for(j = 0; j < xform->layer[i].nblocks; j++) {
+      for(j = 0; j < xform->layer[i].mNBlocks; j++) {
         PutInt(fp, binary, xform->layer[i].block[j]->out_size);
       }
 
       PutNLn(fp, binary);
-    } else if(xform->layer[i].nblocks > 1) {
+    } else if(xform->layer[i].mNBlocks > 1) {
       PutKwd(fp, binary, KID_NumBlocks);
-      PutInt(fp, binary, xform->layer[i].nblocks);
+      PutInt(fp, binary, xform->layer[i].mNBlocks);
       PutNLn(fp, binary);
     }
 
-    for(j = 0; j < xform->layer[i].nblocks; j++) {
-      if(isHTKCompatible || xform->layer[i].nblocks > 1) {
+    for(j = 0; j < xform->layer[i].mNBlocks; j++) {
+      if(isHTKCompatible || xform->layer[i].mNBlocks > 1) {
         PutKwd(fp, binary, KID_Block);
         PutInt(fp, binary, j+1);
         PutNLn(fp, binary);
@@ -2496,8 +2507,10 @@ weight_accum_den = state->mixture[i].weight_accum_den;
 void UpdateHMMFromAccums(ModelSet *hmm_set, Hmm *hmm) {
   int i;
 
-  for(i = 0; i < hmm->mNStates - 2; i++) {
-    if(!hmm->state[i]->mpMacro) {
+  for(i = 0; i < hmm->mNStates - 2; i++) 
+  {
+    if(!hmm->state[i]->mpMacro) 
+    {
       UpdateStateFromAccums(hmm_set, hmm->state[i], hmm);
     }
   }
@@ -2511,7 +2524,8 @@ void UpdateHMMFromAccums(ModelSet *hmm_set, Hmm *hmm) {
   Warning(type" %s is not updated (%s%ld example%s)", \
           name, exs == 0 ? "" : "only ", exs, exs == 1 ? "" : "s")
 
-void UpdateHMMSetFromAccums(const char *out_dir, ModelSet *hmm_set) {
+void UpdateHMMSetFromAccums(const char *out_dir, ModelSet *hmm_set) 
+{
   Macro *macro;
   int i;
 /*char fileName[1024];
@@ -2834,7 +2848,7 @@ FLOAT *CompositeXFormEval(CompositeXForm *xform, FLOAT *in_vec, FLOAT *out_vec,
     FLOAT *in =  i == 0                ? in_vec  : xform->layer[i-1].out_vec;
     FLOAT *out = i == xform->mNLayers-1 ? out_vec : xform->layer[i]  .out_vec;
     
-    for(j = 0; j < xform->layer[i].nblocks; j++) {
+    for(j = 0; j < xform->layer[i].mNBlocks; j++) {
       XFormEval(xform->layer[i].block[j], in, out, memory, dir);
       in  += xform->layer[i].block[j]->in_size;
       out += xform->layer[i].block[j]->out_size;
@@ -2881,7 +2895,7 @@ void ScanHMMSet(ModelSet *hmm_set, int mask, HMMSetNodeName nodeName,
   Macro *macro;
   if(nodeName != NULL) strcpy(nodeName+sizeof(HMMSetNodeName)-4, "...");
 
-  for(macro = mask & mtm_revpass ? hmm_set->last_macro : hmm_set->first_macro;
+  for(macro = mask & mtm_revpass ? hmm_set->mpLastMacro : hmm_set->mpFirstMacro;
       macro != NULL;
       macro = mask & mtm_revpass ? macro->prevAll      : macro->nextAll) 
   {
@@ -2893,7 +2907,7 @@ void ScanHMMSet(ModelSet *hmm_set, int mask, HMMSetNodeName nodeName,
       strncpy(nodeName, macro->mpName, sizeof(HMMSetNodeName)-4);
     }
 
-    switch(macro->type) 
+    switch(macro->mType) 
     {
       case mt_XForm:
         if(!(mask & mtm_XForm)) break;
@@ -3095,7 +3109,7 @@ void ScanXForm(XForm *xform, int mask, HMMSetNodeName nodeName,
     int i, j;
 
     for(i=0; i < cxf->mNLayers; i++) {
-      for(j = 0; j < cxf->layer[i].nblocks; j++) {
+      for(j = 0; j < cxf->layer[i].mNBlocks; j++) {
         if(!cxf->layer[i].block[j]->mpMacro) {
           if(n > 0) snprintf(chptr, n, ".part[%d,%d]", i+1, j+1);
           ScanXForm(cxf->layer[i].block[j], mask, nodeName, action, userData);
@@ -3112,10 +3126,12 @@ void ScanXForm(XForm *xform, int mask, HMMSetNodeName nodeName,
 
 
 enum StatType {MEAN_STATS, COV_STATS};
+
 void AllocXFormStatAccums(XFormStatAccum **xformStatAccum,
                           int *nxformStatAccums,
                           XFormInstance *xformInstance,
-                          enum StatType stat_type) {
+                          enum StatType stat_type) 
+{
   int i, j;
   if(xformInstance == NULL) return;
 
@@ -3659,9 +3675,9 @@ void WriteHMMStats(const char *stat_file, ModelSet *hmm_set)
     Error("Cannot open output file: '%s'", stat_file);
   }
 
-  for(macro = hmm_set->first_macro; macro != NULL; macro = macro->nextAll) {
+  for(macro = hmm_set->mpFirstMacro; macro != NULL; macro = macro->nextAll) {
     if(macro->mpData->mpMacro != macro) continue;
-    if(macro->type != mt_hmm) continue;
+    if(macro->mType != mt_hmm) continue;
     Hmm *hmm = (Hmm *) macro->mpData;
 
     fprintf(fp, "%4d%*c\"%s\" %4ld ", ++i,
@@ -3699,7 +3715,7 @@ void WriteAccum(int macro_type, HMMSetNodeName nodeName,
   Macro *macro = static_cast <MacroData *> (data)->mpMacro;
 
   if(macro &&
-    (fprintf(ud->fp, "~%c \"%s\"", macro->type, macro->mpName) < 0 ||
+    (fprintf(ud->fp, "~%c \"%s\"", macro->mType, macro->mpName) < 0 ||
      fwrite(&macro->mOccurances, sizeof(macro->mOccurances), 1, ud->fp) != 1)) {
     Error("Cannot write accumulators to file: '%s'", ud->fn);
   }
@@ -3887,7 +3903,7 @@ typedef struct {
 
 
 void ReadAccum(int macro_type, HMMSetNodeName nodeName,
-                void *data, void *userData) 
+                void * data, void *userData) 
 {
   unsigned int        i;
   unsigned int        j;
@@ -4456,7 +4472,7 @@ void ReadXFormList(ModelSet *hmm_set, const char *xformListFileName)
     mNStates(0), mpTransition(NULL), mpState(NULL)
   {
     // we allocate pointers for states. The -2 is for the non-emmiting states
-    mpState = new State*[mNStates - 2];
+    mpState = new State* [mNStates - 2];
     mNStates = nStates;
   }
   
@@ -4525,22 +4541,22 @@ void ReadXFormList(ModelSet *hmm_set, const char *xformListFileName)
   ModelSet::
   Init(FlagType flags)
   {
-    if (!my_hcreate_r(100, &this->mHmmHash)            ||
-        !my_hcreate_r(100, &this->mStateHash)          ||
-        !my_hcreate_r( 10, &this->mMixtureHash)        ||
-        !my_hcreate_r( 10, &this->mMeanHash)           ||
-        !my_hcreate_r( 10, &this->mVarianceHash)       ||
-        !my_hcreate_r( 10, &this->mTransitionHash)     ||
-        !my_hcreate_r( 10, &this->mXFormInstanceHash)  ||
-        !my_hcreate_r( 10, &this->mXFormHash)) 
+    if (!my_hcreate_r(100, &mHmmHash)            ||
+        !my_hcreate_r(100, &mStateHash)          ||
+        !my_hcreate_r( 10, &mMixtureHash)        ||
+        !my_hcreate_r( 10, &mMeanHash)           ||
+        !my_hcreate_r( 10, &mVarianceHash)       ||
+        !my_hcreate_r( 10, &mTransitionHash)     ||
+        !my_hcreate_r( 10, &mXFormInstanceHash)  ||
+        !my_hcreate_r( 10, &mXFormHash)) 
     {
       Error("Insufficient memory");
     }
   
     this->mpXFormInstances     = NULL;
     this->mpInputXForm          = NULL;
-    this->first_macro         = NULL;
-    this->last_macro          = NULL;
+    this->mpFirstMacro         = NULL;
+    this->mpLastMacro          = NULL;
     this->mInputVectorSize         = -1;
     this->mParamKind          = -1;
     this->outPDF_kind         = KID_UNSET;
@@ -4568,5 +4584,419 @@ void ReadXFormList(ModelSet *hmm_set, const char *xformListFileName)
     initKwdTab();
   } // Init(...);
 
+
+  //**************************************************************************  
+  void
+  ModelSet::
+  Release()
+  {
+    int i;  
+    
+    ScanHMMSet(this, mtm_revpass | mtm_all, NULL, ReleaseItem, NULL);
   
+    ReleaseMacroHash(&mHmmHash);
+    ReleaseMacroHash(&mStateHash);
+    ReleaseMacroHash(&mMixtureHash);
+    ReleaseMacroHash(&mMeanHash);
+    ReleaseMacroHash(&mVarianceHash);
+    ReleaseMacroHash(&mTransitionHash);
+    ReleaseMacroHash(&mXFormHash);
+    ReleaseMacroHash(&mXFormInstanceHash);
+  
+    for(i = 0; i < this->nxformsToUpdate; i++) 
+    {
+      free(this->xformToUpdate->shellCommand);
+    }
+  
+    free(this->xformToUpdate);    
+  } // Release();
+    
+  
+  //**************************************************************************  
+  void
+  ModelSet::
+  ReadAccums(const std::string & rFileName, 
+             float               weight,
+             long *              totFrames, 
+             FLOAT *             totLogLike, 
+             int                 mmiDenominatorAccums)
+  {
+    istkstream                in;
+    FILE *                    fp;
+    char                      macro_name[128];
+    struct my_hsearch_data *  hash;
+    unsigned int              i;
+    int                       t = 0;
+    int                       c;
+    int                       skip_accum = 0;
+    long                      occurances;
+    ReadAccumUserData         ud;
+    Macro *                   macro;
+    int                       mtm = mtm_prescan | 
+                                    mtm_state | 
+                                    mtm_mean | 
+                                    mtm_variance | 
+                                    mtm_transition;
+  
+    macro_name[sizeof(macro_name)-1] = '\0';
+  
+    // open the file
+    in.open(rFileName, ios::binary);
+    if (!in.good())
+    {
+      Error("Cannot open input accumulator file: '%s'", rFileName.c_str());
+    }
+    fp = in.file();
+    
+    if (fread(totFrames,  sizeof(long),  1, fp) != 1 ||
+        fread(totLogLike, sizeof(FLOAT), 1, fp) != 1) 
+    {
+      Error("Invalid accumulator file: '%s'", rFileName.c_str());
+    }
+  
+    //:KLUDGE:
+    // Assignment of float to long...
+    *totFrames  *= weight;
+    *totLogLike *= weight;
+  
+    strcpy(ud.fn, rFileName.c_str());
+    ud.fp      = fp;
+    ud.hmm_set = this;
+    ud.weight  = weight;
+    ud.mmi     = mmiDenominatorAccums;
+  
+    for (;;) 
+    {
+      if (skip_accum) 
+      { // Skip to the begining of the next macro accumulator
+        for (;;) 
+        {
+          while((c = getc(fp)) != '~' && c != EOF)
+            ;
+          
+          if(c == EOF) 
+            break;
+            
+          if(strchr("hsmuvt", t = c = getc(fp)) &&
+            (c = getc(fp)) == ' ' && (c = getc(fp)) == '"')
+          {  
+            break;
+          }
+          
+          ungetc(c, fp);
+        }
+        
+        if(c == EOF) 
+          break;
+      } 
+      else 
+      {
+        if((c = getc(fp)) == EOF) break;
+        
+        if(c != '~'       || !strchr("hsmuvt", t = getc(fp)) ||
+          getc(fp) != ' ' || getc(fp) != '"') 
+        {
+          Error("Incomatible accumulator file: '%s'", rFileName.c_str());
+        }
+      }
+  
+      for(i=0; (c = getc(fp))!=EOF && c!='"' && i<sizeof(macro_name)-1; i++) 
+      {
+        macro_name[i] = c;
+      }
+      macro_name[i] = '\0';
+  
+      hash = t == 'h' ? &mHmmHash :
+             t == 's' ? &mStateHash :
+             t == 'm' ? &mMixtureHash :
+             t == 'u' ? &mMeanHash :
+             t == 'v' ? &mVarianceHash :
+             t == 't' ? &mTransitionHash : NULL;
+  
+      assert(hash);
+      if ((macro = FindMacro(hash, macro_name)) == NULL) 
+      {
+        skip_accum = 1;
+        continue;
+      }
+  
+      skip_accum = 0;
+      if (fread(&occurances, sizeof(occurances), 1, fp) != 1) 
+      {
+        Error("Invalid accumulator file: '%s'", rFileName.c_str());
+      }
+  
+      if (!mmiDenominatorAccums) macro->mOccurances += occurances;
+  
+      switch(t) 
+      {
+        case 'h': ScanHMM((Hmm *)macro->mpData, mtm, NULL, ReadAccum, &ud);    break;
+        case 's': ScanState((State *)macro->mpData, mtm, NULL, ReadAccum, &ud);break;
+        case 'm': ScanMixture((Mixture *)macro->mpData,mtm,NULL,ReadAccum,&ud);break;
+        case 'u': ReadAccum(mt_mean, NULL, macro->mpData, &ud);                break;
+        case 'v': ReadAccum(mt_variance, NULL, macro->mpData, &ud);            break;
+        case 't': ReadAccum(mt_transition, NULL, macro->mpData, &ud);          break;
+        default:  assert(0);
+      }
+    }
+    
+    in.close();
+    free(ud.fn);    
+  }; // ReadAccums(...)
+
+  //**************************************************************************  
+  void
+  ModelSet::
+  WriteAccums(const std::string & rFileName, 
+              const std::string & rOutputDir,
+              long                totFrames, 
+              FLOAT               totLogLike)
+  {
+    FILE *                fp;
+    char                  file_name[1024];
+    WriteAccumUserData    ud;  
+    
+    MakeFileName(file_name, rFileName.c_str(), rOutputDir.c_str(), NULL);
+  
+    if((fp = fopen(file_name, "wb")) == NULL) 
+    {
+      Error("Cannot open output file: '%s'", file_name);
+    }
+  
+    if(fwrite(&totFrames,  sizeof(long),  1, fp) != 1 ||
+      fwrite(&totLogLike, sizeof(FLOAT), 1, fp) != 1) 
+    {
+      Error("Cannot write accumulators to file: '%s'", file_name);
+    }
+  
+    ud.fp  = fp;
+    ud.fn  = file_name;
+  //  ud.mmi = MMI_denominator_accums;
+  
+    ScanHMMSet(this, mtm_prescan | (mtm_all & ~(mtm_XFormInstance|mtm_XForm)),
+              NULL, WriteAccum, &ud);
+  
+    fclose(fp);
+  }; // WriteAccums(...)
+  
+  
+  //**************************************************************************  
+  void
+  ModelSet::
+  NormalizeAccums()
+  {
+    ScanHMMSet(this, mtm_all & ~(mtm_XFormInstance|mtm_XForm), NULL,
+               NormalizeAccum, NULL);
+  }; // NormalizeAccums
+  
+    
+  //**************************************************************************  
+  void
+  ModelSet::
+  ResetAccums()
+  {
+    ScanHMMSet(this, mtm_state | mtm_mean | mtm_variance | mtm_transition,
+             NULL, ResetAccum, NULL);
+  }; // ResetAccums()
+  
+  
+  //**************************************************************************  
+  void
+  ModelSet::
+  ComputeGlobalStats(FLOAT *observation, int time)
+  {
+    GlobalStats_UserData ud = {observation, time};
+    ScanHMMSet(this, mtm_state | mtm_mixture, NULL, GlobalStats, &ud);
+  }; // ComputeGlobalStats(...)
+  
+  
+  //**************************************************************************  
+  void
+  ModelSet::
+  UpdateFromAccums(const std::string & rOutputDir)
+  {
+    Macro * macro;
+    int     i;
+  
+    for(i = 0; i < mHmmHash.nentries; i++) 
+    {
+      macro = (Macro *) mHmmHash.entry[i]->data;
+  //  for(macro = hmm_set->hmm_list; macro != NULL; macro = macro->next) {
+      if(macro->mpData->mpMacro != macro) continue;
       
+      if(macro->mOccurances < minOccurances) 
+      {
+        WARN_FEW_EXAMPLES("Model", macro->mpName, macro->mOccurances);
+      } 
+      else 
+      {
+        UpdateHMMFromAccums(this, (Hmm *) macro->mpData);
+      }
+    }
+  
+    for (i = 0; i < mStateHash.nentries; i++) 
+    {
+      macro = (Macro *) mStateHash.entry[i]->data;
+  //  for(macro = hmm_set->state_list; macro != NULL; macro = macro->next) {
+      if (macro->mpData->mpMacro != macro) continue;
+      if (macro->mOccurances < minOccurances) 
+      {
+        WARN_FEW_EXAMPLES("State", macro->mpName, macro->mOccurances);
+      } 
+      else 
+      {
+        UpdateStateFromAccums(this, (State *) macro->mpData, NULL);
+      }
+    }
+  
+    for (i = 0; i < mMixtureHash.nentries; i++) 
+    {
+      macro = (Macro *) mMixtureHash.entry[i]->data;
+  //  for(macro = mixture_list; macro != NULL; macro = macro->next) {
+      if(macro->mpData->mpMacro != macro) continue;
+      if(macro->mOccurances < minOccurances) 
+      {
+        WARN_FEW_EXAMPLES("Mixture", macro->mpName, macro->mOccurances);
+      } 
+      else 
+      {
+        UpdateMixtureFromAccums(this, (Mixture *) macro->mpData);
+      }
+    }
+  
+    for (i = 0; i < mMeanHash.nentries; i++) 
+    {
+      macro = (Macro *) mMeanHash.entry[i]->data;
+  //  for(macro = mean_list; macro != NULL; macro = macro->next) {
+      if(macro->mpData->mpMacro != macro) continue;
+      if(macro->mOccurances < minOccurances) {
+        WARN_FEW_EXAMPLES("Mean vector", macro->mpName, macro->mOccurances);
+      } else {
+        UpdateMeanFromAccums(this, (Mean *) macro->mpData);
+      }
+    }
+  
+    for(i = 0; i < mVarianceHash.nentries; i++) {
+      macro = (Macro *) mVarianceHash.entry[i]->data;
+  //  for(macro = variance_list; macro != NULL; macro = macro->next) {
+      if(macro->mpData->mpMacro != macro) continue;
+      if(macro->mpName != "varFloor1") 
+      {
+        if(macro->mOccurances < minOccurances) 
+        {
+          WARN_FEW_EXAMPLES("Variance vector", macro->mpName, macro->mOccurances);
+        } 
+        else 
+        {
+          UpdateVarianceFromAccums(this, (Variance *) macro->mpData);
+        }
+      }
+    }
+  
+    for(i = 0; i < mTransitionHash.nentries; i++) 
+    {
+      macro = (Macro *) mTransitionHash.entry[i]->data;
+  //  for(macro = transition_list; macro != NULL; macro = macro->next) {
+      if(macro->mpData->mpMacro != macro) continue;
+      if(macro->mOccurances < minOccurances) 
+      {
+        WARN_FEW_EXAMPLES("Transition matrix ", macro->mpName, macro->mOccurances);
+      } 
+      else 
+      {
+        UpdateTransitionFromAccums(this, (Transition *) macro->mpData);
+      }
+    }
+               
+  }; // UpdateHMMSetFromAccums(...)
+  
+  
+  //**************************************************************************  
+  void
+  ModelSet::
+  ReadHMMList(const std::string & rFileName, 
+              const std::string & rInMmfDir, 
+              const std::string & rInMmfExt)
+  {
+    struct readline_data      rld = {0};
+    char *                    lhmm;
+    char *                    fhmm;
+    char *                    chptr;
+    Macro *                   macro;
+    Macro *                   macro2;
+    int                       line_no = 0;
+    char                      mmfile[1024];
+    FILE *                    fp;
+  
+    if((fp = my_fopen(rFileName.c_str(), "rt", hlist_filter)) == NULL) 
+    {
+      Error("Cannot open file: '%s'", rFileName.c_str());
+    }
+    
+    while((lhmm = fhmm = readline(fp, &rld)) != NULL) 
+    {
+      line_no++;
+      
+      if(getHTKstr(lhmm, &chptr)) 
+        Error("%s (%s:%d)", chptr, rFileName.c_str(), line_no);
+      
+      if(*chptr && getHTKstr(fhmm = chptr, &chptr)) 
+        Error("%s (%s:%d)", chptr, rFileName.c_str(), line_no);
+      
+      if((macro = FindMacro(&mHmmHash, fhmm)) == NULL) 
+      {
+        mmfile[0] = '\0';
+        
+        if (!rInMmfDir.empty()) 
+          strcat(strcat(mmfile, rInMmfDir.c_str()), "/");
+        
+        strcat(mmfile, fhmm);
+        
+        if (!rInMmfExt.empty()) 
+          strcat(strcat(mmfile, "."), rInMmfExt.c_str());
+        
+        ParseMmf(mmfile, fhmm);
+  
+        if((macro = FindMacro(&mHmmHash, fhmm)) == NULL)
+          Error("Definition of model '%s' not found in file '%s'", fhmm, mmfile);
+      }
+      
+      if(lhmm != fhmm) 
+      {
+        current_mmf_name = NULL; // Global variable; macro will not be written to any output MMF
+        macro2 = AddMacroToHMMSet('h', lhmm, this);
+        assert(macro2 != NULL);
+        
+        if(macro2->mpData != NULL) 
+        {
+          if(hmms_ignore_macro_redefinition == 0) 
+          {
+            Error("Redefinition of HMM %s (%s:%d)", lhmm, rFileName.c_str(), line_no);
+          } 
+          else 
+          {
+            Warning("Redefinition of HMM %s (%s:%d) is ignored",
+                    lhmm, rFileName.c_str(), line_no);
+          }
+        } 
+        else 
+        {
+          macro2->mpData = macro->mpData;
+        }
+      }
+    }
+    
+    if(ferror(fp) || my_fclose(fp))
+      Error("Cannot read HMM list file %s", rFileName.c_str());
+  }
+  
+  
+  //**************************************************************************  
+  Macro *
+  ModelSet::
+  pAddMacro(const char type, const std::string & rNewName)
+  {
+    
+  }; // pAddMacro(...)
+
+  

@@ -117,7 +117,7 @@
     char *        mpFileName;
     MacroData *   mpData;
     long          mOccurances;
-    int           type;
+    int           mType;
     Macro *       nextAll;
     Macro *       prevAll;
   };
@@ -134,7 +134,8 @@
     UM_XFORM      = 64
   } UpdateMask;
   
-  typedef enum {
+  typedef enum 
+  {
     KID_UNSET=-1,
     KID_BeginHMM,    KID_Use,        KID_EndHMM,    KID_NumMixes,  KID_NumStates,
     KID_StreamInfo,  KID_VecSize,    KID_NullD,     KID_PoissonD,  KID_GammaD,
@@ -179,9 +180,11 @@
    */
   class ModelSet 
   {
+  private:
+    
   public:
-    Macro *                   first_macro;
-    Macro *                   last_macro;
+    Macro *                   mpFirstMacro;
+    Macro *                   mpLastMacro;
     
     struct my_hsearch_data    mHmmHash;
     struct my_hsearch_data    mStateHash;
@@ -231,6 +234,16 @@
     void
     ParseMmf(const std::string & rName, char * expectHMM);
     
+    /**
+     * @brief Loads an HMM list from file
+     * @param rFileName  file to open
+     *
+     */
+    void 
+    ReadHMMList(const std::string & rFileName, 
+                const std::string & rInMmfDir, 
+                const std::string & rInMmfExt);
+
     
     /**
      *  @brief Initializes the Model set
@@ -238,7 +251,66 @@
      */  
     void
     Init(FlagType flags = 0);
-  };
+    
+    /**
+     *  @brief Releases memory occupied by this object's structures
+     */
+    void
+    Release();
+
+    /**
+     * @brief Reads accumulators from file
+     * @param rFileName file to read from
+     * @param weight 
+     * @param totFrames 
+     * @param totLogLike 
+     * @param MMI_denominator_accums 
+     */
+    void 
+    ReadAccums(const std::string & rFileName, 
+               float               weight,
+               long *              totFrames, 
+               FLOAT *             totLogLike, 
+               int                 mmiDenominatorAccums);
+    
+    /**
+     * @brief Writes accumulators to a file
+     * @param rFileName 
+     * @param rOutputDir 
+     * @param totFrames 
+     * @param totLogLike 
+     */
+    void 
+    WriteAccums(const std::string & rFileName, 
+                const std::string & rOutputDir,
+                long                totFrames, 
+                FLOAT               totLogLike);
+    
+    void 
+    NormalizeAccums();
+    
+    /**
+     * @brief Resets the accumulators to 0
+     */
+    void 
+    ResetAccums();
+    
+    void 
+    ComputeGlobalStats(FLOAT *observation, int time);
+    
+    void 
+    UpdateFromAccums(const std::string & rOutputDir);
+    
+    //:TODO: Implement this
+    void 
+    DistributeMacroOccurances();
+    
+    
+    Macro *
+    pAddMacro(const char type, const std::string & rNewName);
+    
+    
+  }; // ModelSet
 
   
   /** *************************************************************************
@@ -432,7 +504,7 @@
     struct
     {
       FLOAT *           out_vec;
-      int               nblocks;
+      int               mNBlocks;
       XForm **          block;
     }           layer[1];
   };

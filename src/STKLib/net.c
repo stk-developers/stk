@@ -54,7 +54,7 @@ Node *MakeNetworkFromLabels(Label *labels, enum NodeType node_type)
      (last->backlinks = (Link *) malloc(sizeof(Link))) == NULL) {
     Error("Insufficient memory");
   }
-  first->type          = last->type          = NT;
+  first->mType          = last->mType          = NT;
   first->pronun        = last->pronun        = NULL;
   first->nlinks        = last->nbacklinks    = 1;
   first->nbacklinks    = last->nlinks        = 0;
@@ -81,7 +81,7 @@ Node *MakeNetworkFromLabels(Label *labels, enum NodeType node_type)
       case NT_Phone: tnode->mpName   =  (char *) lp->data;              break;
       default:       Error("Fatal: Invalid node type");
     }
-    tnode->type       = node_type;
+    tnode->mType       = node_type;
     tnode->nlinks     = 1;
     tnode->nbacklinks = 1;
     tnode->start      = lp->start;
@@ -116,11 +116,11 @@ void ExpandWordNetworkByDictionary(
   singlePronunWrd.pronuns  = &singlePronunPtr;
   singlePronunPtr = &singlePronun;
 
-  assert(first != NULL || first->type & NT || first->pronun == NULL);
+  assert(first != NULL || first->mType & NT || first->pronun == NULL);
 
   for(node = first; node != NULL; prev = node, node = node->next) {
 
-    if(!(node->type & NT)) continue;
+    if(!(node->mType & NT)) continue;
 
     if(node->pronun == NULL) continue;
     Word *word = node->pronun->word;
@@ -173,7 +173,7 @@ void ExpandWordNetworkByDictionary(
         tnode = (Node *) calloc(1, sizeof(Node));
         if(tnode == NULL) Error("Insufficient memory");
 
-        tnode->type       = NT_Phone | (node->type & NT_True);
+        tnode->mType       = NT_Phone | (node->mType & NT_True);
         tnode->mpName       = pronun->model[j].mpName;
         tnode->start      = node->start;
         tnode->stop       = node->stop;
@@ -200,7 +200,7 @@ void ExpandWordNetworkByDictionary(
         tnode = (Node *) calloc(1, sizeof(Node));
         if(tnode == NULL) Error("Insufficient memory");
 
-        tnode->type       = NT | (node->type & NT_True);
+        tnode->mType       = NT | (node->mType & NT_True);
         tnode->pronun     = keep_word_nodes ? word->pronuns[i] : NULL;
         tnode->start      = node->start;
         tnode->stop       = node->stop;
@@ -272,14 +272,14 @@ Node *DiscardUnwantedInfoInNetwork(Node *first, STKNetworkOutputFormat format)
     if(format.no_times) {
       node->stop = node->start = UNDEF_TIME;
     }
-    if(format.no_word_nodes && node->type & NT) {
+    if(format.no_word_nodes && node->mType & NT) {
       node->pronun = NULL;
     }
-    if(format.no_model_nodes && (node->type&NT_Model || node->type&NT_Phone)) {
-      node->type = NT;
+    if(format.no_model_nodes && (node->mType&NT_Model || node->mType&NT_Phone)) {
+      node->mType = NT;
       node->pronun = NULL;
     }
-    if(format.no_pronun_vars && node->type & NT && node->pronun != NULL) {
+    if(format.no_pronun_vars && node->mType & NT && node->pronun != NULL) {
       node->pronun = node->pronun->word->pronuns[0];
     }
   }
@@ -335,29 +335,29 @@ void WriteSTKNetwork(
       }
       fprintf(  lfp,"%g",  node->stop  * 1.0e-7 * sampPeriod);
     }
-    if(!(node->type & NT && node->pronun == NULL)
+    if(!(node->mType & NT && node->pronun == NULL)
        || !format.no_defaults) {
       putc(' ', lfp);
-      putc(node->type & NT   ? 'W' :
-           node->type & NT_Subnet ? 'S' :
+      putc(node->mType & NT   ? 'W' :
+           node->mType & NT_Subnet ? 'S' :
                                     'M', lfp); // NT_Model, NT_Phone
       putc('=', lfp);
-      fprintHTKstr(lfp, node->type & NT_Model   ? node->hmm->mpMacro->mpName   :
-                        node->type & NT    ? (!node->pronun ? "!NULL" :
+      fprintHTKstr(lfp, node->mType & NT_Model   ? node->hmm->mpMacro->mpName   :
+                        node->mType & NT    ? (!node->pronun ? "!NULL" :
                                                    node->pronun->word->mpName) :
                                                   node->mpName); // NT_PHONE (NT_Subnet)
     }
-    if(!format.no_pronun_vars && node->type & NT
+    if(!format.no_pronun_vars && node->mType & NT
     && node->pronun != NULL && node->pronun->word->npronuns > 1
     && (node->pronun->variant_no > 1 || !format.no_defaults)) {
       fprintf(lfp," v=%d", node->pronun->variant_no);
     }
-    if(node->type & NT_True || node->type & NT_Sticky) {
+    if(node->mType & NT_True || node->mType & NT_Sticky) {
       fputs(" f=", lfp);
-      if(node->type & NT_True)   putc('T', lfp);
-      if(node->type & NT_Sticky) putc('K', lfp);
+      if(node->mType & NT_True)   putc('T', lfp);
+      if(node->mType & NT_Sticky) putc('K', lfp);
     }
-    if(node->type & NT_Phone && node->phoneAccuracy != 1.0) {
+    if(node->mType & NT_Phone && node->phoneAccuracy != 1.0) {
       fprintf(lfp," p="FLOAT_FMT, node->phoneAccuracy);
     }
     if(!format.arc_defs_to_end) {
@@ -462,9 +462,9 @@ static int LatticeLocalOptimization_ForwardPass(Node *first, int strictTiming)
         Node *inode = node->links[i].node;
         Node *jnode = node->links[j].node;
 
-        if ((inode->type & ~NT_True) != (jnode->type & ~NT_True)
-        || ( inode->type & NT_Phone && inode->mpName   != jnode->mpName)
-        || ( inode->type & NT  && inode->pronun != jnode->pronun)
+        if ((inode->mType & ~NT_True) != (jnode->mType & ~NT_True)
+        || ( inode->mType & NT_Phone && inode->mpName   != jnode->mpName)
+        || ( inode->mType & NT  && inode->pronun != jnode->pronun)
 //          &&  (inode->pronun == NULL ||
 //             jnode->pronun == NULL ||
 //             inode->pronun->word       != jnode->pronun->word ||
@@ -575,7 +575,7 @@ static int LatticeLocalOptimization_ForwardPass(Node *first, int strictTiming)
           jnode->next->backnext = jnode->backnext;
           jnode->backnext->next = jnode->next;
         }
-        inode->type |= jnode->type & NT_True;
+        inode->mType |= jnode->mType & NT_True;
         free(jnode->links);
         free(jnode->backlinks);
         free(jnode);
@@ -743,7 +743,7 @@ void ExpandMonophoneNetworkToTriphones(
          (node->nlinks == 1 && node->nbacklinks == 1)) {
         continue;
       }
-      if(node->type & NT_Phone) {
+      if(node->mType & NT_Phone) {
         e.key = node->mpName;
         my_hsearch_r(e, FIND, &ep, nonCDphones);
         if(ep == NULL || !(int) ep->data) continue; // Node is not a Tee model
@@ -829,11 +829,11 @@ void ExpandMonophoneNetworkToTriphones(
   for(node = first; node != NULL; prev = node, node = node->next) {
     ENTRY e, *ep;
 
-    if(node->type & NT ||
+    if(node->mType & NT ||
       (node->nlinks == 1 && node->nbacklinks == 1)) {
       continue;
     }
-    assert(node->type & NT_Phone);
+    assert(node->mType & NT_Phone);
     e.key = node->mpName;
     my_hsearch_r(e, FIND, &ep, nonCDphones);
     if(ep != NULL && (int) ep->data) continue; // Node is a Tee model
@@ -960,7 +960,7 @@ void ExpandMonophoneNetworkToTriphones(
     char *lcname, *rcname, *triname;
     int   lcnlen,  rcnlen;
 
-    if(!(node->type & NT_Phone)) continue;
+    if(!(node->mType & NT_Phone)) continue;
 
     if(nonCDphones) {
       e.key  = node->mpName;
@@ -974,7 +974,7 @@ void ExpandMonophoneNetworkToTriphones(
       for(lc = node;;) {
         lc = lc->nbacklinks ? lc->backlinks[0].node : NULL;
         if(lc == NULL)           break;
-        if(!(lc->type & NT_Phone)) continue;
+        if(!(lc->mType & NT_Phone)) continue;
         if(nonCDphones == NULL)  break;
         e.key  = lc->mpName;
         my_hsearch_r(e, FIND, &ep, nonCDphones);
@@ -983,7 +983,7 @@ void ExpandMonophoneNetworkToTriphones(
       for(rc = node;;) {
         rc = rc->nlinks ? rc->links[0].node : NULL;
         if(rc == NULL)           break;
-        if(!(rc->type & NT_Phone)) continue;
+        if(!(rc->mType & NT_Phone)) continue;
         if(nonCDphones == NULL)  break;
         e.key  = rc->mpName;
         my_hsearch_r(e, FIND, &ep, nonCDphones);
@@ -1092,7 +1092,7 @@ void SelfLinksToNullNodes(Node *first)
         node->backlinks[j].node = tnode;
         node->backlinks[j].like = 0.0;
 
-        tnode->type       = NT;
+        tnode->mType       = NT;
         tnode->pronun     = NULL;
         tnode->nlinks     = 1;
         tnode->nbacklinks = 1;
@@ -1122,7 +1122,7 @@ int RemoveRedundantNullNodes(Node *first)
     node->next->backnext = node;
   }
   for(node = first; node != NULL; node = node->next) {
-    if(node->type & NT && node->pronun == NULL &&
+    if(node->mType & NT && node->pronun == NULL &&
         node->nlinks != 0 && node->nbacklinks != 0  &&
        (node->nlinks == 1 || node->nbacklinks == 1 ||
        (node->nlinks == 2 && node->nbacklinks == 2))) {
@@ -1246,7 +1246,7 @@ void ComputeAproximatePhoneAccuracy(Node *first, int type)
   long long maxStopTime;
 
   for(node = first; node != NULL; node = node->next) {
-    if(node->type & NT_Phone && node->type & NT_True) ncorr_phns++;
+    if(node->mType & NT_Phone && node->mType & NT_True) ncorr_phns++;
   }
   if(ncorr_phns == 0) Error("No correct phoneme node in network");
 
@@ -1254,7 +1254,7 @@ void ComputeAproximatePhoneAccuracy(Node *first, int type)
   if(corr_phn == NULL) Error("Insufficient memory");
 
   for(node = first; node != NULL; node = node->next) {
-    if(node->type & NT_Phone && node->type & NT_True) {
+    if(node->mType & NT_Phone && node->mType & NT_True) {
       corr_phn[i++].node = node;
     }
   }
@@ -1268,7 +1268,7 @@ void ComputeAproximatePhoneAccuracy(Node *first, int type)
     corr_phn[i].maxStopTimeTillNow = maxStopTime;
   }
   for(node = first; node != NULL; node = node->next) {
-    if(!(node->type & NT_Phone)) continue;
+    if(!(node->mType & NT_Phone)) continue;
 
     if(node->stop  <= node->start ||
        !strcmp(node->mpName, "sil") ||
@@ -1329,7 +1329,7 @@ Node *find_or_create_node(struct my_hsearch_data *node_hash, char *node_id, Node
   node->links      = NULL;
   node->nbacklinks = 0;
   node->backlinks  = NULL;
-  node->type       = NT;
+  node->mType       = NT;
   node->start      = UNDEF_TIME;
   node->stop       = UNDEF_TIME;
   node->pronun     = NULL;
@@ -1402,7 +1402,7 @@ Node *ReadSTKNetworkInOldFormat(
     if((nodes[i] = (Node *) calloc(1, sizeof(Node))) == NULL) {
       Error("Insufficient memory");
     }
-    nodes[i]->type = NT_Undef;
+    nodes[i]->mType = NT_Undef;
   }
   for(i=0; i < numOfNodes; i++) {
     RemoveCommentLines(lfp);
@@ -1427,14 +1427,14 @@ Node *ReadSTKNetworkInOldFormat(
     }
     node = nodes[nodeId];
 
-    if(node->type != NT_Undef) {
+    if(node->mType != NT_Undef) {
       Error("Redefinition of node %d in file %s", nodeId, file_name);
     }
     if(toupper(nodeType) != nodeType) {
       nodeType = toupper(nodeType);
-      node->type = 0;
+      node->mType = 0;
     } else {
-      node->type = NT_True;
+      node->mType = NT_True;
     }
     if(nodeType != 'M' && nodeType != 'W' && nodeType != 'N' &&
        nodeType != 'S' && nodeType != 'K' && nodeType != 'F') {
@@ -1465,7 +1465,7 @@ Node *ReadSTKNetworkInOldFormat(
       fclose(snfp);
     } else if(nodeType == 'M') {
       ENTRY e, *ep;
-      node->type |= NT_Phone;
+      node->mType |= NT_Phone;
       e.key  = wordOrModelName;
       e.data = NULL;
       my_hsearch_r(e, FIND, &ep, phone_hash);
@@ -1483,10 +1483,10 @@ Node *ReadSTKNetworkInOldFormat(
       fscanf(lfp, " {%lf}", &pronunProb);
       // We are not interested in PhoneAccuracy
     } else {
-      node->type |= NT;
+      node->mType |= NT;
 
       if(nodeType == 'K' || nodeType == 'F') {
-       node->type |= NT_Sticky;
+       node->mType |= NT_Sticky;
        nodeType = nodeType == 'K' ? 'W' : 'N';
       }
       if(nodeType == 'W') {
@@ -1601,8 +1601,8 @@ Node *ReadSTKNetworkInOldFormat(
   if(nodes[0]->nbacklinks != 0 || nodes[numOfNodes-1]->nlinks != 0) {
     Error("Network contain no start node or no final node (%s)", file_name);
   }
-  if(!(nodes[0]           ->type & NT) || nodes[0]           ->pronun != NULL ||
-     !(nodes[numOfNodes-1]->type & NT) || nodes[numOfNodes-1]->pronun != NULL) {
+  if(!(nodes[0]           ->mType & NT) || nodes[0]           ->pronun != NULL ||
+     !(nodes[numOfNodes-1]->mType & NT) || nodes[numOfNodes-1]->pronun != NULL) {
     Error("Start node and final node must be Null nodes (%s)", file_name);
   }
   for(i = 0; i < numOfNodes-1; i++) {
@@ -1766,8 +1766,8 @@ Node *ReadSTKNetwork(
           for(; *valptr; valptr++) {
             switch(toupper(*valptr)) {
               case 'K':
-              case 'F':  node->type |= NT_Sticky; break;
-              case 'T':  node->type |= NT_True;   break;
+              case 'F':  node->mType |= NT_Sticky; break;
+              case 'T':  node->mType |= NT_True;   break;
               default:
                 Error("Invalid flag '%c' (%s:%d)", *valptr, file_name, line_no);
             }
@@ -1810,8 +1810,8 @@ Node *ReadSTKNetwork(
               }
             }
           }
-          node->type &= ~(NT_Model | NT_Phone);
-          node->type |= NT;
+          node->mType &= ~(NT_Model | NT_Phone);
+          node->mType |= NT;
         } else if(!strcmp(chptr, "MODEL") || !strcmp(chptr, "M")) {
           ENTRY e, *ep;
 
@@ -1830,8 +1830,8 @@ Node *ReadSTKNetwork(
             ep->data = e.data;
           }
           node->mpName = (char *) ep->data;
-          node->type &= ~NT;
-          node->type |= NT_Phone;
+          node->mType &= ~NT;
+          node->mType |= NT_Phone;
         } else if(*chptr=='\0' || !strcmp(chptr,"END") || !strcmp(chptr,"E")) {
           state = ARC_DEF;
         } else if(getHTKstr(valptr, &chptr)) { // Skip unknown term
@@ -1840,7 +1840,7 @@ Node *ReadSTKNetwork(
         if(state == ARC_DEF || *chptr == '\0') {
           // Node definition is over. For NT, select right pronun according to
           // word and pron_var; and continue with parsing the arc definition below
-          if(node->type & NT && word != NULL) {
+          if(node->mType & NT && word != NULL) {
             if(word->npronuns < pron_var) {
               // Word does not have so many pronuns; add new empty pronuns...
               if(notInDict & PRON_NOT_IN_DIC_ERROR && word->npronuns != 0) {
@@ -1922,7 +1922,7 @@ Node *ReadSTKNetwork(
 
             //Use special type to mark nodes inserted by d=..., they will need
             //special treatment. Later, they will become ordinary NT_Phone nodes
-            tnode->type      = NT_Phone | NT_Model;
+            tnode->mType      = NT_Phone | NT_Model;
             tnode->nlinks    = tnode->nbacklinks = 1;
             tnode->backnext  = enode->backnext;
             enode->backnext  = tnode;
@@ -1988,7 +1988,7 @@ Node *ReadSTKNetwork(
       for(i = 0; i < node->nbacklinks; i++) {
         Node *backnode = node->backlinks[i].node;
         //When seraring predecessors, skip nodes inserted by d=...
-        while(backnode->type == (NT_Phone | NT_Model)) {
+        while(backnode->mType == (NT_Phone | NT_Model)) {
           assert(backnode->nbacklinks == 1);
           backnode = backnode->backlinks[0].node;
         }
@@ -2003,9 +2003,9 @@ Node *ReadSTKNetwork(
     //For model nodes defined by d=... (NT_Phone | NT_Model), node->start contains
     //only phone durations. Absolute times must be computed derived starting from
     //the end time of the node to which arc with d=... definition points.
-    if(node->type == (NT_Phone | NT_Model)) {
+    if(node->mType == (NT_Phone | NT_Model)) {
       assert(node->nlinks == 1);
-      node->stop = node->links[0].node->type == (NT_Phone | NT_Model)
+      node->stop = node->links[0].node->mType == (NT_Phone | NT_Model)
                    && node->start != UNDEF_TIME
                    ? node->links[0].node->start : node->links[0].node->stop;
       node->start = node->start != UNDEF_TIME && node->stop != UNDEF_TIME
@@ -2032,8 +2032,8 @@ Node *ReadSTKNetwork(
     last->backnext = lnode;
   }
   for(node = first; node != NULL; node = node->next) {
-    if(node->type == (NT_Phone | NT_Model)) {
-      node->type = NT_Phone;
+    if(node->mType == (NT_Phone | NT_Model)) {
+      node->mType = NT_Phone;
     }
     if(node->start != UNDEF_TIME) {
       node->start = (node->start - labelFormat.left_extent) / sampPeriod;
@@ -2048,7 +2048,7 @@ Node *ReadSTKNetwork(
     node->next       = first;
     node->backnext   = NULL;
     first->backnext  = node;
-    node->type       = NT;
+    node->mType       = NT;
     node->pronun     = NULL;
     node->start      = UNDEF_TIME;
     node->stop       = UNDEF_TIME;
@@ -2072,7 +2072,7 @@ Node *ReadSTKNetwork(
     last->next      = node;
     node->next      = NULL;
     node->backnext  = last;
-    node->type      = NT;
+    node->mType      = NT;
     node->pronun    = NULL;
     node->start     = UNDEF_TIME;
     node->stop      = UNDEF_TIME;
@@ -2116,13 +2116,13 @@ void dnet(Node *net, int nAuxNodePtrs, ...)
 
   for(node = net; node != NULL; node = node->next) {
     fprintf(fp, "n%d [shape=%s,label=\"%d:%s", node->estate_id,
-            node->type & NT ? "box" : "ellipse", node->estate_id,
-            node->type & NT ? (node->pronun ?
+            node->mType & NT ? "box" : "ellipse", node->estate_id,
+            node->mType & NT ? (node->pronun ?
                                     node->pronun->word->mpName : "-"):
-            node->type & NT_Phone? node->mpName :
-            node->type & NT_Model? node->hmm->mpMacro->mpName : "???");
+            node->mType & NT_Phone? node->mpName :
+            node->mType & NT_Model? node->hmm->mpMacro->mpName : "???");
 
-    if(node->type & NT && node->pronun != NULL) {
+    if(node->mType & NT && node->pronun != NULL) {
       if(node->pronun != node->pronun->word->pronuns[0]) {
         fprintf(fp, ":%d", node->pronun->variant_no);
       }
@@ -2321,7 +2321,7 @@ Node *ReadHTKLattice(
       }
     }
     if(state == NODE_DEF) {
-      nodes[node_id]->type       = NT;
+      nodes[node_id]->mType       = NT;
       nodes[node_id]->nlinks     = 0;
       nodes[node_id]->nbacklinks = 0;
       nodes[node_id]->links      = NULL;
@@ -2361,7 +2361,7 @@ Node *ReadHTKLattice(
              (node->backlinks = (Link *) malloc(sizeof(Link))) == NULL) {
             Error("Insufficient memory");
           }
-          node->type = NT_Phone;
+          node->mType = NT_Phone;
           node->nlinks = node->nbacklinks = 1;
           node->next   = last->next;
           last->next = node;
@@ -2464,7 +2464,7 @@ Node *ReadHTKLattice(
     node->next       = first;
     node->backnext   = NULL;
     first->backnext  = node;
-    node->type       = NT;
+    node->mType       = NT;
     node->pronun     = NULL;
     node->start      = UNDEF_TIME;
     node->stop       = UNDEF_TIME;
@@ -2490,7 +2490,7 @@ Node *ReadHTKLattice(
     node->next      = NULL;
     node->backnext  = last;
 
-    node->type      = NT;
+    node->mType      = NT;
     node->pronun    = NULL;
     node->start     = UNDEF_TIME;
     node->stop      = UNDEF_TIME;
@@ -2529,29 +2529,29 @@ void WriteSTKNetworkInOldFormat(
   fprintf(lfp,"NUMNODES: %d\n", i);
   for(i = 0, node = first; node != NULL; node = node->next, i++) {
     int j,
-    type = node->type & NT_Model       ? 'M'  :
-           node->type & NT_Phone       ? 'M'  :
-           node->type & NT_Subnet      ? 'S'  :
-           node->type & NT        ?
+    type = node->mType & NT_Model       ? 'M'  :
+           node->mType & NT_Phone       ? 'M'  :
+           node->mType & NT_Subnet      ? 'S'  :
+           node->mType & NT        ?
              (node->pronun == NULL     ?
-               (node->type & NT_Sticky ? 'F'  :
+               (node->mType & NT_Sticky ? 'F'  :
                                          'N') :
-               (node->type & NT_Sticky ? 'K'  :
+               (node->mType & NT_Sticky ? 'K'  :
                                          'W')):
                                          '?';
-    if(!(node->type & NT_True)) {
+    if(!(node->mType & NT_True)) {
       type = tolower(type);
     }
     fprintf(lfp,"%d\t%c %s",
             i, type,
-            node->type & NT_Model   ? node->hmm->mpMacro->mpName :
-            node->type & NT_Phone   ? node->mpName :
-            node->type & NT_Subnet  ? node->mpName :
-            node->type & NT    ?
+            node->mType & NT_Model   ? node->hmm->mpMacro->mpName :
+            node->mType & NT_Phone   ? node->mpName :
+            node->mType & NT_Subnet  ? node->mpName :
+            node->mType & NT    ?
               (node->pronun == NULL ? "-" :
                                       node->pronun->word->mpName):
                                       "?");
-    if(node->type & NT && node->pronun) {
+    if(node->mType & NT && node->pronun) {
        if(node->pronun->word->mpName != node->pronun->outSymbol) {
          fprintf(lfp," [%s]", node->pronun->outSymbol);
        }
@@ -2561,7 +2561,7 @@ void WriteSTKNetworkInOldFormat(
                  node->pronun->prob);
        }
     }
-    if(node->type & NT_Phone && node->phoneAccuracy != 1.0) {
+    if(node->mType & NT_Phone && node->phoneAccuracy != 1.0) {
       fprintf(lfp," {"FLOAT_FMT"}", node->phoneAccuracy);
     }
     if(!(labelFormat.TIMES_OFF) &&

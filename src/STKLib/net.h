@@ -18,12 +18,15 @@
 #include "dict.h"
 #include "common.h"
 
-typedef struct _Node Node;
-typedef struct _Link Link;
+class Node;
+class Link;
+//typedef struct _Node Node;
+//typedef struct _Link Link;
 typedef struct _Token Token;
 typedef struct _FWBWR FWBWR;
 
-enum NodeType {
+enum NodeType 
+{
   NT_Undef  = 0x00,
   NT   = 0x01,
   NT_Model  = 0x02,
@@ -34,14 +37,16 @@ enum NodeType {
   NT_True   = 0x40
 };
 
-struct _Link 
+class Link 
 {
+public:
   Node *node;
   FLOAT like;
 };
 
-struct _Node 
+class Node
 {
+public:
 //  union {
     char   *mpName;
 //    struct {
@@ -53,7 +58,7 @@ struct _Node
 //  };
 
   int   aux;
-  int   type;
+  int   mType;
   Node  *next;
   Node  *backnext;
   int   nlinks;
@@ -128,9 +133,6 @@ struct _ExpansionOptions {
   unsigned trace_flag;
 };
 
-#ifdef __cplusplus
-  extern "C" {
-#endif
 
 Node *MakeNetworkFromLabels(Label *labels, enum NodeType node_type);
 
@@ -214,9 +216,5 @@ void NetworkExpansionsAndOptimizations(
   struct my_hsearch_data *nonCDphHash,
   struct my_hsearch_data *triphHash);
 
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif // NET_H
