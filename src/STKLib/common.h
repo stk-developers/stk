@@ -119,10 +119,11 @@ struct readline_data
   int  size;
 };
 
-typedef struct _FileListElem FileListElem;
+//typedef struct _FileListElem FileListElem;
 
-struct _FileListElem 
+class FileListElem 
 {
+public:
   FileListElem *next;
   char *physical;
   char logical[1];

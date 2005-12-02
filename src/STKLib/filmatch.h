@@ -45,9 +45,6 @@
 #define PATTERN_CLOSE -3    /* no end bracket in [..] construct */
 #define PATTERN_EMPTY -4    /* [..] contstruct is empty */
 
-#ifdef __cplusplus
-  extern "C" {
-#endif
 
 /*----------------------------------------------------------------------------
 *
@@ -115,7 +112,4 @@ bool is_pattern (const char *pattern);
 bool is_valid_pattern (const char *pattern, int *error_type);
 
 
-#ifdef __cplusplus
-};
-#endif
 

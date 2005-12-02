@@ -18,14 +18,14 @@
 #include <malloc.h>
 #include "STKLib/fileio.h"
 #include "STKLib/common.h"
-#include "STKLib/hmms.h"
+#include "STKLib/Models.h"
 #include "STKLib/viterbi.h"
 
 void usage(char *progname)
 {
   char *tchrptr;
-  if((tchrptr = strrchr(progname, '\\')) != NULL) progname = tchrptr+1;
-  if((tchrptr = strrchr(progname, '/')) != NULL) progname = tchrptr+1;
+  if ((tchrptr = strrchr(progname, '\\')) != NULL) progname = tchrptr+1;
+  if ((tchrptr = strrchr(progname, '/')) != NULL) progname = tchrptr+1;
   fprintf(stderr,
 "\nUSAGE: %s [options] DataFiles...\n\n"
 " Option                                       Default\n\n"
@@ -86,17 +86,17 @@ int main(int argc, char *argv[]) {
   int targetKind      =  PARAMKIND_ANON;
 
 
-  if(argc == 1) usage(argv[0]);
+  if (argc == 1) usage(argv[0]);
 
   //InitHMMSet(&hset, 0);
   hset.Init();
 
-  for(;;) {
+  for (;;) {
     int opt = getopt(argc, argv, "-l:y:ADH:NS:T:V");
 
-    if(opt == -1) break;
+    if (opt == -1) break;
 
-    switch(opt) {
+    switch (opt) {
       case 'l': out_dir  = optarg; break;
 ////      case 'x': hmm_ext      = optarg; break;
       case 'y': out_ext  = optarg; break;
@@ -107,11 +107,11 @@ int main(int argc, char *argv[]) {
       case 'H': hset.ParseMmf(optarg, NULL); break;
 
       case 1:   *last = (StrListElem *) malloc(sizeof(StrListElem)+strlen(optarg));
-                if(!*last) Error("Insufficient memory");
+                if (!*last) Error("Insufficient memory");
                 chrptr = strcpy((*last)->logical, optarg);
-                for(; *chrptr; chrptr++) if(*chrptr == '\\') *chrptr = '/';
+                for (; *chrptr; chrptr++) if (*chrptr == '\\') *chrptr = '/';
                 chrptr = strchr((*last)->logical, '=');
-                if(chrptr) *chrptr = '\0';
+                if (chrptr) *chrptr = '\0';
                 (*last)->physical = chrptr ? chrptr+1: (*last)->logical;
                 last = &(*last)->next;
                 *last = NULL;
@@ -119,17 +119,17 @@ int main(int argc, char *argv[]) {
                 break;
 
 
-      case 'S': if((sfp = fopen(optarg, "rt")) == NULL) {
+      case 'S': if ((sfp = fopen(optarg, "rt")) == NULL) {
                   Error("Cannot open script file %s", optarg);
                 }
 
-                while(fscanf(sfp, "%s", line) == 1) {
+                while (fscanf(sfp, "%s", line) == 1) {
                   *last = (StrListElem*) malloc(sizeof(StrListElem)+strlen(line));
-                  if(!*last) Error("Insufficient memory");
+                  if (!*last) Error("Insufficient memory");
                   chrptr = strcpy((*last)->logical, line);
-                  for(; *chrptr; chrptr++) if(*chrptr == '\\') *chrptr = '/';
+                  for (; *chrptr; chrptr++) if (*chrptr == '\\') *chrptr = '/';
                   chrptr = strchr((*last)->logical, '=');
-                  if(chrptr) *chrptr = '\0';
+                  if (chrptr) *chrptr = '\0';
                   (*last)->physical = chrptr ? chrptr+1: (*last)->logical;
                   last = &(*last)->next;
                   nfeature_files++;
@@ -139,21 +139,21 @@ int main(int argc, char *argv[]) {
                 break;
 
       case 'T': trace_flag = strtol(optarg, &chrptr, 0);
-                if(!*optarg || *chrptr) {
+                if (!*optarg || *chrptr) {
                   Error("Integer number is expected after option -T");
                 }
                 break;
 
       case 'D': derivOrder = 0;
-                for(; optind < argc; optind++) {
+                for (; optind < argc; optind++) {
                 lval = strtol(argv[optind], &chrptr, 0);
-                if(!*argv[optind] || *chrptr) {
+                if (!*argv[optind] || *chrptr) {
                   break;
                 }
 
                 derivWinLengths = (int *)
                   realloc(derivWinLengths, ++derivOrder * sizeof(int));
-                if(derivWinLengths == NULL) Error("Insufficient memory");
+                if (derivWinLengths == NULL) Error("Insufficient memory");
                 derivWinLengths[derivOrder-1] = lval;
               }
               break;
@@ -165,78 +165,78 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if(print_cmdline) {
-    for(i=0; i < argc; i++) {
+  if (print_cmdline) {
+    for (i=0; i < argc; i++) {
       fputs(argv[i], stdout);
       putchar(' ');
     }
     putchar('\n');
   }
 
-  if(print_version) puts("Version: "VERSION"\n");
-  if(feature_files == NULL) return 0;
-  if((opp = (FLOAT *) malloc(hset.mNStates * sizeof(float))) == NULL) {
+  if (print_version) puts("Version: "VERSION"\n");
+  if (feature_files == NULL) return 0;
+  if ((opp = (FLOAT *) malloc(hset.mNStates * sizeof(float))) == NULL) {
     Error("Insufficient memory");
   }
 
-  if(hset.outPDF_kind != KID_DiagC) {
-    Error("Invalid HMM set distribution kind <%s>", Kwds[hset.outPDF_kind]);
+  if (hset.outPDF_kind != KID_DiagC) {
+    Error("Invalid HMM set distribution kind <%s>", gpKwds[hset.outPDF_kind]);
   }
 
-  for(file_name = feature_files; file_name; file_name = file_name->next) {
+  for (file_name = feature_files; file_name; file_name = file_name->next) {
     obsMx = ReadHTKFeatures(file_name->physical, swap_features,
                             startFrmExt, endFrmExt, targetKind,
                             derivOrder, derivWinLengths, &header);
 
-    if(hset.mInputVectorSize != header.sampSize / sizeof(float)) {
+    if (hset.mInputVectorSize != header.sampSize / sizeof(float)) {
       Error("Vector size [%d] in '%s' is incompatible with HMM set [%d]",
             header.sampSize/sizeof(float), file_name->physical, hset.mInputVectorSize);
     }
 
     MakeFileName(outFile, file_name->logical, out_dir, out_ext);
 
-    if((ofp = fopen(outFile, "wb")) == NULL) {
+    if ((ofp = fopen(outFile, "wb")) == NULL) {
       Error("Cannot open output probability file: '%s'", outFile);
     }
 
     header.sampKind = 9;
     header.sampSize = hset.mNStates * sizeof(float);
 
-    if(WriteHTKHeader(ofp, header, 1)) {
+    if (WriteHTKHeader(ofp, header, 1)) {
       Error("Cannot write to output probability file: '%s'", outFile);
     }
 
     time = -hset.mTotalDelay;
     ResetXFormInstances(&hset);
 
-    for(i = 0; i < header.nSamples; i++) {
+    for (i = 0; i < header.nSamples; i++) {
       UpdateStacks(&hset, obsMx + i * hset.mInputVectorSize, ++time, FORWARD);
-      if(time <= 0) continue;
+      if (time <= 0) continue;
 
-      for(m = 0; m < hset.mHmmHash.nentries; m++) {
+      for (m = 0; m < hset.mHmmHash.nentries; m++) {
         macro = (Macro *) hset.mHmmHash.entry[m]->data;
-        if(macro->mpData->mpMacro != macro) continue;
+        if (macro->mpData->mpMacro != macro) continue;
 
-        for(j = 0; j < ((Hmm *) macro->data)->mNStates-2; j++) {
+        for (j = 0; j < ((Hmm *) macro->data)->mNStates-2; j++) {
           State *state = ((Hmm *) macro->data)->state[j];
-          if(!state->mpMacro) { // take only non-shared states
+          if (!state->mpMacro) { // take only non-shared states
             opp[state->mID] =
               DiagCGaussianMixtureDensity(state, obsMx + i * hset.mInputVectorSize, NULL);
           }
         }
       }
 
-      for(m = 0; m < hset.mStateHash.nentries; m++) {
+      for (m = 0; m < hset.mStateHash.nentries; m++) {
         State * state;
         macro = (Macro *) hset.mStateHash.entry[m]->data;
-        if(macro->mpData->mpMacro != macro) continue;
+        if (macro->mpData->mpMacro != macro) continue;
 
         state = (State *) macro->data;
         opp[state->mID] =
           DiagCGaussianMixtureDensity(state, obsMx + i * hset.mInputVectorSize, NULL);
       }
 
-      if(WriteHTKFeature (ofp, opp, hset.mNStates, 1)) {
+      if (WriteHTKFeature (ofp, opp, hset.mNStates, 1)) {
         Error("Cannot write to output probability file: '%s'", outFile);
       }
     }

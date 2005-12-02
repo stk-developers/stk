@@ -13,7 +13,7 @@
 #ifndef NET_H
 #define NET_H
 
-#include "hmms.h"
+#include "Models.h"
 #include "labels.h"
 #include "dict.h"
 #include "common.h"
@@ -22,8 +22,9 @@ class Node;
 class Link;
 //typedef struct _Node Node;
 //typedef struct _Link Link;
-typedef struct _Token Token;
-typedef struct _FWBWR FWBWR;
+//typedef struct _Token Token;
+class Token;
+class FWBWR;
 
 enum NodeType 
 {
@@ -94,8 +95,11 @@ public:
 #endif
 };
 
-typedef struct _STKNetworkOutputFormat STKNetworkOutputFormat;
-struct _STKNetworkOutputFormat {
+//typedef struct _STKNetworkOutputFormat STKNetworkOutputFormat;
+ 
+class STKNetworkOutputFormat 
+{
+public:
   unsigned no_LM_likes    : 1;
   unsigned no_times       : 1;
   unsigned start_times    : 1;
@@ -115,15 +119,18 @@ struct _STKNetworkOutputFormat {
   unsigned lin_node_seqs  : 1;
 };
 
-enum NotInDictAction {
+enum NotInDictAction 
+{
   WORD_NOT_IN_DIC_UNSET = 0,
   WORD_NOT_IN_DIC_ERROR = 1,
   WORD_NOT_IN_DIC_WARN  = 2,
   PRON_NOT_IN_DIC_ERROR = 4
 };
 
-typedef struct _ExpansionOptions ExpansionOptions;
-struct _ExpansionOptions {
+//typedef struct _ExpansionOptions ExpansionOptions;
+class ExpansionOptions 
+{
+public:
   unsigned no_optimization    : 1;
   unsigned no_word_expansion  : 1;
   unsigned respect_pronun_var : 1;

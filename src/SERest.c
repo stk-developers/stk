@@ -18,7 +18,7 @@
 #include <assert.h>
 #include "STKLib/fileio.h"
 #include "STKLib/common.h"
-#include "STKLib/hmms.h"
+#include "STKLib/Models.h"
 #include "STKLib/viterbi.h"
 #include "STKLib/labels.h"
 #ifndef WIN32
@@ -30,8 +30,8 @@
 void usage(char *progname)
 {
   char *tchrptr;
-  if((tchrptr = strrchr(progname, '\\')) != NULL) progname = tchrptr+1;
-  if((tchrptr = strrchr(progname, '/')) != NULL) progname = tchrptr+1;
+  if ((tchrptr = strrchr(progname, '\\')) != NULL) progname = tchrptr+1;
+  if ((tchrptr = strrchr(progname, '/')) != NULL) progname = tchrptr+1;
   fprintf(stderr,
 "\nUSAGE: %s [options] DataFiles...\n\n"
 " Option                                                     Default\n\n"
@@ -117,92 +117,95 @@ int main(int argc, char *argv[]) {
 //  struct my_hsearch_data labelHash;
   struct my_hsearch_data nonCDphHash, phoneHash, dictHash, cfgHash;
 
-  FLOAT totLogLike      = 0;
-  FLOAT totLogPosterior = 0;
-  int   totFrames       = 0;
+  FLOAT               totLogLike      = 0;
+  FLOAT               totLogPosterior = 0;
+  int                 totFrames       = 0;
 
-  FileListElem *feature_files = NULL;
-  int nfeature_files = 0;
-  FileListElem *file_name = NULL;
-  FileListElem **last_file = &feature_files;
+  FileListElem *      feature_files = NULL;
+  int                 nfeature_files = 0;
+  FileListElem *      file_name = NULL;
+  FileListElem **     last_file = &feature_files;
 
-  int update_mask = 0;
+  int                 update_mask = 0;
 
-  double word_penalty;
-  double model_penalty;
-  double grammar_scale;
-  double transp_scale;
-  double outprb_scale;
-  double occprb_scale;
-  double pronun_scale;
-  double state_pruning;
-  double stprn_step;
-  double stprn_limit;
-  double min_variance;
-  double min_mix_wght;
-  double sig_slope;
-  double E_constant;
-  double h_constant;
-  double I_smoothing;
-
-  const char *cchrptr;
-  const char *src_hmm_list;
-  const char *src_hmm_dir;
-  const char *src_hmm_ext;
-        char *src_mmf;
-  const char *alg_hmm_list;
-  const char *alg_hmm_dir;
-  const char *alg_hmm_ext;
-        char *alg_mmf;
-  const char *trg_hmm_dir;
-  const char *trg_hmm_ext;
-  const char *trg_mmf;
-  const char *src_lbl_dir;
-  const char *src_lbl_ext;
-  const char *src_mlf;
-  const char *network_file;
-  const char *xformList;
-  const char *stat_file;
-  char *script;
-  const char *dictionary;
-  const char *label_filter;
-  const char *net_filter;
-        char *cmn_path;
-        char *cmn_file;
-  const char *cmn_mask;
-        char *cvn_path;
-        char *cvn_file;
-  const char *cvn_mask;
-  const char *cvg_file;
-        char *cmn_path_alig;
-        char *cmn_file_alig;
-  const char *cmn_mask_alig;
-        char *cvn_path_alig;
-        char *cvn_file_alig;
-  const char *cvn_mask_alig;
-  const char *cvg_file_alig;
-  int  trace_flag;
-  int  min_examples;
-  int  parallel_mode;
-  int  targetKind;
-  int  targetKind_alig = PARAMKIND_ANON;
-  int  derivOrder;
-  int  derivOrder_alig;
-  int  *derivWinLengths;
-  int  *derivWinLengths_alig = NULL;
-  int  startFrmExt;
-  int  endFrmExt;
-  int  startFrmExt_alig;
-  int  endFrmExt_alig;
-  bool viterbiTrain;
-  bool xfStatsBin;
-  bool hmms_binary;
-  bool alg_mixtures;
-  bool one_pass_reest;
-  bool swap_features;
-  bool swap_features_alig;
-  bool htk_compat;
-  AccumType accum_type;
+  double              word_penalty;
+  double              model_penalty;
+  double              grammar_scale;
+  double              transp_scale;
+  double              outprb_scale;
+  double              occprb_scale;
+  double              pronun_scale;
+  double              state_pruning;
+  double              stprn_step;
+  double              stprn_limit;
+  double              min_variance;
+  double              min_mix_wght;
+  double              sig_slope;
+  double              E_constant;
+  double              h_constant;
+  double              I_smoothing;
+        
+  const char *        cchrptr;
+  const char *        src_hmm_list;
+  const char *        src_hmm_dir;
+  const char *        src_hmm_ext;
+        char *        src_mmf;
+  const char *        alg_hmm_list;
+  const char *        alg_hmm_dir;
+  const char *        alg_hmm_ext;
+        char *        alg_mmf;
+  const char *        trg_hmm_dir;
+  const char *        trg_hmm_ext;
+  const char *        trg_mmf;
+  const char *        src_lbl_dir;
+  const char *        src_lbl_ext;
+  const char *        src_mlf;
+  const char *        network_file;
+  const char *        xformList;
+  const char *        stat_file;
+  char *              script;
+  const char *        dictionary;
+  const char *        label_filter;
+  const char *        net_filter;
+        char *        cmn_path;
+        char *        cmn_file;
+  const char *        cmn_mask;
+        char *        cvn_path;
+        char *        cvn_file;
+  const char *        cvn_mask;
+  const char *        cvg_file;
+        char *        cmn_path_alig;
+        char *        cmn_file_alig;
+  const char *        cmn_mask_alig;
+        char *        cvn_path_alig;
+        char *        cvn_file_alig;
+  const char *        cvn_mask_alig;
+  const char *        cvg_file_alig;
+  
+  int                 trace_flag;
+  int                 min_examples;
+  int                 parallel_mode;
+  int                 targetKind;
+  int                 targetKind_alig = PARAMKIND_ANON;
+  int                 derivOrder;
+  int                 derivOrder_alig;
+  int *               derivWinLengths;
+  int *               derivWinLengths_alig = NULL;
+  int                 startFrmExt;
+  int                 endFrmExt;
+  int                 startFrmExt_alig;
+  int                 endFrmExt_alig;
+  bool                viterbiTrain;
+  bool                xfStatsBin;
+  bool                hmms_binary;
+  bool                alg_mixtures;
+  bool                one_pass_reest;
+  bool                swap_features;
+  bool                swap_features_alig;
+  bool                htk_compat;
+  
+  AccumType           accum_type;
+  
   enum Update_Type {UT_ML=0, UT_MMI, UT_MPE} update_type;
   enum Update_Mode {UM_UPDATE=1, UM_DUMP=2, UM_BOTH=UM_UPDATE|UM_DUMP} update_mode;
   enum TranscriptionFormat {TF_HTK, TF_STK, TF_ERR} in_transc_fmt;
@@ -214,12 +217,12 @@ int main(int argc, char *argv[]) {
   LabelFormat in_lbl_fmt = {0};
   in_lbl_fmt.TIMES_OFF = 1;
 
-  if(argc == 1) usage(argv[0]);
+  if (argc == 1) usage(argv[0]);
 
   //InitHMMSet(&hset, 1);
   hset.Init(MODEL_SET_WITH_ACCUM);
   
-  if(!my_hcreate_r(100,  &dictHash)
+  if (!my_hcreate_r(100,  &dictHash)
   || !my_hcreate_r(100,  &phoneHash)
   || !my_hcreate_r(100,  &cfgHash)) {
     Error("Insufficient memory");
@@ -227,11 +230,13 @@ int main(int argc, char *argv[]) {
   i = ParseOptions(argc, argv, optionStr, SNAME, &cfgHash);
   htk_compat   = GetParamBool(&cfgHash,SNAME":HTKCOMPAT", false);
 
-  if(htk_compat) {
-    if(argc == i) Error("HMM list file name expected");
+  if (htk_compat) 
+  {
+    if (argc == i) Error("HMM list file name expected");
     InsertConfigParam(&cfgHash,        SNAME":SOURCEHMMLIST", argv[i++], '-');
   }
-  for(; i < argc; i++) {
+  
+  for (; i < argc; i++) {
     last_file = AddFileElem(last_file, argv[i]);
     nfeature_files++;
   }
@@ -242,7 +247,7 @@ int main(int argc, char *argv[]) {
                                 &cvn_path, &cvn_file, &cvn_mask, &cvg_file,
                                 SNAME":", one_pass_reest ? 2 : 0);
 
-  if(one_pass_reest) {
+  if (one_pass_reest) {
     targetKind_alig = GetDerivParams(&cfgHash, &derivOrder_alig, &derivWinLengths_alig,
                                      &startFrmExt_alig, &endFrmExt_alig,
                                      &cmn_path_alig, &cmn_file_alig, &cmn_mask_alig,
@@ -272,7 +277,7 @@ int main(int argc, char *argv[]) {
   swap_features=!GetParamBool(&cfgHash,SNAME":NATURALREADORDER",isBigEndian());
   filter_wldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
   script_filter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",   NULL);
-  hlist_filter = GetParamStr(&cfgHash, SNAME":HMMLISTFILTER",   NULL);
+  gpHListFilter = GetParamStr(&cfgHash, SNAME":HMMLISTFILTER",   NULL);
   MMF_filter   = GetParamStr(&cfgHash, SNAME":HMMDEFFILTER",    NULL);
   label_filter = GetParamStr(&cfgHash, SNAME":HLABELFILTER",    NULL);
   net_filter   = GetParamStr(&cfgHash, SNAME":HNETFILTER",      NULL);
@@ -334,8 +339,8 @@ int main(int argc, char *argv[]) {
                               "HTK", TF_HTK, "STK", TF_STK, NULL);
 
   cchrptr      = GetParamStr(&cfgHash, SNAME":UPDATE",  "");
-  while(*cchrptr) {
-    switch(*cchrptr++) {
+  while (*cchrptr) {
+    switch (*cchrptr++) {
       case 't': update_mask |= UM_TRANSITION; break;
       case 'm': update_mask |= UM_MEAN;       break;
       case 'v': update_mask |= UM_VARIANCE;   break;
@@ -346,25 +351,25 @@ int main(int argc, char *argv[]) {
       default:  Error("Unknown update flag '%c' (tmvwsx)", *cchrptr);
     }
   }
-  if(GetParamBool(&cfgHash, SNAME":PRINTCONFIG", FALSE)) {
+  if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", FALSE)) {
     PrintConfig(&cfgHash);
   }
-  if(GetParamBool(&cfgHash, SNAME":PRINTVERSION", FALSE)) {
+  if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", FALSE)) {
     puts("Version: "VERSION"\n");
   }
 
   GetParamBool(&cfgHash, SNAME":NFRAMEOUTPNORM", FALSE);
 
 
-  if(!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", FALSE)) {
+  if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", FALSE)) {
     CheckCommandLineParamUse(&cfgHash);
   }
 
-  for(script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) {
-    if((sfp = my_fopen(script, "rt", script_filter)) == NULL) {
+  for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) {
+    if ((sfp = my_fopen(script, "rt", script_filter)) == NULL) {
       Error("Cannot open script file %s", script);
     }
-    while(fscanf(sfp, "%s", line) == 1) {
+    while (fscanf(sfp, "%s", line) == 1) {
       last_file = AddFileElem(last_file, line);
       nfeature_files++;
     }
@@ -377,18 +382,19 @@ int main(int argc, char *argv[]) {
     //ReadHMMSet(src_mmf, &hset, NULL);
   }
   
-  if(alg_hmm_list != NULL || alg_mmf != NULL) 
+  if (alg_hmm_list != NULL || alg_mmf != NULL) 
   {
-    hset_alig = (ModelSet *) malloc(sizeof(ModelSet));
-    if(!hset_alig) Error("Insufficient memory");
+    hset_alig = new ModelSet;
+    
+    if (!hset_alig) 
+      Error("Insufficient memory");
 
     //InitHMMSet(hset_alig, 0);
     hset_alig->Init();
 
-    for(alg_mmf=strtok(alg_mmf, ","); alg_mmf != NULL; alg_mmf=strtok(NULL, ",")) 
+    for (alg_mmf = strtok(alg_mmf, ","); alg_mmf != NULL; alg_mmf=strtok(NULL, ",")) 
     {
       hset_alig->ParseMmf(alg_mmf, NULL);
-      //ReadHMMSet(alg_mmf, hset_alig, NULL);
     }
   } 
   else 
@@ -396,48 +402,58 @@ int main(int argc, char *argv[]) {
     hset_alig = &hset;
   }
   
-  if(parallel_mode == 0) one_pass_reest = 0;
+  if (parallel_mode == 0) 
+    one_pass_reest = 0;
 
-  if((nfeature_files & 1) && one_pass_reest) 
-  {
+  if ((nfeature_files & 1) && one_pass_reest) 
     Error("Single pass re-estimation requires even number (two sets) of feature files");
-  }
 
   char *ut_str = (char*) (update_type == UT_MMI ? "MMI" :
                  update_type == UT_MPE ? "MPE" : "Chosen type of ");
 
-  if(parallel_mode == -1 &&  update_type != UT_ML) {
+  if (parallel_mode == -1 &&  update_type != UT_ML)
     Error("%s update is not possible without using parallel mode", ut_str);
-  }
-  if((nfeature_files & 1) && update_type != UT_ML && parallel_mode == 0) {
+    
+  if ((nfeature_files & 1) && update_type != UT_ML && parallel_mode == 0)
     Error("%s update requires even number (two sets) of accumulator files", ut_str);
-  }
-  if(src_hmm_list) ReadHMMList(&hset,     src_hmm_list, src_hmm_dir, src_hmm_ext);
-  if(alg_hmm_list) ReadHMMList(hset_alig, alg_hmm_list, alg_hmm_dir, alg_hmm_ext);
-  nonCDphHash = MakeCIPhoneHash(&hset);
+  
+  if (src_hmm_list) 
+    hset.ReadHMMList(src_hmm_list, src_hmm_dir, src_hmm_ext);
+    
+  if (alg_hmm_list) 
+    hset_alig->ReadHMMList(alg_hmm_list, alg_hmm_dir, alg_hmm_ext);
+    
+  nonCDphHash = hset.MakeCIPhoneHash();
 
-  if(dictionary != NULL) {
+  if (dictionary != NULL) 
+  {
     ReadDictionary(dictionary, &dictHash, &phoneHash);
     notInDictAction  = WORD_NOT_IN_DIC_WARN;
-    if(expOptions.respect_pronun_var) {
+    if (expOptions.respect_pronun_var) {
       notInDictAction |= PRON_NOT_IN_DIC_ERROR;
     }
   }
-  if(dictHash.nentries == 0) expOptions.no_word_expansion = 1;
+  
+  if (dictHash.nentries == 0) 
+    expOptions.no_word_expansion = 1;
 
   transc_filter = transc_filter != NULL    ? transc_filter :
                   in_transc_fmt == TF_STK  ? net_filter    :
                                              label_filter;
 
-  if(xformList != NULL) ReadXFormList(&hset, xformList);
+  if (xformList != NULL) 
+    hset.ReadXFormList(xformList);
 
-  AllocateAccumulatorsForXFormStats(&hset);
+  hset.AllocateAccumulatorsForXFormStats();
 
-  if(network_file) { // Unsupervised training
+  if (network_file) 
+  { // Unsupervised training
     //!!! Currently, it is not possible to get here !!!
 
     ilfp = fopen(network_file, "rt");
-    if(ilfp  == NULL) Error("Cannot open network file: %s", network_file);
+    
+    if (ilfp  == NULL) 
+      Error("Cannot open network file: %s", network_file);
 
     Node *node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash, 0, in_lbl_fmt,
                                 header.sampPeriod, network_file, NULL);
@@ -446,63 +462,76 @@ int main(int argc, char *argv[]) {
     InitNetwork(&net, node, hset_alig, &hset);
     fclose(ilfp);
     min_examples = 0;
-  } else {
+  } 
+  else 
+  {
     ilfp = OpenInputMLF(src_mlf);
   }
 
-  hset.MMIUpdate           = update_type;
+  hset.mMmiUpdate           = update_type;
 
-  ResetAccumsForHMMSet(&hset);
+  //ResetAccumsForHMMSet(&hset);
+  hset.ResetAccums();
 
   hset.MMI_E               = E_constant;
   hset.MMI_h               = h_constant;
   hset.MMI_tauI            = I_smoothing;
-  hset.gaussLvl2ModelReest = alg_mixtures;
-  hset.minOccurances       = min_examples;
-  hset.minMixWeight        = min_mix_wght * MIN_WEGIHT;
-  hset.updateMask          = update_mask ? update_mask :
+  hset.mGaussLvl2ModelReest = alg_mixtures;
+  hset.mMinOccurances       = min_examples;
+  hset.mMinMixWeight        = min_mix_wght * MIN_WEGIHT;
+  hset.mUpdateMask          = update_mask ? update_mask :
                              UM_TRANSITION | UM_MEAN    | UM_VARIANCE |
                              UM_WEIGHT     | UM_XFSTATS | UM_XFORM;
 
-  if((hset.updateMask & (UM_MEAN | UM_VARIANCE)) &&
-     !hset.allMixuresUpdatableFromStatAccums) {
+  if ((hset.mUpdateMask & (UM_MEAN | UM_VARIANCE)) &&
+     !hset.mAllMixuresUpdatableFromStatAccums) 
+  {
     Warning("Statistic are estimated for XForm not being "
             "a single linear XForm on the input of a mixture. "
             "Means and variances will not be updated");
-    hset.updateMask &= ~(UM_MEAN | UM_VARIANCE);
+    hset.mUpdateMask &= ~(UM_MEAN | UM_VARIANCE);
   }
-  for(file_name = feature_files;
+  for (file_name = feature_files;
       file_name != NULL;
       file_name = one_pass_reest || (parallel_mode == 0 && update_type != UT_ML)
-                  ? file_name->next->next : file_name->next) {
-    if(trace_flag & 1) {
-      if(one_pass_reest || (parallel_mode == 0 && update_type != UT_ML)) {
+                  ? file_name->next->next : file_name->next) 
+  {
+    if (trace_flag & 1) 
+    {
+      if (one_pass_reest || (parallel_mode == 0 && update_type != UT_ML)) 
+      {
         TraceLog("Processing file pair %d/%d '%s' <-> %s",  ++fcnt,
                  nfeature_files / (one_pass_reest ? 2 : 1),
                  file_name->logical,file_name->next->logical);
-      } else {
+      } 
+      else 
+      {
         TraceLog("Processing file %d/%d '%s'", ++fcnt,
                  nfeature_files,file_name->logical);
       }
     }
-    if(parallel_mode == 0) {
+    
+    if (parallel_mode == 0) 
+    {
       FLOAT P, P2;
       long S;
 
-      ReadAccums(file_name->physical, 1.0, &hset, &S, &P, UT_ML);
+      //ReadAccums(file_name->physical, 1.0, &hset, &S, &P, UT_ML);
+      hset.ReadAccums(file_name->physical, 1.0, &S, &P, UT_ML);
       totFrames  += S;
       totLogLike += P;
 
-      if(trace_flag & 1) {
+      if (trace_flag & 1) {
         TraceLog("[%d frames] %f", S, P/S);
       }
 
-      if(update_type != UT_ML) {
+      if (update_type != UT_ML) {
         // Second set of accums is for compeating models
-        ReadAccums(file_name->next->physical, 1.0, &hset, &S, &P2, update_type);
+        //ReadAccums(file_name->next->physical, 1.0, &hset, &S, &P2, update_type);
+        hset.ReadAccums(file_name->next->physical, 1.0, &S, &P2, update_type);
         totLogPosterior += update_type == UT_MPE ? P2 : P - P2;
 
-        if(trace_flag & 1) {
+        if (trace_flag & 1) {
           TraceLog("[%d frames] %f", S, P2/S);
         }
       }
@@ -512,47 +541,47 @@ int main(int argc, char *argv[]) {
       char *lgcl_fn = (one_pass_reest ? file_name->next : file_name)->logical;
 
       // read sentence weight definition if any ( physical_file.fea[s,e]{weight} )
-      if((chrptr = strrchr(phys_fn, '{')) != NULL &&
+      if ((chrptr = strrchr(phys_fn, '{')) != NULL &&
         ((i=0), sscanf(chrptr, "{%f}%n", &sentWeight, &i), chrptr[i] == '\0')) {
         *chrptr = '\0';
       } else {
         sentWeight = 1.0;
       }
-      if(cmn_mask) process_mask(lgcl_fn, cmn_mask, cmn_file);
-      if(cvn_mask) process_mask(lgcl_fn, cvn_mask, cvn_file);
+      if (cmn_mask) process_mask(lgcl_fn, cmn_mask, cmn_file);
+      if (cvn_mask) process_mask(lgcl_fn, cvn_mask, cvn_file);
       obsMx = ReadHTKFeatures(phys_fn, swap_features,
                               startFrmExt, endFrmExt, targetKind,
                               derivOrder, derivWinLengths, &header,
                               cmn_path, cvn_path, cvg_file, &rhfbuff);
 
-      if(hset.mInputVectorSize != header.sampSize / sizeof(float)) {
+      if (hset.mInputVectorSize != header.sampSize / sizeof(float)) {
         Error("Vector size [%d] in '%s' is incompatible with source HMM set [%d]",
               header.sampSize/sizeof(float), phys_fn, hset.mInputVectorSize);
       }
       nFrames = header.nSamples - hset.mTotalDelay;
 
-//      for(i = 0; i < nFrames; i++) {
+//      for (i = 0; i < nFrames; i++) {
 //        int j;
-//        for(j = 0; j < hset.mInputVectorSize; j++) {
+//        for (j = 0; j < hset.mInputVectorSize; j++) {
 //          printf("%5.2f ", obsMx[i * hset.mInputVectorSize +j]);
 //        }
 //        puts("");
 //      }
 
-      if(one_pass_reest) {
-        if(cmn_mask_alig) process_mask(file_name->logical, cmn_mask_alig, cmn_file_alig);
-        if(cvn_mask_alig) process_mask(file_name->logical, cvn_mask_alig, cvn_file_alig);
+      if (one_pass_reest) {
+        if (cmn_mask_alig) process_mask(file_name->logical, cmn_mask_alig, cmn_file_alig);
+        if (cvn_mask_alig) process_mask(file_name->logical, cvn_mask_alig, cvn_file_alig);
         obsMx_alig = ReadHTKFeatures(file_name->physical, swap_features_alig,
                                      startFrmExt_alig, endFrmExt_alig, targetKind_alig,
                                      derivOrder_alig, derivWinLengths_alig, &header_alig,
                                      cmn_path_alig, cvn_path_alig, cvg_file_alig, &rhfbuff_alig);
 
-        if(hset_alig->mInputVectorSize != header_alig.sampSize/sizeof(float)) {
+        if (hset_alig->mInputVectorSize != header_alig.sampSize/sizeof(float)) {
           Error("Vector size [%d] in '%s' is incompatible with alignment HMM set [%d]",
                 header_alig.sampSize/sizeof(float), file_name->physical, hset_alig->mInputVectorSize);
         }
-        if(nFrames != header_alig.nSamples - hset_alig->mTotalDelay) {
-          if(hset_alig->mTotalDelay != hset.mTotalDelay) {
+        if (nFrames != header_alig.nSamples - hset_alig->mTotalDelay) {
+          if (hset_alig->mTotalDelay != hset.mTotalDelay) {
             printf("HPARM1 frames: %d+%ld+%d, alignment model delay: %d\n"
                    "HPARM2 frames: %d+%ld+%d, source model delay: %d\n",
                    startFrmExt_alig, header_alig.nSamples-startFrmExt_alig-endFrmExt_alig,
@@ -570,7 +599,7 @@ int main(int argc, char *argv[]) {
         header_alig = header;
         obsMx_alig  = obsMx;
       }
-      if(!network_file) {
+      if (!network_file) {
         Node *node = NULL;
         strcpy(label_file, file_name->logical);
         ilfp = OpenInputLabelFile(label_file, src_lbl_dir,
@@ -578,13 +607,13 @@ int main(int argc, char *argv[]) {
                                   in_transc_fmt == TF_STK ? "net" : "lab",
                                   ilfp, src_mlf);
 
-        if(in_transc_fmt == TF_HTK) {
+        if (in_transc_fmt == TF_HTK) {
           labels = ReadLabels(ilfp, dictionary ? &dictHash : &phoneHash,
                                     dictionary ? UL_ERROR : UL_INSERT, in_lbl_fmt,
                                     header.sampPeriod, label_file, src_mlf, NULL);
           node = MakeNetworkFromLabels(labels, dictionary ? NT : NT_Phone);
           ReleaseLabels(labels);
-        } else if(in_transc_fmt == TF_STK) {
+        } else if (in_transc_fmt == TF_STK) {
           node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash, 0, in_lbl_fmt,
                               header.sampPeriod, label_file, src_mlf);
         } else Error("Too bad. What did you do ?!?");
@@ -607,7 +636,7 @@ int main(int argc, char *argv[]) {
       double prn_step  = stprn_step;
       double prn_limit = stprn_limit;
 
-      if(GetParamBool(&cfgHash, SNAME":NFRAMEOUTPNORM", FALSE)) {
+      if (GetParamBool(&cfgHash, SNAME":NFRAMEOUTPNORM", FALSE)) {
         net.outpScale = outprb_scale / nFrames;
         net.pruningThresh /= nFrames;
         prn_step          /= nFrames;
@@ -615,23 +644,23 @@ int main(int argc, char *argv[]) {
       }
 
       FLOAT P;
-      for(;;) {
-        if(nFrames < 1) {
+      for (;;) {
+        if (nFrames < 1) {
           Warning("Number of frames smaller than model delay, skipping file %s",
                   file_name->physical);
           P = LOG_MIN;
           break;
         }
-        if(accum_type == AT_MCE) {
+        if (accum_type == AT_MCE) {
           P = MCEReest(&net, obsMx_alig, obsMx, nFrames, sentWeight, sig_slope);
         } else {
           P = !viterbiTrain
             ? BaumWelchReest(&net, obsMx_alig, obsMx, nFrames, sentWeight)
             : ViterbiReest(  &net, obsMx_alig, obsMx, nFrames, sentWeight);
         }
-        if(P > LOG_MIN) break;
+        if (P > LOG_MIN) break;
 
-        if(net.pruningThresh <= LOG_MIN ||
+        if (net.pruningThresh <= LOG_MIN ||
           prn_step <= 0.0 ||
           (net.pruningThresh += prn_step) > prn_limit) {          
           Warning("Overpruning or bad data, skipping file %s",
@@ -643,109 +672,119 @@ int main(int argc, char *argv[]) {
                 "trying pruning threshold: %.2f",
                 file_name->physical, net.pruningThresh);
       }
-      if(P > LOG_MIN) {
+      if (P > LOG_MIN) {
        totFrames  += nFrames;
        totLogLike += P;
-        if(trace_flag & 1) {
+        if (trace_flag & 1) {
           TraceLog("[%d frames] %f", nFrames, P/nFrames);
         }
       }
       free(obsMx);
-      if(one_pass_reest) free(obsMx_alig);
-      if(!network_file)  ReleaseNetwork(&net);
+      if (one_pass_reest) free(obsMx_alig);
+      if (!network_file)  ReleaseNetwork(&net);
     }
   }
-  if(trace_flag & 2) {
+  
+  if (trace_flag & 2) 
+  {
     TraceLog("Total number of frames: %d\nTotal log likelihood: %e",
               totFrames, totLogLike);
-    if(parallel_mode == 0 && update_type != UT_ML) {
+    if (parallel_mode == 0 && update_type != UT_ML) 
+    {
       TraceLog("Total log posterior: %e", totLogPosterior);
     }
   }
   
-  printf("Before WriteHMMStats...\n");
+  if (stat_file) 
+    hset.WriteHMMStats(stat_file);
   
-  if(stat_file) WriteHMMStats(stat_file, &hset);
+  if (parallel_mode != 0) 
+    hset.DistributeMacroOccurances();
 
-  printf("After WriteHMMStats...\n");
-  
-  printf("Before DistributeMacroOccurances...\n");
-  if(parallel_mode != 0) DistributeMacroOccurances(&hset);
-  printf("After DistributeMacroOccurances...\n");
-
-  if(parallel_mode > 0 || update_mode & UM_DUMP) 
+  if (parallel_mode > 0 || update_mode & UM_DUMP) 
   {  
     char accfn[32];
     snprintf(accfn, sizeof(accfn)-1, "SER%d.acc", HIGHER_OF(parallel_mode, 0));
-    printf("Before WriteAccums...\n");
-    WriteAccums(accfn, trg_hmm_dir, &hset, totFrames, totLogLike);
-    printf("After WriteAccums...\n");
+    hset.WriteAccums(accfn, trg_hmm_dir, totFrames, totLogLike);
   }
-  if(parallel_mode <= 0 && update_mode & UM_UPDATE) 
+  
+  if (parallel_mode <= 0 && update_mode & UM_UPDATE) 
   {
     Macro *macro = FindMacro(&hset.mVarianceHash, "varFloor1");
 
-    if(macro != NULL || (float) min_variance > 0.0) 
+    if (macro != NULL || (float) min_variance > 0.0) 
     {
       Variance *tmpvar = macro ? (Variance *) macro->mpData : NULL;
-//      assert(!tmpvar || hset.mInputVectorSize == tmpvar->vec_size);
+//      assert(!tmpvar || hset.mInputVectorSize == tmpvar->mVectorSize);
 
-      hset.varFloor = (Variance *) malloc(sizeof(Variance)+((tmpvar ? tmpvar->vec_size : hset.mInputVectorSize)-1)*sizeof(FLOAT));
-      if(hset.varFloor == NULL) Error("Insufficient memory");
+      hset.mpVarFloor = (Variance *) malloc(sizeof(Variance)+((tmpvar ? tmpvar->mVectorSize : hset.mInputVectorSize)-1)*sizeof(FLOAT));
+      if (hset.mpVarFloor == NULL) Error("Insufficient memory");
 
-      hset.varFloor->vec_size = tmpvar ? tmpvar->vec_size : hset.mInputVectorSize;
+      hset.mpVarFloor->mVectorSize = tmpvar ? tmpvar->mVectorSize : hset.mInputVectorSize;
 
-      for(i = 0; i < hset.varFloor->vec_size; i++) {
-        if(macro) {
-          hset.varFloor->vector[i] =
+      for (i = 0; i < hset.mpVarFloor->mVectorSize; i++) {
+        if (macro) {
+          hset.mpVarFloor->mVector[i] =
             tmpvar && ((float) min_variance <= 0.0 ||
-                        tmpvar->vector[i] < 1/min_variance)
-            ? tmpvar->vector[i] : 1 / min_variance;
+                        tmpvar->mVector[i] < 1/min_variance)
+            ? tmpvar->mVector[i] : 1 / min_variance;
         }
       }
     }
     
-    printf("Before ScanHMMSet...\n");
     // Required by WriteXFormStatsAndRunCommands and UpdateHMMSetFromAccums
     ScanHMMSet(&hset, mtm_mean|mtm_variance, NULL, NormalizeStatsForXForm, 0);
-    printf("After ScanHMMSet...\n");
 
-    if(hset.updateMask & UM_XFSTATS) {
-      WriteXFormStatsAndRunCommands(trg_hmm_dir, xfStatsBin, &hset);
+    if (hset.mUpdateMask & UM_XFSTATS) {
+      hset.WriteXFormStatsAndRunCommands(trg_hmm_dir, xfStatsBin);
     }
-    if(hset.updateMask != UM_XFSTATS) {
-      if(hset.updateMask & UM_XFORM) {
-        ReadXFormStats(trg_hmm_dir, xfStatsBin, &hset);
+    if (hset.mUpdateMask != UM_XFSTATS) 
+    {
+      if (hset.mUpdateMask & UM_XFORM) 
+      {
+        hset.ReadXFormStats(trg_hmm_dir, xfStatsBin);
       }
-      UpdateHMMSetFromAccums(trg_hmm_dir, &hset);
-      WriteHMMSet(trg_mmf, trg_hmm_dir, trg_hmm_ext, hmms_binary, &hset);
+      //UpdateHMMSetFromAccums(trg_hmm_dir, &hset);
+      hset.UpdateFromAccums(trg_hmm_dir);
+      hset.WriteMmf(trg_mmf, trg_hmm_dir, trg_hmm_ext, hmms_binary);
     }
   }
-  if(hset_alig != &hset) {
-    ReleaseHMMSet(hset_alig);
-    free(hset_alig);
+  
+  if (hset_alig != &hset) 
+  {
+    hset_alig->Release();
+    delete hset_alig;
   }
-  ReleaseHMMSet(&hset);
+  
+  hset.Release();
 
 //  my_hdestroy_r(&labelHash, 0);
   my_hdestroy_r(&phoneHash, 1);
   my_hdestroy_r(&nonCDphHash, 0);
   FreeDictionary(&dictHash);
-  for(i = 0; i < cfgHash.nentries; i++) free(cfgHash.entry[i]->data);
+  
+  for (i = 0; i < cfgHash.nentries; i++) 
+    free(cfgHash.entry[i]->data);
+    
   my_hdestroy_r(&cfgHash, 1);
 
-  if(network_file) {
+  if (network_file) 
     ReleaseNetwork(&net);
-  }
-  free(hset.varFloor);
+  
+  free(hset.mpVarFloor);
   free(derivWinLengths);
   free(derivWinLengths_alig);
-  if(src_mlf)  fclose(ilfp);
-  while(feature_files) {
+  
+  if (src_mlf) 
+    fclose(ilfp);
+  
+  while (feature_files) 
+  {
     file_name = feature_files;
     feature_files = feature_files->next;
     free(file_name);
   }
+  
   return 0;
 }
 

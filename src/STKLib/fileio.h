@@ -17,7 +17,7 @@
 #include <stdio.h>
 #include "common.h"
 
-using namespace std;
+//using namespace std;
 
 typedef struct 
 {
@@ -28,10 +28,6 @@ typedef struct
 }
 HTK_Header;
 
-
-#ifdef __cplusplus
-  extern "C" {
-#endif
 
 
 int WriteHTKHeader  (FILE * fp_out, HTK_Header header, bool swap);
@@ -70,10 +66,6 @@ FLOAT *ReadHTKFeatures(
   const char *cvn_file,
   const char *cvg_file,
   RHFBuffer *buff);
-
-#ifdef __cplusplus
-}
-#endif
 
 
 

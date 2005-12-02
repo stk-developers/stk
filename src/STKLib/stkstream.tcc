@@ -14,15 +14,15 @@ namespace STK
     int ndollars = 0;
     int fnlen = strlen(filename);
 
-    while(*chrptr++) ndollars += (*chrptr ==  *filter_wldcrd);
+    while (*chrptr++) ndollars += (*chrptr ==  *filter_wldcrd);
 
     out = (char*) malloc(strlen(command) - ndollars + ndollars * fnlen + 1);
-    //if(out == NULL) Error("Insufficient memory");
+    //if (out == NULL) Error("Insufficient memory");
 
     outend = out;
 
-    for(chrptr = command; *chrptr; chrptr++) {
-      if(*chrptr ==  *filter_wldcrd) {
+    for (chrptr = command; *chrptr; chrptr++) {
+      if (*chrptr ==  *filter_wldcrd) {
         strcpy(outend, filename);
         outend += fnlen;
       } else {

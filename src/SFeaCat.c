@@ -18,7 +18,7 @@
 #include <assert.h>
 #include "STKLib/fileio.h"
 #include "STKLib/common.h"
-#include "STKLib/hmms.h"
+#include "STKLib/Models.h"
 #include "STKLib/viterbi.h"
 #ifndef WIN32
 #include <unistd.h>
@@ -29,8 +29,8 @@
 void usage(char *progname)
 {
   char *tchrptr;
-  if((tchrptr = strrchr(progname, '\\')) != NULL) progname = tchrptr+1;
-  if((tchrptr = strrchr(progname, '/')) != NULL) progname = tchrptr+1;
+  if ((tchrptr = strrchr(progname, '\\')) != NULL) progname = tchrptr+1;
+  if ((tchrptr = strrchr(progname, '/')) != NULL) progname = tchrptr+1;
   fprintf(stderr,
 "\nUSAGE: %s [options] DataFiles...\n\n"
 " Option                                                     Default\n\n"
@@ -101,17 +101,17 @@ int main(int argc, char *argv[]) {
   BOOL swap_features;
   BOOL swap_fea_out;
 
-  if(argc == 1) usage(argv[0]);
+  if (argc == 1) usage(argv[0]);
 
   //InitHMMSet(&hset, 1);
   hset.Init(MODEL_SET_WITH_ACCUM);
 
-  if(!my_hcreate_r(100,  &cfgHash)) {
+  if (!my_hcreate_r(100,  &cfgHash)) {
     Error("Insufficient memory");
   }
   i = ParseOptions(argc, argv, optionStr, SNAME, &cfgHash);
 //  htk_compat   = GetParamBool(&cfgHash,SNAME":HTKCOMPAT",       FALSE);
-  for(; i < argc; i++) {
+  for (; i < argc; i++) {
     last_file = AddFileElem(last_file, argv[i]);
     nfeature_files++;
   }
@@ -123,7 +123,7 @@ int main(int argc, char *argv[]) {
   filter_wldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
   script_filter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",   NULL);
   parm_filter  = GetParamStr(&cfgHash, SNAME":HPARMFILTER",     NULL);
-  hlist_filter = GetParamStr(&cfgHash, SNAME":HMMLISTFILTER",   NULL);
+  gpHListFilter = GetParamStr(&cfgHash, SNAME":HMMLISTFILTER",   NULL);
   MMF_filter   = GetParamStr(&cfgHash, SNAME":HMMDEFFILTER",    NULL);
   parm_ofilter = GetParamStr(&cfgHash, SNAME":HPARMOFILTER",    NULL);
   out_dir      = GetParamStr(&cfgHash, SNAME":TARGETPARAMDIR",  NULL);
@@ -135,90 +135,92 @@ int main(int argc, char *argv[]) {
   src_hmm_ext  = GetParamStr(&cfgHash, SNAME":SOURCEMODELEXT",  NULL);
   src_mmf=(char*)GetParamStr(&cfgHash, SNAME":SOURCEMMF",       NULL);
 
-  if(GetParamBool(&cfgHash, SNAME":PRINTCONFIG", FALSE)) {
+  if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", FALSE)) {
     PrintConfig(&cfgHash);
   }
-  if(GetParamBool(&cfgHash, SNAME":PRINTVERSION", FALSE)) {
+  if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", FALSE)) {
     puts("Version: "VERSION"\n");
   }
 
-  if(!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", FALSE)) {
+  if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", FALSE)) {
     CheckCommandLineParamUse(&cfgHash);
   }
 
-  for(script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) {
-    if((sfp = my_fopen(script, "rt", script_filter)) == NULL) {
+  for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) {
+    if ((sfp = my_fopen(script, "rt", script_filter)) == NULL) {
       Error("Cannot open script file %s", script);
     }
-    while(fscanf(sfp, "%s", line) == 1) {
+    while (fscanf(sfp, "%s", line) == 1) {
       last_file = AddFileElem(last_file, line);
       nfeature_files++;
     }
     my_fclose(sfp);
   }
-  for(src_mmf=strtok(src_mmf, ","); src_mmf != NULL; src_mmf=strtok(NULL, ",")) {
+  for (src_mmf=strtok(src_mmf, ","); src_mmf != NULL; src_mmf=strtok(NULL, ",")) {
     hset.ParseMmf(src_mmf, NULL);
   }
-  if(src_hmm_list) ReadHMMList(&hset,     src_hmm_list, src_hmm_dir, src_hmm_ext);
+  if (src_hmm_list) ReadHMMList(&hset,     src_hmm_list, src_hmm_dir, src_hmm_ext);
 
-  if(inputName != NULL) {
+  if (inputName != NULL) {
     Macro *macro = FindMacro(&hset.mXFormInstanceHash, inputName);
-    if(macro == NULL) Error("Undefined source input '%s'", inputName);
+    if (macro == NULL) Error("Undefined source input '%s'", inputName);
     input = (XFormInstance *) macro->data;
-  } else if(hset.inputXForm) {
+  } else if (hset.inputXForm) {
     input = hset.inputXForm;
   }
 
-  for(file_name=feature_files; file_name != NULL; file_name=file_name->next) {
-    if(trace_flag & 1) TraceLog("Processing file %d/%d '%s'",
+  for (file_name=feature_files; file_name != NULL; file_name=file_name->next) {
+    if (trace_flag & 1) TraceLog("Processing file %d/%d '%s'",
                                 ++fcnt, nfeature_files, file_name->logical);
     obsMx = ReadHTKFeatures(file_name->physical, swap_features,
                             startFrmExt, endFrmExt, targetKind,
                             derivOrder, derivWinLengths, &header);
 
     vec_size = header.sampSize / sizeof(float);
-    out_size = input ? input->out_size : vec_size;
+    out_size = input ? input->mOutSize : vec_size;
 
-    if(hset.mInputVectorSize != -1 && hset.mInputVectorSize != vec_size) {
+    if (hset.mInputVectorSize != -1 && hset.mInputVectorSize != vec_size) {
       Error("Vector size [%d] in '%s' is incompatible with HMM set [%d]",
             header.sampSize/sizeof(float), file_name->physical, hset.mInputVectorSize);
     }
     MakeFileName(outFile, file_name->logical, out_dir, out_ext);
 
-    if((ofp = fopen(outFile, "wb")) == NULL) {
+    if ((ofp = fopen(outFile, "wb")) == NULL) {
       Error("Cannot open output feature file: '%s'", outFile);
     }
     header.sampKind = input ? PARAMKIND_USER : targetKind;
     header.sampSize = out_size * sizeof(float);
 
-    if(WriteHTKHeader(ofp, header, 1)) {
+    if (WriteHTKHeader(ofp, header, 1)) {
       Error("Cannot write to output feature file: '%s'", outFile);
     }
     time = -hset.mTotalDelay;
     ResetXFormInstances(&hset);
 
-    for(i = 0; i < header.nSamples; i++) {
+    for (i = 0; i < header.nSamples; i++) {
       UpdateStacks(&hset, obsMx + i * vec_size, ++time, FORWARD);
-      if(time <= 0) continue;
+      if (time <= 0) continue;
 
-      obs = XFormPass(input, obsMx + i * vec_size, time, FORWARD);
+      obs = XFormPass(input, obsMx + i * mVectorSize, time, FORWARD);
 
-      if(WriteHTKFeature (ofp, obs, out_size, swap_fea_out)) {
+      if (WriteHTKFeature (ofp, obs, out_size, swap_fea_out)) {
         Error("Cannot write to output feature file: '%s'", outFile);
       }
     }
     totFrames += header.nSamples - hset.mTotalDelay;
 
-    if(trace_flag & 1) TraceLog("[%d frames]", header.nSamples-hset.mTotalDelay);
+    if (trace_flag & 1) TraceLog("[%d frames]", header.nSamples-hset.mTotalDelay);
     fclose(ofp);
     free(obsMx);
   }
-  if(trace_flag & 2) TraceLog("Total number of frames: %d", totFrames);
+  if (trace_flag & 2) TraceLog("Total number of frames: %d", totFrames);
 
-  ReleaseHMMSet(&hset);
+  //ReleaseHMMSet(&hset);
+  hset.Release();
+  
   free(derivWinLengths);
 
-  while(feature_files) {
+  while (feature_files) {
     file_name = feature_files;
     feature_files = feature_files->next;
     free(file_name);

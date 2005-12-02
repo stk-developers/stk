@@ -25,8 +25,8 @@
 void usage(char *progname)
 {
   char *tchrptr;
-  if((tchrptr = strrchr(progname, '\\')) != NULL) progname = tchrptr+1;
-  if((tchrptr = strrchr(progname, '/')) != NULL) progname = tchrptr+1;
+  if ((tchrptr = strrchr(progname, '\\')) != NULL) progname = tchrptr+1;
+  if ((tchrptr = strrchr(progname, '/')) != NULL) progname = tchrptr+1;
   fprintf(stderr,
 "\nUSAGE: %s [options] labelList testMLF\n\n"
 " Option                                                    Default\n\n"
@@ -125,14 +125,14 @@ int main(int argc, char *argv[]) {
   t_kwd_tab   *kwd_tab   = NULL;
   t_kwd_stats *kwd_stats = NULL;
 
-  if(argc == 1) usage(argv[0]);
+  if (argc == 1) usage(argv[0]);
 
-  for(;;) {
+  for (;;) {
     int opt = getopt(argc, argv, "-fj:or:tu:v:w::AI:X:L:T:V");
 
-    if(opt == -1) break;
+    if (opt == -1) break;
 
-    switch(opt) {
+    switch (opt) {
       case 'A': print_cmdline = 1; break;
       case 'V': print_version = 1; break;
       case 'f': full_results  = 1; break;
@@ -143,8 +143,8 @@ int main(int argc, char *argv[]) {
       case 'X': in_lbl_ext = optarg; break;
 
       case 'w': word_spotting = 1;
-                if(optarg) {
-                  if(!strcmp(optarg, "l") ||
+                if (optarg) {
+                  if (!strcmp(optarg, "l") ||
                      !strcmp(optarg, "ords_that_are_fucking_false_alarms_"
                                      "having_the_same_score_as_some_hits_are_"
                                      "taken_into_account_first")) {
@@ -156,25 +156,25 @@ int main(int argc, char *argv[]) {
                 break;
 
 
-      case  1:  if(labelHash.tabsize == 0) {
+      case  1:  if (labelHash.tabsize == 0) {
                   labelHash = readLabelList(optarg);
-                } else if(!rec_MLF_fn) {
+                } else if (!rec_MLF_fn) {
                   rec_MLF_fn = optarg;
                 } else {
                   Error("Unexpected parameter %s", optarg);
                 }
                 break;
 
-      case 'o': if(optind < argc) {
+      case 'o': if (optind < argc) {
                   substitution_cost = strtol(argv[optind], &chrptr, 0);
-                  if(!*chrptr && ++optind < argc) {
+                  if (!*chrptr && ++optind < argc) {
                     insertion_cost  = strtol(argv[optind], &chrptr, 0);
-                    if(!*chrptr && ++optind < argc) {
+                    if (!*chrptr && ++optind < argc) {
                       deletion_cost = strtol(argv[optind], &chrptr, 0);
                     }
                   }
                 }
-                if(optind >= argc || *chrptr) {
+                if (optind >= argc || *chrptr) {
                   Error("Three integer number are expected after option -%c", opt);
                 }
                 optind++;
@@ -182,33 +182,33 @@ int main(int argc, char *argv[]) {
 
       case 'j':
       case 'u': dval = strtod(optarg, &chrptr);
-               if(!*optarg || *chrptr) {
+               if (!*optarg || *chrptr) {
                   Error("Decimal number is expected after option -%c", opt);
                 }
-                switch(opt) {
+                switch (opt) {
                   case 'j': score_threshold = dval; break;
                   case 'u': FATimeUnit      = dval; break;
                 }
                 break;
 
       case 'v': lval = strtol(optarg, &chrptr, 0);
-                if(!*optarg || *chrptr) {
+                if (!*optarg || *chrptr) {
                   Error("Integer number is expected after option -%c", opt);
                 }
-                switch(opt) {
+                switch (opt) {
                   case 'v': maxFAperHour = lval; break;
                 }
                 break;
 
 
       case 'r': time_med_alg = strtol(optarg, &chrptr, 0);
-                if(!*optarg || *chrptr) {
+                if (!*optarg || *chrptr) {
                   Error("Integer number is expected after option -%c", opt);
                 }
                 break;
 
       case 'T': trace_flag = strtol(optarg, &chrptr, 0);
-                if(!*optarg || *chrptr) {
+                if (!*optarg || *chrptr) {
                   Error("Integer number is expected after option -%c", opt);
                 }
                 break;
@@ -219,16 +219,16 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if(print_version) {
+  if (print_version) {
     puts("Version: "VERSION"\n");
-    if(labelHash.tabsize == 0) exit(0);
+    if (labelHash.tabsize == 0) exit(0);
   }
 
-  if(!rec_MLF_fn) usage(argv[0]);
+  if (!rec_MLF_fn) usage(argv[0]);
 
-  if(print_cmdline) {
+  if (print_cmdline) {
     int i;
-    for(i=0; i < argc; i++) {
+    for (i=0; i < argc; i++) {
       fputs(argv[i], stdout);
       putchar(' ');
     }
@@ -238,17 +238,17 @@ int main(int argc, char *argv[]) {
   ref_MLF_fp = OpenInputMLF(ref_MLF_fn);
   rec_MLF_fp = OpenInputMLF(rec_MLF_fn);
 
-  if(word_spotting) {
+  if (word_spotting) {
     kwd_tab   = (t_kwd_tab *)   malloc(sizeof(t_kwd_tab)   * kwd_tab_size);
     kwd_stats = (t_kwd_stats *) malloc(sizeof(t_kwd_stats) * (labelHash.nentries+1));
-    if(kwd_tab == NULL || kwd_stats == NULL) Error("Insufficient memory");
+    if (kwd_tab == NULL || kwd_stats == NULL) Error("Insufficient memory");
 
-    for(i = 0; i <= labelHash.nentries; i++) {
+    for (i = 0; i <= labelHash.nentries; i++) {
       kwd_stats[i].FA = kwd_stats[i].actual = kwd_stats[i].hits = 0;
     }
   }
 
-  while(rec_lab_fn[0]='\0', // Rec. MLF is read sequentially record by record
+  while (rec_lab_fn[0]='\0', // Rec. MLF is read sequentially record by record
         OpenInputLabelFile(rec_lab_fn, NULL, NULL, rec_MLF_fp, rec_MLF_fn)) {
 
     reclabels = ReadLabels(rec_MLF_fp, &labelHash, UL_IGNORE, in_lbl_frm,
@@ -261,32 +261,32 @@ int main(int argc, char *argv[]) {
     reflabels = ReadLabels(ref_MLF_fp, &labelHash, UL_IGNORE, in_lbl_frm,
                            1, ref_lab_fn, ref_MLF_fn, &ref_stats);
 
-    if(!word_spotting) {
+    if (!word_spotting) {
       int err = 0;
 
       AlingTranscriptions(&reclabels, reflabels, NULL);
 
-      for(tlptr=reclabels; tlptr!=NULL; tlptr=tlptr->next) {
-        if(tlptr->nextLevel->mpName != tlptr->mpName) err = 1;
+      for (tlptr=reclabels; tlptr!=NULL; tlptr=tlptr->next) {
+        if (tlptr->nextLevel->mpName != tlptr->mpName) err = 1;
 
-        if(!tlptr->nextLevel->mpName) ins++;
+        if (!tlptr->nextLevel->mpName) ins++;
         else {
-          if(!tlptr->mpName) del++;
-          else if(tlptr->nextLevel->mpName != tlptr->mpName) sub++;
+          if (!tlptr->mpName) del++;
+          else if (tlptr->nextLevel->mpName != tlptr->mpName) sub++;
           tot++;
         }
       }
 
       stot++;
-      if(err) ssub++;
+      if (err) ssub++;
 
-      if(err && time_alig_out) {
+      if (err && time_alig_out) {
         Label *reclptr;
         int rec;
         printf("Aligned transcription: %s vs %s", ref_lab_fn, rec_lab_fn);
-        for(rec=0; rec < 2; rec++) {
+        for (rec=0; rec < 2; rec++) {
           fputs(rec ? "\n REC:" : "\n LAB:", stdout);
-          for(reclptr=reclabels; reclptr!=NULL; reclptr=reclptr->next) {
+          for (reclptr=reclabels; reclptr!=NULL; reclptr=reclptr->next) {
             Label *reflptr = reclptr->nextLevel;
             char *reclstr = (char*) (reclptr->mpName ? reclptr->mpName : "");
             char *reflstr = (char*) (reflptr->mpName ? reflptr->mpName : "");
@@ -303,34 +303,34 @@ int main(int argc, char *argv[]) {
 
       nonKeywords += rec_stats.nLabelsTotal - rec_stats.nLabelsRead;
       ltab = (Label **) malloc(sizeof(Label *) * rec_stats.nLabelsRead);
-      if(ltab == NULL) Error("Insufficient memory");
+      if (ltab == NULL) Error("Insufficient memory");
 
-      for(n=0, tlptr=reclabels; tlptr!=NULL; tlptr=tlptr->next) {
-        if(tlptr->score < score_threshold) continue;
+      for (n=0, tlptr=reclabels; tlptr!=NULL; tlptr=tlptr->next) {
+        if (tlptr->score < score_threshold) continue;
         ltab[n++] = tlptr;
       }
 
       qsort(ltab, n, sizeof(Label *), start_time_cmp);
 
-      if(nkwds + n > kwd_tab_size) {
+      if (nkwds + n > kwd_tab_size) {
         kwd_tab_size = HIGHER_OF(kwd_tab_size * 2, nkwds + n);
         kwd_tab = (t_kwd_tab *)realloc(kwd_tab, sizeof(t_kwd_tab)*kwd_tab_size);
-        if(kwd_tab == NULL) Error("Insufficient memory");
+        if (kwd_tab == NULL) Error("Insufficient memory");
       }
 
       tlptr = reflabels;
-      for(i = 0; i < n; i++) {
+      for (i = 0; i < n; i++) {
         Label *tlptr2;
-        while(tlptr && ((tlptr->start+tlptr->stop)/2) < ltab[i]->start) tlptr = tlptr->next;
+        while (tlptr && ((tlptr->start+tlptr->stop)/2) < ltab[i]->start) tlptr = tlptr->next;
 
         kwd_tab[nkwds].id     = (int) ltab[i]->data - 1;
         kwd_tab[nkwds].score  = ltab[i]->score;
         kwd_tab[nkwds].is_hit = 0;
 
-        for(tlptr2 = tlptr;
+        for (tlptr2 = tlptr;
             tlptr2 && ((tlptr2->start+tlptr2->stop)/2) <= ltab[i]->stop;
             tlptr2 = tlptr2->next) {
-          if(ltab[i]->mpName == tlptr2->mpName) {
+          if (ltab[i]->mpName == tlptr2->mpName) {
             kwd_tab[nkwds].is_hit = 1;
             break;
           }
@@ -338,11 +338,11 @@ int main(int argc, char *argv[]) {
         nkwds++;
       }
 
-      for(tlptr = reflabels; tlptr != NULL; tlptr=tlptr->next) {
+      for (tlptr = reflabels; tlptr != NULL; tlptr=tlptr->next) {
         kwd_stats[(int) tlptr->data - 1].actual++;
       }
 
-      if(ref_stats.endTime > LOG_MIN) {
+      if (ref_stats.endTime > LOG_MIN) {
         totalTime += ref_stats.endTime / (36e9 * FATimeUnit);
       }
 
@@ -356,10 +356,10 @@ int main(int argc, char *argv[]) {
   printf(
     "======================= STK Results Analysis ========================\n"
     "  Date: %s", ctime(&tm));
-  if(ref_MLF_fn) printf("  Ref: %s\n", ref_MLF_fn);
+  if (ref_MLF_fn) printf("  Ref: %s\n", ref_MLF_fn);
   printf("  Rec: %s\n", rec_MLF_fn);
 
-  if(!word_spotting) {
+  if (!word_spotting) {
     printf(
       "------------------------- Overall Results ---------------------------\n"
       "SENT: %%Correct=%.2f [H=%d, S=%d, N=%d]\n"
@@ -372,26 +372,26 @@ int main(int argc, char *argv[]) {
     FLOAT sufficientThreshold = LOG_0;
     
     printf("  Ref. total time: %f hours\n", totalTime  * FATimeUnit);
-    if(nonKeywords)printf("  %d non keywords found in test files\n",nonKeywords);
+    if (nonKeywords)printf("  %d non keywords found in test files\n",nonKeywords);
 
     int nROCbins = (int) (maxFAperHour * totalTime + 0.49999) + 1;
     float lastBinWght =   maxFAperHour * totalTime - nROCbins + 1;
     
-    for(i = 0; i <= labelHash.nentries; i++) {
+    for (i = 0; i <= labelHash.nentries; i++) {
       kwd_stats[i].ROC = (float *) malloc(nROCbins * sizeof(float));
-      if(kwd_stats[i].ROC == NULL) Error("Insufficient memory");
+      if (kwd_stats[i].ROC == NULL) Error("Insufficient memory");
     }
 
     qsort(kwd_tab, nkwds, sizeof(kwd_tab[0]), score_cmp);
     
     // Fill ROC tables
-    for(i = 0; i < nkwds; i++) {
+    for (i = 0; i < nkwds; i++) {
       t_kwd_stats *ks = &kwd_stats[kwd_tab[i].id];
       
-      if(kwd_tab[i].is_hit) { 
+      if (kwd_tab[i].is_hit) { 
         ks->hits++;
       } else {
-        if(ks->FA < nROCbins) {
+        if (ks->FA < nROCbins) {
           ks->ROC[ks->FA] = ks->actual ? (float) ks->hits / ks->actual : 0.0;
           sufficientThreshold = kwd_tab[i].score;
         }
@@ -399,16 +399,16 @@ int main(int argc, char *argv[]) {
       }      
     }
         
-    for(n = 0; n < labelHash.nentries; n++) {
+    for (n = 0; n < labelHash.nentries; n++) {
       t_kwd_stats *ks = &kwd_stats[n];
-      for(i = ks->FA; i < nROCbins; i++) {
+      for (i = ks->FA; i < nROCbins; i++) {
         ks->ROC[i] = ks->actual ? (float) ks->hits / ks->actual : 0.0;
         sufficientThreshold = LOG_0;
       }
     }
     
-    if(score_threshold > LOG_MIN) {
-      if(sufficientThreshold > LOG_MIN) {
+    if (score_threshold > LOG_MIN) {
+      if (sufficientThreshold > LOG_MIN) {
         printf("  Sufficient score threshold was: %f\n", sufficientThreshold);
       } else {
         printf("  Score threshold was not sufficient\n");
@@ -416,42 +416,42 @@ int main(int argc, char *argv[]) {
     }
     
     // Calculate global counts
-    for(n = 0; n < labelHash.nentries; n++) {
+    for (n = 0; n < labelHash.nentries; n++) {
       kwd_stats[labelHash.nentries].actual += kwd_stats[n].actual;
       kwd_stats[labelHash.nentries].hits   += kwd_stats[n].hits;
       kwd_stats[labelHash.nentries].FA   += kwd_stats[n].FA;
     }
     
-    for(i = 0; i < nROCbins; i++) {
+    for (i = 0; i < nROCbins; i++) {
       kwd_stats[labelHash.nentries].ROC[i] = 0.0;
-      for(n = 0; n < labelHash.nentries; n++) {
+      for (n = 0; n < labelHash.nentries; n++) {
         kwd_stats[labelHash.nentries].ROC[i] += kwd_stats[n].ROC[i] * kwd_stats[n].actual;
       }
       kwd_stats[labelHash.nentries].ROC[i] /= kwd_stats[labelHash.nentries].actual;
     }
             
 //    printf("%13s: ", "Keyword");
-//    for(i = 0; i < nROCbins; i++) printf(" %4d", i);
+//    for (i = 0; i < nROCbins; i++) printf(" %4d", i);
 //    puts("");
-//    for(n = 0; n <= labelHash.nentries; n++) {    
+//    for (n = 0; n <= labelHash.nentries; n++) {    
 //      printf("%13s: ", n == labelHash.nentries ? "Overall" 
 //                                              : labelHash.entry[n]->key);
-//      for(i = 0; i < nROCbins; i++) {
+//      for (i = 0; i < nROCbins; i++) {
 //        printf(" %4.2f", kwd_stats[n].ROC[i]);
 //      }
 //      puts("");
 //    }
-    if(full_results) {
+    if (full_results) {
       fputs(
       "------------------------- ROC Information ---------------------------"
       "\n\n      KeyWord:", stdout);
-      for(i = 0; i <= maxFAperHour; i++) printf(" %4d", i);
+      for (i = 0; i <= maxFAperHour; i++) printf(" %4d", i);
       fputs("\n", stdout);
 
-      for(n = 0; n <= labelHash.nentries; n++) {
+      for (n = 0; n <= labelHash.nentries; n++) {
         t_kwd_stats *ks = &kwd_stats[n];
         printf("%13s:", n == labelHash.nentries ? "Overall" : labelHash.entry[n]->key);
-        for(i = 0; i <= maxFAperHour; i++) {
+        for (i = 0; i <= maxFAperHour; i++) {
           float y1, y2, hitr;
           float a = (i * totalTime + 0.5);
           int   b = (int) a;
@@ -473,7 +473,7 @@ int main(int argc, char *argv[]) {
     "------------------------- Figures of Merit --------------------------"
     "\n\n      KeyWord:    #Hits     #FAs  #Actual      FOM");
 
-    for(n = 0; n <= labelHash.nentries; n++) {
+    for (n = 0; n <= labelHash.nentries; n++) {
       t_kwd_stats *ks = &kwd_stats[n];
       float FOM = 0.0;
 

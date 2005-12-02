@@ -30,8 +30,8 @@
 void usage(char *progname)
 {
   char *tchrptr;
-  if((tchrptr = strrchr(progname, '\\')) != NULL) progname = tchrptr+1;
-  if((tchrptr = strrchr(progname, '/')) != NULL) progname = tchrptr+1;
+  if ((tchrptr = strrchr(progname, '\\')) != NULL) progname = tchrptr+1;
+  if ((tchrptr = strrchr(progname, '/')) != NULL) progname = tchrptr+1;
   fprintf(stderr,
 "\nUSAGE: %s [options] NetworkFiles...\n\n"
 " Option                                                     Default\n\n"
@@ -93,7 +93,7 @@ char *optionStr =
 int main(int argc, char *argv[]) {
   FILE *sfp = NULL;
   ENTRY e, *ep;
-  int i;
+  int  i;
   Label *labels;
   char line[1024];
   char label_file[1024];
@@ -133,9 +133,9 @@ int main(int argc, char *argv[]) {
   LabelFormat out_lbl_fmt = {0};
   LabelFormat in_lbl_fmt = {0};
 
-  if(argc == 1) usage(argv[0]);
+  if (argc == 1) usage(argv[0]);
 
-  if(!my_hcreate_r(10,   &nonCDphHash)
+  if (!my_hcreate_r(10,   &nonCDphHash)
   || !my_hcreate_r(100,  &dictHash)
   || !my_hcreate_r(100,  &phoneHash)
   || !my_hcreate_r(1000, &triphHash)
@@ -144,7 +144,7 @@ int main(int argc, char *argv[]) {
   }
   i = ParseOptions(argc, argv, optionStr, SNAME, &cfgHash);
 //  htk_compat = GetParamBool(&cfgHash, SNAME":HTKCOMPAT", FALSE);
-  for(; i < argc; i++) {
+  for (; i < argc; i++) {
     last_file = AddFileElem(last_file, argv[i]);
     nfeature_files++;
   }
@@ -183,14 +183,14 @@ int main(int argc, char *argv[]) {
   script =(char*)GetParamStr(&cfgHash, SNAME":SCRIPT",          NULL);
 
   cchrptr      = GetParamStr(&cfgHash, SNAME":NETFORMATING",  "");
-  if(*cchrptr) {
+  if (*cchrptr) {
     out_net_fmt.no_LM_likes    = 1;
     out_net_fmt.no_times       = 1;
     out_net_fmt.no_pronun_vars = 1;
     out_net_fmt.no_acc_likes   = 1;
   }
-  while(*cchrptr) {
-    switch(*cchrptr++) {
+  while (*cchrptr) {
+    switch (*cchrptr++) {
       case 'R': out_net_fmt.base62_labels  = 1; // reticent
                 out_net_fmt.lin_node_seqs  = 1;
                 out_net_fmt.no_defaults    = 1; break;
@@ -216,52 +216,52 @@ int main(int argc, char *argv[]) {
   out_transc_fmt= (TranscriptionFormat) GetParamEnum(&cfgHash,SNAME":TARGETTRANSCFMT", TF_STK,
                               "STK", TF_STK, "net", TF_NOF, NULL);
 
-  if(GetParamBool(&cfgHash, SNAME":PRINTCONFIG", FALSE)) {
+  if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", FALSE)) {
     PrintConfig(&cfgHash);
   }
-  if(GetParamBool(&cfgHash, SNAME":PRINTVERSION", FALSE)) {
+  if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", FALSE)) {
     puts("Version: "VERSION"\n");
   }
-  if(!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", FALSE)) {
+  if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", FALSE)) {
     CheckCommandLineParamUse(&cfgHash);
   }
-  for(script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) {
-    if((sfp = my_fopen(script, "rt", script_filter)) == NULL) {
+  for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) {
+    if ((sfp = my_fopen(script, "rt", script_filter)) == NULL) {
       Error("Cannot open script file %s", optarg);
     }
-    while(fscanf(sfp, "%s", line) == 1) {
+    while (fscanf(sfp, "%s", line) == 1) {
       last_file = AddFileElem(last_file, line);
       nfeature_files++;
     }
     my_fclose(sfp);
   }
-  for( ci_phn=strtok(ci_phn, ",");  ci_phn != NULL; ci_phn=strtok(NULL, ",")) {
+  for ( ci_phn=strtok(ci_phn, ",");  ci_phn != NULL; ci_phn=strtok(NULL, ",")) {
     e.key = ci_phn;
     my_hsearch_r(e, FIND, &ep, &nonCDphHash);
-    if(ep != NULL) continue;
-    if((e.key = strdup(ci_phn)) == NULL) Error("Insufficient memory");
+    if (ep != NULL) continue;
+    if ((e.key = strdup(ci_phn)) == NULL) Error("Insufficient memory");
     e.data = (void *) 0;
     my_hsearch_r(e, ENTER, &ep, &nonCDphHash);
   }
-  for(tee_phn=strtok(tee_phn, ",");tee_phn != NULL;tee_phn=strtok(NULL, ",")) {
+  for (tee_phn=strtok(tee_phn, ",");tee_phn != NULL;tee_phn=strtok(NULL, ",")) {
     e.key = tee_phn;
     my_hsearch_r(e, FIND, &ep, &nonCDphHash);
-    if(ep != NULL) {
+    if (ep != NULL) {
       ep->data = (void *) 1;
       continue;
     }
-    if((e.key = strdup(tee_phn)) == NULL) Error("Insufficient memory");
+    if ((e.key = strdup(tee_phn)) == NULL) Error("Insufficient memory");
     e.data = (void *) 1;
     my_hsearch_r(e, ENTER, &ep, &nonCDphHash);
   }
-  if(dictionary != NULL) {
+  if (dictionary != NULL) {
     ReadDictionary(dictionary, &dictHash, &phoneHash);
     notInDictAction  = WORD_NOT_IN_DIC_WARN;
-    if(expOptions.respect_pronun_var) {
+    if (expOptions.respect_pronun_var) {
       notInDictAction |= (int) PRON_NOT_IN_DIC_ERROR;
     }
   }
-  if(dictHash.nentries == 0) expOptions.no_word_expansion = 1;
+  if (dictHash.nentries == 0) expOptions.no_word_expansion = 1;
 
   transc_filter = transc_filter != NULL ? transc_filter :
                   in_transc_fmt == TF_STK      ? net_filter    :
@@ -272,8 +272,8 @@ int main(int argc, char *argv[]) {
   in_MLF_fp  = OpenInputMLF(in_MLF_fn);
   out_MLF_fp = OpenOutputMLF(out_MLF_fn);
 
-  for(file_name=feature_files; file_name != NULL; file_name=file_name->next) {
-    if(trace_flag & 1) {
+  for (file_name=feature_files; file_name != NULL; file_name=file_name->next) {
+    if (trace_flag & 1) {
       TraceLog("Processing file %d/%d '%s'", ++fcnt, nfeature_files,file_name->logical);
     }
 
@@ -281,7 +281,7 @@ int main(int argc, char *argv[]) {
     in_MLF_fp = OpenInputLabelFile(label_file, in_lbl_dir,
                                    in_lbl_ext, in_MLF_fp, in_MLF_fn);
 
-    if(in_MLF_fn == NULL && IsMLF(in_MLF_fp)) {
+    if (in_MLF_fn == NULL && IsMLF(in_MLF_fp)) {
       in_transc_fmt = in_transc_fmt == TF_HTK ? TF_MLF :
       in_transc_fmt == TF_STK ? TF_MNF :
       in_transc_fmt == TF_NOF ? TF_MOF : TF_ERR;
@@ -289,27 +289,27 @@ int main(int argc, char *argv[]) {
       in_MLF_fn = label_file;
       assert(in_transc_fmt != TF_ERR);
     }
-    for(;;) { //in cases of MLF or MNF, we must process all records
+    for (;;) { //in cases of MLF or MNF, we must process all records
       Node *node = NULL;
 
-      if(in_transc_fmt == TF_MLF
+      if (in_transc_fmt == TF_MLF
       || in_transc_fmt == TF_MNF
       || in_transc_fmt == TF_MOF) {
         label_file[0]='\0'; // Ref. MLF is read sequentially record by record
-        if(!OpenInputLabelFile(label_file, NULL, NULL, in_MLF_fp, in_MLF_fn)) {
+        if (!OpenInputLabelFile(label_file, NULL, NULL, in_MLF_fp, in_MLF_fn)) {
           break; // Whole MLF or MNF processed
         }
-        if(trace_flag & 1) TraceLog("Processing file %d '%s'", ++fcnt, label_file);
+        if (trace_flag & 1) TraceLog("Processing file %d '%s'", ++fcnt, label_file);
       }
-      if(in_transc_fmt == TF_HTK || in_transc_fmt == TF_MLF) {
+      if (in_transc_fmt == TF_HTK || in_transc_fmt == TF_MLF) {
         labels = ReadLabels(in_MLF_fp, &dictHash, UL_ERROR, in_lbl_fmt,
                             /*sampleRate*/ 1, label_file, in_MLF_fn, NULL);
         node = MakeNetworkFromLabels(labels, NT);
         ReleaseLabels(labels);
-      } else if(in_transc_fmt == TF_STK || in_transc_fmt == TF_MNF) {
+      } else if (in_transc_fmt == TF_STK || in_transc_fmt == TF_MNF) {
         node = ReadSTKNetwork(in_MLF_fp, &dictHash, &phoneHash, notInDictAction,
                               in_lbl_fmt, /*sampleRate*/ 1, label_file, in_MLF_fn);
-      } else if(in_transc_fmt == TF_NOF || in_transc_fmt == TF_MOF) {
+      } else if (in_transc_fmt == TF_NOF || in_transc_fmt == TF_MOF) {
         node = ReadSTKNetworkInOldFormat(
                  in_MLF_fp, &dictHash, &phoneHash, in_lbl_fmt,
                  /*sampleRate*/ 1, label_file, in_MLF_fn);
@@ -318,13 +318,13 @@ int main(int argc, char *argv[]) {
       NetworkExpansionsAndOptimizations(node, expOptions, out_net_fmt, &dictHash,
                                         &nonCDphHash, &triphHash);
 
-      if(out_net_fmt.aprox_accuracy)
+      if (out_net_fmt.aprox_accuracy)
         ComputeAproximatePhoneAccuracy(node, 0);
 
       out_MLF_fp = OpenOutputLabelFile(label_file, out_lbl_dir, out_lbl_ext,
                                       out_MLF_fp, out_MLF_fn);
 
-      if(out_transc_fmt == TF_NOF) {
+      if (out_transc_fmt == TF_NOF) {
         WriteSTKNetworkInOldFormat(out_MLF_fp, node, out_lbl_fmt, 1,
                                  label_file, out_MLF_fn);
       } else {
@@ -333,27 +333,27 @@ int main(int argc, char *argv[]) {
       CloseOutputLabelFile(out_MLF_fp, out_MLF_fn);
       FreeNetwork(node);
 
-      if(in_transc_fmt == TF_HTK
+      if (in_transc_fmt == TF_HTK
       || in_transc_fmt == TF_STK
       || in_transc_fmt == TF_NOF) {
         break; // We are dealing with single record in these cases
       }
     }
-    if(in_transc_fmt == TF_MLF || in_transc_fmt == TF_MNF) {
+    if (in_transc_fmt == TF_MLF || in_transc_fmt == TF_MNF) {
       CloseInputMLF(in_MLF_fp);
     }
   }
-  if(out_MLF_fn != NULL) fclose(out_MLF_fp);
+  if (out_MLF_fn != NULL) fclose(out_MLF_fp);
 
-  if(in_MLF_fn != NULL && (in_transc_fmt == TF_HTK || in_transc_fmt == TF_STK)) {
+  if (in_MLF_fn != NULL && (in_transc_fmt == TF_HTK || in_transc_fmt == TF_STK)) {
     CloseInputMLF(in_MLF_fp);
   }
-  if(cd_list_file != NULL) {
+  if (cd_list_file != NULL) {
     FILE *fp = fopen(cd_list_file, "wt");
-    if(fp == NULL) Error("Cannot open output file: '%s'", cd_list_file);
+    if (fp == NULL) Error("Cannot open output file: '%s'", cd_list_file);
 
     for (i = 0; i < triphHash.nentries; i++) {
-      if(fprintf(fp, "%s\n", (char *) triphHash.entry[i]->key) < 0) {
+      if (fprintf(fp, "%s\n", (char *) triphHash.entry[i]->key) < 0) {
         Error("Cannot write to file: '%s'", cd_list_file);
       }
     }
@@ -362,7 +362,10 @@ int main(int argc, char *argv[]) {
   my_hdestroy_r(&phoneHash, 1);
   my_hdestroy_r(&nonCDphHash, 0);
   FreeDictionary(&dictHash);
-  for(i = 0; i < cfgHash.nentries; i++) free(cfgHash.entry[i]->data);
+  
+  for (i = 0; i < cfgHash.nentries; i++) 
+    free(cfgHash.entry[i]->data);
+  
   my_hdestroy_r(&cfgHash, 1);
   return 0;
 }

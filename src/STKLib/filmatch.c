@@ -76,10 +76,10 @@ bool is_valid_pattern (const char *p, int *error_type)
 *error_type = PATTERN_VALID;
 
   /* loop through pattern to EOS */
-  while( *p )
+  while ( *p )
   {
     /* determine pattern type */
-    switch( *p )
+    switch ( *p )
     {
       /* the [..] construct must be well formed */
       case '[':
@@ -102,10 +102,10 @@ bool is_valid_pattern (const char *p, int *error_type)
           }
 
           /* loop to end of [..] construct */
-          while( *p != ']' )
+          while ( *p != ']' )
           {
             /* check for literal escape */
-            if( *p == '\\' )
+            if ( *p == '\\' )
             {
                 p++;
 
@@ -126,7 +126,7 @@ bool is_valid_pattern (const char *p, int *error_type)
             }
 
             /* if this a range */
-            if( *p == '-' )
+            if ( *p == '-' )
             {
               /* we must have an end of range */
               if ( !*++p || *p == ']' )
@@ -138,7 +138,7 @@ bool is_valid_pattern (const char *p, int *error_type)
               {
 
                 /* check for literal escape */
-                if( *p == '\\' )
+                if ( *p == '\\' )
                     p++;
 
                 /* if end of pattern here then bad pattern */
@@ -162,8 +162,8 @@ bool is_valid_pattern (const char *p, int *error_type)
       default:
         p++;                              /* "normal" character */
         break;
-    } // switch( *p )
-  } // while( *p )
+    } // switch ( *p )
+  } // while ( *p )
 
   return true;
 } //bool is_valid_pattern (const char *p, int *error_type)

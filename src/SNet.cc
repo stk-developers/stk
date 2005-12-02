@@ -18,7 +18,7 @@
 #include <assert.h>
 #include "STKLib/fileio.h"
 #include "STKLib/common.h"
-#include "STKLib/hmms.h"
+#include "STKLib/Models.h"
 #include "STKLib/viterbi.h"
 #ifndef WIN32
 #include <unistd.h>
@@ -29,8 +29,8 @@
 void usage(char *progname)
 {
   char *tchrptr;
-  if((tchrptr = strrchr(progname, '\\')) != NULL) progname = tchrptr+1;
-  if((tchrptr = strrchr(progname, '/')) != NULL) progname = tchrptr+1;
+  if ((tchrptr = strrchr(progname, '\\')) != NULL) progname = tchrptr+1;
+  if ((tchrptr = strrchr(progname, '/')) != NULL) progname = tchrptr+1;
   fprintf(stderr,
 "\nUSAGE: %s [options] DataFiles...\n\n"
 " Option                                                     Default\n\n"
@@ -110,17 +110,17 @@ int main(int argc, char *argv[]) {
   XformInstance *NNet_input    = NULL;
   LabelFormat in_lbl_fmt = {0};
 
-  if(argc == 1) usage(argv[0]);
+  if (argc == 1) usage(argv[0]);
 
   InitHMMSet(&hset, 1);
 
-  if(!my_hcreate_r(100,  &phoneHash)
+  if (!my_hcreate_r(100,  &phoneHash)
   || !my_hcreate_r(100,  &cfgHash)) {
     Error("Insufficient memory");
   }
   i = ParseOptions(argc, argv, optionStr, SNAME, &cfgHash);
 //  htk_compat   = GetParamBool(&cfgHash,SNAME":HTKCOMPAT",       FALSE);
-  for(; i < argc; i++) {
+  for (; i < argc; i++) {
     last_file = AddFileElem(last_file, argv[i]);
     nfeature_files++;
   }
@@ -137,7 +137,7 @@ int main(int argc, char *argv[]) {
   filter_wldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
   script_filter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",   NULL);
   parm_filter  = GetParamStr(&cfgHash, SNAME":HPARMFILTER",     NULL);
-//  hlist_filter = GetParamStr(&cfgHash, SNAME":HMMLISTFILTER",   NULL);
+//  gpHListFilter = GetParamStr(&cfgHash, SNAME":HMMLISTFILTER",   NULL);
   MMF_filter   = GetParamStr(&cfgHash, SNAME":HMMDEFFILTER",    NULL);
 //  parm_ofilter = GetParamStr(&cfgHash, SNAME":HPARMOFILTER",    NULL);
   label_filter = GetParamStr(&cfgHash, SNAME":HLABELFILTER",    NULL);
@@ -165,37 +165,37 @@ int main(int argc, char *argv[]) {
 //                              "HTK", TF_HTK, "STK", TF_STK, NULL);
 
 
-  if(GetParamBool(&cfgHash, SNAME":PRINTCONFIG", FALSE)) {
+  if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", FALSE)) {
     PrintConfig(&cfgHash);
   }
-  if(GetParamBool(&cfgHash, SNAME":PRINTVERSION", FALSE)) {
+  if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", FALSE)) {
     puts("Version: "VERSION"\n");
   }
 
-  if(!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", FALSE)) {
+  if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", FALSE)) {
     CheckCommandLineParamUse(&cfgHash);
   }
 
-  for(script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) {
-    if((sfp = my_fopen(script, "rt", script_filter)) == NULL) {
+  for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) {
+    if ((sfp = my_fopen(script, "rt", script_filter)) == NULL) {
       Error("Cannot open script file %s", script);
     }
-    while(fscanf(sfp, "%s", line) == 1) {
+    while (fscanf(sfp, "%s", line) == 1) {
       last_file = AddFileElem(last_file, line);
       nfeature_files++;
     }
     my_fclose(sfp);
   }
-  for(src_mmf=strtok(src_mmf, ","); src_mmf != NULL; src_mmf=strtok(NULL, ",")) {
+  for (src_mmf=strtok(src_mmf, ","); src_mmf != NULL; src_mmf=strtok(NULL, ",")) {
     ReadHMMSet(src_mmf, &hset, NULL);
   }
-//  if(src_hmm_list) ReadHMMList(&hset,     src_hmm_list, src_hmm_dir, src_hmm_ext);
+//  if (src_hmm_list) ReadHMMList(&hset,     src_hmm_list, src_hmm_dir, src_hmm_ext);
 
-  if(NNet_instance_name != NULL) {
+  if (NNet_instance_name != NULL) {
     Macro *macro = FindMacro(&hset.Xform_instance_hash, NNet_instance_name);
-    if(macro == NULL) Error("Undefined input '%s'", NNet_instance_name);
+    if (macro == NULL) Error("Undefined input '%s'", NNet_instance_name);
     NNet_instance = (XformInstance *) macro->data;
-  } else if(hset.inputXform) {
+  } else if (hset.inputXform) {
     NNet_instance = hset.inputXform;
   }
   
@@ -206,22 +206,22 @@ int main(int argc, char *argv[]) {
   NNet_input = NNet_instance->input;
   NNet_instance->input = NULL;
 
-  if(out_by_labels) {
+  if (out_by_labels) {
     //Allocate buffer, to which example of output vector will be created
     //according to labels
-    obs_out = (FLOAT *)malloc(NNet_instance->out_size * sizeof(FLOAT));
-    if(!obs_out) Error("Insufficient memory");
+    obs_out = (FLOAT *)malloc(NNet_instance->mOutSize * sizeof(FLOAT));
+    if (!obs_out) Error("Insufficient memory");
   }
   
   ilfp = OpenInputMLF(src_mlf);
   
     // MAIN FILE LOOP
-  for(file_name = feature_files;
+  for (file_name = feature_files;
       file_name != NULL;
       file_name = out_by_labels ? file_name->next : file_name->next->next) {
 
-    if(trace_flag & 1) {
-      if(!out_by_labels) {
+    if (trace_flag & 1) {
+      if (!out_by_labels) {
         TraceLog("Processing file pair %d/%d '%s' <-> %s",  ++fcnt,
         nfeature_files/2, file_name->physical,file_name->next->logical);
       } else {
@@ -233,40 +233,40 @@ int main(int argc, char *argv[]) {
     char *lgcl_fn = (!out_by_labels ? file_name->next : file_name)->logical;
 
     // read sentence weight definition if any ( physical_file.fea[s,e]{weight} )
-    if((chrptr = strrchr(phys_fn, '{')) != NULL &&
+    if ((chrptr = strrchr(phys_fn, '{')) != NULL &&
       ((i=0), sscanf(chrptr, "{%f}%n", &sentWeight, &i), chrptr[i] == '\0')) {
       *chrptr = '\0';
     } else {
       sentWeight = 1.0;
     }
-    if(cmn_mask) process_mask(lgcl_fn, cmn_mask, cmn_file);
-    if(cvn_mask) process_mask(lgcl_fn, cvn_mask, cvn_file);
+    if (cmn_mask) process_mask(lgcl_fn, cmn_mask, cmn_file);
+    if (cvn_mask) process_mask(lgcl_fn, cvn_mask, cvn_file);
     obsMx = ReadHTKFeatures(phys_fn, swap_features,
                             startFrmExt, endFrmExt, targetKind,
                             derivOrder, derivWinLengths, &header,
                             cmn_path, cvn_path, cvg_file, &rhfbuff);
 
-    if(hset.in_vec_size != header.sampSize / sizeof(float)) {
+    if (hset.in_vec_size != header.sampSize / sizeof(float)) {
       Error("Vector size [%d] in '%s' is incompatible with source HMM set [%d]",
             header.sampSize/sizeof(float), phys_fn, hset.in_vec_size);
     }
     nFrames = header.nSamples - NNet_input->totalDelay;
-    if(!out_by_labels) { //If output examples are given by features
+    if (!out_by_labels) { //If output examples are given by features
                          // read the second set of features ...
                          
-      if(cmn_mask_out) process_mask(file_name->logical, cmn_mask_out, cmn_file_out);
-      if(cvn_mask_out) process_mask(file_name->logical, cvn_mask_out, cvn_file_out);
+      if (cmn_mask_out) process_mask(file_name->logical, cmn_mask_out, cmn_file_out);
+      if (cvn_mask_out) process_mask(file_name->logical, cvn_mask_out, cvn_file_out);
       obsMx_out = ReadHTKFeatures(file_name->physical, swap_features_out,
                                   startFrmExt_out, endFrmExt_out, targetKind_out,
                                   derivOrder_out, derivWinLengths_out, &header_out,
                                   cmn_path_out, cvn_path_out, cvg_file_out, &rhfbuff_out);
 
-      if(NNet_instance->out_size != header_out.sampSize/sizeof(float)) {
+      if (NNet_instance->mOutSize != header_out.sampSize/sizeof(float)) {
         Error("Vector size [%d] in '%s' is incompatible with NNet output size [%d]",
               header_out.sampSize/sizeof(float), file_name->physical,
-              NNet_instance->out_size);
+              NNet_instance->mOutSize);
       }
-      if(nFrames != header_out.nSamples) {
+      if (nFrames != header_out.nSamples) {
         Error("Mismatch in number of frames in input/output feature file pair: "
               "'%s' <-> '%s'.", file_name->next->physical, file_name->physical);
       }
@@ -284,9 +284,9 @@ int main(int argc, char *argv[]) {
     ResetXformInstances(&hset);
     Label  *lbl_ptr = labels;
     time = 1;
-    if(NNet_input) time -= NNet_input->totalDelay;
+    if (NNet_input) time -= NNet_input->totalDelay;
     // Loop over all feature frames.
-    for(i = 0; i < header.nSamples; i++, time++) {
+    for (i = 0; i < header.nSamples; i++, time++) {
       int j;
       FLOAT *obs = obsMx + i * hset.in_vec_size;
 
@@ -294,16 +294,16 @@ int main(int argc, char *argv[]) {
       //through NNet_input transformation.
       obs = XformPass(NNet_input, obs, time, FORWARD);
       //Input of NN is not yet read because of NNet_input delay
-      if(time <= 0) continue;
+      if (time <= 0) continue;
 
-      if(lbl_list_file) {
+      if (lbl_list_file) {
         //Create NN output example vector from lables
-        for(j = 0; j < NNet_instance->out_size; j++) obs_out[j] = 0;
-        while(lbl_ptr && lbl_ptr->stop < time) lbl_ptr = lbl_ptr->next;
-        if(lbl_ptr && lbl_ptr->start <= time) obs_out[(int) lbl_ptr->data - 1] = 1;
+        for (j = 0; j < NNet_instance->mOutSize; j++) obs_out[j] = 0;
+        while (lbl_ptr && lbl_ptr->stop < time) lbl_ptr = lbl_ptr->next;
+        if (lbl_ptr && lbl_ptr->start <= time) obs_out[(int) lbl_ptr->data - 1] = 1;
       } else {
         //Get NN output example vector from obsMx_out matrix
-        obs_out = obsMx_out + (time-1) * NNet_instance->out_size;
+        obs_out = obsMx_out + (time-1) * NNet_instance->mOutSize;
       }
 
       // Saving to cache
@@ -314,12 +314,12 @@ int main(int argc, char *argv[]) {
 
       info->actualCache++;
 
-      if(info->actualCache < info->cacheSize)
+      if (info->actualCache < info->cacheSize)
         continue;
 
       // Go further only if cache is full
       /*
-      if(prog->SERVER){
+      if (prog->SERVER){
         waitForOthers(barrier, 1, -1); // *1* wait for actual caches from all clients
 
         // Do not compute more than minimum of all computers
@@ -329,21 +329,21 @@ int main(int argc, char *argv[]) {
         info->discarded += (info->actualCache % info->bunchSize) * (prog->numberOfClients+1);
         waitForOthers(barrier, 2, -1); // *2* wait for actual caches for all clients
       }
-      if(prog->CLIENT){
+      if (prog->CLIENT){
         sendIntToServer(prog->mainSocket, info->actualCache);
   info->actualCache = receiveIntFromServer(prog->mainSocket);
       }
-      if(!prog->SERVER){
+      if (!prog->SERVER){
         info->frames += info->actualCache * (prog->numberOfClients+1);
   info->actualNumberOfBunches = info->actualCache / info->bunchSize;
         info->discarded += (info->actualCache % info->bunchSize) * (prog->numberOfClients+1);
       }
       computeCache(prog, info, matrix, inCache, outCache, compCache, data, err); // learn on whole cache
-      if(prog->SERVER){
+      if (prog->SERVER){
         waitForOthers(barrier, 5, -1); //*5* end of cache computed
       }
 
-      if(info->actualCache < info->cacheSize){ // client or server is out of data
+      if (info->actualCache < info->cacheSize){ // client or server is out of data
         info->actualCache = 0;
         break;
       }
@@ -355,7 +355,7 @@ int main(int argc, char *argv[]) {
     //TraceLog("[%d frames]", nFrames);
     free(obsMx);
 
-    if(!lbl_list_file) {
+    if (!lbl_list_file) {
       free(obsMx_out);
     } else {
       ReleaseLabels(labels);
@@ -365,7 +365,7 @@ int main(int argc, char *argv[]) {
 
   // Get actual cache size, same as in loop -^
   /*
-  if(prog->SERVER){
+  if (prog->SERVER){
     waitForOthers(barrier, 1, -1); // *1* wait for actual caches from all clients
     info->actualCache = min(info->actualCache, info->clientCaches, prog->numberOfClients);
     info->frames += info->actualCache * (prog->numberOfClients+1);
@@ -373,11 +373,11 @@ int main(int argc, char *argv[]) {
     info->discarded += (info->actualCache % info->bunchSize) * (prog->numberOfClients+1);
     waitForOthers(barrier, 2, -1); // *2* wait for actual caches for all clients
   }
-  if(prog->CLIENT){
+  if (prog->CLIENT){
     sendIntToServer(prog->mainSocket, info->actualCache);
     info->actualCache = receiveIntFromServer(prog->mainSocket);
   }
-  if(!prog->SERVER){
+  if (!prog->SERVER){
     info->frames += info->actualCache * (prog->numberOfClients+1);
     info->actualNumberOfBunches = info->actualCache / info->bunchSize;
     info->discarded += (info->actualCache % info->bunchSize) * (prog->numberOfClients+1);
@@ -388,23 +388,23 @@ int main(int argc, char *argv[]) {
   tEnd(ALL);
 
   info->end = 1; // last cache computed! For threads to terminate
-  if(prog->SERVER){
+  if (prog->SERVER){
     waitForOthers(barrier, 5, -1); //*5* cache is computed, wait for others
   }
 
-  if(prog->CLIENT){
+  if (prog->CLIENT){
     sendIntToServer(prog->mainSocket, info->good);
   }
-  if(prog->SERVER){
+  if (prog->SERVER){
     waitForOthers(barrier, 6, -1); //*6* wait for all good vectors numbers sent
     int i;
-    for(i = 0; i < prog->numberOfClients; i++){
+    for (i = 0; i < prog->numberOfClients; i++){
       info->good += info->clientGood[i];
     }
   }
 
-  if(!prog->CLIENT){
-    if(!prog->CV){
+  if (!prog->CLIENT){
+    if (!prog->CV){
       printf("Training correct: >> ");
     }
     else {
@@ -417,10 +417,10 @@ int main(int argc, char *argv[]) {
   else{
     printf("Client finished...\n");
   }
-  if(!prog->CLIENT){
+  if (!prog->CLIENT){
     printf("     TIME: All %6.3f, Compution %6.3f, Files %6.3f",
            timer_add[ALL], timer_add[COMP], timer_add[FILES]);
-    if(!prog->CV)
+    if (!prog->CV)
       printf(" (wasted %5.2f%%)\n", 100.0-((100.0*(timer_add[COMP]+timer_add[FILES]))/timer_add[ALL]));
     else
       printf("\n");
@@ -428,7 +428,7 @@ int main(int argc, char *argv[]) {
   tPrint(ALL);
   tPrint(COMP);
 */
-  if(trace_flag & 2) {
+  if (trace_flag & 2) {
     TraceLog("Total number of frames: %d", totFrames);
   }
   NNet_instance->input = NNet_input;
@@ -440,21 +440,22 @@ int main(int argc, char *argv[]) {
 
   
   
-  ReleaseHMMSet(&hset);
+  //ReleaseHMMSet(&hset);
+  hset.Release();
 
 //  my_hdestroy_r(&labelHash, 0);
   my_hdestroy_r(&phoneHash, 1);
-  for(i = 0; i < cfgHash.nentries; i++) free(cfgHash.entry[i]->data);
+  for (i = 0; i < cfgHash.nentries; i++) free(cfgHash.entry[i]->data);
   my_hdestroy_r(&cfgHash, 1);
 
-  if(network_file) {
+  if (network_file) {
     ReleaseNetwork(&net);
   }
   free(hset.varFloor);
   free(derivWinLengths);
   free(derivWinLengths_out);
-  if(src_mlf)  fclose(ilfp);
-  while(feature_files) {
+  if (src_mlf)  fclose(ilfp);
+  while (feature_files) {
     file_name = feature_files;
     feature_files = feature_files->next;
     free(file_name);

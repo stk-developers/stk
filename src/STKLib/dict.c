@@ -31,35 +31,35 @@ void ReadDictionary(
   char *word_name, *model_name, *chrptr;
   Pronun *new_pronun;
 
-  if((fp = my_fopen(dictFileName, "rt", dict_filter)) == NULL) {
+  if ((fp = my_fopen(dictFileName, "rt", dict_filter)) == NULL) {
       Error("Cannot open file: '%s'", dictFileName);
   }
-  while(fgets(line, sizeof(line), fp)) {
+  while (fgets(line, sizeof(line), fp)) {
     ENTRY e, *ep;
 
     line_no++;
-    if(strlen(line) == sizeof(line)-1) {
+    if (strlen(line) == sizeof(line)-1) {
       Error("Line is too long (%s:%d)", dictFileName, line_no);
     }
-    if(getHTKstr(word_name = line, &chrptr)) {
+    if (getHTKstr(word_name = line, &chrptr)) {
       Error("%s (%s:%d)", chrptr, dictFileName, line_no);
     }
     e.key  = word_name;
     e.data = NULL;
     my_hsearch_r(e, FIND, &ep, wordHash);
 
-    if(ep != NULL) {
+    if (ep != NULL) {
       word = (Word *) ep->data;
     } else {
       e.key  = strdup(word_name);
       word = (Word *) malloc(sizeof(Word));
-      if(e.key == NULL || word  == NULL) Error("Insufficient memory");
+      if (e.key == NULL || word  == NULL) Error("Insufficient memory");
       word->mpName = e.key;
       word->npronuns = 0;
       word->pronuns   = NULL;
       e.data = word;
 
-      if(!my_hsearch_r(e, ENTER, &ep, wordHash)) {
+      if (!my_hsearch_r(e, ENTER, &ep, wordHash)) {
         Error("Insufficient memory");
       }
     }
@@ -69,7 +69,7 @@ void ReadDictionary(
 
     word->pronuns = (Pronun **) realloc(word->pronuns, word->npronuns * sizeof(Pronun *));
     new_pronun = (Pronun *) malloc(sizeof(Pronun));
-    if(word->pronuns == NULL || new_pronun == NULL) Error("Insufficient memory");
+    if (word->pronuns == NULL || new_pronun == NULL) Error("Insufficient memory");
 
     word->pronuns[word->npronuns-1] = new_pronun;
     new_pronun->word       = word;
@@ -78,22 +78,22 @@ void ReadDictionary(
     new_pronun->model      = NULL;
     new_pronun->variant_no = word->npronuns;
 
-    if(*chrptr == '[') {
+    if (*chrptr == '[') {
 
       model_name = ++chrptr;
-      while(*chrptr && *chrptr != ']') chrptr++;
+      while (*chrptr && *chrptr != ']') chrptr++;
 
-      if(*chrptr != ']') Error("Matching `]' is missing (%s:%d)",
+      if (*chrptr != ']') Error("Matching `]' is missing (%s:%d)",
                                 model_name, dictFileName, line_no);
       *chrptr++ = '\0';
       new_pronun->outSymbol = strdup(model_name);
-      if(new_pronun->outSymbol == NULL) Error("Insufficient memory");
+      if (new_pronun->outSymbol == NULL) Error("Insufficient memory");
     }
 
     new_pronun->prob = strtod(chrptr, &chrptr);
 
-    while(*chrptr) {
-      if(getHTKstr(model_name = chrptr, &chrptr)) {
+    while (*chrptr) {
+      if (getHTKstr(model_name = chrptr, &chrptr)) {
         Error("%s (%s:%d)", chrptr, dictFileName, line_no);
       }
 
@@ -101,11 +101,11 @@ void ReadDictionary(
       e.data = NULL;
       my_hsearch_r(e, FIND, &ep, phoneHash);
 
-      if(ep == NULL) {
+      if (ep == NULL) {
         e.key  = strdup(model_name);
         e.data = e.key;
 
-        if(e.key == NULL || !my_hsearch_r(e, ENTER, &ep, phoneHash)) {
+        if (e.key == NULL || !my_hsearch_r(e, ENTER, &ep, phoneHash)) {
           Error("Insufficient memory");
         }
         ep->data = e.data;
@@ -113,20 +113,23 @@ void ReadDictionary(
       new_pronun->nmodels++;
       new_pronun->model=(_Model*) realloc(new_pronun->model,
                                 new_pronun->nmodels*sizeof(*new_pronun->model));
-      if(new_pronun->model == NULL) Error("Insufficient memory");
+      if (new_pronun->model == NULL) Error("Insufficient memory");
       new_pronun->model[new_pronun->nmodels-1].mpName = static_cast <char*> (ep->data);
     }
   }
-  if(ferror(fp) || my_fclose(fp)) {
+  if (ferror(fp) || my_fclose(fp)) {
     Error("Cannot read dictionary file %s", dictFileName);
   }
 }
 
 void FreeDictionary(struct my_hsearch_data *wordHash) {
-  int i, j;
-  for(i = 0; i < wordHash->nentries; i++) {
+  size_t i;
+  size_t j;
+  
+  for (i = 0; i < wordHash->nentries; i++) 
+  {
     Word *word = (Word *) wordHash->entry[i]->data;
-    for(j = 0; j < word->npronuns; j++) {
+    for (j = 0; j < word->npronuns; j++) {
       free(word->pronuns[j]);
     }
     free(word->pronuns);

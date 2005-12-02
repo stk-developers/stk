@@ -13,15 +13,19 @@
 #ifndef DICT_H
 #define DICT_H
 
-#include "hmms.h"
+#include "Models.h"
 #include "common.h"
 
 extern const char *dict_filter;
 
-typedef struct _Word Word;
-typedef struct _Pronun Pronun;
+//typedef struct _Word Word;
+//typedef struct _Pronun Pronun;
+class Pronun;
+class Word;
 
-struct _Word {
+class Word 
+{
+public:
   char *mpName;
   Pronun **pronuns;
   int npronunsInDict;  // Number of word pronuns found in dictionary file
@@ -36,7 +40,9 @@ union _Model
     char *mpName;
 };
 
-struct _Pronun {
+class Pronun 
+{
+public:
   Word  *word;
   char  *outSymbol;
   int   variant_no;
@@ -45,10 +51,6 @@ struct _Pronun {
   union _Model *model;
 };
 
-#ifdef __cplusplus
-  extern "C" {
-#endif
-
 void ReadDictionary(
   const char *dictFileName,
   struct my_hsearch_data *wordHash,
@@ -56,8 +58,5 @@ void ReadDictionary(
 
 void FreeDictionary(struct my_hsearch_data *wordHash);
 
-#ifdef __cplusplus
-}
-#endif
 
 #endif // DICT_H

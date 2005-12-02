@@ -30,8 +30,8 @@
 void usage(char *progname)
 {
   char *tchrptr;
-  if((tchrptr = strrchr(progname, '\\')) != NULL) progname = tchrptr+1;
-  if((tchrptr = strrchr(progname, '/')) != NULL) progname = tchrptr+1;
+  if ((tchrptr = strrchr(progname, '\\')) != NULL) progname = tchrptr+1;
+  if ((tchrptr = strrchr(progname, '/')) != NULL) progname = tchrptr+1;
   fprintf(stderr,
 "\nUSAGE: %s [options] labelList MLF1 [weight1] MLF2 [weight2]...\n\n"
 " Option                                         Default\n\n"
@@ -124,14 +124,14 @@ int main(int argc, char *argv[]) {
   long *weights = NULL;
   double dval;
 
-  if(argc == 1) usage(argv[0]);
+  if (argc == 1) usage(argv[0]);
 
-  for(;;) {
+  for (;;) {
     int opt = getopt(argc, argv, "-bi:l:y:o:r:tf:a:m:s:n:ucAT:V");
 
-    if(opt == -1) break;
+    if (opt == -1) break;
 
-    switch(opt) {
+    switch (opt) {
       case 'A': print_cmdline    = 1;  break;
       case 'V': print_version    = 1;  break;
       case 't': output_alignment = 1;  break;
@@ -142,13 +142,13 @@ int main(int argc, char *argv[]) {
       case 'l': out_lbl_dir  = optarg; break;
       case 'y': out_lbl_ext  = optarg; break;
 
-      case 1:  if(labelHash.tabsize == 0) {
+      case 1:  if (labelHash.tabsize == 0) {
                   labelHash = readLabelList(optarg);
                } else {
                   *last = (StrListElem *) malloc(sizeof(StrListElem)+strlen(optarg));
-                  if(!*last) Error("Insufficient memory");
+                  if (!*last) Error("Insufficient memory");
                   chrptr = strcpy((*last)->str, optarg);
-                  for(; *chrptr; chrptr++) if(*chrptr == '\\') *chrptr = '/';
+                  for (; *chrptr; chrptr++) if (*chrptr == '\\') *chrptr = '/';
                   last = &(*last)->next;
                   *last = NULL;
                   ++nMLFs;
@@ -156,9 +156,9 @@ int main(int argc, char *argv[]) {
                   weights = (long int *) realloc(weights, sizeof(long) * nMLFs);
                   weights[nMLFs-1] = 1;
 
-                  if(optind < argc) {
+                  if (optind < argc) {
                     long weight = strtol(argv[optind], &chrptr, 0);
-                    if(!*chrptr) {
+                    if (!*chrptr) {
                       optind++;
                       weights[nMLFs-1] = weight;
                     }
@@ -166,16 +166,16 @@ int main(int argc, char *argv[]) {
                 }
                 break;
 
-      case 'c': if(optind < argc) {
+      case 'c': if (optind < argc) {
                   substitution_cost = strtol(argv[optind], &chrptr, 0);
-                  if(!*chrptr && ++optind < argc) {
+                  if (!*chrptr && ++optind < argc) {
                     insertion_cost = strtol(argv[optind], &chrptr, 0);
-                    if(!*chrptr && ++optind < argc) {
+                    if (!*chrptr && ++optind < argc) {
                       deletion_cost = strtol(argv[optind], &chrptr, 0);
                     }
                   }
                 }
-                if(optind >= argc || *chrptr) {
+                if (optind >= argc || *chrptr) {
                   Error("Three integer number are expected after option -%c", opt);
                 }
                 optind++;
@@ -186,10 +186,10 @@ int main(int argc, char *argv[]) {
       case 'm':
       case 's':
       case 'n': dval = strtod(optarg, &chrptr);
-                if(!*optarg || *chrptr) {
+                if (!*optarg || *chrptr) {
                   Error("Decimal number is expected after option -%c", opt);
                 }
-                switch(opt) {
+                switch (opt) {
                   case 'f': wrdfreq_w = dval; break;
                   case 'a': avgconf_w = dval; break;
                   case 'm': maxconf_w = dval; break;
@@ -198,8 +198,8 @@ int main(int argc, char *argv[]) {
                 }
                 break;
                 
-      case 'o': for(chrptr = optarg; *chrptr; chrptr++) {
-                  switch(*chrptr) {
+      case 'o': for (chrptr = optarg; *chrptr; chrptr++) {
+                  switch (*chrptr) {
                     case 'N': out_lbl_frm.SCORE_NRM = 1; break;
                     case 'S': out_lbl_frm.SCORE_OFF = 1; break;
                     case 'C': out_lbl_frm.CENTRE_TM = 1; break;
@@ -212,13 +212,13 @@ int main(int argc, char *argv[]) {
 
 
       case 'r': time_med_alg = strtol(optarg, &chrptr, 0);
-                if(!*optarg || *chrptr) {
+                if (!*optarg || *chrptr) {
                   Error("Integer number is expected after option -%c", opt);
                 }
                 break;
 
       case 'T': trace_flag = strtol(optarg, &chrptr, 0);
-                if(!*optarg || *chrptr) {
+                if (!*optarg || *chrptr) {
                   Error("Integer number is expected after option -%c", opt);
                 }
                 break;
@@ -229,15 +229,15 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if(print_version) {
+  if (print_version) {
     puts("Version: "VERSION"\n");
-    if(!nMLFs) exit(0);
+    if (!nMLFs) exit(0);
   }
 
-  if(!nMLFs) usage(argv[0]);
+  if (!nMLFs) usage(argv[0]);
 
-  if(print_cmdline) {
-    for(i=0; i < argc; i++) {
+  if (print_cmdline) {
+    for (i=0; i < argc; i++) {
       fputs(argv[i], stdout);
       putchar(' ');
     }
@@ -245,23 +245,23 @@ int main(int argc, char *argv[]) {
   }
 
   MLFfps = (FILE **) malloc(sizeof(FILE *) * nMLFs);
-  if(!MLFfps) Error("Insufficient memory");
+  if (!MLFfps) Error("Insufficient memory");
 
   lab2cand = (int *) malloc(sizeof(int) * (labelHash.nentries + 1)); //one more for !NULL
-  if(!lab2cand) Error("Insufficient memory");
-  for(i = 0; i < labelHash.nentries + 1; i++) lab2cand[i] = -1;
+  if (!lab2cand) Error("Insufficient memory");
+  for (i = 0; i < labelHash.nentries + 1; i++) lab2cand[i] = -1;
 
   candidates = (struct candidate *) malloc(sizeof(struct candidate) * nMLFs);
-  if(!candidates) Error("Insufficient memory");
+  if (!candidates) Error("Insufficient memory");
 
-  for(MLF_fn = MLF_files, i=0; MLF_fn; MLF_fn = MLF_fn->next, i++) {
+  for (MLF_fn = MLF_files, i=0; MLF_fn; MLF_fn = MLF_fn->next, i++) {
     MLFfps[i] = OpenInputMLF(MLF_fn->str);
   }
 
   out_MLF_fp = OpenOutputMLF(out_MLF_fn);
 
   ///////// For each record (label file) from MLFs////////
-  for(;;) {
+  for (;;) {
 
     //// Read one record from each MLF and align them ////
 
@@ -269,10 +269,10 @@ int main(int argc, char *argv[]) {
     // - 1st MLF is read sequentially record by record.
     // - In 2nd to nth MLF, records are searched by name obtained from 1st MLF.
 
-    for(i=0, MLF_fn=MLF_files; i < nMLFs; i++, MLF_fn=MLF_fn->next) {
+    for (i=0, MLF_fn=MLF_files; i < nMLFs; i++, MLF_fn=MLF_fn->next) {
       Label *tlabs;
 
-      if(!OpenInputLabelFile(label_file, NULL, NULL, MLFfps[i], MLF_fn->str)) {
+      if (!OpenInputLabelFile(label_file, NULL, NULL, MLFfps[i], MLF_fn->str)) {
         return 0; // No more records in first MLF
       }
 
@@ -280,19 +280,19 @@ int main(int argc, char *argv[]) {
                            ignore_unknown_labels ? UL_IGNORE : UL_ERROR,
                            in_lbl_frm, 100000, label_file, MLF_fn->str, NULL);
 
-      if(i == 0) labels = tlabs;
+      if (i == 0) labels = tlabs;
       else AlingTranscriptions(&labels, tlabs, weights);
     }
 
     out_MLF_fp = OpenOutputLabelFile(label_file, out_lbl_dir, out_lbl_ext,
                                      out_MLF_fp, out_MLF_fn);
 
-    if(output_alignment) {
+    if (output_alignment) {
       WriteLabels(out_MLF_fp, labels, out_lbl_frm, 100000, label_file, out_MLF_fn);
     } else {
 
       ///////// For each corespondence set... ////////
-      for(tlptr = labels; tlptr != NULL; tlptr=tlptr->next) {
+      for (tlptr = labels; tlptr != NULL; tlptr=tlptr->next) {
 
         ////////////// Do the voting //////////////
 
@@ -301,11 +301,11 @@ int main(int argc, char *argv[]) {
         float  voting_score, best_voting_score;
 
         // count votes
-        for(llptr = tlptr; llptr !=NULL; llptr = llptr->nextLevel) {
+        for (llptr = tlptr; llptr !=NULL; llptr = llptr->nextLevel) {
 
           candidate = lab2cand[(int) llptr->data];
 
-          if(candidate == -1) { // new candidate
+          if (candidate == -1) { // new candidate
             lab2cand[(int) llptr->data] = candidate = ncandidates++;
             candidates[candidate].label = llptr;
             candidates[candidate].votes = 0;
@@ -315,13 +315,13 @@ int main(int argc, char *argv[]) {
 
           candidates[candidate].votes++;
           candidates[candidate].confsum += llptr->score;
-          if(llptr->score > candidates[candidate].maxconf) {
+          if (llptr->score > candidates[candidate].maxconf) {
             candidates[candidate].maxconf = llptr->score;
           }
         }
 
         // reset lab2cand[] to -1
-        for(candidate=0; candidate<ncandidates; candidate++) {
+        for (candidate=0; candidate<ncandidates; candidate++) {
           lab2cand[(int) candidates[candidate].label->data] = -1;
         }
 
@@ -329,27 +329,27 @@ int main(int argc, char *argv[]) {
         best_candidate    = &candidates[0];
         best_voting_score = VOTING_SCORE(candidates[0]);
 
-        for(candidate=1; candidate<ncandidates; candidate++) {
+        for (candidate=1; candidate<ncandidates; candidate++) {
           voting_score = VOTING_SCORE(candidates[candidate]);
-          if(voting_score > best_voting_score) {
+          if (voting_score > best_voting_score) {
             best_candidate    = &candidates[candidate];
             best_voting_score = voting_score;
           }
         }
 
-        if(rnd_from_best) {
+        if (rnd_from_best) {
           int bestCnt = 0;
 
-          for(candidate=1; candidate<ncandidates; candidate++) {
-            if(VOTING_SCORE(candidates[candidate]) == best_voting_score) {
+          for (candidate=1; candidate<ncandidates; candidate++) {
+            if (VOTING_SCORE(candidates[candidate]) == best_voting_score) {
               bestCnt++;
             }
           }
 
-          if(bestCnt > 1) {
+          if (bestCnt > 1) {
             bestCnt = 1+(int) ((float) bestCnt * rand() / (RAND_MAX+1.0));
-            for(candidate=1; candidate<ncandidates; candidate++) {
-              if(VOTING_SCORE(candidates[candidate]) == best_voting_score
+            for (candidate=1; candidate<ncandidates; candidate++) {
+              if (VOTING_SCORE(candidates[candidate]) == best_voting_score
                  && --bestCnt == 0) {
                 best_candidate = &candidates[candidate];
                 break;
@@ -358,7 +358,7 @@ int main(int argc, char *argv[]) {
           }
         }
 
-        if(best_candidate->label->mpName) {
+        if (best_candidate->label->mpName) {
           Label label = *best_candidate->label;
           label.next  = label.nextLevel = NULL;
           label.score = best_voting_score;

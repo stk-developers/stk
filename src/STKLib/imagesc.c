@@ -43,7 +43,7 @@ const char *cm_color[] = {
 };
 
 #define CONVER_DATA_FROM(type) \
-  for(i = 0; i < x * y; i++) data_dbl[i] = ((type *) data)[i]
+  for (i = 0; i < x * y; i++) data_dbl[i] = ((type *) data)[i]
 
 XpmImage *CreateXpmImage(void *data, int x, int y, const char* data_type,
                          double (*transf)(double), const char **colormap)
@@ -57,30 +57,30 @@ XpmImage *CreateXpmImage(void *data, int x, int y, const char* data_type,
    data_dbl = malloc(x * y * sizeof(double));
    type = strdup(data_type);
 
-   if(!data_dbl || !type) return NULL;
+   if (!data_dbl || !type) return NULL;
 
-   if(strcmp(type, "signed char") && !strncmp(type, "signed ", 7)) type += 7;
+   if (strcmp(type, "signed char") && !strncmp(type, "signed ", 7)) type += 7;
    i = strlen(type);
-   if(i > 3 && !strcmp(type + i - 4, " int")) type[i-4] = '\n';
+   if (i > 3 && !strcmp(type + i - 4, " int")) type[i-4] = '\n';
 
-   if(!strcmp(type, "double")) memcpy(data_dbl, data, x * y * sizeof(double));
-   else if(!strcmp(type, "float"))         CONVER_DATA_FROM(float);
-   else if(!strcmp(type, "int") ||
+   if (!strcmp(type, "double")) memcpy(data_dbl, data, x * y * sizeof(double));
+   else if (!strcmp(type, "float"))         CONVER_DATA_FROM(float);
+   else if (!strcmp(type, "int") ||
            !strcmp(type, "signed"))        CONVER_DATA_FROM(int);
-   else if(!strcmp(type, "unsigned"))      CONVER_DATA_FROM(unsigned);
-   else if(!strcmp(type, "long"))          CONVER_DATA_FROM(long);
-   else if(!strcmp(type, "unsigned long")) CONVER_DATA_FROM(unsigned long);
-   else if(!strcmp(type, "short"))          CONVER_DATA_FROM(short);
-   else if(!strcmp(type, "unsigned short")) CONVER_DATA_FROM(unsigned short);
-   else if(!strcmp(type, "char"))          CONVER_DATA_FROM(char);
-   else if(!strcmp(type, "signed char"))   CONVER_DATA_FROM(signed char);
-   else if(!strcmp(type, "unsigned char")) CONVER_DATA_FROM(unsigned char);
+   else if (!strcmp(type, "unsigned"))      CONVER_DATA_FROM(unsigned);
+   else if (!strcmp(type, "long"))          CONVER_DATA_FROM(long);
+   else if (!strcmp(type, "unsigned long")) CONVER_DATA_FROM(unsigned long);
+   else if (!strcmp(type, "short"))          CONVER_DATA_FROM(short);
+   else if (!strcmp(type, "unsigned short")) CONVER_DATA_FROM(unsigned short);
+   else if (!strcmp(type, "char"))          CONVER_DATA_FROM(char);
+   else if (!strcmp(type, "signed char"))   CONVER_DATA_FROM(signed char);
+   else if (!strcmp(type, "unsigned char")) CONVER_DATA_FROM(unsigned char);
    free(type);
 
    xpmImage = (XpmImage *) malloc(sizeof(XpmImage) +
                                   ncolors * sizeof(XpmColor) +
                                   x * y * sizeof(unsigned));
-   if(!xpmImage) {
+   if (!xpmImage) {
      free(data_dbl);
      return NULL;
    }
@@ -94,20 +94,20 @@ XpmImage *CreateXpmImage(void *data, int x, int y, const char* data_type,
 
    memset(xpmImage->colorTable, 0, ncolors * sizeof(XpmColor));
 
-   for(i=0; i < ncolors; i++) {
+   for (i=0; i < ncolors; i++) {
      xpmImage->colorTable[i].c_color = (char *) colormap[i];
    }
 
-   if(transf) for(i=0; i < x * y; i++) data_dbl[i] = transf(data_dbl[i]);
+   if (transf) for (i=0; i < x * y; i++) data_dbl[i] = transf(data_dbl[i]);
 
    maxValue = minValue = data_dbl[0];
 
-   for(i=1; i < x * y; i++) {
-     if(data_dbl[i] < minValue) minValue = data_dbl[i];
-     if(data_dbl[i] > maxValue) maxValue = data_dbl[i];
+   for (i=1; i < x * y; i++) {
+     if (data_dbl[i] < minValue) minValue = data_dbl[i];
+     if (data_dbl[i] > maxValue) maxValue = data_dbl[i];
    }
 
-   for(i=0; i < x * y; i++) {
+   for (i=0; i < x * y; i++) {
      xpmImage->data[i] = (unsigned)(0.5 + (ncolors-1) * (data_dbl[i] - minValue)
                                           / (maxValue - minValue));
    }
@@ -152,7 +152,7 @@ void KeyAction(Widget w, XtPointer cd, XEvent *event, Boolean *co)
 {
   KeySym keysym;
   keysym = XKeycodeToKeysym(XtDisplay(w), event->xkey.keycode, 0);
-  if(keysym == XK_Escape) *(Boolean *) cd = True;
+  if (keysym == XK_Escape) *(Boolean *) cd = True;
 }
 
 void imagesc(void *data, int x, int y, const char* type,
@@ -174,7 +174,7 @@ void imagesc(void *data, int x, int y, const char* type,
 
   /* create the toplevel shell */
   XtToolkitInitialize();
-  if(display == NULL) {
+  if (display == NULL) {
     context = XtCreateApplicationContext();
     display = XtOpenDisplay(context, NULL, NULL, "", NULL, 0, &argc, NULL);
   }
@@ -199,7 +199,7 @@ void imagesc(void *data, int x, int y, const char* type,
   XmAddWMProtocolCallback(toplevel, wm_delete, quitCB, (XtPointer) &exitFlag);
   XmActivateWMProtocol(toplevel, wm_delete);
 
-  while(!exitFlag) {
+  while (!exitFlag) {
     XtAppNextEvent(context, &event);
     XtDispatchEvent(&event);
   }

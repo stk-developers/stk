@@ -13,7 +13,7 @@
 #define VERSION "0.6 "__TIME__" "__DATE__
 
 #include "STKLib/viterbi.h"
-#include "STKLib/hmms.h"
+#include "STKLib/Models.h"
 #include "STKLib/fileio.h"
 #include "STKLib/labels.h"
 #include "STKLib/common.h"
@@ -44,25 +44,25 @@ LRTrace *MakeLRTraceTable(Network *net, int *nWords, Token **filler_end)
 
   *nWords = 0;
 
-  for(node=net->first; node != NULL; node = node->next) {
-    if(node->type == (NT | NT_Sticky) && node->pronun == NULL) break;
+  for (node=net->first; node != NULL; node = node->next) {
+    if (node->mType == (NT | NT_Sticky) && node->pronun == NULL) break;
   }
-  if(node == NULL) {
+  if (node == NULL) {
     Error("Network contains no null node with flag=F (reference model end)");
   }
   *filler_end = node->exitToken;
 
-  for(node=net->first; node != NULL; node = node->next) {
-    if(node->type == (NT | NT_Sticky) && node->pronun != NULL) ++*nWords;
+  for (node=net->first; node != NULL; node = node->next) {
+    if (node->mType == (NT | NT_Sticky) && node->pronun != NULL) ++*nWords;
   }
-  if(*nWords == 0) {
+  if (*nWords == 0) {
     Error("Network contains no word nodes with flag=K, (keyword model end)");
   }
-  if((lrt = (LRTrace *) malloc(*nWords * sizeof(LRTrace))) == NULL) {
+  if ((lrt = (LRTrace *) malloc(*nWords * sizeof(LRTrace))) == NULL) {
     Error("Insufficient memory");
   }
-  for(i = 0, node=net->first; node != NULL; node = node->next) {
-    if(node->type == (NT | NT_Sticky) && node->pronun != NULL) {
+  for (i = 0, node=net->first; node != NULL; node = node->next) {
+    if (node->mType == (NT | NT_Sticky) && node->pronun != NULL) {
       lrt[i].wordEnd = node;
       i++;
     }
@@ -74,7 +74,7 @@ void PutCandidateToLabels(LRTrace *lrt, FLOAT scoreThreshold, FILE *lfp,
                           const char *label_file, const char *out_MLF,
                           LabelFormat out_lbl_fmt, long sampPeriod)
 {
-  if(lrt->candidateEndTime != 0
+  if (lrt->candidateEndTime != 0
      && (scoreThreshold < LOG_MIN || lrt->candidateLR > scoreThreshold)) {
      Label label = init_label;
      label.start = lrt->candidateStartTime;
@@ -143,8 +143,8 @@ char *longopts =
 void usage(char *progname)
 {
   char *tchrptr;
-  if((tchrptr = strrchr(progname, '\\')) != NULL) progname = tchrptr+1;
-  if((tchrptr = strrchr(progname, '/')) != NULL) progname = tchrptr+1;
+  if ((tchrptr = strrchr(progname, '\\')) != NULL) progname = tchrptr+1;
+  if ((tchrptr = strrchr(progname, '/')) != NULL) progname = tchrptr+1;
   fprintf(stderr,
 "\nUSAGE: %s [options] DataFiles...\n\n"
 " Option                                                     Default\n\n"
@@ -278,19 +278,19 @@ int main(int argc, char *argv[]) {
   LRTrace *lrt = NULL;
   Token *filler_end;
 
-  if(argc == 1) usage(argv[0]);
+  if (argc == 1) usage(argv[0]);
 
   //InitHMMSet(&hset, 0);
   hset.Init();
 
-  if(!my_hcreate_r(100,  &dictHash)
+  if (!my_hcreate_r(100,  &dictHash)
   || !my_hcreate_r(100,  &phoneHash)
   || !my_hcreate_r(100,  &cfgHash)) {
     Error("Insufficient memory");
   }
   i = ParseOptions(argc, argv, optionStr, SNAME, &cfgHash);
 
-  for(; i < argc; i++) {
+  for (; i < argc; i++) {
     last_file = AddFileElem(last_file, argv[i]);
     nfeature_files++;
   }
@@ -320,7 +320,7 @@ int main(int argc, char *argv[]) {
   filter_wldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
   script_filter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",   NULL);  
   parm_filter  = GetParamStr(&cfgHash, SNAME":HPARMFILTER",     NULL);
-  hlist_filter = GetParamStr(&cfgHash, SNAME":HMMLISTFILTER",   NULL);
+  gpHListFilter = GetParamStr(&cfgHash, SNAME":HMMLISTFILTER",   NULL);
   MMF_filter   = GetParamStr(&cfgHash, SNAME":HMMDEFFILTER",    NULL);
 //  label_filter = GetParamStr(&cfgHash, SNAME":HLABELFILTER",    NULL);
   transc_filter= GetParamStr(&cfgHash, SNAME":HNETFILTER",      NULL);
@@ -354,8 +354,8 @@ int main(int argc, char *argv[]) {
   mmf    =(char*)GetParamStr(&cfgHash, SNAME":SOURCEMMF",       NULL);
 
   cchrptr      = GetParamStr(&cfgHash, SNAME":LABELFORMATING",  "");
-  while(*cchrptr) {
-    switch(*cchrptr++) {
+  while (*cchrptr) {
+    switch (*cchrptr++) {
       case 'N': out_lbl_fmt.SCORE_NRM = 1; break;
       case 'S': out_lbl_fmt.SCORE_OFF = 1; break;
       case 'C': out_lbl_fmt.CENTRE_TM = 1; break;
@@ -368,46 +368,46 @@ int main(int argc, char *argv[]) {
         Warning("Unknown label formating flag '%c' ignored (NCST)", *cchrptr);
     }
   }
-  if(GetParamBool(&cfgHash, SNAME":PRINTCONFIG", FALSE)) {
+  if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", FALSE)) {
     PrintConfig(&cfgHash);
   }
-  if(GetParamBool(&cfgHash, SNAME":PRINTVERSION", FALSE)) {
+  if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", FALSE)) {
     puts("Version: "VERSION"\n");
   }
-  if(!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", FALSE)) {
+  if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", FALSE)) {
     CheckCommandLineParamUse(&cfgHash);
   }
 
-  for(script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) {
-    if((sfp = my_fopen(script, "rt", script_filter)) == NULL) {
+  for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) {
+    if ((sfp = my_fopen(script, "rt", script_filter)) == NULL) {
       Error("Cannot open script file %s", optarg);
     }
-    while(fscanf(sfp, "%s", line) == 1) {
+    while (fscanf(sfp, "%s", line) == 1) {
       last_file = AddFileElem(last_file, line);
       nfeature_files++;
     }
     my_fclose(sfp);
   }
-  for(mmf=strtok(mmf, ","); mmf != NULL; mmf=strtok(NULL, ",")) {
+  for (mmf=strtok(mmf, ","); mmf != NULL; mmf=strtok(NULL, ",")) {
     hset.ParseMmf(mmf, NULL);
   }
-  if(hmm_list != NULL) ReadHMMList(&hset, hmm_list, hmm_dir, hmm_ext);
-  nonCDphHash = MakeCIPhoneHash(&hset);
+  if (hmm_list != NULL) hset.ReadHMMList(hmm_list, hmm_dir, hmm_ext);
+  nonCDphHash = hset.MakeCIPhoneHash();
 
-  if(dictionary != NULL) {
+  if (dictionary != NULL) {
     ReadDictionary(dictionary, &dictHash, &phoneHash);
     notInDictAction  = WORD_NOT_IN_DIC_WARN;
-    if(expOptions.respect_pronun_var) {
+    if (expOptions.respect_pronun_var) {
       notInDictAction |= (int) PRON_NOT_IN_DIC_ERROR;
     }
   }
-  if(dictHash.nentries == 0) expOptions.no_word_expansion = 1;
+  if (dictHash.nentries == 0) expOptions.no_word_expansion = 1;
 
-  if(!network_file) {
+  if (!network_file) {
     ilfp = OpenInputMLF(in_MLF);
   } else {
     ilfp = fopen(network_file, "rt");
-    if(ilfp  == NULL) Error("Cannot open network file: %s", network_file);
+    if (ilfp  == NULL) Error("Cannot open network file: %s", network_file);
 
     Node *node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash,
                                 notInDictAction, in_lbl_fmt,
@@ -420,24 +420,24 @@ int main(int argc, char *argv[]) {
   }
   lfp = OpenOutputMLF(out_MLF);
 
-  for(file_name = feature_files; file_name; file_name = file_name->next) {
+  for (file_name = feature_files; file_name; file_name = file_name->next) {
 
-    if(trace_flag & 1) {
+    if (trace_flag & 1) {
       TraceLog("Processing file %d/%d '%s'", ++fcnt,
                  nfeature_files,file_name->physical);
     }
-    if(cmn_mask) process_mask(file_name->logical, cmn_mask, cmn_file);
-    if(cvn_mask) process_mask(file_name->logical, cvn_mask, cvn_file);
+    if (cmn_mask) process_mask(file_name->logical, cmn_mask, cmn_file);
+    if (cvn_mask) process_mask(file_name->logical, cvn_mask, cvn_file);
     obsMx = ReadHTKFeatures(file_name->physical, swap_features,
                             startFrmExt, endFrmExt, targetKind,
                             derivOrder, derivWinLengths, &header,
                             cmn_path, cvn_path, cvg_file, &rhfbuff);
 
-    if(hset.mInputVectorSize != header.sampSize / sizeof(float)) {
+    if (hset.mInputVectorSize != header.sampSize / sizeof(float)) {
       Error("Vector size [%d] in '%s' is incompatible with HMM set [%d]",
             header.sampSize/sizeof(float), file_name->physical, hset.mInputVectorSize);
     }
-    if(!network_file) {
+    if (!network_file) {
       Node *node = NULL;
       strcpy(label_file, file_name->logical);
       ilfp = OpenInputLabelFile(label_file, in_lbl_dir,
@@ -467,7 +467,7 @@ int main(int argc, char *argv[]) {
     strcpy(label_file, file_name->logical);
     lfp = OpenOutputLabelFile(label_file,out_lbl_dir,out_lbl_ext,lfp,out_MLF);
 
-    for(i = 0; i < nWords; i++) {
+    for (i = 0; i < nWords; i++) {
       lrt[i].lastLR = -FLT_MAX;
       lrt[i].candidateLR = -FLT_MAX;
       lrt[i].candidateStartTime = 0;
@@ -478,38 +478,38 @@ int main(int argc, char *argv[]) {
     net.PassTokenInModel   = fulleval ? &PassTokenSum : &PassTokenMax;
 
     KillToken(filler_end);
-    for(j = 0; j < nWords; j++) KillToken(lrt[j].wordEnd->exitToken);
+    for (j = 0; j < nWords; j++) KillToken(lrt[j].wordEnd->exitToken);
 
-    if(trace_flag & 2) {
+    if (trace_flag & 2) {
       printf("Node# %13s", "Filler");
-      for(j = 0; j < nWords; j++) {
+      for (j = 0; j < nWords; j++) {
         printf(" %13s", lrt[j].wordEnd->pronun->word->mpName);
       }
       puts("");
     }
-    for(i = 0; i < header.nSamples; i++) {
+    for (i = 0; i < header.nSamples; i++) {
       ViterbiStep(&net, obsMx + i * hset.mInputVectorSize);
 
-      if(trace_flag & 2) {
+      if (trace_flag & 2) {
         printf("      %13e", filler_end->like);
-        for(j = 0; j < nWords; j++) {
+        for (j = 0; j < nWords; j++) {
           printf(" %13e", lrt[j].wordEnd->exitToken->like);
         }
         puts("");
       }
-      for(j = 0; j < nWords; j++) {
+      for (j = 0; j < nWords; j++) {
         long long wordStartTime;
         float lhRatio;
         Token *word_end = lrt[j].wordEnd->exitToken;
 
-        if(!IS_ACTIVE(*word_end) || !IS_ACTIVE(*filler_end)) {
+        if (!IS_ACTIVE(*word_end) || !IS_ACTIVE(*filler_end)) {
           lrt[j].lastLR = -FLT_MAX;
           KillToken(word_end);
           continue;
         }
         lhRatio = word_end->like - filler_end->like;
 
-        if(lrt[j].lastLR > lhRatio) { // LR is not growing, cannot be max.
+        if (lrt[j].lastLR > lhRatio) { // LR is not growing, cannot be max.
           lrt[j].lastLR = lhRatio;
           KillToken(word_end);
           continue;
@@ -519,10 +519,10 @@ int main(int argc, char *argv[]) {
                         ? word_end->wlr->next->time : 0);
 
         KillToken(word_end);
-        if(lrt[j].candidateLR > lhRatio && lrt[j].candidateEndTime > wordStartTime) {
+        if (lrt[j].candidateLR > lhRatio && lrt[j].candidateEndTime > wordStartTime) {
           continue;
         }
-        if(lrt[j].candidateEndTime <= wordStartTime) {
+        if (lrt[j].candidateEndTime <= wordStartTime) {
           PutCandidateToLabels(&lrt[j], score_thresh, lfp, label_file,
                                out_MLF, out_lbl_fmt, header.sampPeriod);
         }
@@ -532,7 +532,7 @@ int main(int argc, char *argv[]) {
       }
       KillToken(filler_end);
     }
-    for(j = 0; j < nWords; j++) {
+    for (j = 0; j < nWords; j++) {
       PutCandidateToLabels(&lrt[j], score_thresh, lfp, label_file,
                            out_MLF, out_lbl_fmt, header.sampPeriod);
     }
@@ -540,24 +540,28 @@ int main(int argc, char *argv[]) {
     free(obsMx);
     CloseOutputLabelFile(lfp, out_MLF);
 
-    if(trace_flag & 1) {
+    if (trace_flag & 1) {
       TraceLog("[%d frames]", header.nSamples - hset.mTotalDelay);
     }
-    if(!network_file) {
+    if (!network_file) {
       ReleaseNetwork(&net);
       free(lrt);
     }
   }
-  if(network_file) {
+  
+  if (network_file) {
     ReleaseNetwork(&net);
     free(lrt);
   }
-  ReleaseHMMSet(&hset);
+  
+  //ReleaseHMMSet(&hset);
+  hset.Release();
+  
   my_hdestroy_r(&phoneHash,   1);
   my_hdestroy_r(&nonCDphHash, 0);
   FreeDictionary(&dictHash);
 
-  while(feature_files) {
+  while (feature_files) {
     file_name     = feature_files;
     feature_files = feature_files->next;
     free(file_name);

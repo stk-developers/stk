@@ -15,7 +15,7 @@
 
 #define bordel_staff
 
-#include "hmms.h"
+#include "Models.h"
 #include "labels.h"
 #include "dict.h"
 #include "net.h"
@@ -23,25 +23,30 @@
 //#define DEBUG_MSGS
 //#define TRACE_TOKENS
 
-typedef struct _Network Network;
-typedef struct _SubNet SubNet;
-typedef struct _Cache Cache;
+//typedef struct _Network Network;
+//typedef struct _SubNet SubNet;
+//typedef struct _Cache Cache;
 typedef struct _WLR WLR;
 
 
-struct _Cache {
+class Cache 
+{
+public:
   FLOAT value;
   long  time;
 };
 
-struct _SubNet {
+class SubNet 
+{
+public:
   int   nnodes;
   Node  *first;
   Node  *last;
   Node  *nodes;
 };
 
-typedef enum {
+typedef enum 
+{
   NO_ALIGNMENT    = 0,
   WORD_ALIGNMENT  = 1,
   MODEL_ALIGNMENT = 2,
@@ -49,14 +54,17 @@ typedef enum {
   FRAME_ALIGNMENT = 8
 } Alignment;
 
-typedef enum {
+typedef enum 
+{
   AT_ML=0,
   AT_MPE,
   AT_MFE,
   AT_MCE
 } AccumType;
 
-struct _Network {
+class Network 
+{
+public:
 //Subnet part
 //  int   nnodes;
   Node  *first;
@@ -105,7 +113,9 @@ struct _Network {
 
 #define IS_ACTIVE(token) ((token).like > LOG_MIN)
 
-struct _Token {
+class Token 
+{
+public:
   double like;
   WLR   *wlr;
   FloatInLog accuracy;
@@ -115,17 +125,20 @@ struct _Token {
 #endif
 };
 
-struct AlphaBeta {
-   FLOAT alpha;
-   FLOAT beta;
-   FloatInLog alphaAccuracy;
-   FloatInLog betaAccuracy;
+struct AlphaBeta 
+{
+  FLOAT alpha;
+  FLOAT beta;
+  FloatInLog alphaAccuracy;
+  FloatInLog betaAccuracy;
 };
 
-struct _FWBWR {
- struct _FWBWR *next;
- int time;
- struct AlphaBeta state[1];
+class FWBWR 
+{
+public:
+  FWBWR *     next;
+  int         time;
+  AlphaBeta   state[1];
 };
 
 struct _WLR {
@@ -141,9 +154,6 @@ struct _WLR {
 #endif
 };
 
-#ifdef __cplusplus
-  extern "C" {
-#endif
 
 void LoadRecognitionNetwork(
   char *netFileName,
@@ -205,8 +215,5 @@ int PassTokenSumUnlogLikes(Token *from, Token *to, FLOAT addLogLike);
 
 WLR *TimePruning(Network *network, int frame_delay);
 
-#ifdef __cplusplus
-}
-#endif
 
 #endif // VITERBI_H

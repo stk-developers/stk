@@ -28,7 +28,7 @@ int WriteHTKHeader (FILE * fp_out, HTK_Header header, bool swap)
 {
   int cc;
 
-  if(swap) {
+  if (swap) {
     swap4(header.nSamples);
     swap4(header.sampPeriod);
     swap2(header.sampSize);
@@ -38,7 +38,7 @@ int WriteHTKHeader (FILE * fp_out, HTK_Header header, bool swap)
   fseek (fp_out, 0L, SEEK_SET);
   cc = fwrite(&header, sizeof(HTK_Header), 1, fp_out);
 
-  if(swap) {
+  if (swap) {
     swap4(header.nSamples);
     swap4(header.sampPeriod);
     swap2(header.sampSize);
@@ -51,15 +51,15 @@ int WriteHTKHeader (FILE * fp_out, HTK_Header header, bool swap)
 int WriteHTKFeature(FILE * fp_out, FLOAT *out, size_t fea_len, bool swap) {
   size_t i, cc = 0;
 #if !DOUBLEPRECISION
-  if(swap) for(i = 0; i < fea_len; i++) swap4(out[i]);
+  if (swap) for (i = 0; i < fea_len; i++) swap4(out[i]);
   cc = fwrite(out, sizeof(FLOAT_32), fea_len, fp_out);
-  if(swap) for(i = 0; i < fea_len; i++) swap4(out[i]);
+  if (swap) for (i = 0; i < fea_len; i++) swap4(out[i]);
 #else
   float f;
 
-  for(i = 0; i < fea_len; i++) {
+  for (i = 0; i < fea_len; i++) {
     f = out[i];
-    if(swap) swap4(f);
+    if (swap) swap4(f);
     cc += fwrite(&f, sizeof(FLOAT_32), 1, fp_out);
   }
 #endif
@@ -69,19 +69,19 @@ int WriteHTKFeature(FILE * fp_out, FLOAT *out, size_t fea_len, bool swap) {
 
 int ReadHTKHeader (FILE * fp_in, HTK_Header * header, bool swap)
 {
-  if(!fread(&header->nSamples,   sizeof(INT_32),  1, fp_in)) return -1;
-  if(!fread(&header->sampPeriod, sizeof(INT_32),  1, fp_in)) return -1;
-  if(!fread(&header->sampSize,   sizeof(INT_16),  1, fp_in)) return -1;
-  if(!fread(&header->sampKind,   sizeof(UINT_16), 1, fp_in)) return -1;
+  if (!fread(&header->nSamples,   sizeof(INT_32),  1, fp_in)) return -1;
+  if (!fread(&header->sampPeriod, sizeof(INT_32),  1, fp_in)) return -1;
+  if (!fread(&header->sampSize,   sizeof(INT_16),  1, fp_in)) return -1;
+  if (!fread(&header->sampKind,   sizeof(UINT_16), 1, fp_in)) return -1;
 
-  if(swap) {
+  if (swap) {
     swap4(header->nSamples);
     swap4(header->sampPeriod);
     swap2(header->sampSize);
     swap2(header->sampKind);
   }
 
-  if(header->sampPeriod < 0 || header->sampPeriod > 100000 ||
+  if (header->sampPeriod < 0 || header->sampPeriod > 100000 ||
      header->nSamples   < 0 || header->sampSize   < 0) {
     return -1;
   }
@@ -94,34 +94,34 @@ int ReadHTKFeature(FILE * fp_in, FLOAT *in, size_t fea_len, bool swap,
                    bool decompress, FLOAT *scale, FLOAT *bias)
 {
   size_t i;
-  if(decompress) {
+  if (decompress) {
     INT_16 s;
 //    FLOAT scale = (xmax - xmin) / (2*32767);
 //    FLOAT bias  = (xmax + xmin) / 2;
 
-    for(i = 0; i < fea_len; i++) {
-      if(fread(&s, sizeof(INT_16), 1, fp_in) != 1) {
+    for (i = 0; i < fea_len; i++) {
+      if (fread(&s, sizeof(INT_16), 1, fp_in) != 1) {
         return -1;
       }
-      if(swap) swap2(s);
+      if (swap) swap2(s);
       in[i] = (s + bias[i]) / scale[i];
     }
     return 0;
   }
 
 #if !DOUBLEPRECISION
-  if(fread(in, sizeof(FLOAT_32), fea_len, fp_in) != fea_len) {
+  if (fread(in, sizeof(FLOAT_32), fea_len, fp_in) != fea_len) {
     return -1;
   }
-  if(swap) for(i = 0; i < fea_len; i++) swap4(in[i]);
+  if (swap) for (i = 0; i < fea_len; i++) swap4(in[i]);
 #else
   float f;
 
-  for(i = 0; i < fea_len; i++) {
-    if(fread(&f, sizeof(FLOAT_32), 1, fp_in) != 1) {
+  for (i = 0; i < fea_len; i++) {
+    if (fread(&f, sizeof(FLOAT_32), 1, fp_in) != 1) {
       return -1;
     }
-    if(swap) swap4(f);
+    if (swap) swap4(f);
     in[i] = f;
   }
 #endif
@@ -134,34 +134,34 @@ int Mkdir4File(const char *file_name)
   char dir_name[260];
   char *chptr;
 
-  if((chptr=strrchr(file_name, '/')) == NULL) {
+  if ((chptr=strrchr(file_name, '/')) == NULL) {
     return 0;
   }
   strncpy(dir_name, file_name, chptr-file_name);
   dir_name[chptr-file_name]='\0';
   chptr=dir_name;
-  if(*chptr == '/') {
+  if (*chptr == '/') {
     chptr++;
   }
-  if(!chptr[0]) {
+  if (!chptr[0]) {
     return 0;
   }
-  for(;;) {
-    if((chptr=strchr(chptr, '/')) != NULL) {
+  for (;;) {
+    if ((chptr=strchr(chptr, '/')) != NULL) {
       *chptr='\0';
     }
-    if((access(dir_name, 0) || stat(dir_name, &statbuff) == -1 ||
+    if ((access(dir_name, 0) || stat(dir_name, &statbuff) == -1 ||
        !(S_IFDIR & statbuff.st_mode))) {
 #ifndef WIN32
-      if(mkdir(dir_name, 0777)) return -1;
+      if (mkdir(dir_name, 0777)) return -1;
 #else
-      if(mkdir(dir_name)) return -1;
+      if (mkdir(dir_name)) return -1;
 #endif
     }
-    if(chptr) {
+    if (chptr) {
       *chptr = '/';
     }
-    if(!chptr || !chptr[1]) {
+    if (!chptr || !chptr[1]) {
       return 0;
     }
     chptr++;
@@ -313,11 +313,11 @@ FLOAT *ReadHTKFeatures(
   char *                chptr;
 
   // remove final spaces from file name
-  for(i = strlen(file_name)-1; i >= 0 && isspace(file_name[i]); i--) 
+  for (i = strlen(file_name)-1; i >= 0 && isspace(file_name[i]); i--) 
     file_name[i] = '\0';
   
   // read frame range definition if any ( physical_file.fea[s,e] )
-  if((chptr = strrchr(file_name, '[')) == NULL ||
+  if ((chptr = strrchr(file_name, '[')) == NULL ||
      ((i=0), sscanf(chptr, "[%d,%d]%n", &fromFrame, &toFrame, &i), chptr[i] != '\0')) 
   {
     chptr = NULL;
@@ -359,15 +359,15 @@ FLOAT *ReadHTKFeatures(
       int coefs = header->sampSize/sizeof(INT_16);
       buff->A = (float*) realloc(buff->A, coefs * sizeof(FLOAT_32));
       buff->B = (float*) realloc(buff->B, coefs * sizeof(FLOAT_32));
-      if(buff->A == NULL || buff->B == NULL) Error("Insufficient memory");
+      if (buff->A == NULL || buff->B == NULL) Error("Insufficient memory");
 
       e  = ReadHTKFeature(buff->fp, buff->A, coefs, swap, 0, 0, 0);
       e |= ReadHTKFeature(buff->fp, buff->B, coefs, swap, 0, 0, 0);
-      if(e) Error("Cannot read feature file: '%s'", file_name);
+      if (e) Error("Cannot read feature file: '%s'", file_name);
       header->nSamples -= 2 * sizeof(FLOAT_32) / sizeof(INT_16);
     }
     
-    if((buff->last_file_name = strdup(file_name)) == NULL) 
+    if ((buff->last_file_name = strdup(file_name)) == NULL) 
     {
       Error("Insufficient memory");
     }
@@ -394,7 +394,7 @@ FLOAT *ReadHTKFeatures(
 
   if (targetKind == PARAMKIND_ANON) {
     targetKind = header->sampKind;
-  } else if((targetKind & 077) == PARAMKIND_ANON) {
+  } else if ((targetKind & 077) == PARAMKIND_ANON) {
     targetKind &= ~077;
     targetKind |= header->sampKind & 077;
   }
@@ -408,14 +408,14 @@ FLOAT *ReadHTKFeatures(
   src_vec_size = (coefs + srcE + src0) * (srcDerivOrder+1) - srcN;
 
   //Is coefs dividable by 1 + number of derivatives specified in header
-  if(src_vec_size * coefSize != header->sampSize) {
+  if (src_vec_size * coefSize != header->sampSize) {
     Error("Invalid HTK header in feature file: '%s'. "
           "sampSize do not match with parmKind", file_name);
   }
-  if(derivOrder < 0) derivOrder = srcDerivOrder;
+  if (derivOrder < 0) derivOrder = srcDerivOrder;
 
 
-  if((!srcE && trgE) || (!src0 && trg0) || (srcN && !trgN) ||
+  if ((!srcE && trgE) || (!src0 && trg0) || (srcN && !trgN) ||
      (trgN && !trgE && !trg0) || (trgN && !derivOrder) ||
      (srcN && !srcDerivOrder && derivOrder) ||
      ((header->sampKind & 077) != (targetKind & 077) &&
@@ -437,14 +437,14 @@ FLOAT *ReadHTKFeatures(
   toFrame  += i;
   extRight -= i;
 
-  if(fromFrame > toFrame || fromFrame >= header->nSamples || toFrame < 0) {
+  if (fromFrame > toFrame || fromFrame >= header->nSamples || toFrame < 0) {
     Error("Invalid frame range for feature file: '%s'", file_name);
   }
   totFrames = toFrame - fromFrame + 1 + extLeft + extRight;
   feaMx = (FLOAT *) malloc((trg_vec_size * totFrames + 1) * sizeof(FLOAT));
   // + 1 needed for safe reading unwanted _E and _0
-  if(feaMx == NULL) Error("Insufficient memory");
-  for(i = 0; i <= toFrame - fromFrame; i++) {
+  if (feaMx == NULL) Error("Insufficient memory");
+  for (i = 0; i <= toFrame - fromFrame; i++) {
     FLOAT *A = buff->A, *B = buff->B;
     FLOAT *mxPtr = feaMx + trg_vec_size * (i+extLeft);
     fseek(buff->fp, sizeof(HTK_Header) + (comp ? src_vec_size * 2 * sizeof(FLOAT_32) : 0) +
@@ -452,52 +452,52 @@ FLOAT *ReadHTKFeatures(
 
                         e  = ReadHTKFeature(buff->fp, mxPtr, coefs, swap, comp, A, B);
                         mxPtr += coefs; A += coefs; B+= coefs;
-      if(src0 && !srcN) e |= ReadHTKFeature(buff->fp, mxPtr, 1,     swap, comp, A++, B++);
-      if(trg0 && !trgN) mxPtr++;
-      if(srcE && !srcN) e |= ReadHTKFeature(buff->fp, mxPtr, 1,     swap, comp, A++, B++);
-      if(trgE && !trgN) mxPtr++;
+      if (src0 && !srcN) e |= ReadHTKFeature(buff->fp, mxPtr, 1,     swap, comp, A++, B++);
+      if (trg0 && !trgN) mxPtr++;
+      if (srcE && !srcN) e |= ReadHTKFeature(buff->fp, mxPtr, 1,     swap, comp, A++, B++);
+      if (trgE && !trgN) mxPtr++;
 
-    for(j = 0; j < loSrcTgzDerOrd; j++) {
+    for (j = 0; j < loSrcTgzDerOrd; j++) {
                         e |= ReadHTKFeature(buff->fp, mxPtr, coefs, swap, comp, A, B);
                         mxPtr += coefs; A += coefs; B+= coefs;
-      if(src0)          e |= ReadHTKFeature(buff->fp, mxPtr, 1,     swap, comp, A++, B++);
-      if(trg0)          mxPtr++;
-      if(srcE)          e |= ReadHTKFeature(buff->fp, mxPtr, 1,     swap, comp, A++, B++);
-      if(trgE)          mxPtr++;
+      if (src0)          e |= ReadHTKFeature(buff->fp, mxPtr, 1,     swap, comp, A++, B++);
+      if (trg0)          mxPtr++;
+      if (srcE)          e |= ReadHTKFeature(buff->fp, mxPtr, 1,     swap, comp, A++, B++);
+      if (trgE)          mxPtr++;
     }
-    if(e) Error("Cannot read feature file: '%s' frame %d/%d", file_name, i, toFrame - fromFrame + 1);
+    if (e) Error("Cannot read feature file: '%s' frame %d/%d", file_name, i, toFrame - fromFrame + 1);
   }
 
   coefs += trg0 + trgE; // From now, coefs includes also trg0 + trgE !
 
-  for(i = 0; i < extLeft; i++) {
+  for (i = 0; i < extLeft; i++) {
     memcpy(feaMx + trg_vec_size * i,
            feaMx + trg_vec_size * extLeft,
            (coefs * (1+loSrcTgzDerOrd) - trgN) * sizeof(FLOAT));
   }
-  for(i = totFrames - extRight; i < totFrames; i++) {
+  for (i = totFrames - extRight; i < totFrames; i++) {
     memcpy(feaMx + trg_vec_size * i,
            feaMx + trg_vec_size * (totFrames - extRight - 1),
            (coefs * (1+loSrcTgzDerOrd) - trgN) * sizeof(FLOAT));
   }
   // Compute missing derivatives
-  for(; srcDerivOrder < derivOrder; srcDerivOrder++) {
+  for (; srcDerivOrder < derivOrder; srcDerivOrder++) {
     int winLen = derivWinLen[srcDerivOrder];
     FLOAT norm = 0.0;
-    for(k = 1; k <= winLen; k++) {
+    for (k = 1; k <= winLen; k++) {
       norm += 2 * k * k;
     }
-    for(i=0; i < totFrames; i++) {        // for each frame
-      for(j=0; j < coefs; j++) {          // for each coefficient
+    for (i=0; i < totFrames; i++) {        // for each frame
+      for (j=0; j < coefs; j++) {          // for each coefficient
         FLOAT *src = feaMx + i*trg_vec_size + srcDerivOrder*coefs - trgN + j;
         *(src + coefs) = 0.0;
-        if(i < winLen || i >= totFrames-winLen) {
-          for(k = 1; k <= winLen; k++) {  // boundaries need special treatment
+        if (i < winLen || i >= totFrames-winLen) {
+          for (k = 1; k <= winLen; k++) {  // boundaries need special treatment
             *(src+coefs) += k*(src[ LOWER_OF(totFrames-1-i,k)*trg_vec_size]
                               -src[-LOWER_OF(i,            k)*trg_vec_size]);
           }
         } else {
-          for(k = 1; k <= winLen; k++) {  // otherwice use more efficient code
+          for (k = 1; k <= winLen; k++) {  // otherwice use more efficient code
             *(src+coefs) += k*(src[ k * trg_vec_size]
                               -src[-k * trg_vec_size]);
           }
@@ -512,11 +512,11 @@ FLOAT *ReadHTKFeatures(
 
   /////////////// Cepstral mean and variance normalization ///////////////////
 
-  if(cmn_file != NULL) {
+  if (cmn_file != NULL) {
     ReadCepsNormFile(cmn_file, &buff->last_cmn_file, &buff->cmn,
                      header->sampKind & ~PARAMKIND_Z, CNF_Mean, coefs);
-    for(i=0; i < totFrames; i++) {
-      for(j=trgN; j < coefs; j++) {
+    for (i=0; i < totFrames; i++) {
+      for (j=trgN; j < coefs; j++) {
         feaMx[i*trg_vec_size + j - trgN] -= buff->cmn[j];
       }
     }
@@ -526,20 +526,20 @@ FLOAT *ReadHTKFeatures(
                       derivOrder==2 ? PARAMKIND_D | PARAMKIND_A :
                       derivOrder==1 ? PARAMKIND_D : 0;
 
-  if(cvn_file != NULL) {
+  if (cvn_file != NULL) {
     ReadCepsNormFile(cvn_file, &buff->last_cvn_file, &buff->cvn,
                      header->sampKind, CNF_Variance, trg_vec_size);
-    for(i=0; i < totFrames; i++) {
-      for(j=trgN; j < trg_vec_size; j++) {
+    for (i=0; i < totFrames; i++) {
+      for (j=trgN; j < trg_vec_size; j++) {
         feaMx[i*trg_vec_size + j - trgN] *= buff->cvn[j];
       }
     }
   }
-  if(cvg_file != NULL) {
+  if (cvg_file != NULL) {
     ReadCepsNormFile(cvg_file, &buff->last_cvg_file, &buff->cvg,
                      -1, CNF_VarScale, trg_vec_size);
-    for(i=0; i < totFrames; i++) {
-      for(j=trgN; j < trg_vec_size; j++) {
+    for (i=0; i < totFrames; i++) {
+      for (j=trgN; j < trg_vec_size; j++) {
         feaMx[i*trg_vec_size + j - trgN] *= buff->cvg[j];
       }
     }
@@ -559,20 +559,20 @@ void ReadCepsNormFile(const char *file, char **last_file, FLOAT **vec_buff,
   char *typeStr2 = (char*) (type == CNF_Mean     ? "CMN" :
                    type == CNF_Variance ? "CVN" : "VarScale");
 
-  if(*last_file != NULL && !strcmp(*last_file, file)) {
+  if (*last_file != NULL && !strcmp(*last_file, file)) {
     return;
   }
   free(*last_file);
   *last_file=strdup(file);
   *vec_buff = (float*) realloc(*vec_buff, coefs * sizeof(FLOAT));
 
-  if(*last_file == NULL || *vec_buff== NULL) {
+  if (*last_file == NULL || *vec_buff== NULL) {
     Error("Insufficient memory");
   }
-  if((fp = fopen(file, "r")) == NULL) {
+  if ((fp = fopen(file, "r")) == NULL) {
     Error("Cannot open %s file: '%s'", typeStr2, file);
   }
-  if((type != CNF_VarScale
+  if ((type != CNF_VarScale
   && (fscanf(fp, " <%64[^>]> <%64[^>]>", s1, s2) != 2
       || strcmp(strtoupper(s1), "CEPSNORM")
       || ReadParmKind(s2, FALSE) != sampKind))
@@ -586,21 +586,21 @@ void ReadCepsNormFile(const char *file, char **last_file, FLOAT **vec_buff,
           type == CNF_VarScale ? "" : ">",
           typeStr, coefs, typeStr2, file);
   }
-  for(i = 0; i < coefs; i++) {
-    if(fscanf(fp, " "FLOAT_FMT, *vec_buff+i) != 1) {
-      if(fscanf(fp, "%64s", s2) == 1) {
+  for (i = 0; i < coefs; i++) {
+    if (fscanf(fp, " "FLOAT_FMT, *vec_buff+i) != 1) {
+      if (fscanf(fp, "%64s", s2) == 1) {
         Error("Decimal number expected but '%s' found in %s file %s",
               s2, typeStr2, file);
-      } else if(feof(fp)) {
+      } else if (feof(fp)) {
         Error("Unexpected end of %s file %s", typeStr2, file);
       } else {
         Error("Cannot read %s file %s", typeStr2, file);
       }
     }
-    if(type == CNF_Variance)      (*vec_buff)[i] = 1 / sqrt((*vec_buff)[i]);
-    else if(type == CNF_VarScale) (*vec_buff)[i] =     sqrt((*vec_buff)[i]);
+    if (type == CNF_Variance)      (*vec_buff)[i] = 1 / sqrt((*vec_buff)[i]);
+    else if (type == CNF_VarScale) (*vec_buff)[i] =     sqrt((*vec_buff)[i]);
   }
-  if(fscanf(fp, "%64s", s2) == 1) {
+  if (fscanf(fp, "%64s", s2) == 1) {
     Error("End of file expected but '%s' found in %s file %s",
           s2, typeStr2, file);
   }

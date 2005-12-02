@@ -222,7 +222,7 @@ namespace STK
 
       // move one element further (jump to next observed depth)
       ri++;
-    } // while(run)
+    } // while (run)
 
     // some debug info
     if (found)
@@ -268,7 +268,7 @@ namespace STK
       {
         lab++;
       }
-    } // while(run)
+    } // while (run)
 
     // some debug info
     if (found)

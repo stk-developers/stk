@@ -13,12 +13,14 @@
 #ifndef LABELS_H
 #define LABELS_H
 
-#include <stdio.h>
 #include "common.h"
+#include <stdio.h>
 #include <ctype.h>
 
-typedef struct _LabelFormat LabelFormat;
-struct _LabelFormat {
+//typedef struct _LabelFormat LabelFormat;
+class LabelFormat 
+{
+public:
   unsigned  SCORE_NRM:1;
   unsigned  SCORE_OFF:1;
   unsigned  CENTRE_TM:1;
@@ -31,8 +33,10 @@ struct _LabelFormat {
   long long right_extent;
 };
 
-typedef struct _Label Label;
-struct _Label {
+//typedef struct _Label Label;
+class Label 
+{
+public:
   Label *next;
   long long start;
   long long stop;
@@ -55,9 +59,6 @@ extern const char *transc_ofilter;
 //  long  weight;
 //};
 
-#ifdef __cplusplus
-  extern "C" {
-#endif
 
 FILE *OpenOutputMLF(const char *out_MLF);
 
@@ -122,9 +123,6 @@ void CloseInputLabelFile(FILE *lfp, const char *out_MLF);
 
 void AlingTranscriptions(Label **aligned_hyps, Label *new_hyp, long *weights);
 
-#ifdef __cplusplus
-}
-#endif
 
 extern int   substitution_cost;
 extern int   insertion_cost;
