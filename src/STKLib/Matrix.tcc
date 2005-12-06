@@ -1,6 +1,57 @@
 #include <cstdlib>
 #include <malloc.h>
 #include <cblas.h>
+#include <cassert>
+
+#include <cmath>
+static union
+{
+        double d;
+        struct
+        {
+                int j,i;
+        } n;
+} qn_d2i;
+
+#define QN_EXP_A (1048576/M_LN2)
+#define QN_EXP_C 60801
+//#define EXP2(y) (qn_d2i.n.j = (int) (QN_EXP_A*(y)) + (1072693248 - QN_EXP_C), qn_d2i.d)
+#define FAST_EXP(y) (qn_d2i.n.i = (int) (QN_EXP_A*(y)) + (1072693248 - QN_EXP_C), qn_d2i.d)
+
+void sigmoid_vec(float *in, float *out, int size)
+{
+  while(size--) *out++ = 1.0/(1.0 + FAST_EXP(-*in++));
+}
+
+float i_max_double (float *a, int len) {
+  int i;
+  float max;
+  max = a[0];
+  for (i=1; i<len; i++) {
+    if (a[i] > max) {
+      max = a[i];
+    }
+  }
+  return max;
+}
+
+void softmax_vec(float *in, float *out, int size)
+{
+  int i;
+  float maxa,sum;
+  // first find the max
+  maxa = i_max_double (in, size);
+  // normalize, exp and get the sum
+  sum = 0.0;
+  for (i=0; i<size; i++) {
+    out[i] = FAST_EXP(in[i] - maxa);
+    sum += out[i];
+  }
+  // now normalize bu the sum
+  for (i=0; i<size; i++) {
+    out[i] /= sum;
+  }
+}
 
 namespace STK
 {
@@ -144,25 +195,113 @@ namespace STK
 
 //******************************************************************************
   template<typename _ElemT>
-  _ElemT *
+  _ElemT &
   Matrix<_ElemT>::
   operator ()(const size_t r, const size_t c)
   {
+    assert(mStorageType == STORAGE_REGULAR || mStorageType == STORAGE_TRANSPOSED);
     if (mStorageType == STORAGE_REGULAR)
     {
-      return (mpData + r * mMRealCols + c);
-    }
-    else if (mStorageType == STORAGE_TRANSPOSED)
-    {
-      return (mpData + c * mMRealCols + r);
+      //std::cout << "prisup k off = " << r * mMRealCols + c << std::endl;
+      return *(mpData + r * mMRealCols + c);
     }
     else
-      return NULL;
+    {
+      //std::cout << "prisup k off = " << c * mMRealCols + r << std::endl;
+      return *(mpData + c * mMRealCols + r);      
+    }
+    
   }
-
+  
+//******************************************************************************
+  template<typename _ElemT>
+  Matrix<_ElemT> &
+  Matrix<_ElemT>::
+  AddMatMult(ThisType & a, ThisType & b)
+  { 
+    if(!(a.Cols() == b.Rows() && this->Rows() == a.Rows() &&  this->Cols() == b.Cols()))
+      STK::Error("Matrix multiply: bad matrix sizes (%d %d)*(%d %d) -> (%d %d)", a.Rows(), a.Cols(), b.Rows(), b.Cols(), this->Rows(), this->Cols());
+    
+    // :KLUDGE: Dirty for :o)        
+    assert(a.mStorageType == STORAGE_REGULAR);
+    for(int r = 0; r < this->Rows() ; r++){
+      for(int c = 0; c < this->Cols(); c++){
+        // for every out matrix cell
+        for(int index = 0; index < a.Cols(); index++){
+          (*this)(r, c) += a(r, index) * b(index, c);
+          //std::cout << a(r, index);
+        }
+      }
+    }
+    
+    STK::Warning("Could be slow, not well implemented");
+    
+    return *this;
+  }; // AddMatMult(const ThisType & a, const ThisType & b)
+  
+  template<>
+  Matrix<float> &
+  Matrix<float>::
+  AddMatMult(Matrix<float> & a, Matrix<float> & b)
+  { 
+    assert(a.Cols() == b.Rows());
+    assert(this->Rows() == a.Rows());
+    assert(this->Cols() == b.Cols());
+    if(b.Storage() == STORAGE_TRANSPOSED){
+      cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, a.Rows(), b.Cols(), b.Rows(),
+                  1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
+    }
+    else{
+      cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, a.Rows(), b.Cols(), b.Rows(),
+                  1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
+    }
+    return *this;
+  }; // AddMatMult(const ThisType & a, const ThisType & b)
 
 
 //******************************************************************************
+  template<typename _ElemT>
+  Matrix<_ElemT> &
+  Matrix<_ElemT>::
+  FastRowSigmoid()
+  {
+    STK::Error("Sigmoid only implemented for float");
+    return *this;
+  }
+  
+  template<>
+  Matrix<float> &
+  Matrix<float>::
+  FastRowSigmoid()
+  {
+    for(int row = 0; row < this->Rows(); row++){
+      sigmoid_vec(this->Row(row), this->Row(row), this->Cols());
+    }
+    return *this;
+  }
+//******************************************************************************
+  template<typename _ElemT>
+  Matrix<_ElemT> &
+  Matrix<_ElemT>::
+  FastRowSoftmax()
+  {
+    STK::Error("Softmax only implemented for float");
+    return *this;
+  }
+  
+  template<>
+  Matrix<float> &
+  Matrix<float>::
+  FastRowSoftmax()
+  {
+    for(int row = 0; row < this->Rows(); row++){
+      softmax_vec(this->Row(row), this->Row(row), this->Cols());
+    }
+    return *this;
+  }
+//******************************************************************************
+
+
   // Copy constructor
   template<typename _ElemT>
     WindowMatrix<_ElemT>::
@@ -271,24 +410,29 @@ namespace STK
 
   template<typename _ElemT>
     std::ostream &
-    operator << (std::ostream & rOut, const Matrix<_ElemT> & rM)
+    operator << (std::ostream & rOut, Matrix<_ElemT> & rM)
     {
+      rOut << "Rows: " << rM.Rows() << "\n";
+      rOut << "Cols: " << rM.Cols() << "\n";
+      if(rM.Storage() == STORAGE_TRANSPOSED) rOut << "Transposed \n ";
+      else rOut << "Regular \n ";
+      
       size_t    rcount;
       size_t    ccount;
 
-      _ElemT  * data    = rM.data;
+      _ElemT  * data    = rM.mpData;
 
       // go through all rows
-      for (rcount = 0; rcount < rM.rows(); rcount++)
+      for (rcount = 0; rcount < rM.Rows(); rcount++)
       {
         // go through all columns
-        for (ccount = 0; ccount < rM.cols(); ccount++)
+        for (ccount = 0; ccount < rM.Cols(); ccount++)
         {
-          rOut << static_cast<_ElemT> (*data) << " ";
-          data ++;
+          rOut << static_cast<_ElemT>(/*(*data)*/ rM(rcount, ccount)) << " ";
+          /*data ++;*/
         }
 
-        data += rM.M_skip;
+        //data += rM.mMSkip;
 
         rOut << std::endl;
       }

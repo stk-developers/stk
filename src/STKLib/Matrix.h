@@ -5,7 +5,10 @@
 //#include <cstdlib>
 #include <stdlib.h>
 #include <stdexcept>
-#include <cblas.h>
+extern "C"{
+  #include <cblas.h>
+}
+#include"Error.h"
 
 #include <iostream>
 
@@ -33,7 +36,7 @@ namespace STK
 
   // we need to declare the friend << operator here
   template<typename _ElemT>
-    std::ostream & operator << (std::ostream & out, const Matrix<_ElemT> & m);
+    std::ostream & operator << (std::ostream & out, Matrix<_ElemT> & m);
 
 
   /**
@@ -141,7 +144,21 @@ namespace STK
        *         result to this (elem by elem)
        */
       ThisType &
-      AddVectorMult(const ThisType & a, const ThisType & b);
+      AddMatMult(ThisType & a, ThisType & b);
+      
+      /**
+       *  @brief Performs fast sigmoid on row vectors
+       *         result to this (elem by elem)
+       */
+      ThisType &
+      FastRowSigmoid();
+      
+      /**
+       *  @brief Performs fast softmax on row vectors
+       *         result to this (elem by elem)
+       */
+      ThisType &
+      FastRowSoftmax();
 
 
       /**
@@ -165,14 +182,14 @@ namespace STK
        *  @brief Gives access to matrix elements (row, col)
        *  @return pointer to the desired field
        */
-      _ElemT *
+      _ElemT &
       operator () (const size_t r, const size_t c);
 
 
       friend std::ostream & 
       operator << <> (
         std::ostream & out, 
-        const ThisType & m);
+        ThisType & m);
 
         
       void PrintOut();
