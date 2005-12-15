@@ -1162,20 +1162,36 @@ int RemoveRedundantNullNodes(Node *first)
       }
       for (j = 0; j < node->nbacklinks; j++) {
         Node *backnode = node->backlinks[j].node;
+        int orig_nlinks = backnode->nlinks;
 
         for (i=0; i < node->nlinks; i++) {
-          backnode->links[backnode->nlinks  ].node = node->links[i].node;
-          backnode->links[backnode->nlinks++].like
-            = node->links[i].like + node->backlinks[j].like;
+          for(k = 0; k < orig_nlinks && backnode->links[k].node != node->links[i].node; k++);
+          if(k < orig_nlinks) {
+            // Link which is to be created already exists. Its duplication must be avoided.
+            backnode->links[k].like = HIGHER_OF(backnode->links[k].like, 
+                                                node->links[i].like + node->backlinks[j].like);
+          } else {
+            backnode->links[backnode->nlinks  ].node = node->links[i].node;
+            backnode->links[backnode->nlinks++].like
+              = node->links[i].like + node->backlinks[j].like;
+          }
         }
       }
       for (j = 0; j < node->nlinks; j++) {
         Node *forwnode = node->links[j].node;
+        int orig_nbacklinks = forwnode->nbacklinks;
 
         for (i=0; i < node->nbacklinks; i++) {
-          forwnode->backlinks[forwnode->nbacklinks  ].node = node->backlinks[i].node;
-          forwnode->backlinks[forwnode->nbacklinks++].like
-            = node->backlinks[i].like + node->links[j].like;
+          for(k = 0; k < orig_nbacklinks && forwnode->backlinks[k].node != node->backlinks[i].node; k++);
+          if (k < orig_nbacklinks) {
+            // Link which is to be created already exists. Its duplication must be avoided.
+            forwnode->backlinks[k].like = HIGHER_OF(forwnode->backlinks[k].like, 
+                                                    node->backlinks[i].like + node->links[j].like);
+          } else {
+            forwnode->backlinks[forwnode->nbacklinks  ].node = node->backlinks[i].node;
+            forwnode->backlinks[forwnode->nbacklinks++].like
+              = node->backlinks[i].like + node->links[j].like;
+          }
         }
       }
       node->backnext->next = node->next;
