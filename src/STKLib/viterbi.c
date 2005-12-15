@@ -433,11 +433,11 @@ void MarkWordNodesLeadingFrom(Network *net, Node *node)
       assert(lnode->mType & NT_Tee);
       continue;
     }
-
-    lnode->isActiveNode--;
-    lnode->aux = 0;
-
-    MarkWordNodesLeadingFrom(net, lnode);
+    
+    if(lnode->isActiveNode-- == 0) {
+      lnode->aux = 0;
+      MarkWordNodesLeadingFrom(net, lnode);
+    }
   }
 }
 
