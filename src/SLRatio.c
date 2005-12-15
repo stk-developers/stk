@@ -27,6 +27,9 @@
 #include "getopt.h"
 #endif
 
+using namespace STK;
+
+
 typedef struct _LRTrace LRTrace;
 struct _LRTrace {
   Node *wordEnd;
@@ -317,7 +320,7 @@ int main(int argc, char *argv[]) {
                  GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0));
   fulleval     = GetParamBool(&cfgHash,SNAME":EVALUATION",      FALSE);
   swap_features=!GetParamBool(&cfgHash,SNAME":NATURALREADORDER",isBigEndian());
-  filter_wldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
+  gpFilterWldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
   script_filter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",   NULL);  
   parm_filter  = GetParamStr(&cfgHash, SNAME":HPARMFILTER",     NULL);
   gpHListFilter = GetParamStr(&cfgHash, SNAME":HMMLISTFILTER",   NULL);

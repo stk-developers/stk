@@ -26,6 +26,9 @@
 #include "getopt.h"
 #endif
 
+using namespace STK;
+
+
 void usage(char *progname)
 {
   char *tchrptr;
@@ -134,7 +137,7 @@ int main(int argc, char *argv[]) {
                  GetParamStr(&cfgHash, SNAME":SOURCEINPUT",     NULL); // pripadne rename
   swap_features=!GetParamBool(&cfgHash,SNAME":NATURALREADORDER", isBigEndian());
 //  swap_fea_out =!GetParamBool(&cfgHash,SNAME":NATURALWRITEORDER",isBigEndian());
-  filter_wldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
+  gpFilterWldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
   script_filter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",   NULL);
   parm_filter  = GetParamStr(&cfgHash, SNAME":HPARMFILTER",     NULL);
 //  gpHListFilter = GetParamStr(&cfgHash, SNAME":HMMLISTFILTER",   NULL);
@@ -203,8 +206,8 @@ int main(int argc, char *argv[]) {
   //and remove this transformation from the input of NN_instance, so that
   //NN_instance will not ask this transformation for its input (see XformPass
   //below), which will allow for reading NN input from cache.
-  NNet_input = NNet_instance->input;
-  NNet_instance->input = NULL;
+  NNet_input = NNet_instance->mpInput;
+  NNet_instance->mpInput = NULL;
 
   if (out_by_labels) {
     //Allocate buffer, to which example of output vector will be created
@@ -431,7 +434,7 @@ int main(int argc, char *argv[]) {
   if (trace_flag & 2) {
     TraceLog("Total number of frames: %d", totFrames);
   }
-  NNet_instance->input = NNet_input;
+  NNet_instance->mpInput = NNet_input;
 
 
   //writeNN(data, info, prog, matrix, inCache, compCache);

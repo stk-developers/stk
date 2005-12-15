@@ -7,7 +7,8 @@
  *  to offer optimized access to (master) label files (MLFs), i.e. hashing
  *  capabilities.
  *
- *  Searching diagram is <a href="../../Documentation/figures/eps/hashing.eps">doc/Documentation/figures/hashing.eps</a>
+ *  Searching diagram is <a href="../../Documentation/figures/eps/hashing.eps">
+ *  doc/Documentation/figures/hashing.eps</a>
  */
 
 #ifndef STK_labelreader_h

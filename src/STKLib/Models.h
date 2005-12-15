@@ -14,6 +14,7 @@
 #define STK_Models_h
 
 #include "common.h"
+#include "stkstream.h"
 #include <search.h>
 
 
@@ -63,27 +64,81 @@ namespace STK
     mt_XForm           = 'x',
   };
 
-  enum MacroTypeMask
-  {
-    mtm_hmm             = 0x0001,
-    mtm_state           = 0x0002,
-    mtm_mixture         = 0x0004,
-    mtm_mean            = 0x0008,
-    mtm_variance        = 0x0010,
-    mtm_transition      = 0x0020,
-    mtm_XFormInstance   = 0x0040,
-    mtm_XForm           = 0x0080,
-    mtm_all             = 0x00ff,
-    mtm_revpass         = 0x4000, // Process last macro first
-    mtm_prescan         = 0x8000  // Process HMMs then states then mixtures, ...
-  };
+  
+  /**
+   * @name MacroTypeMask
+   * These constants define the flags used by Scan(...) methods. The method 
+   * uses these flags to decide which macros are processed by the
+   * action procedure.
+   */
+  //@{
+  const int MTM_HMM             = 0x0001;
+  const int MTM_STATE           = 0x0002;
+  const int MTM_MIXTURE         = 0x0004;
+  const int MTM_MEAN            = 0x0008;
+  const int MTM_VARIANCE        = 0x0010;
+  const int MTM_TRANSITION      = 0x0020;
+  const int MTM_XFORM_INSTANCE  = 0x0040;
+  const int MTM_XFORM           = 0x0080;
+  const int MTM_ALL             = 0x00ff;
+  const int MTM_REVERSE_PASS    = 0x4000; ///< Process last macro first
+  const int MTM_PRESCAN         = 0x8000; ///< Process HMMs then states then mixtures, ...
+  //@}
+
+  
+  typedef char HMMSetNodeName[128];
+
+  /**
+   * @brief Scan action procedure type
+   * 
+   * This function type is used by the scan functions to perform the desired
+   * action on them.
+   */  
+  typedef void (*ScanAction)( int             type,           ///< Type of data to perform the action on
+                              HMMSetNodeName  nodeName,       ///< node name
+                              MacroData *     pData,          ///< Macro data class 
+                              void *          pUserData);     ///< User data to process
 
   
   /// model set flags
-  /// @{  
+  //@{  
   const FlagType MODEL_SET_WITH_ACCUM   = 1; ///< The set should allocate space for
                                              ///< accumulators 
-  /// @}
+  //@}
+  
+  
+  
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief MMF file input operation encapsulation
+   */
+   class MmfReader
+   {
+   private:
+      istkstream        mStream;   ///< stream to read from
+      int               mCurLine;  ///< current line
+      int               mCurCol;   ///< current column
+      
+   public:      
+      /**
+       * @name File operation functions
+       */
+      //@{
+      FLOAT       GetFloat();
+      int         GetInt();
+      char *      GetString(int eofNotExpected);
+      void        SkipSpaces();
+      void        UngetString();
+      //@}
+      
+      const std::string
+      FileName() const
+      {
+        return mStream.name();
+      }
+      
+   };
+  
   
   
   /** *************************************************************************
@@ -101,6 +156,9 @@ namespace STK
     
     // we'll make the Macro class a frien as it will increment the mLinksCount
     friend class Macro;
+    
+    virtual void
+    Scan(int mask, HMMSetNodeName nodeName, ScanAction action, void *userData) = 0;
   }; // class MacroData
 
   
@@ -186,6 +244,8 @@ namespace STK
   public:
 
   private:
+  
+    
     /// This group of methods does exactly what their names state
     /// @{ 
     Hmm *           ReadHMM           (FILE * fp, Macro * macro);
@@ -263,16 +323,10 @@ namespace STK
     FLOAT                     MMI_tauI;
     
     
-    void
     /**
-     *  @brief Reads definition from the stream and parses
-     *  @param rName filename to parse
-     *  @return @c true on success
-     *  
-     *  The entire stream is read and propriate structures are constructed.
-     */  
-    ParseMmf(const std::string & rName, char * expectHMM);
-    
+     * @name MMF output functions
+     */
+    //@{
     void 
     /**
      * @brief Writes the complete Model set to a file
@@ -313,6 +367,8 @@ namespace STK
      * @param binary 
      */
     WriteXFormStatsAndRunCommands(const std::string & rOutDir, bool binary);
+    //@}
+    
     
     /**
      *  @brief Initializes the Model set
@@ -327,6 +383,21 @@ namespace STK
     void
     Release();
       
+    
+    /**
+     * @name MMF input functions
+     */
+    //@{
+    void
+    /**
+     *  @brief Reads definition from the stream and parses
+     *  @param rName filename to parse
+     *  @return @c true on success
+     *  
+     *  The entire stream is read and propriate structures are constructed.
+     */  
+    ParseMmf(const std::string & rName, char * expectHMM);
+    
     void 
     /**
      * @brief Loads an HMM list from file
@@ -358,6 +429,8 @@ namespace STK
     
     void
     ReadXFormList(const std::string & rFileName);
+    //@}
+    
     
     void
     AllocateAccumulatorsForXFormStats();
@@ -391,8 +464,20 @@ namespace STK
     
     struct my_hsearch_data 
     MakeCIPhoneHash();
-
     
+    
+    void 
+    /**
+     * @brief Performs desired @c action on the set's data which are chosen by @mask
+     * @param mask bit mask of flags that tells which data to process by @c action
+     * @param nodeNameBuffer 
+     * @param action 
+     * @param pUserData 
+     */
+    Scan( int             mask,
+          HMMSetNodeName  nodeNameBuffer,
+          ScanAction      action, 
+          void *          pUserData);
   }; // ModelSet
 
   
@@ -425,7 +510,21 @@ namespace STK
      */
     UpdateFromAccums(const ModelSet * pModelSet);
     
+    
+    void
+    /**
+     * @brief Performs desired @c action on the HMM's data which are chosen by @mask
+     * @param mask bit mask of flags that tells which data to process by @c action
+     * @param nodeNameBuffer 
+     * @param action routine to apply on pUserData
+     * @param pUserData the data to process by @c action
+     */
+    Scan( int             mask,
+          HMMSetNodeName  nodeNameBuffer,
+          ScanAction      action, 
+          void *          pUserData);
   };
+  
   
   
   /** *************************************************************************
@@ -460,6 +559,21 @@ namespace STK
      * @param rHmm parrent Hmm of this state
      */
     UpdateFromAccums(const ModelSet * pModelSet, const Hmm * pHmm);
+  
+  
+    void
+    /**
+     * @brief Performs desired @c action on the HMM's data which are chosen by @mask
+     * @param mask bit mask of flags that tells which data to process by @c action
+     * @param nodeNameBuffer 
+     * @param action routine to apply on pUserData
+     * @param pUserData the data to process by @c action
+     */
+    Scan( int             mask,
+          HMMSetNodeName  nodeNameBuffer,
+          ScanAction      action, 
+          void *          pUserData);
+  
   };
 
   
@@ -495,6 +609,18 @@ namespace STK
      */
     UpdateFromAccums(const ModelSet * pModelSet);
     
+    void
+    /**
+     * @brief Performs desired @c action on the HMM's data which are chosen by @mask
+     * @param mask bit mask of flags that tells which data to process by @c action
+     * @param nodeNameBuffer 
+     * @param action routine to apply on pUserData
+     * @param pUserData the data to process by @c action
+     */
+    Scan( int             mask,
+          HMMSetNodeName  nodeNameBuffer,
+          ScanAction      action, 
+          void *          pUserData);
   };
 
   
@@ -586,7 +712,7 @@ namespace STK
   class XFormStatCache 
   {
   public:
-    XFormStatCache *        upperLevelStats;
+    XFormStatCache *        mpUpperLevelStats;
     XForm *                 mpXForm;
     int                     norm;
     FLOAT *                 mpStats;
@@ -600,7 +726,7 @@ namespace STK
   class XFormInstance : public MacroData 
   {
   public:
-    XFormInstance *       input;
+    XFormInstance *       mpInput;
     XForm *               mpXForm;
     int                   time;
     XFormInstance  *      next; // Chain of all instances
@@ -612,10 +738,24 @@ namespace STK
     int                   mTotalDelay;
     
     FLOAT                 out_vec[1]; 
-    //stackSize * (xform ? xform->mOutSize : hmm_set->mInputVectorSize)
     
     FLOAT *
     XFormPass(FLOAT *in_vec, int time, PropagDir dir);
+  
+  
+    void
+    /**
+     * @brief Performs desired @c action on the HMM's data which are chosen by @mask
+     * @param mask bit mask of flags that tells which data to process by @c action
+     * @param nodeNameBuffer 
+     * @param action routine to apply on pUserData
+     * @param pUserData the data to process by @c action
+     */
+    Scan( int             mask,
+          HMMSetNodeName  nodeNameBuffer,
+          ScanAction      action, 
+          void *          pUserData);
+  
   };
 
   typedef enum 
@@ -655,6 +795,20 @@ namespace STK
              FLOAT *    pOutputVector,
              char *     pMemory,
              PropagDir  direction) = 0;
+  
+    void
+    /**
+     * @brief Performs desired @c action on the HMM's data which are chosen by @mask
+     * @param mask bit mask of flags that tells which data to process by @c action
+     * @param nodeNameBuffer 
+     * @param action routine to apply on pUserData
+     * @param pUserData the data to process by @c action
+     */
+    Scan( int             mask,
+          HMMSetNodeName  nodeNameBuffer,
+          ScanAction      action, 
+          void *          pUserData);
+  
   };
 
   
@@ -807,105 +961,73 @@ namespace STK
   {
   public:
     FILE   *      fp;
-    char   *      fn;
-    ModelSet *    hmm_set;
-    float         weight;
-    int           mmi;
+    char   *      mpFileName;
+    ModelSet *    mpModelSet;
+    float         mWeight;
+    int           mMmi;
   };
     
   class WriteAccumUserData
   {
   public:
-    FILE *fp;
-    char *fn;
-    int  mmi;
+    FILE *        fp;
+    char *        mpFileName;
+    int           mMmi;
   };
 
   class ReplaceItemUserData
   {
   public:
-    void *    old_data;
-    void *    new_data;
-    int       mType;
+    MacroData *        mpOldData;
+    MacroData *        mpNewData;
+    int           mType;
   };
 
   struct GlobalStatsUserData
   {
-    FLOAT *observation;
-    int time;
+    FLOAT *       observation;
+    int           time;
   } ;
   
   class WriteStatsForXFormUserData 
   {
   public:
     LinearXForm *             mpXForm;
-    XFormStatsFileNames       meanFile;
-    XFormStatsFileNames       covFile;
-    bool                      binary;
+    XFormStatsFileNames       mMeanFile;
+    XFormStatsFileNames       mCovFile;
+    bool                      mBinary;
   };
   /// @}
 
     
   
-  typedef char HMMSetNodeName[128];
-
-  /**
-   * @brief Scan action procedure type
-   * 
-   * This function type is used by the scan functions to perform the desired
-   * action on them.
-   */  
-  typedef void (*ScanAction)( int             type,           ///< Type of data to perform the action on
-                              HMMSetNodeName  nodeName,       ///< node name
-                              MacroData *     pData,          ///< Macro data class 
-                              void *          pUserData);
-
                               
   extern bool           gHmmsIgnoreMacroRedefinition;         ///< Controls macro redefinition behavior
   extern const char *   gpHListFilter;                        ///< HMM list Filter command
   extern FunctionTable  gFuncTable[];                         ///< FuncXForm function table
   extern char *         gpKwds[KID_MaxKwdID];                 ///< MMF keyword table
                                                            
-  
-  void ScanHMMSet(ModelSet *hmm_set, int mask,
-                  HMMSetNodeName nodeNameBuffer,
-                  ScanAction action, void *userData);
-  
-  void ScanHMM(Hmm *hmm, int mask, HMMSetNodeName nodeName,
-               ScanAction action, void *userData);
-  
-  void ScanState(State *state, int mask, HMMSetNodeName nodeName,
-                ScanAction action, void *userData);
-  
-  void ScanMixture(Mixture *mixture, int mask,
-                  HMMSetNodeName nodeName, ScanAction action, void *userData);
-  
-  void ScanXFormInstance(XFormInstance *xformInstance, int mask,
-                        HMMSetNodeName nodeName, ScanAction action,
-                        void *userData);
-  
-  void ScanXForm(XForm *xform, int mask, HMMSetNodeName nodeName,
-                ScanAction action, void *userData);
 
                   
   /**
    * @brief Passes the vector through XFormInstance
    */
-  extern FLOAT *     XFormPass(XFormInstance *xformInstance, FLOAT *in_vec, int time, PropagDir dir);
+  FLOAT *     XFormPass(XFormInstance *xformInstance, FLOAT *in_vec, int time, PropagDir dir);
   
-  void        PutKwd(FILE *fp, bool binary, KeywordID kwdID);
-  void        PutInt(FILE *fp, bool binary, int i);
   void        PutFlt(FILE *fp, bool binary, FLOAT f);
+  void        PutInt(FILE *fp, bool binary, int i);
+  void        PutKwd(FILE *fp, bool binary, KeywordID kwdID);
   void        PutNLn(FILE *fp, bool binary);
   
-  Macro *     FindMacro(struct my_hsearch_data *macro_hash, const char *name);
   FLOAT       GetFloat(FILE *fp);
   int         GetInt(FILE *fp);
   char *      GetString(FILE *fp, int eofNotExpected);
   void        RemoveSpaces(FILE *fp);
   void        UngetString(void);
+  
   void        ReleaseMacroHash(struct my_hsearch_data *macro_hash);
-
+  Macro *     FindMacro(struct my_hsearch_data *macro_hash, const char *name);
+  
   int         CheckKwd(const char *str, KeywordID kwdID);
   void        InitKwdTable();
   KeywordID   ReadDurKind(char *str);
@@ -928,4 +1050,4 @@ namespace STK
   
 }; //namespace STK
 
-#endif // HMMS_H
+#endif // STK_Models_h

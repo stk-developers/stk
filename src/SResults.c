@@ -22,6 +22,9 @@
 #include <assert.h>
 #include <time.h>
 
+using namespace STK;
+
+
 void usage(char *progname)
 {
   char *tchrptr;

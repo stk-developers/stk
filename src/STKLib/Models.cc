@@ -32,6 +32,8 @@ namespace STK
   bool            gHmmsIgnoreMacroRedefinition = true;
   char *          gpKwds[KID_MaxKwdID] = {0};
   
+  FLOAT weight_accum_den;
+  
   void InitKwdTable()
   {
     gpKwds[KID_BeginHMM   ] = "BeginHMM";    gpKwds[KID_Use        ] = "Use";
@@ -98,15 +100,15 @@ namespace STK
       {
         for (i = 0; i < hmm->mNStates-2; i++) 
         {
-          if (hmm->state[i] == ud->old_data) 
+          if (hmm->state[i] == ud->mpOldData) 
           {
-            hmm->state[i] = (State*) ud->new_data;
+            hmm->state[i] = (State*) ud->mpNewData;
           }
         }
       } 
-      else if (hmm->mpTransition == ud->old_data) 
+      else if (hmm->mpTransition == ud->mpOldData) 
       {
-        hmm->mpTransition = (Transition*) ud->new_data;
+        hmm->mpTransition = (Transition*) ud->mpNewData;
       }
     } 
     
@@ -117,9 +119,9 @@ namespace STK
       {
         for (i = 0; i < state->mNumberOfMixtures; i++) 
         {
-          if (state->mpMixture[i].estimates == ud->old_data) 
+          if (state->mpMixture[i].estimates == ud->mpOldData) 
           {
-            state->mpMixture[i].estimates = (Mixture*) ud->new_data;
+            state->mpMixture[i].estimates = (Mixture*) ud->mpNewData;
           }
         }
       }
@@ -128,9 +130,9 @@ namespace STK
     else if (macro_type == 'm') 
     {
       Mixture *mixture = (Mixture *) pData;
-      if (mixture->mpMean      == ud->old_data) mixture->mpMean       = (Mean*)          ud->new_data;
-      if (mixture->mpVariance  == ud->old_data) mixture->mpVariance   = (Variance*)      ud->new_data;
-      if (mixture->mpInputXForm== ud->old_data) mixture->mpInputXForm = (XFormInstance*) ud->new_data;
+      if (mixture->mpMean      == ud->mpOldData) mixture->mpMean       = (Mean*)          ud->mpNewData;
+      if (mixture->mpVariance  == ud->mpOldData) mixture->mpVariance   = (Variance*)      ud->mpNewData;
+      if (mixture->mpInputXForm== ud->mpOldData) mixture->mpInputXForm = (XFormInstance*) ud->mpNewData;
     } 
     
     else if (macro_type == 'x') 
@@ -142,9 +144,9 @@ namespace STK
         {
           for (j = 0; j < cxf->layer[i].mNBlocks; j++) 
           {
-            if (cxf->layer[i].block[j] == ud->old_data) 
+            if (cxf->layer[i].block[j] == ud->mpOldData) 
             {
-              cxf->layer[i].block[j] = (XForm*) ud->new_data;
+              cxf->layer[i].block[j] = (XForm*) ud->mpNewData;
             }
           }
         }
@@ -154,8 +156,8 @@ namespace STK
     else if (macro_type == 'j') 
     {
       XFormInstance *xformInstance = (XFormInstance *) pData;
-      if (xformInstance->input == ud->old_data) xformInstance->input = (XFormInstance*) ud->new_data;
-      if (xformInstance->mpXForm == ud->old_data) xformInstance->mpXForm = (XForm*)         ud->new_data;
+      if (xformInstance->mpInput == ud->mpOldData) xformInstance->mpInput = (XFormInstance*) ud->mpNewData;
+      if (xformInstance->mpXForm == ud->mpOldData) xformInstance->mpXForm = (XForm*)         ud->mpNewData;
     }
   }
   
@@ -519,7 +521,7 @@ namespace STK
   }
   
   
-  FLOAT weight_accum_den;
+  
   
   
   
@@ -575,8 +577,8 @@ namespace STK
   
     xformInst->time = time;
   
-    if (xformInst->input)
-      in_vec = XFormPass(xformInst->input, in_vec, time, dir);
+    if (xformInst->mpInput)
+      in_vec = XFormPass(xformInst->mpInput, in_vec, time, dir);
   
     xformInst->mpXForm->Evaluate(in_vec,xformInst->out_vec,xformInst->memory,dir);
   
@@ -584,102 +586,73 @@ namespace STK
   }
   
   
-  void ScanHMMSet(ModelSet *hmm_set, int mask, HMMSetNodeName nodeName,
-                  ScanAction action, void *pUserData)
+  void 
+  ModelSet::
+  Scan(int mask, HMMSetNodeName nodeName,
+       ScanAction action, void *pUserData)
   {
     Macro *macro;
-    if (nodeName != NULL) strcpy(nodeName+sizeof(HMMSetNodeName)-4, "...");
+    
+    if (nodeName != NULL) 
+      strcpy(nodeName+sizeof(HMMSetNodeName)-4, "...");
   
-    for (macro = mask & mtm_revpass ? hmm_set->mpLastMacro : hmm_set->mpFirstMacro;
+    // walk through the list of macros and decide what to do... 
+    // we also decide which direction to walk based on the MTM_REVERSE_PASS flag
+    for (macro = mask & MTM_REVERSE_PASS ? mpLastMacro : mpFirstMacro;
         macro != NULL;
-        macro = mask & mtm_revpass ? macro->prevAll      : macro->nextAll) 
+        macro = mask & MTM_REVERSE_PASS ? macro->prevAll      : macro->nextAll) 
     {
-      if (macro->mpData->mpMacro != macro) 
+      if (macro->mpData != NULL && macro->mpData->mpMacro != macro) 
         continue;
       
       if (nodeName != NULL) 
-      {
         strncpy(nodeName, macro->mpName, sizeof(HMMSetNodeName)-4);
-      }
   
       switch (macro->mType) 
       {
         case mt_XForm:
-          if (!(mask & mtm_XForm)) break;
-          ScanXForm(static_cast <XForm*> (macro->mpData), mask, nodeName, action, pUserData);
+          if (!(mask & MTM_XFORM)) break;
+          macro->mpData->Scan(mask, nodeName, action, pUserData);
           break;
         case mt_XFormInstance:
-          if (!(mask & (mtm_XForm | mtm_XFormInstance))) break;
-          ScanXFormInstance(static_cast <XFormInstance*> (macro->mpData), mask, nodeName, action, pUserData);
+          if (!(mask & (MTM_XFORM | MTM_XFORM_INSTANCE))) break;
+          macro->mpData->Scan(mask, nodeName, action, pUserData);
           break;
         case mt_mean:
-          if (!(mask & mtm_mean)) break;
+          if (!(mask & MTM_MEAN)) break;
           action(mt_mean, nodeName, macro->mpData, pUserData);
           break;
         case mt_variance:
-          if (!(mask & mtm_variance)) break;
+          if (!(mask & MTM_VARIANCE)) break;
           action(mt_variance, nodeName, macro->mpData, pUserData);
           break;
         case mt_transition:
-          if (!(mask & mtm_transition)) break;
+          if (!(mask & MTM_TRANSITION)) break;
           action(mt_transition, nodeName, macro->mpData, pUserData);
           break;
         case mt_mixture:
-          if (!(mask & (mtm_all & ~(mtm_state | mtm_hmm | mtm_transition)))) break;
-          ScanMixture(static_cast <Mixture*> (macro->mpData), mask, nodeName, action, pUserData);
+          if (!(mask & (MTM_ALL & ~(MTM_STATE | MTM_HMM | MTM_TRANSITION)))) break;
+          macro->mpData->Scan(mask, nodeName, action, pUserData);
           break;
         case mt_state:
-          if (!(mask & (mtm_all & ~(mtm_hmm | mtm_transition)))) break;
-          ScanState(static_cast <State*> (macro->mpData), mask, nodeName, action, pUserData);
+          if (!(mask & (MTM_ALL & ~(MTM_HMM | MTM_TRANSITION)))) break;
+          macro->mpData->Scan(mask, nodeName, action, pUserData);
           break;
         case mt_hmm:
-          if (!(mask & mtm_all)) break;
-          ScanHMM(static_cast <Hmm*> (macro->mpData), mask, nodeName, action, pUserData);
+          if (!(mask & MTM_ALL)) break;
+          macro->mpData->Scan(mask, nodeName, action, pUserData);
           break;
         default: assert(0);
       }
     }
   }
   
-  void ScanHMM(Hmm *hmm, int mask, HMMSetNodeName nodeName,
-              ScanAction action, void *pUserData)
-  {
-    size_t    i;
-    size_t    n = 0;
-    char *    chptr = NULL;
-  
-    if (nodeName != NULL) {
-    n = strlen(nodeName);
-    chptr = nodeName + n;
-    n = sizeof(HMMSetNodeName) - 4 - n;
-    }
-  
-    if (mask & mtm_hmm && mask & mtm_prescan) {
-      action(mt_hmm, nodeName, hmm, pUserData);
-    }
-  
-    if (mask & (mtm_all & ~(mtm_hmm | mtm_transition))) {
-      for (i=0; i < hmm->mNStates-2; i++) {
-        if (!hmm->state[i]->mpMacro) {
-          if (n > 0 ) snprintf(chptr, n, ".state[%d]", i+2);
-          ScanState(hmm->state[i], mask, nodeName, action, pUserData);
-        }
-      }
-    }
-  
-    if (mask & mtm_transition && !hmm->mpTransition->mpMacro) {
-      if (n > 0) strncpy(chptr, ".transP", n);
-      action(mt_transition, nodeName, hmm->mpTransition, pUserData);
-    }
-  
-    if (mask & mtm_hmm && !(mask & mtm_prescan)) {
-      if (n > 0) chptr = '\0';
-      action(mt_hmm, nodeName, hmm, pUserData);
-    }
-  }
-  
-  void ScanState(State *state, int mask, HMMSetNodeName nodeName,
-                ScanAction action, void *pUserData)
+  void 
+  Hmm::
+  //ScanHMM(Hmm *hmm, int mask, HMMSetNodeName nodeName,
+  //            ScanAction action, void *pUserData)
+  Scan(int mask, HMMSetNodeName nodeName,
+       ScanAction action, void *pUserData)
   {
     size_t    i;
     size_t    n = 0;
@@ -692,107 +665,155 @@ namespace STK
       n = sizeof(HMMSetNodeName) - 4 - n;
     }
   
-    if (mask & mtm_state && mask & mtm_prescan) 
+    
+    if (mask & MTM_HMM && mask & MTM_PRESCAN) 
+      action(mt_hmm, nodeName, this, pUserData);
+  
+    if (mask & (MTM_ALL & ~(MTM_HMM | MTM_TRANSITION))) 
     {
-      action(mt_state, nodeName, state, pUserData);
+      for (i=0; i < mNStates-2; i++) 
+      {
+        if (!state[i]->mpMacro) 
+        {
+          if (n > 0 ) snprintf(chptr, n, ".state[%d]", i+2);            
+          state[i]->Scan(mask, nodeName, action, pUserData);
+        }
+      }
     }
   
-    if (state->mOutPdfKind != KID_PDFObsVec &&
-      mask & (mtm_all & ~(mtm_state | mtm_hmm | mtm_transition))) 
+    if (mask & MTM_TRANSITION && !mpTransition->mpMacro) 
     {
-      for (i=0; i < state->mNumberOfMixtures; i++) 
+      if (n > 0) strncpy(chptr, ".transP", n);
+      action(mt_transition, nodeName, mpTransition, pUserData);
+    }
+  
+    if (mask & MTM_HMM && !(mask & MTM_PRESCAN)) 
+    {
+      if (n > 0) chptr = '\0';
+      action(mt_hmm, nodeName, this, pUserData);
+    }
+  }
+  
+  void 
+  State::
+  Scan(int mask, HMMSetNodeName nodeName,  ScanAction action, void *pUserData)
+  {
+    size_t    i;
+    size_t    n = 0;
+    char *    chptr = NULL;
+  
+    if (nodeName != NULL) 
+    {
+      n = strlen(nodeName);
+      chptr = nodeName + n;
+      n = sizeof(HMMSetNodeName) - 4 - n;
+    }
+  
+    if (mask & MTM_STATE && mask & MTM_PRESCAN) 
+    {
+      action(mt_state, nodeName, this, pUserData);
+    }
+  
+    if (mOutPdfKind != KID_PDFObsVec &&
+      mask & (MTM_ALL & ~(MTM_STATE | MTM_HMM | MTM_TRANSITION))) 
+    {
+      for (i=0; i < mNumberOfMixtures; i++) 
       {
-        if (!state->mpMixture[i].estimates->mpMacro) 
+        if (!mpMixture[i].estimates->mpMacro) 
         {
           if (n > 0 ) snprintf(chptr, n, ".mix[%d]", i+1);
-          ScanMixture(state->mpMixture[i].estimates, mask, nodeName,
+          mpMixture[i].estimates->Scan(mask, nodeName,
                       action, pUserData);
         }
       }
     }
-    if (mask & mtm_state && !(mask & mtm_prescan)) 
+    if (mask & MTM_STATE && !(mask & MTM_PRESCAN)) 
     {
       if (n > 0) chptr = '\0';
-      action(mt_state, nodeName, state, pUserData);
+      action(mt_state, nodeName, this, pUserData);
     }
   }
   
-  void ScanMixture(Mixture *mixture, int mask,
-                  HMMSetNodeName nodeName, ScanAction action, void *pUserData)
+  void 
+  Mixture::
+  Scan(int mask, HMMSetNodeName nodeName, ScanAction action, void *pUserData)
   {
     int n = 0;
     char *chptr = NULL;
     
-    if (nodeName != NULL) {
-    n = strlen(nodeName);
-    chptr = nodeName + n;
-    n = sizeof(HMMSetNodeName) - 4 - n;
+    if (nodeName != NULL) 
+    {
+      n = strlen(nodeName);
+      chptr = nodeName + n;
+      n = sizeof(HMMSetNodeName) - 4 - n;
     }
   
-    if (mask & mtm_mixture && mask & mtm_prescan) {
-      action(mt_mixture, nodeName, mixture, pUserData);
+    if (mask & MTM_MIXTURE && mask & MTM_PRESCAN) {
+      action(mt_mixture, nodeName, this, pUserData);
     }
   
-    if (mask & mtm_mean && !mixture->mpMean->mpMacro) {
+    if (mask & MTM_MEAN && !mpMean->mpMacro) {
       if (n > 0) strncpy(chptr, ".mean", n);
-      action(mt_mean, nodeName, mixture->mpMean, pUserData);
+      action(mt_mean, nodeName, mpMean, pUserData);
     }
   
-    if (mask & mtm_variance && !mixture->mpVariance->mpMacro) {
+    if (mask & MTM_VARIANCE && !mpVariance->mpMacro) {
       if (n > 0) strncpy(chptr, ".cov", n);
-      action(mt_variance, nodeName, mixture->mpVariance, pUserData);
+      action(mt_variance, nodeName, mpVariance, pUserData);
     }
   
-    if (mask & mtm_XFormInstance && mixture->mpInputXForm &&
-      !mixture->mpInputXForm->mpMacro) {
+    if (mask & MTM_XFORM_INSTANCE && mpInputXForm &&
+      !mpInputXForm->mpMacro) {
       if (n > 0) strncpy(chptr, ".input", n);
-      ScanXFormInstance(mixture->mpInputXForm, mask, nodeName, action, pUserData);
+      mpInputXForm->Scan(mask, nodeName, action, pUserData);
     }
   
-    if (mask & mtm_mixture && !(mask & mtm_prescan)) {
+    if (mask & MTM_MIXTURE && !(mask & MTM_PRESCAN)) {
       if (n > 0) chptr = '\0';
-      action(mt_mixture, nodeName, mixture, pUserData);
+      action(mt_mixture, nodeName, this, pUserData);
     }
   }
   
-  void ScanXFormInstance(XFormInstance *xformInstance, int mask,
-                        HMMSetNodeName nodeName, ScanAction action,
-                        void *pUserData)
+  void 
+  XFormInstance::
+  Scan(int mask, HMMSetNodeName nodeName, ScanAction action, void *pUserData)
   {
     int n = 0;
     char *chptr = NULL;
     
-    if (nodeName != NULL) {
-    n = strlen(nodeName);
-    chptr = nodeName + n;
-    n = sizeof(HMMSetNodeName) - 4 - n;
+    if (nodeName != NULL) 
+    {
+      n = strlen(nodeName);
+      chptr = nodeName + n;
+      n = sizeof(HMMSetNodeName) - 4 - n;
     }
   
-    if (mask & mtm_XFormInstance && mask & mtm_prescan) {
-      action(mt_XFormInstance, nodeName, xformInstance, pUserData);
+    if (mask & MTM_XFORM_INSTANCE && mask & MTM_PRESCAN) {
+      action(mt_XFormInstance, nodeName, this, pUserData);
     }
     
-    if (xformInstance->input != NULL) {
-      if (!xformInstance->input->mpMacro) {
+    if (mpInput != NULL) {
+      if (!mpInput->mpMacro) {
       if (n > 0) strncpy(chptr, ".input", n);
-        ScanXFormInstance(xformInstance->input, mask, nodeName, action, pUserData);
+        mpInput->Scan(mask, nodeName, action, pUserData);
       }
     }
   
-    if (mask & mtm_XForm && xformInstance->mpXForm != NULL && 
-      !xformInstance->mpXForm->mpMacro) {
+    if (mask & MTM_XFORM && mpXForm != NULL && 
+      !mpXForm->mpMacro) {
       if (n > 0) strncpy(chptr, ".mpXForm", n);
-      ScanXForm(xformInstance->mpXForm, mask, nodeName, action, pUserData);
+      mpXForm->Scan(mask, nodeName, action, pUserData);
     }
     
-    if (mask & mtm_XFormInstance && !(mask & mtm_prescan)) {
+    if (mask & MTM_XFORM_INSTANCE && !(mask & MTM_PRESCAN)) {
       if (n > 0) chptr = '\0';
-      action(mt_XFormInstance, nodeName, xformInstance, pUserData);
+      action(mt_XFormInstance, nodeName, this, pUserData);
     }
   }
   
-  void ScanXForm(XForm *xform, int mask, HMMSetNodeName nodeName,
-                ScanAction action, void *pUserData)
+  void 
+  XForm::
+  Scan(int mask, HMMSetNodeName nodeName, ScanAction action, void *pUserData)
   {
     size_t      n = 0;
     char *      chptr = NULL;
@@ -804,14 +825,14 @@ namespace STK
       n = sizeof(HMMSetNodeName) - 4 - n;
     }
   
-    if (mask & mtm_prescan) 
+    if (mask & MTM_PRESCAN) 
     {
-      action(mt_XForm, nodeName, xform, pUserData);
+      action(mt_XForm, nodeName, this, pUserData);
     }
     
-    if (xform->mXFormType == XT_COMPOSITE) 
+    if (mXFormType == XT_COMPOSITE) 
     {
-      CompositeXForm *  cxf = (CompositeXForm *) xform;
+      CompositeXForm *  cxf = dynamic_cast<CompositeXForm *> (this);
       size_t            i;
       size_t            j;
   
@@ -823,18 +844,18 @@ namespace STK
           {
             if (n > 0) 
               snprintf(chptr, n, ".part[%d,%d]", i+1, j+1);
-            ScanXForm(cxf->layer[i].block[j], mask, nodeName, action, pUserData);
+            cxf->layer[i].block[j]->Scan(mask, nodeName, action, pUserData);
           }
         }
       }
     }
   
-    if (!(mask & mtm_prescan)) 
+    if (!(mask & MTM_PRESCAN)) 
     {
       if (n > 0) 
         chptr = '\0';
         
-      action(mt_XForm, nodeName, xform, pUserData);
+      action(mt_XForm, nodeName, this, pUserData);
     }
   }
   
@@ -907,10 +928,10 @@ namespace STK
   
         //Does instance one level up contain cache for this xform
         XFormStatCache *upperLevelStats = NULL;
-        if (xfi->input != NULL) {
-          for (j=0; j < xfi->input->mNumberOfXFormStatCaches; j++) {
-            if (xfi->input->mpXFormStatCache[j].mpXForm == xform) {
-              upperLevelStats = &xfi->input->mpXFormStatCache[j];
+        if (xfi->mpInput != NULL) {
+          for (j=0; j < xfi->mpInput->mNumberOfXFormStatCaches; j++) {
+            if (xfi->mpInput->mpXFormStatCache[j].mpXForm == xform) {
+              upperLevelStats = &xfi->mpInput->mpXFormStatCache[j];
               break;
             }
           }
@@ -943,7 +964,7 @@ namespace STK
   
           xfsc->norm = 0;
           xfsc->mpXForm = xform;
-          xfsc->upperLevelStats = upperLevelStats;
+          xfsc->mpUpperLevelStats = upperLevelStats;
         }
       }
     } 
@@ -966,7 +987,7 @@ namespace STK
         
       if (mix->mpInputXForm->mNumberOfXFormStatCaches != 1 ||
         !Is1Layer1BlockLinearXForm(mix->mpInputXForm->mpXForm) ||
-        mix->mpInputXForm->mpXFormStatCache[0].upperLevelStats != NULL) 
+        mix->mpInputXForm->mpXFormStatCache[0].mpUpperLevelStats != NULL) 
       {
         mix->mpVariance->mUpdatableFromStatAccums = false;
         mix->mpMean    ->mUpdatableFromStatAccums = false;
@@ -1050,13 +1071,13 @@ namespace STK
   
     if (macro_type == mt_mean) 
     {
-      file  = &ud->meanFile;
+      file  = &ud->mMeanFile;
       xfsa  = ((Mean *)pData)->mpXFormStatAccum;
       nxfsa = ((Mean *)pData)->mNumberOfXFormStatAccums;
     } 
     else if (macro_type == mt_variance) 
     {
-      file  = &ud->covFile;
+      file  = &ud->mCovFile;
       xfsa  = ((Variance *)pData)->mpXFormStatAccum;
       nxfsa = ((Variance *)pData)->mNumberOfXFormStatAccums;
     }
@@ -1078,7 +1099,7 @@ namespace STK
   
     if (macro_type == mt_mean) 
     {
-      if (ud->binary) 
+      if (ud->mBinary) 
       {
         if (!isBigEndian()) 
           for (i = 0; i < size; i++) swapFLOAT(mean[i]);
@@ -1100,7 +1121,7 @@ namespace STK
     } 
     else 
     {
-      if (ud->binary) 
+      if (ud->mBinary) 
       {
         size = size*(size+1)/2;
         if (!isBigEndian()) for (i = 0; i < size; i++) swapFLOAT(cov[i]);
@@ -1150,13 +1171,13 @@ namespace STK
   
     if (macro_type == mt_mean) 
     {
-      file  = &ud->meanFile;
+      file  = &ud->mMeanFile;
       xfsa  = ((Mean *)pData)->mpXFormStatAccum;
       nxfsa = ((Mean *)pData)->mNumberOfXFormStatAccums;
     } 
     else if (macro_type == mt_variance) 
     {
-      file  = &ud->covFile;
+      file  = &ud->mCovFile;
       xfsa  = ((Variance *)pData)->mpXFormStatAccum;
       nxfsa = ((Variance *)pData)->mNumberOfXFormStatAccums;
     }
@@ -1184,7 +1205,7 @@ namespace STK
   
     if (macro_type == mt_mean) 
     {
-      if (ud->binary) 
+      if (ud->mBinary) 
       {
         j = fread(mean, sizeof(FLOAT), size, file->mpStatsP);
         cc |= j != size;
@@ -1200,7 +1221,7 @@ namespace STK
     } 
     else 
     {
-      if (ud->binary) 
+      if (ud->mBinary) 
       {
         size = size*(size+1)/2;
         cc |= (fread(cov, sizeof(FLOAT), size, file->mpStatsP) != size);
@@ -1254,7 +1275,7 @@ namespace STK
       (fprintf(ud->fp, "~%c \"%s\"", macro->mType, macro->mpName) < 0 ||
       fwrite(&macro->mOccurances, sizeof(macro->mOccurances), 1, ud->fp) != 1)) 
     {
-      Error("Cannot write accumulators to file: '%s'", ud->fn);
+      Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
     }
   
     if (macro_type == mt_mean || macro_type == mt_variance) 
@@ -1279,15 +1300,15 @@ namespace STK
         size   = size * 2 + 1;
       }
   
-  //    if (ud->mmi) vector += size; // Move to MMI accums, which follows ML accums
+  //    if (ud->mMmi) vector += size; // Move to MMI accums, which follows ML accums
   
       if (fwrite(vector, sizeof(FLOAT), size, ud->fp) != size ||
         fwrite(&nxfsa, sizeof(nxfsa),    1, ud->fp) != 1) 
       {
-        Error("Cannot write accumulators to file: '%s'", ud->fn);
+        Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
       }
   
-  //    if (!ud->mmi) { // MMI estimation of XForm statistics has not been implemented yet
+  //    if (!ud->mMmi) { // MMI estimation of XForm statistics has not been implemented yet
       for (i = 0; i < nxfsa; i++) 
       {
         size = xfsa[i].mpXForm->mInSize;
@@ -1298,7 +1319,7 @@ namespace STK
           fwrite(xfsa[i].mpStats, sizeof(FLOAT), size, ud->fp) != size ||
           fwrite(&xfsa[i].norm, sizeof(FLOAT),    1, ud->fp) != 1) 
         {
-          Error("Cannot write accumulators to file: '%s'", ud->fn);
+          Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
         }
       }
   //    }
@@ -1316,7 +1337,7 @@ namespace STK
             fwrite(&state->mpMixture[i].weight_accum_den,
                     sizeof(FLOAT), 1, ud->fp) != 1) 
           {
-            Error("Cannot write accumulators to file: '%s'", ud->fn);
+            Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
           }
         }
       }
@@ -1329,7 +1350,7 @@ namespace STK
   
       if (fwrite(vector, sizeof(FLOAT), size, ud->fp) != size) 
       {
-        Error("Cannot write accumulators to file: '%s'", ud->fn);
+        Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
       }
     }
   }
@@ -1479,20 +1500,20 @@ namespace STK
         size   = size * 2 + 1;
       }
   
-      if (ud->mmi) 
+      if (ud->mMmi) 
         vector += size;
   
-      if (faddfloat(vector, size, ud->weight,     ud->fp) != size ||
+      if (faddfloat(vector, size, ud->mWeight,     ud->fp) != size ||
         fread(&nxfsa_inf, sizeof(nxfsa_inf), 1, ud->fp) != 1) 
       {
-        Error("Incompatible accumulator file: '%s'", ud->fn);
+        Error("Incompatible accumulator file: '%s'", ud->mpFileName);
       }
   
-      if (!ud->mmi) { // MMI estimation of XForm statistics has not been implemented yet
+      if (!ud->mMmi) { // MMI estimation of XForm statistics has not been implemented yet
         for (i = 0; i < nxfsa_inf; i++) 
         {
           if (getc(ud->fp) != '"') 
-            Error("Incompatible accumulator file: '%s'", ud->fn);
+            Error("Incompatible accumulator file: '%s'", ud->mpFileName);
   
           for (j=0; (c=getc(ud->fp)) != EOF && c != '"' && j < sizeof(xfName)-1; j++) 
             xfName[j] = c;
@@ -1500,12 +1521,12 @@ namespace STK
           xfName[j] = '\0';
           
           if (c == EOF)
-            Error("Incompatible accumulator file: '%s'", ud->fn);
+            Error("Incompatible accumulator file: '%s'", ud->mpFileName);
   
-          macro = FindMacro(&ud->hmm_set->mXFormHash, xfName);
+          macro = FindMacro(&ud->mpModelSet->mXFormHash, xfName);
   
           if (fread(&size_inf, sizeof(int), 1, ud->fp) != 1) 
-            Error("Incompatible accumulator file: '%s'", ud->fn);
+            Error("Incompatible accumulator file: '%s'", ud->mpFileName);
   
           if (macro != NULL) 
           {
@@ -1513,17 +1534,17 @@ namespace STK
             size = (macro_type == mt_mean) ? size : size+size*(size+1)/2;
   
             if (size != size_inf)
-              Error("Incompatible accumulator file: '%s'", ud->fn);
+              Error("Incompatible accumulator file: '%s'", ud->mpFileName);
   
             for (j = 0; j < nxfsa && xfsa[j].mpXForm != macro->mpData; j++)
               ;
             
             if (j < nxfsa) 
             {
-              if (faddfloat(xfsa[j].mpStats, size, ud->weight, ud->fp) != size  ||
-                  faddfloat(&xfsa[j].norm,    1, ud->weight, ud->fp) != 1) 
+              if (faddfloat(xfsa[j].mpStats, size, ud->mWeight, ud->fp) != size  ||
+                  faddfloat(&xfsa[j].norm,    1, ud->mWeight, ud->fp) != 1) 
               {
-                Error("Invalid accumulator file: '%s'", ud->fn);
+                Error("Invalid accumulator file: '%s'", ud->mpFileName);
               }
             } 
             else 
@@ -1546,20 +1567,20 @@ namespace STK
       if (state->mOutPdfKind == KID_DiagC) {
         FLOAT junk;
         for (i = 0; i < state->mNumberOfMixtures; i++) {
-          if (ud->mmi == 1) {
-            if (faddfloat(&state->mpMixture[i].weight_accum_den, 1, ud->weight, ud->fp) != 1 ||
-              faddfloat(&junk,                               1, ud->weight, ud->fp) != 1) {
-              Error("Incompatible accumulator file: '%s'", ud->fn);
+          if (ud->mMmi == 1) {
+            if (faddfloat(&state->mpMixture[i].weight_accum_den, 1, ud->mWeight, ud->fp) != 1 ||
+              faddfloat(&junk,                               1, ud->mWeight, ud->fp) != 1) {
+              Error("Incompatible accumulator file: '%s'", ud->mpFileName);
             }
-          } else if (ud->mmi == 2) {
-            if (faddfloat(&junk,                               1, ud->weight, ud->fp) != 1 ||
-              faddfloat(&state->mpMixture[i].weight_accum_den, 1, ud->weight, ud->fp) != 1) {
-              Error("Incompatible accumulator file: '%s'", ud->fn);
+          } else if (ud->mMmi == 2) {
+            if (faddfloat(&junk,                               1, ud->mWeight, ud->fp) != 1 ||
+              faddfloat(&state->mpMixture[i].weight_accum_den, 1, ud->mWeight, ud->fp) != 1) {
+              Error("Incompatible accumulator file: '%s'", ud->mpFileName);
             }
           } else {
-            if (faddfloat(&state->mpMixture[i].weight_accum,     1, ud->weight, ud->fp) != 1 ||
-              faddfloat(&state->mpMixture[i].weight_accum_den, 1, ud->weight, ud->fp) != 1) {
-              Error("Incompatible accumulator file: '%s'", ud->fn);
+            if (faddfloat(&state->mpMixture[i].weight_accum,     1, ud->mWeight, ud->fp) != 1 ||
+              faddfloat(&state->mpMixture[i].weight_accum_den, 1, ud->mWeight, ud->fp) != 1) {
+              Error("Incompatible accumulator file: '%s'", ud->mpFileName);
             }
           }
         }
@@ -1571,10 +1592,10 @@ namespace STK
   
       for (i = 0; i < size; i++) {
         if (fread(&f, sizeof(FLOAT), 1, ud->fp) != 1) {
-        Error("Incompatible accumulator file: '%s'", ud->fn);
+        Error("Incompatible accumulator file: '%s'", ud->mpFileName);
         }
-        if (!ud->mmi) { // MMI estimation of transition probabilities has not been implemented yet
-          f += log(ud->weight);
+        if (!ud->mMmi) { // MMI estimation of transition probabilities has not been implemented yet
+          f += log(ud->mWeight);
           LOG_INC(vector[i], f);
         }
       }
@@ -2067,7 +2088,7 @@ namespace STK
   
             if (!mpMixture[i].estimates->mpMacro) 
             {
-              ScanMixture(mpMixture[i].estimates,mtm_all,NULL,ReleaseItem,NULL);
+              mpMixture[i].estimates->Scan(MTM_ALL,NULL,ReleaseItem,NULL);
             }
   
             mpMixture[i--] = mpMixture[--mNumberOfMixtures];
@@ -2104,8 +2125,8 @@ namespace STK
   
     this->time = time;
   
-    if (this->input) {
-      in_vec = this->input->XFormPass(in_vec, time, dir);
+    if (this->mpInput) {
+      in_vec = this->mpInput->XFormPass(in_vec, time, dir);
     }
   
     mpXForm->Evaluate(in_vec,this->out_vec,memory,dir);
@@ -2497,7 +2518,7 @@ namespace STK
   {
     size_t i;  
     
-    ScanHMMSet(this, mtm_revpass | mtm_all, NULL, ReleaseItem, NULL);
+    Scan(MTM_REVERSE_PASS | MTM_ALL, NULL, ReleaseItem, NULL);
   
     ReleaseMacroHash(&mHmmHash);
     ReleaseMacroHash(&mStateHash);
@@ -2538,11 +2559,11 @@ namespace STK
     long                      occurances;
     ReadAccumUserData         ud;
     Macro *                   macro;
-    int                       mtm = mtm_prescan | 
-                                    mtm_state | 
-                                    mtm_mean | 
-                                    mtm_variance | 
-                                    mtm_transition;
+    int                       mtm = MTM_PRESCAN | 
+                                    MTM_STATE | 
+                                    MTM_MEAN | 
+                                    MTM_VARIANCE | 
+                                    MTM_TRANSITION;
   
     macro_name[sizeof(macro_name)-1] = '\0';
   
@@ -2565,11 +2586,11 @@ namespace STK
     *totFrames  *= weight;
     *totLogLike *= weight;
   
-    strcpy(ud.fn, rFileName.c_str());
+    strcpy(ud.mpFileName, rFileName.c_str());
     ud.fp      = fp;
-    ud.hmm_set = this;
-    ud.weight  = weight;
-    ud.mmi     = mmiDenominatorAccums;
+    ud.mpModelSet = this;
+    ud.mWeight  = weight;
+    ud.mMmi     = mmiDenominatorAccums;
   
     for (;;) 
     {
@@ -2636,9 +2657,9 @@ namespace STK
   
       switch (t) 
       {
-        case 'h': ScanHMM((Hmm *)macro->mpData, mtm, NULL, ReadAccum, &ud);    break;
-        case 's': ScanState((State *)macro->mpData, mtm, NULL, ReadAccum, &ud);break;
-        case 'm': ScanMixture((Mixture *)macro->mpData,mtm,NULL,ReadAccum,&ud);break;
+        case 'h': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
+        case 's': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
+        case 'm': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
         case 'u': ReadAccum(mt_mean, NULL, macro->mpData, &ud);                break;
         case 'v': ReadAccum(mt_variance, NULL, macro->mpData, &ud);            break;
         case 't': ReadAccum(mt_transition, NULL, macro->mpData, &ud);          break;
@@ -2647,7 +2668,7 @@ namespace STK
     }
     
     in.close();
-    free(ud.fn);    
+    free(ud.mpFileName);    
   }; // ReadAccums(...)
 
   //**************************************************************************  
@@ -2676,10 +2697,10 @@ namespace STK
     }
   
     ud.fp  = fp;
-    ud.fn  = file_name;
-  //  ud.mmi = MMI_denominator_accums;
+    ud.mpFileName  = file_name;
+  //  ud.mMmi = MMI_denominator_accums;
   
-    ScanHMMSet(this, mtm_prescan | (mtm_all & ~(mtm_XFormInstance|mtm_XForm)),
+    Scan(MTM_PRESCAN | (MTM_ALL & ~(MTM_XFORM_INSTANCE|MTM_XFORM)),
               NULL, WriteAccum, &ud);
   
     fclose(fp);
@@ -2691,7 +2712,7 @@ namespace STK
   ModelSet::
   NormalizeAccums()
   {
-    ScanHMMSet(this, mtm_all & ~(mtm_XFormInstance|mtm_XForm), NULL,
+    Scan(MTM_ALL & ~(MTM_XFORM_INSTANCE|MTM_XFORM), NULL,
                NormalizeAccum, NULL);
   }; // NormalizeAccums
   
@@ -2701,7 +2722,7 @@ namespace STK
   ModelSet::
   ResetAccums()
   {
-    ScanHMMSet(this, mtm_state | mtm_mean | mtm_variance | mtm_transition,
+    Scan(MTM_STATE | MTM_MEAN | MTM_VARIANCE | MTM_TRANSITION,
              NULL, ResetAccum, NULL);
   }; // ResetAccums()
   
@@ -2763,7 +2784,7 @@ namespace STK
   ComputeGlobalStats(FLOAT *observation, int time)
   {
     GlobalStatsUserData ud = {observation, time};
-    ScanHMMSet(this, mtm_state | mtm_mixture, NULL, GlobalStats, &ud);
+    Scan(MTM_STATE | MTM_MIXTURE, NULL, GlobalStats, &ud);
   }; // ComputeGlobalStats(...)
   
   
@@ -3529,7 +3550,7 @@ namespace STK
     ret->mOutSize = out_vec_size;
     ret->next = mpXFormInstances;
     mpXFormInstances = ret;
-    ret->input = input;
+    ret->mpInput = input;
     ret->mpMacro = macro;
   //  puts("ReadXFormInstance exit");
   
@@ -3999,22 +4020,18 @@ namespace STK
           // item must be replaced and old item must be released
   
           ReplaceItemUserData ud;
-          ud.old_data = macro->mpData;
-          ud.new_data = inputXForm;
+          ud.mpOldData = macro->mpData;
+          ud.mpNewData = inputXForm;
           ud.mType     = 'j';
   
-          ScanHMMSet(this, mtm_XFormInstance|mtm_mixture,NULL,ReplaceItem, &ud);
-          ScanXFormInstance(static_cast<XFormInstance*>(ud.old_data),
-                      mtm_revpass|mtm_all,
-          NULL,
-          ReleaseItem,
-          NULL);
+          this->Scan(MTM_XFORM_INSTANCE|MTM_MIXTURE,NULL,ReplaceItem, &ud);
+          ud.mpOldData->Scan(MTM_REVERSE_PASS|MTM_ALL, NULL, ReleaseItem, NULL);
   
           for (unsigned int i = 0; i < mXFormInstanceHash.nentries; i++) 
           {
-            if (mXFormInstanceHash.entry[i]->data == ud.old_data) 
+            if (mXFormInstanceHash.entry[i]->data == ud.mpOldData) 
             {
-              mXFormInstanceHash.entry[i]->data = ud.new_data;
+              mXFormInstanceHash.entry[i]->data = ud.mpNewData;
             }
           }
         } 
@@ -4137,54 +4154,55 @@ namespace STK
             unsigned int i;
             struct my_hsearch_data *hash = NULL;
             ReplaceItemUserData ud;
-            ud.old_data = macro->mpData;
-            ud.new_data = data;
+            ud.mpOldData = macro->mpData;
+            ud.mpNewData = data;
             ud.mType     = type;
   
             switch (type) {
             case 'h':
-              ScanHMM((Hmm*) ud.old_data, mtm_revpass | mtm_all, NULL,ReleaseItem,NULL);
+              ud.mpOldData->Scan(MTM_REVERSE_PASS | MTM_ALL, NULL,ReleaseItem,NULL);
               hash = &mHmmHash;
               break;
             case 's':
-              ScanHMMSet(this, mtm_hmm, NULL,ReplaceItem, &ud);
-              ScanState((State*) ud.old_data, mtm_revpass | mtm_all, NULL,ReleaseItem,NULL);
+              this->Scan(MTM_HMM, NULL,ReplaceItem, &ud);
+              ud.mpOldData->Scan(MTM_REVERSE_PASS | MTM_ALL, NULL,ReleaseItem,NULL);
               hash = &mStateHash;
               break;
             case 'm':
-              ScanHMMSet(this, mtm_state, NULL,ReplaceItem, &ud);
-              ScanMixture((Mixture*) ud.old_data, mtm_revpass | mtm_all, NULL,ReleaseItem,NULL);
+              this->Scan(MTM_STATE, NULL,ReplaceItem, &ud);
+              ud.mpOldData->Scan(MTM_REVERSE_PASS | MTM_ALL, NULL,ReleaseItem,NULL);
               hash = &mMixtureHash;
               break;
             case 'u':
-              ScanHMMSet(this, mtm_mixture, NULL,ReplaceItem, &ud);
-              free(ud.old_data);
+              this->Scan(MTM_MIXTURE, NULL,ReplaceItem, &ud);
+              free(ud.mpOldData);
               hash = &mMeanHash;
               break;
             case 'v':
-              ScanHMMSet(this, mtm_mixture, NULL,ReplaceItem, &ud);
-              free(ud.old_data);
+              this->Scan(MTM_MIXTURE, NULL,ReplaceItem, &ud);
+              free(ud.mpOldData);
               hash = &mVarianceHash;
               break;
             case 't':
-              ScanHMMSet(this, mtm_hmm, NULL,ReplaceItem, &ud);
-              free(ud.old_data);
+              this->Scan(MTM_HMM, NULL,ReplaceItem, &ud);
+              free(ud.mpOldData);
               hash = &mTransitionHash;
               break;
             case 'j':
-              ScanHMMSet(this, mtm_XFormInstance | mtm_mixture,NULL,ReplaceItem, &ud);
-              ScanXFormInstance((XFormInstance*) ud.old_data,mtm_revpass|mtm_all,NULL,ReleaseItem,NULL);
+              this->Scan(MTM_XFORM_INSTANCE | MTM_MIXTURE, NULL, ReplaceItem, &ud);
+              ud.mpOldData->Scan(MTM_REVERSE_PASS|MTM_ALL, NULL, ReleaseItem, NULL);
               hash = &mXFormInstanceHash;
               break;
             case 'x':
-              ScanHMMSet(this, mtm_XForm | mtm_XFormInstance,NULL,ReplaceItem, &ud);
-              ScanXForm((XForm*) ud.old_data, mtm_revpass | mtm_all, NULL,ReleaseItem,NULL);
+              this->Scan(MTM_XFORM | MTM_XFORM_INSTANCE,NULL,ReplaceItem, &ud);
+              ud.mpOldData->Scan(MTM_REVERSE_PASS | MTM_ALL, NULL,ReleaseItem,NULL);
               hash = &mXFormHash;
               break;
             }
+            
             for (i = 0; i < hash->nentries; i++) {
-              if (hash->entry[i]->data == ud.old_data) {
-                hash->entry[i]->data = ud.new_data;
+              if (hash->entry[i]->data == ud.mpOldData) {
+                hash->entry[i]->data = ud.mpNewData;
               }
             }
           }
@@ -4361,7 +4379,7 @@ namespace STK
   
     CompositeXForm *cxf = (CompositeXForm *) xformInstance->mpXForm;
     
-    if (xformInstance->input != NULL || cxf == NULL || cxf->mpMacro ||
+    if (xformInstance->mpInput != NULL || cxf == NULL || cxf->mpMacro ||
       cxf->mXFormType != XT_COMPOSITE || cxf->mNLayers != 1) 
     {
       isHTKCompatible = 0;
@@ -4378,19 +4396,19 @@ namespace STK
       }
     }
   
-    if (xformInstance->input != NULL) 
+    if (xformInstance->mpInput != NULL) 
     {
       PutKwd(fp, binary, KID_Input);
       PutNLn(fp, binary);
   
-      if (xformInstance->input->mpMacro) 
+      if (xformInstance->mpInput->mpMacro) 
       {
-        fprintf(fp, "~j \"%s\"", xformInstance->input->mpMacro->mpName);
+        fprintf(fp, "~j \"%s\"", xformInstance->mpInput->mpMacro->mpName);
         PutNLn(fp, binary);
       } 
       else 
       {
-        WriteXFormInstance(fp, binary, xformInstance->input);
+        WriteXFormInstance(fp, binary, xformInstance->mpInput);
       }
     }
   
@@ -4636,8 +4654,8 @@ void WriteStackingXForm( FILE *fp, bool binary, ModelSet *hmm_set,  StackingXFor
   AllocateAccumulatorsForXFormStats() 
   {
     mAllMixuresUpdatableFromStatAccums = true;
-    ScanHMMSet(this, mtm_XFormInstance | mtm_mixture, NULL,
-               AllocateXFormStatCachesAndAccums, this);
+    Scan(MTM_XFORM_INSTANCE | MTM_MIXTURE, NULL,
+         AllocateXFormStatCachesAndAccums, this);
   }
 
 
@@ -4667,7 +4685,7 @@ void WriteStackingXForm( FILE *fp, bool binary, ModelSet *hmm_set,  StackingXFor
     } header = {sizeof(FLOAT) == sizeof(float)  ? PRECISION_FLOAT  :
                 sizeof(FLOAT) == sizeof(double) ? PRECISION_DOUBLE :
                                                   PRECISION_UNKNOWN};
-    userData.binary = binary;
+    userData.mBinary = binary;
     for (k = 0; k < mNumberOfXFormsToUpdate; k++) 
     {
       char *    ext;
@@ -4679,22 +4697,22 @@ void WriteStackingXForm( FILE *fp, bool binary, ModelSet *hmm_set,  StackingXFor
       MakeFileName(fileName, userData.mpXForm->mpMacro->mpName, rOutDir.c_str(), NULL);
       ext = fileName + strlen(fileName);
       
-      strcpy(ext, ".xms"); userData.meanFile.mpStatsN = strdup(fileName);
-      strcpy(ext, ".xmo"); userData.meanFile.mpOccupN = strdup(fileName);
-      strcpy(ext, ".xcs"); userData.covFile.mpStatsN = strdup(fileName);
-      strcpy(ext, ".xco"); userData.covFile.mpOccupN = strdup(fileName);
+      strcpy(ext, ".xms"); userData.mMeanFile.mpStatsN = strdup(fileName);
+      strcpy(ext, ".xmo"); userData.mMeanFile.mpOccupN = strdup(fileName);
+      strcpy(ext, ".xcs"); userData.mCovFile.mpStatsN = strdup(fileName);
+      strcpy(ext, ".xco"); userData.mCovFile.mpOccupN = strdup(fileName);
   
-      if (userData.meanFile.mpStatsN == NULL || userData.meanFile.mpOccupN == NULL||
-        userData.covFile.mpStatsN  == NULL || userData.covFile.mpOccupN  == NULL) 
+      if (userData.mMeanFile.mpStatsN == NULL || userData.mMeanFile.mpOccupN == NULL||
+        userData.mCovFile.mpStatsN  == NULL || userData.mCovFile.mpOccupN  == NULL) 
       {
         Error("Insufficient memory");
       }
   
-      userData.meanFile.mpStatsP = fopen(userData.meanFile.mpStatsN, binary?"w":"wt");
-      if (userData.meanFile.mpStatsP == NULL) 
+      userData.mMeanFile.mpStatsP = fopen(userData.mMeanFile.mpStatsN, binary?"w":"wt");
+      if (userData.mMeanFile.mpStatsP == NULL) 
       {
         Error("Cannot open output file %s",
-              userData.meanFile.mpStatsN);
+              userData.mMeanFile.mpStatsN);
       }
   
       if (binary) 
@@ -4705,22 +4723,22 @@ void WriteStackingXForm( FILE *fp, bool binary, ModelSet *hmm_set,  StackingXFor
         if (!isBigEndian()) 
           swap2(header.size);
         
-        if (fwrite(&header, sizeof(header), 1, userData.meanFile.mpStatsP) != 1) 
+        if (fwrite(&header, sizeof(header), 1, userData.mMeanFile.mpStatsP) != 1) 
         {
-          Error("Cannot write to file: %s", userData.meanFile.mpStatsN);
+          Error("Cannot write to file: %s", userData.mMeanFile.mpStatsN);
         }
       }
   
-      userData.meanFile.mpOccupP = fopen(userData.meanFile.mpOccupN, "wt");
-      if (userData.meanFile.mpOccupP == NULL) 
+      userData.mMeanFile.mpOccupP = fopen(userData.mMeanFile.mpOccupN, "wt");
+      if (userData.mMeanFile.mpOccupP == NULL) 
       {
-        Error("Cannot open output file %s", userData.meanFile.mpOccupN);
+        Error("Cannot open output file %s", userData.mMeanFile.mpOccupN);
       }
   
-      userData.covFile.mpStatsP = fopen(userData.covFile.mpStatsN, binary?"w":"wt");
-      if (userData.covFile.mpStatsP == NULL) 
+      userData.mCovFile.mpStatsP = fopen(userData.mCovFile.mpStatsN, binary?"w":"wt");
+      if (userData.mCovFile.mpStatsP == NULL) 
       {
-        Error("Cannot open output file %s", userData.covFile.mpStatsN);
+        Error("Cannot open output file %s", userData.mCovFile.mpStatsN);
       }
   
       if (binary) 
@@ -4730,27 +4748,27 @@ void WriteStackingXForm( FILE *fp, bool binary, ModelSet *hmm_set,  StackingXFor
         if (!isBigEndian()) 
           swap2(header.size);
         
-        if (fwrite(&header, sizeof(header), 1, userData.covFile.mpStatsP) != 1) 
+        if (fwrite(&header, sizeof(header), 1, userData.mCovFile.mpStatsP) != 1) 
         {
           Error("Cannot write to file: %s",
-                userData.covFile.mpStatsN);
+                userData.mCovFile.mpStatsN);
         }
       }
   
-      userData.covFile.mpOccupP = fopen(userData.covFile.mpOccupN, "wt");
-      if (userData.covFile.mpOccupP == NULL) 
+      userData.mCovFile.mpOccupP = fopen(userData.mCovFile.mpOccupN, "wt");
+      if (userData.mCovFile.mpOccupP == NULL) 
       {
-        Error("Cannot open output file %s", userData.covFile.mpOccupN);
+        Error("Cannot open output file %s", userData.mCovFile.mpOccupN);
       }
   
-      ScanHMMSet(this, mtm_mean | mtm_variance, nodeNameBuffer,
-                WriteStatsForXForm, &userData);
+      Scan(MTM_MEAN | MTM_VARIANCE, nodeNameBuffer,
+           WriteStatsForXForm, &userData);
   
   
-      fclose(userData.meanFile.mpStatsP); fclose(userData.meanFile.mpOccupP);
-      fclose(userData.covFile.mpStatsP);  fclose(userData.covFile.mpOccupP);
-      free(userData.meanFile.mpStatsN);   free(userData.meanFile.mpOccupN);
-      free(userData.covFile.mpStatsN);    free(userData.covFile.mpOccupN);
+      fclose(userData.mMeanFile.mpStatsP); fclose(userData.mMeanFile.mpOccupP);
+      fclose(userData.mCovFile.mpStatsP);  fclose(userData.mCovFile.mpOccupP);
+      free(userData.mMeanFile.mpStatsN);   free(userData.mMeanFile.mpOccupN);
+      free(userData.mCovFile.mpStatsN);    free(userData.mCovFile.mpOccupN);
   
       strcpy(ext, ".xfm");
       if ((fp = fopen(fileName, "wt")) == NULL) 
@@ -4791,13 +4809,14 @@ void WriteStackingXForm( FILE *fp, bool binary, ModelSet *hmm_set,  StackingXFor
     size_t                        k;
     FILE *                        fp;
   
-    struct XfStatsHeader {
+    struct XfStatsHeader 
+    {
       char    precision;
       char    stats_type;
       short   size;
     } header;
   
-    userData.binary = binary;
+    userData.mBinary = binary;
     
     for (k = 0; k < mNumberOfXFormsToUpdate; k++) 
     {
@@ -4807,86 +4826,86 @@ void WriteStackingXForm( FILE *fp, bool binary, ModelSet *hmm_set,  StackingXFor
   
       MakeFileName(fileName, userData.mpXForm->mpMacro->mpName, rOutDir.c_str(), NULL);
       ext = fileName + strlen(fileName);
-      strcpy(ext, ".xms"); userData.meanFile.mpStatsN = strdup(fileName);
-      strcpy(ext, ".xmo"); userData.meanFile.mpOccupN = strdup(fileName);
-      strcpy(ext, ".xcs"); userData.covFile.mpStatsN = strdup(fileName);
-      strcpy(ext, ".xco"); userData.covFile.mpOccupN = strdup(fileName);
+      strcpy(ext, ".xms"); userData.mMeanFile.mpStatsN = strdup(fileName);
+      strcpy(ext, ".xmo"); userData.mMeanFile.mpOccupN = strdup(fileName);
+      strcpy(ext, ".xcs"); userData.mCovFile.mpStatsN = strdup(fileName);
+      strcpy(ext, ".xco"); userData.mCovFile.mpOccupN = strdup(fileName);
   
-      if (userData.meanFile.mpStatsN == NULL || userData.meanFile.mpOccupN == NULL||
-        userData.covFile.mpStatsN  == NULL || userData.covFile.mpOccupN  == NULL) 
+      if (userData.mMeanFile.mpStatsN == NULL || userData.mMeanFile.mpOccupN == NULL||
+        userData.mCovFile.mpStatsN  == NULL || userData.mCovFile.mpOccupN  == NULL) 
       {
         Error("Insufficient memory");
       }
   
-      userData.meanFile.mpStatsP = fopen(userData.meanFile.mpStatsN, "r");
+      userData.mMeanFile.mpStatsP = fopen(userData.mMeanFile.mpStatsN, "r");
       
-      if (userData.meanFile.mpStatsP == NULL) 
+      if (userData.mMeanFile.mpStatsP == NULL) 
       {
-        Error("Cannot open input file '%s'", userData.meanFile.mpStatsN);
+        Error("Cannot open input file '%s'", userData.mMeanFile.mpStatsN);
       }
   
       if (binary) 
       {
         header.precision = -1;
-        fread(&header, sizeof(header), 1, userData.meanFile.mpStatsP);
+        fread(&header, sizeof(header), 1, userData.mMeanFile.mpStatsP);
         
         if (!isBigEndian()) 
           swap2(header.size);
         
-        if (ferror(userData.meanFile.mpStatsP))
+        if (ferror(userData.mMeanFile.mpStatsP))
         {
-          Error("Cannot read input file '%s'", userData.meanFile.mpStatsN);
+          Error("Cannot read input file '%s'", userData.mMeanFile.mpStatsN);
         }        
         else if (header.stats_type != STATS_MEAN
               || header.size       != userData.mpXForm->mInSize
               || header.precision  != (sizeof(FLOAT) == sizeof(float)
                                       ? PRECISION_FLOAT : PRECISION_DOUBLE)) 
         {
-          Error("Invalid header in file '%s'", userData.meanFile.mpStatsN);
+          Error("Invalid header in file '%s'", userData.mMeanFile.mpStatsN);
         }
       }
   
-      userData.meanFile.mpOccupP = fopen(userData.meanFile.mpOccupN, "r");
+      userData.mMeanFile.mpOccupP = fopen(userData.mMeanFile.mpOccupN, "r");
       
-      if (userData.meanFile.mpOccupP == NULL) 
+      if (userData.mMeanFile.mpOccupP == NULL) 
       {
-        Error("Cannot open input file '%s'", userData.meanFile.mpOccupN);
+        Error("Cannot open input file '%s'", userData.mMeanFile.mpOccupN);
       }
   
-      userData.covFile.mpStatsP = fopen(userData.covFile.mpStatsN, "r");
-      if (userData.covFile.mpStatsP == NULL) 
+      userData.mCovFile.mpStatsP = fopen(userData.mCovFile.mpStatsN, "r");
+      if (userData.mCovFile.mpStatsP == NULL) 
       {
-        Error("Cannot open input file '%s'", userData.covFile.mpStatsN);
+        Error("Cannot open input file '%s'", userData.mCovFile.mpStatsN);
       }
   
       if (binary) 
       {
         header.precision = -1;
-        fread(&header, sizeof(header), 1, userData.covFile.mpStatsP);
+        fread(&header, sizeof(header), 1, userData.mCovFile.mpStatsP);
         if (!isBigEndian()) swap2(header.size);
-        if (ferror(userData.covFile.mpStatsP)) {
-          Error("Cannot read input file '%s'", userData.covFile.mpStatsN);
+        if (ferror(userData.mCovFile.mpStatsP)) {
+          Error("Cannot read input file '%s'", userData.mCovFile.mpStatsN);
         } else if (header.stats_type != STATS_COV_LOW_TRI
               || header.size       != userData.mpXForm->mInSize
               || header.precision  != (sizeof(FLOAT) == sizeof(float)
                                       ? PRECISION_FLOAT : PRECISION_DOUBLE)) {
-          Error("Invalid header in file '%s'", userData.covFile.mpStatsN);
+          Error("Invalid header in file '%s'", userData.mCovFile.mpStatsN);
         }
       }
   
-      userData.covFile.mpOccupP = fopen(userData.covFile.mpOccupN, "r");
-      if (userData.covFile.mpOccupP == NULL) {
-        Error("Cannot open output file '%s'", userData.covFile.mpOccupN);
+      userData.mCovFile.mpOccupP = fopen(userData.mCovFile.mpOccupN, "r");
+      if (userData.mCovFile.mpOccupP == NULL) {
+        Error("Cannot open output file '%s'", userData.mCovFile.mpOccupN);
       }
   
-      ScanHMMSet(this, mtm_mean | mtm_variance, nodeNameBuffer,
-                ReadStatsForXForm, &userData);
+      Scan(MTM_MEAN | MTM_VARIANCE, nodeNameBuffer,
+           ReadStatsForXForm, &userData);
   
   
-      fclose(userData.meanFile.mpStatsP); fclose(userData.meanFile.mpOccupP);
-      fclose(userData.covFile.mpStatsP);  fclose(userData.covFile.mpOccupP);
-      free(userData.meanFile.mpStatsN);   free(userData.meanFile.mpOccupN);
-      free(userData.covFile.mpStatsN);    free(userData.covFile.mpOccupN);
+      fclose(userData.mMeanFile.mpStatsP); fclose(userData.mMeanFile.mpOccupP);
+      fclose(userData.mCovFile.mpStatsP);  fclose(userData.mCovFile.mpOccupP);
+      free(userData.mMeanFile.mpStatsN);   free(userData.mMeanFile.mpOccupN);
+      free(userData.mCovFile.mpStatsN);    free(userData.mCovFile.mpOccupN);
   
   
       strcpy(ext, ".xfm");

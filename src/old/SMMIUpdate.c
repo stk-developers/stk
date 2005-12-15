@@ -373,7 +373,7 @@ int main(int argc, char *argv[]) {
     }
 
   // Required by WriteXFormStatsAndRunCommands and UpdateHMMSetFromAccums
-  ScanHMMSet(&hset, mtm_mean|mtm_variance, NULL, NormalizeStatsForXForm, 0);
+  ScanHMMSet(&hset, MTM_MEAN|MTM_VARIANCE, NULL, NormalizeStatsForXForm, 0);
 
   if (hset.updateMask & UM_XFSTATS) {
     WriteXFormStatsAndRunCommands(out_hmm_dir, stats_binary, &hset);

@@ -26,6 +26,7 @@
 #include <assert.h>
 
 #define SIGNIFICANT_PROB_DIFFERENCE (0.01)
+using namespace STK;
 
 void usage(char *progname)
 {
@@ -163,7 +164,7 @@ int main(int argc, char *argv[]) {
   in_lbl_fmt.right_extent =  100 * (long long) (0.5 + 1e5 *
                  GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0));
   label_filter = GetParamStr(&cfgHash, SNAME":HLABELFILTER",    NULL);
-  filter_wldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
+  gpFilterWldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
   script_filter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",   NULL);
   net_filter   = GetParamStr(&cfgHash, SNAME":HNETFILTER",      NULL);
   dict_filter  = GetParamStr(&cfgHash, SNAME":HDICTFILTER",     NULL);

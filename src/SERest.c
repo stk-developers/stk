@@ -21,11 +21,14 @@
 #include "STKLib/Models.h"
 #include "STKLib/viterbi.h"
 #include "STKLib/labels.h"
+#include "STKLib/stkstream.h"
 #ifndef WIN32
 #include <unistd.h>
 #else
 #include "getopt.h"
 #endif
+
+using namespace STK;
 
 void usage(char *progname)
 {
@@ -275,7 +278,7 @@ int main(int argc, char *argv[]) {
                  GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0));
   swap_features_alig =
   swap_features=!GetParamBool(&cfgHash,SNAME":NATURALREADORDER",isBigEndian());
-  filter_wldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
+  gpFilterWldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
   script_filter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",   NULL);
   gpHListFilter = GetParamStr(&cfgHash, SNAME":HMMLISTFILTER",   NULL);
   MMF_filter   = GetParamStr(&cfgHash, SNAME":HMMDEFFILTER",    NULL);
@@ -733,7 +736,7 @@ int main(int argc, char *argv[]) {
     }
     
     // Required by WriteXFormStatsAndRunCommands and UpdateHMMSetFromAccums
-    ScanHMMSet(&hset, mtm_mean|mtm_variance, NULL, NormalizeStatsForXForm, 0);
+    hset.Scan(MTM_MEAN|MTM_VARIANCE, NULL, NormalizeStatsForXForm, 0);
 
     if (hset.mUpdateMask & UM_XFSTATS) {
       hset.WriteXFormStatsAndRunCommands(trg_hmm_dir, xfStatsBin);

@@ -26,6 +26,9 @@
 #include "getopt.h"
 #endif
 
+using namespace STK;
+
+
 void usage(char *progname)
 {
   char *tchrptr;
@@ -120,7 +123,7 @@ int main(int argc, char *argv[]) {
   inputName    = GetParamStr(&cfgHash, SNAME":SOURCEINPUT",     NULL);
   swap_features=!GetParamBool(&cfgHash,SNAME":NATURALREADORDER", isBigEndian());
   swap_fea_out =!GetParamBool(&cfgHash,SNAME":NATURALWRITEORDER",isBigEndian());
-  filter_wldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
+  gpFilterWldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
   script_filter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",   NULL);
   parm_filter  = GetParamStr(&cfgHash, SNAME":HPARMFILTER",     NULL);
   gpHListFilter = GetParamStr(&cfgHash, SNAME":HMMLISTFILTER",   NULL);

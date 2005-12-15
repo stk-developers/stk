@@ -17,6 +17,7 @@
 #include "STKLib/fileio.h"
 #include "STKLib/labels.h"
 #include "STKLib/common.h"
+//#include "STKLib/stkstream.h"
 #include <stdlib.h>
 #include <string.h>
 #include <cstdio>
@@ -26,6 +27,9 @@
 #else
 #include "getopt.h"
 #endif
+
+using namespace STK;
+
 
 void usage(char *progname)
 {
@@ -236,7 +240,7 @@ int main(int argc, char *argv[])
                  GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0));
   baum_welch   = GetParamBool(&cfgHash,SNAME":EVALUATION",      FALSE);
   swap_features=!GetParamBool(&cfgHash,SNAME":NATURALREADORDER",isBigEndian());
-  filter_wldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
+  gpFilterWldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
   script_filter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",   NULL);
   parm_filter  = GetParamStr(&cfgHash, SNAME":HPARMFILTER",     NULL);
   gpHListFilter = GetParamStr(&cfgHash, SNAME":HMMLISTFILTER",   NULL);

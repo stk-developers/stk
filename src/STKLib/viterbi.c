@@ -2069,28 +2069,28 @@ void UpdateXFormInstanceStatCaches(XFormInstance *xformInstance,
 
   if (xformInstance->mNumberOfXFormStatCaches == 0) return;
 
-  if (xformInstance->input) {
-    UpdateXFormInstanceStatCaches(xformInstance->input, observation, time);
+  if (xformInstance->mpInput) {
+    UpdateXFormInstanceStatCaches(xformInstance->mpInput, observation, time);
   }
 
   for (i = 0; i < xformInstance->mNumberOfXFormStatCaches; i++) {
     XFormStatCache *xfsc = &xformInstance->mpXFormStatCache[i];
 
-    if (xfsc->upperLevelStats != NULL &&
-       xfsc->upperLevelStats->mpStats == xfsc->mpStats) { //just link to upper level?
-       xfsc->norm = xfsc->upperLevelStats->norm;
+    if (xfsc->mpUpperLevelStats != NULL &&
+       xfsc->mpUpperLevelStats->mpStats == xfsc->mpStats) { //just link to upper level?
+       xfsc->norm = xfsc->mpUpperLevelStats->norm;
       continue;
     }
 
-    obs = XFormPass(xformInstance->input, observation, time, FORWARD);
+    obs = XFormPass(xformInstance->mpInput, observation, time, FORWARD);
     xfsc->norm = 0;
     UpdateXFormStatCache(xfsc, xformInstance->mpXForm, obs);
-    if (xfsc->upperLevelStats != NULL) {
+    if (xfsc->mpUpperLevelStats != NULL) {
       int size = xfsc->mpXForm->mInSize;
       for (j = 0; j < size + size*(size+1)/2; j++) {
-        xfsc->mpStats[j] += xfsc->upperLevelStats->mpStats[j];
+        xfsc->mpStats[j] += xfsc->mpUpperLevelStats->mpStats[j];
       }
-      xfsc->norm += xfsc->upperLevelStats->norm;
+      xfsc->norm += xfsc->mpUpperLevelStats->norm;
     }
   }
 }

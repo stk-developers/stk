@@ -27,6 +27,9 @@
 #include <malloc.h>
 #include <assert.h>
 
+using namespace STK;
+
+
 void usage(char *progname)
 {
   char *tchrptr;

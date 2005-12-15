@@ -21,6 +21,9 @@
 #include "STKLib/Models.h"
 #include "STKLib/viterbi.h"
 
+using namespace STK;
+
+
 void usage(char *progname)
 {
   char *tchrptr;

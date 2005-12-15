@@ -1,10 +1,11 @@
 CFLAGS = -I/usr/X11R6/include -Wall -g -DDOUBLEPRECISION=0
+CXXFLAGS = $(CFLAGS)
 # -DEXPANDNET_ONLY
 XFLAGS = -DMOTIF -L/usr/X11R6/lib -lXm -lXt -lX11 -lXpm
 #LDFLAGS = -a -g -pg
 #ICCFLAGS = -O2 -tpp6 -axiMK -xiMK -parallel
 CC  = g++
-
+CXX = g++
 
 ###############################################################################
 # tools summary (for make all)
@@ -23,11 +24,6 @@ LIBHMMS = STKLib/Models.o
 BASELIBS =  STKLib/common.o \
             STKLib/Error.o \
             STKLib/filmatch.o
-            
-            
-            
-
-            
             
 ###############################################################################
 # implicit "make all" rule             
@@ -52,6 +48,8 @@ SERestX :  SERest.o $(BASELIBS) $(LIBHMMS) STKLib/viterbi.c STKLib/labels.o STKL
 ###############################################################################
 # library specific rules
 #
+#STKLib/Models.o : STKLib/Models.cc
+#	$(CC) $(CFLAGS) -c -o STKLib/Models.o $<
 
 
 ###############################################################################
@@ -63,14 +61,13 @@ clean:
 ###############################################################################
 # runs makedepend to automatically define header files dependencies
 depend:
-	-makedepend -Y *.c HTKLib/*.c STKLib/*.c STKLib/*.cc
+	-makedepend -Y *.c *.cc STKLib/*.c STKLib/*.cc
 
 
 ###############################################################################
 # some testing rules
 test : test.cc STKLib/common.o STKLib/labelreader.o STKLib/filmatch.o STKLib/Buffer.o
 test2 : test2.cc STKLib/common.o STKLib/Error.o STKLib/filmatch.o STKLib/Buffer.o
-
 
 # DO NOT DELETE
 
@@ -93,6 +90,15 @@ SRover.o: STKLib/labels.h STKLib/common.h
 SVite.o: STKLib/viterbi.h STKLib/Models.h STKLib/labels.h STKLib/common.h
 SVite.o: STKLib/Error.h STKLib/dict.h STKLib/net.h STKLib/Models.h
 SVite.o: STKLib/fileio.h STKLib/labels.h STKLib/common.h
+SNet.o: STKLib/fileio.h STKLib/common.h STKLib/Error.h STKLib/common.h
+SNet.o: STKLib/Models.h STKLib/viterbi.h STKLib/Models.h STKLib/labels.h
+SNet.o: STKLib/dict.h STKLib/net.h
+test.o: STKLib/stkstream.h STKLib/stkstream.tcc STKLib/Matrix.h
+test.o: STKLib/Matrix.tcc STKLib/labelreader.h STKLib/stkstream.h
+test.o: STKLib/filmatch.h STKLib/Buffer.h
+test2.o: STKLib/Matrix.h STKLib/Matrix.tcc STKLib/String.h STKLib/Buffer.h
+test2.o: STKLib/common.h STKLib/Error.h STKLib/stkstream.h
+test2.o: STKLib/stkstream.tcc
 STKLib/common.o: STKLib/common.h STKLib/Error.h STKLib/filmatch.h
 STKLib/dict.o: STKLib/dict.h STKLib/Models.h STKLib/common.h STKLib/Error.h
 STKLib/fileio.o: STKLib/fileio.h STKLib/common.h STKLib/Error.h
@@ -107,8 +113,7 @@ STKLib/viterbi.o: STKLib/viterbi.h STKLib/Models.h STKLib/labels.h
 STKLib/viterbi.o: STKLib/common.h STKLib/Error.h STKLib/dict.h STKLib/net.h
 STKLib/Buffer.o: STKLib/Buffer.h
 STKLib/Error.o: STKLib/Error.h
-STKLib/labelreader.o: STKLib/labelreader.h STKLib/stkstream.h
-STKLib/labelreader.o: STKLib/stkstream.tcc STKLib/common.h STKLib/Error.h
-STKLib/Models.o: STKLib/Models.h STKLib/stkstream.h STKLib/stkstream.tcc
-STKLib/Models.o: STKLib/common.h STKLib/Error.h
-STKLib/ModelSet.o: STKLib/stkstream.h STKLib/stkstream.tcc
+STKLib/labelreader.o: STKLib/labelreader.h STKLib/stkstream.h STKLib/common.h
+STKLib/labelreader.o: STKLib/Error.h
+STKLib/Models.o: STKLib/Models.h STKLib/stkstream.h STKLib/common.h
+STKLib/Models.o: STKLib/Error.h

@@ -1,12 +1,13 @@
-#ifndef _STKSTREAM_TCC
-#define _STKSTREAM_TCC 1
+#ifndef STK_StkStream_tcc
+#define STK_StkStream_tcc
 
 #include <iostream>
-//#pragma GCC system_header
+#pragma GCC system_header
 
 namespace STK
 {
-  char * expandFilterCommand(const char *command, const char *filename)
+  /*
+  char * ExpandFilterCommand(const char *command, const char *filename)
   {
 
     char *out, *outend;
@@ -14,7 +15,7 @@ namespace STK
     int ndollars = 0;
     int fnlen = strlen(filename);
 
-    while (*chrptr++) ndollars += (*chrptr ==  *filter_wldcrd);
+    while (*chrptr++) ndollars += (*chrptr ==  *gpFilterWldcrd);
 
     out = (char*) malloc(strlen(command) - ndollars + ndollars * fnlen + 1);
     //if (out == NULL) Error("Insufficient memory");
@@ -22,7 +23,7 @@ namespace STK
     outend = out;
 
     for (chrptr = command; *chrptr; chrptr++) {
-      if (*chrptr ==  *filter_wldcrd) {
+      if (*chrptr ==  *gpFilterWldcrd) {
         strcpy(outend, filename);
         outend += fnlen;
       } else {
@@ -32,7 +33,7 @@ namespace STK
     *outend = '\0';
     return out;
   };
-
+  */
 
 
   //******************************************************************************
@@ -239,4 +240,5 @@ namespace STK
   }
 }
 
+// STK_StkStream_tcc
 #endif
