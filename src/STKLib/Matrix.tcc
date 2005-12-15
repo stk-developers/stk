@@ -300,7 +300,29 @@ namespace STK
     return *this;
   }
 //******************************************************************************
+  template<typename _ElemT>
+  Matrix<_ElemT> &
+  Matrix<_ElemT>::
+  Transpose()
+  {
+    if(this->mStorageType == STORAGE_REGULAR) 
+      this->mStorageType = STORAGE_TRANSPOSED;
+    else
+      this->mStorageType = STORAGE_REGULAR;  
+      
+    int pom;
+    
+   /* pom = this->mMRows;
+    this->mMRows = mMCols;
+    this->mMCols = pom;*/
 
+    pom = this->mTRows;
+    this->mTRows = mTCols;
+    this->mTCols = pom;  
+    
+    return *this;
+  }
+//******************************************************************************
 
   // Copy constructor
   template<typename _ElemT>
