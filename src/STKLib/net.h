@@ -20,9 +20,6 @@
 
 class Node;
 class Link;
-//typedef struct _Node Node;
-//typedef struct _Link Link;
-//typedef struct _Token Token;
 class Token;
 class FWBWR;
 
@@ -58,14 +55,14 @@ public:
 //    SubNet *subnet;
 //  };
 
-  int   aux;
-  int   mType;
-  Node  *next;
-  Node  *backnext;
-  int   nlinks;
-  int   nbacklinks;
-  Link  *links;
-  Link  *backlinks;
+  int           aux;
+  int           mType;
+  Node  *       mpNext;
+  Node  *       backnext;
+  int           nlinks;
+  int           nbacklinks;
+  Link  *       links;
+  Link  *       backlinks;
 
   //time range when model can be active - apply only for model type
   long long start;

@@ -119,9 +119,9 @@ namespace STK
       {
         for (i = 0; i < state->mNumberOfMixtures; i++) 
         {
-          if (state->mpMixture[i].estimates == ud->mpOldData) 
+          if (state->mpMixture[i].mpEstimates == ud->mpOldData) 
           {
-            state->mpMixture[i].estimates = (Mixture*) ud->mpNewData;
+            state->mpMixture[i].mpEstimates = (Mixture*) ud->mpNewData;
           }
         }
       }
@@ -142,11 +142,11 @@ namespace STK
       {
         for (i = 0; i < cxf->mNLayers; i++) 
         {
-          for (j = 0; j < cxf->layer[i].mNBlocks; j++) 
+          for (j = 0; j < cxf->mpLayer[i].mNBlocks; j++) 
           {
-            if (cxf->layer[i].block[j] == ud->mpOldData) 
+            if (cxf->mpLayer[i].mpBlock[j] == ud->mpOldData) 
             {
-              cxf->layer[i].block[j] = (XForm*) ud->mpNewData;
+              cxf->mpLayer[i].mpBlock[j] = (XForm*) ud->mpNewData;
             }
           }
         }
@@ -172,9 +172,9 @@ namespace STK
     {
       CompositeXForm *cxf = static_cast<CompositeXForm *>(topXForm);
       
-      for (i=0; i < cxf->layer[0].mNBlocks; i++) 
+      for (i=0; i < cxf->mpLayer[0].mNBlocks; i++) 
       {
-        if (IsXFormIn1stLayer(xform, cxf->layer[0].block[i])) 
+        if (IsXFormIn1stLayer(xform, cxf->mpLayer[0].mpBlock[i])) 
           return true;
       }
     }
@@ -190,9 +190,9 @@ namespace STK
     if (cxf == NULL)                                        return false;
     if (cxf->mXFormType == XT_LINEAR)                       return true;
     if (cxf->mXFormType != XT_COMPOSITE)                    return false;
-    if (cxf->mNLayers > 1 || cxf->layer[0].mNBlocks > 1)    return false;
+    if (cxf->mNLayers > 1 || cxf->mpLayer[0].mNBlocks > 1)    return false;
     
-    return Is1Layer1BlockLinearXForm(cxf->layer[0].block[0]);
+    return Is1Layer1BlockLinearXForm(cxf->mpLayer[0].mpBlock[0]);
   }
   
   
@@ -248,10 +248,10 @@ namespace STK
     
     if (macro_type == 'x' && cxf->mXFormType == XT_COMPOSITE) 
     {
-      for (i = 0; i < cxf->mNLayers-1; i++) free(cxf->layer[i].out_vec);
-      for (i = 0; i < cxf->mNLayers;   i++) free(cxf->layer[i].block);
+      for (i = 0; i < cxf->mNLayers-1; i++) free(cxf->mpLayer[i].mpOutputVector);
+      for (i = 0; i < cxf->mNLayers;   i++) free(cxf->mpLayer[i].mpBlock);
     }
-    if (macro_type == 'j') free(((XFormInstance *) pData)->memory);
+    if (macro_type == 'j') free(((XFormInstance *) pData)->mpMemory);
   
     free(pData);
   }
@@ -522,13 +522,6 @@ namespace STK
   
   
   
-  
-  
-  
-  
-  
-  
-  
   void GlobalStats(int macro_type, HMMSetNodeName nn, MacroData * pData, void * pUserData)
   {
     size_t        i;
@@ -551,7 +544,7 @@ namespace STK
     { // macro_type == mt_mixture
       Mixture * mixture   = (Mixture *) pData;
       size_t    vec_size  = mixture->mpMean->mVectorSize;
-      FLOAT *   obs       = XFormPass(mixture->mpInputXForm,ud->observation,ud->time,FORWARD);
+      FLOAT *   obs       = XFormPass(mixture->mpInputXForm,ud->observation,ud->mTime,FORWARD);
       
       for (i = 0; i < vec_size; i++) 
       {
@@ -569,20 +562,20 @@ namespace STK
     }
   }
   
-  FLOAT *XFormPass(XFormInstance *xformInst, FLOAT *in_vec, int time, PropagDir dir)
+  FLOAT *XFormPass(XFormInstance * pXFormInst, FLOAT * pInputVector, int time, PropagDir dir)
   {
-    if (xformInst == NULL) return in_vec;
+    if (pXFormInst == NULL) return pInputVector;
   
-    if (time != UNDEF_TIME && xformInst->time == time) return xformInst->out_vec;
+    if (time != UNDEF_TIME && pXFormInst->mTime == time) return pXFormInst->mpOutputVector;
   
-    xformInst->time = time;
+    pXFormInst->mTime = time;
   
-    if (xformInst->mpInput)
-      in_vec = XFormPass(xformInst->mpInput, in_vec, time, dir);
+    if (pXFormInst->mpInput)
+      pInputVector = XFormPass(pXFormInst->mpInput, pInputVector, time, dir);
   
-    xformInst->mpXForm->Evaluate(in_vec,xformInst->out_vec,xformInst->memory,dir);
+    pXFormInst->mpXForm->Evaluate(pInputVector,pXFormInst->mpOutputVector,pXFormInst->mpMemory,dir);
   
-    return xformInst->out_vec;
+    return pXFormInst->mpOutputVector;
   }
   
   
@@ -719,10 +712,10 @@ namespace STK
     {
       for (i=0; i < mNumberOfMixtures; i++) 
       {
-        if (!mpMixture[i].estimates->mpMacro) 
+        if (!mpMixture[i].mpEstimates->mpMacro) 
         {
           if (n > 0 ) snprintf(chptr, n, ".mix[%d]", i+1);
-          mpMixture[i].estimates->Scan(mask, nodeName,
+          mpMixture[i].mpEstimates->Scan(mask, nodeName,
                       action, pUserData);
         }
       }
@@ -838,13 +831,13 @@ namespace STK
   
       for (i=0; i < cxf->mNLayers; i++) 
       {
-        for (j = 0; j < cxf->layer[i].mNBlocks; j++) 
+        for (j = 0; j < cxf->mpLayer[i].mNBlocks; j++) 
         {
-          if (!cxf->layer[i].block[j]->mpMacro) 
+          if (!cxf->mpLayer[i].mpBlock[j]->mpMacro) 
           {
             if (n > 0) 
               snprintf(chptr, n, ".part[%d,%d]", i+1, j+1);
-            cxf->layer[i].block[j]->Scan(mask, nodeName, action, pUserData);
+            cxf->mpLayer[i].mpBlock[j]->Scan(mask, nodeName, action, pUserData);
           }
         }
       }
@@ -902,7 +895,7 @@ namespace STK
           Error("Insufficient memory");
   
         xfsa->mpXForm    = xfsc->mpXForm;
-        xfsa->norm     = 0.0;
+        xfsa->mNorm     = 0.0;
         
         for (j = 0; j < size; j++) 
           xfsa->mpStats[j] = 0.0;
@@ -962,7 +955,7 @@ namespace STK
             xfsc->mpStats = upperLevelStats->mpStats;
           }
   
-          xfsc->norm = 0;
+          xfsc->mNorm = 0;
           xfsc->mpXForm = xform;
           xfsc->mpUpperLevelStats = upperLevelStats;
         }
@@ -1035,7 +1028,7 @@ namespace STK
       size = xfsa[i].mpXForm->mInSize;
       mean = xfsa[i].mpStats;
       cov  = xfsa[i].mpStats + size;
-      inorm = 1.0 / xfsa[i].norm;
+      inorm = 1.0 / xfsa[i].mNorm;
   
       for (j = 0; j < size; j++) 
         mean[j] *= inorm; //normalize means
@@ -1088,7 +1081,7 @@ namespace STK
     if (i == nxfsa) 
       return;
   
-    if (fprintf(file->mpOccupP, "%s "FLOAT_FMT"\n", nodeName, xfsa[i].norm) < 0) 
+    if (fprintf(file->mpOccupP, "%s "FLOAT_FMT"\n", nodeName, xfsa[i].mNorm) < 0) 
     {
       Error("Cannot write to file: %s", file->mpOccupN);
     }
@@ -1188,7 +1181,7 @@ namespace STK
     if (i == nxfsa) 
       return;
   
-    j = fscanf(file->mpOccupP, "%128s "FLOAT_FMT"\n", buff, &xfsa[i].norm);
+    j = fscanf(file->mpOccupP, "%128s "FLOAT_FMT"\n", buff, &xfsa[i].mNorm);
     
     if (j < 1) 
       Error("Unexpected end of file: %s", file->mpOccupN);
@@ -1317,7 +1310,7 @@ namespace STK
         if (fprintf(ud->fp, "\"%s\"", xfsa[i].mpXForm->mpMacro->mpName) < 0 ||
           fwrite(&size,         sizeof(int),      1, ud->fp) != 1    ||
           fwrite(xfsa[i].mpStats, sizeof(FLOAT), size, ud->fp) != size ||
-          fwrite(&xfsa[i].norm, sizeof(FLOAT),    1, ud->fp) != 1) 
+          fwrite(&xfsa[i].mNorm, sizeof(FLOAT),    1, ud->fp) != 1) 
         {
           Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
         }
@@ -1395,9 +1388,9 @@ namespace STK
         size = (macro_type == mt_mean) ? size : size+size*(size+1)/2;
   
         for (j=0; j < size; j++) 
-          xfsa[i].mpStats[j] /= xfsa[i].norm;
+          xfsa[i].mpStats[j] /= xfsa[i].mNorm;
         
-        xfsa[i].norm = 1.0;
+        xfsa[i].mNorm = 1.0;
       }
     } 
     else if (macro_type == mt_state) 
@@ -1542,7 +1535,7 @@ namespace STK
             if (j < nxfsa) 
             {
               if (faddfloat(xfsa[j].mpStats, size, ud->mWeight, ud->fp) != size  ||
-                  faddfloat(&xfsa[j].norm,    1, ud->mWeight, ud->fp) != 1) 
+                  faddfloat(&xfsa[j].mNorm,    1, ud->mWeight, ud->fp) != 1) 
               {
                 Error("Invalid accumulator file: '%s'", ud->mpFileName);
               }
@@ -2086,9 +2079,9 @@ namespace STK
             }
             accum_sum -= mpMixture[i].weight_accum;
   
-            if (!mpMixture[i].estimates->mpMacro) 
+            if (!mpMixture[i].mpEstimates->mpMacro) 
             {
-              mpMixture[i].estimates->Scan(MTM_ALL,NULL,ReleaseItem,NULL);
+              mpMixture[i].mpEstimates->Scan(MTM_ALL,NULL,ReleaseItem,NULL);
             }
   
             mpMixture[i--] = mpMixture[--mNumberOfMixtures];
@@ -2105,11 +2098,11 @@ namespace STK
           mpMixture[i].weight = log(mpMixture[i].weight_accum / accum_sum);
         }
         
-        if (!mpMixture[i].estimates->mpMacro) 
+        if (!mpMixture[i].mpEstimates->mpMacro) 
         {
         //!!! This is just too ugly hack
           weight_accum_den = mpMixture[i].weight_accum_den;
-          mpMixture[i].estimates->UpdateFromAccums(pModelSet);
+          mpMixture[i].mpEstimates->UpdateFromAccums(pModelSet);
         }
       }
     }
@@ -2119,24 +2112,25 @@ namespace STK
   //***************************************************************************
   FLOAT *
   XFormInstance::
-  XFormPass(FLOAT *in_vec, int time, PropagDir dir)
+  XFormPass(FLOAT * pInputVector, int time, PropagDir dir)
   {
-    if (time != UNDEF_TIME && this->time == time) return this->out_vec;
+    if (time != UNDEF_TIME && this->mTime == time) 
+      return mpOutputVector;
   
-    this->time = time;
+    this->mTime = time;
   
     if (this->mpInput) {
-      in_vec = this->mpInput->XFormPass(in_vec, time, dir);
+      pInputVector = mpInput->XFormPass(pInputVector, time, dir);
     }
   
-    mpXForm->Evaluate(in_vec,this->out_vec,memory,dir);
+    mpXForm->Evaluate(pInputVector, mpOutputVector, mpMemory, dir);
   
   /*  {int i;
     for (i=0; i<xformInst->mOutSize; i++)
-      printf("%.2f ", xformInst->out_vec[i]);
+      printf("%.2f ", xformInst->mpOutputVector[i]);
     printf("%s\n", dir == FORWARD ? "FORWARD" : "BACKWARD");}*/
   
-    return out_vec;
+    return mpOutputVector;
   }; // XFormPass(FLOAT *in_vec, int time, PropagDir dir)
   
   
@@ -2162,15 +2156,15 @@ namespace STK
   
     for (i = 0; i < mNLayers; i++) 
     {
-      FLOAT *in  = (i == 0)          ? pInputVector  : layer[i-1].out_vec;
-      FLOAT *out = (i == mNLayers-1) ? pOutputVector : layer[i].out_vec;
+      FLOAT *in  = (i == 0)          ? pInputVector  : mpLayer[i-1].mpOutputVector;
+      FLOAT *out = (i == mNLayers-1) ? pOutputVector : mpLayer[i].mpOutputVector;
       
-      for (j = 0; j < layer[i].mNBlocks; j++) 
+      for (j = 0; j < mpLayer[i].mNBlocks; j++) 
       {
-        layer[i].block[j]->Evaluate(in, out, pMemory, direction);
-        in  += layer[i].block[j]->mInSize;
-        out += layer[i].block[j]->mOutSize;
-        pMemory += layer[i].block[j]->mMemorySize;
+        mpLayer[i].mpBlock[j]->Evaluate(in, out, pMemory, direction);
+        in  += mpLayer[i].mpBlock[j]->mInSize;
+        out += mpLayer[i].mpBlock[j]->mOutSize;
+        pMemory += mpLayer[i].mpBlock[j]->mMemorySize;
       }
     }
     
@@ -2294,7 +2288,7 @@ namespace STK
     memmove(stack + (direction ==  FORWARD ? mOutSize - mInSize : 0),
             pInputVector, mInSize * sizeof(FLOAT));
   
-    if (!horiz_stack) 
+    if (!mHorizStack) 
     {
       memmove(pOutputVector, stack, mOutSize * sizeof(FLOAT));
     } 
@@ -2759,7 +2753,7 @@ namespace STK
         {
           for (j = 0; j < state->mNumberOfMixtures; j++) 
           {
-            Mixture *mixture = state->mpMixture[j].estimates;
+            Mixture *mixture = state->mpMixture[j].mpEstimates;
   
             if (mixture->mpMacro)
               mixture->mpMacro->mOccurances += macro->mOccurances;
@@ -2799,7 +2793,7 @@ namespace STK
     for (i = 0; i < mHmmHash.nentries; i++) 
     {
       macro = (Macro *) mHmmHash.entry[i]->data;
-  //  for (macro = hmm_set->hmm_list; macro != NULL; macro = macro->next) {
+  //  for (macro = hmm_set->hmm_list; macro != NULL; macro = macro->mpNext) {
       if (macro->mpData->mpMacro != macro) 
         continue;
       
@@ -2816,7 +2810,7 @@ namespace STK
     for (i = 0; i < mStateHash.nentries; i++) 
     {
       macro = (Macro *) mStateHash.entry[i]->data;
-  //  for (macro = hmm_set->state_list; macro != NULL; macro = macro->next) {
+  //  for (macro = hmm_set->state_list; macro != NULL; macro = macro->mpNext) {
       if (macro->mpData->mpMacro != macro) 
         continue;
       
@@ -2833,7 +2827,7 @@ namespace STK
     for (i = 0; i < mMixtureHash.nentries; i++) 
     {
       macro = (Macro *) mMixtureHash.entry[i]->data;
-  //  for (macro = mixture_list; macro != NULL; macro = macro->next) {
+  //  for (macro = mixture_list; macro != NULL; macro = macro->mpNext) {
       if (macro->mpData->mpMacro != macro)
         continue;
       
@@ -2850,7 +2844,7 @@ namespace STK
     for (i = 0; i < mMeanHash.nentries; i++) 
     {
       macro = (Macro *) mMeanHash.entry[i]->data;
-  //  for (macro = mean_list; macro != NULL; macro = macro->next) {
+  //  for (macro = mean_list; macro != NULL; macro = macro->mpNext) {
       if (macro->mpData->mpMacro != macro) continue;
       
       if (macro->mOccurances < mMinOccurances) 
@@ -2866,7 +2860,7 @@ namespace STK
     for (i = 0; i < mVarianceHash.nentries; i++) 
     {
       macro = (Macro *) mVarianceHash.entry[i]->data;
-  //  for (macro = variance_list; macro != NULL; macro = macro->next) {
+  //  for (macro = variance_list; macro != NULL; macro = macro->mpNext) {
       if (macro->mpData->mpMacro != macro) continue;
       
       if (macro->mpName != "varFloor1") 
@@ -2885,7 +2879,7 @@ namespace STK
     for (i = 0; i < mTransitionHash.nentries; i++) 
     {
       macro = (Macro *) mTransitionHash.entry[i]->data;
-  //  for (macro = transition_list; macro != NULL; macro = macro->next) {
+  //  for (macro = transition_list; macro != NULL; macro = macro->mpNext) {
       if (macro->mpData->mpMacro != macro) continue;
       if (macro->mOccurances < mMinOccurances) 
       {
@@ -3202,7 +3196,7 @@ namespace STK
     //  printf("ptr: %x num_mixes: %d\n", ret, num_mixes);
   
       for (i=0; i<num_mixes; i++) 
-        ret->mpMixture[i].estimates = NULL;
+        ret->mpMixture[i].mpEstimates = NULL;
   
       if (CheckKwd(keyword, KID_Stream)) 
       {
@@ -3243,13 +3237,13 @@ namespace STK
                 current_mmf_name, current_mmf_line);
         }
   
-        if (ret->mpMixture[mixture_id-1].estimates != NULL) 
+        if (ret->mpMixture[mixture_id-1].mpEstimates != NULL) 
         {
           Error("Redefinition of mixture %d (%s:%d)",
                 mixture_id, current_mmf_name, current_mmf_line);
         }
   
-        ret->mpMixture[mixture_id-1].estimates = ReadMixture(fp, NULL);
+        ret->mpMixture[mixture_id-1].mpEstimates = ReadMixture(fp, NULL);
         ret->mpMixture[mixture_id-1].weight = log(mixture_weight);
         ret->mpMixture[mixture_id-1].weight_accum = 0.0;
       }
@@ -3541,14 +3535,14 @@ namespace STK
       }
     }
   
-    ret->memory = NULL;
+    ret->mpMemory = NULL;
     if (ret->mpXForm->mMemorySize > 0 &&
-      ((ret->memory = (char *) calloc(1, ret->mpXForm->mMemorySize)) == NULL)) {
+      ((ret->mpMemory = (char *) calloc(1, ret->mpXForm->mMemorySize)) == NULL)) {
       Error("Insufficient memory");
     }
   
     ret->mOutSize = out_vec_size;
-    ret->next = mpXFormInstances;
+    ret->mpNext = mpXFormInstances;
     mpXFormInstances = ret;
     ret->mpInput = input;
     ret->mpMacro = macro;
@@ -3643,7 +3637,7 @@ namespace STK
     }
   
     if ((ret = (CompositeXForm *) malloc(sizeof(CompositeXForm) +
-                                (nlayers-1) * sizeof(ret->layer[0]))) == NULL) {
+                                (nlayers-1) * sizeof(ret->mpLayer[0]))) == NULL) {
       Error("Insufficient memory");
     }
   
@@ -3651,7 +3645,7 @@ namespace STK
     ret->mDelay      = 0;
     ret->mNLayers    = nlayers;
   
-    for (i=0; i<nlayers; i++) ret->layer[i].block = NULL;
+    for (i=0; i<nlayers; i++) ret->mpLayer[i].mpBlock = NULL;
   
     for (i=0; i<nlayers; i++) {
       keyword = GetString(fp, 1);
@@ -3668,8 +3662,8 @@ namespace STK
       if (layer_id < 1 || layer_id > nlayers)
         Error("Layer number out of the range (%s:%d)", current_mmf_name, current_mmf_line);
       
-      if (ret->layer[layer_id-1].block != NULL)
-        Error("Redefinition of layer (%s:%d)", current_mmf_name, current_mmf_line);
+      if (ret->mpLayer[layer_id-1].mpBlock != NULL)
+        Error("Redefinition of mpLayer (%s:%d)", current_mmf_name, current_mmf_line);
   
       if (CheckKwd(keyword, KID_NumBlocks)) 
       {
@@ -3690,8 +3684,8 @@ namespace STK
       if ((block = (XForm **)  malloc(sizeof(XForm*) * nblocks)) == NULL) 
         Error("Insufficient memory");
   
-      ret->layer[layer_id-1].block   = block;
-      ret->layer[layer_id-1].mNBlocks = nblocks;
+      ret->mpLayer[layer_id-1].mpBlock   = block;
+      ret->mpLayer[layer_id-1].mNBlocks = nblocks;
       
       for (j = 0; j < nblocks; j++) 
         block[j] = NULL;
@@ -3733,10 +3727,10 @@ namespace STK
       size_t    layer_in_size  = 0;
       size_t    layer_out_size = 0;
   
-      for (j=0; j < ret->layer[i].mNBlocks; j++) 
+      for (j=0; j < ret->mpLayer[i].mNBlocks; j++) 
       {
-        layer_in_size  += ret->layer[i].block[j]->mInSize;
-        layer_out_size += ret->layer[i].block[j]->mOutSize;
+        layer_in_size  += ret->mpLayer[i].mpBlock[j]->mInSize;
+        layer_out_size += ret->mpLayer[i].mpBlock[j]->mOutSize;
       }
   
       if (i == nlayers-1) 
@@ -3750,11 +3744,11 @@ namespace STK
       {
         if (prev_out_size < layer_in_size) 
         {
-          Error("Output size of layer %d (%d) is smaller then input size of layer %d (%d) (%s:%d)",
+          Error("Output size of mpLayer %d (%d) is smaller then input size of mpLayer %d (%d) (%s:%d)",
               i, prev_out_size, i+1, layer_in_size, current_mmf_name, current_mmf_line);
         }
   
-        if ((ret->layer[i-1].out_vec = (FLOAT *) malloc(prev_out_size * sizeof(FLOAT))) == NULL) 
+        if ((ret->mpLayer[i-1].mpOutputVector = (FLOAT *) malloc(prev_out_size * sizeof(FLOAT))) == NULL) 
         {
           Error("Insufficient memory");
         }
@@ -3913,7 +3907,7 @@ namespace STK
     ret->mInSize    = in_size;
     ret->mMemorySize = out_size * sizeof(FLOAT);
     ret->mDelay      = stack_size - 1;
-    ret->horiz_stack= 0;
+    ret->mHorizStack= 0;
     ret->mXFormType = XT_STACKING;
     ret->mpMacro      = macro;
     return ret;
@@ -4253,14 +4247,14 @@ namespace STK
           PutNLn(fp, binary);
         }
   
-        if (state->mpMixture[i].estimates->mpMacro) 
+        if (state->mpMixture[i].mpEstimates->mpMacro) 
         {
-          fprintf(fp, "~m \"%s\"", state->mpMixture[i].estimates->mpMacro->mpName);
+          fprintf(fp, "~m \"%s\"", state->mpMixture[i].mpEstimates->mpMacro->mpName);
           PutNLn(fp, binary);
         } 
         else 
         {
-          WriteMixture(fp, binary, state->mpMixture[i].estimates);
+          WriteMixture(fp, binary, state->mpMixture[i].mpEstimates);
         }
       }
     }
@@ -4386,9 +4380,9 @@ namespace STK
     } 
     else
     {
-      for (i = 0; i < cxf->layer[0].mNBlocks; i++) 
+      for (i = 0; i < cxf->mpLayer[0].mNBlocks; i++) 
       {
-        if (cxf->layer[0].block[i]->mXFormType != XT_LINEAR) 
+        if (cxf->mpLayer[0].mpBlock[i]->mXFormType != XT_LINEAR) 
         {
           isHTKCompatible = 0;
           break;
@@ -4482,9 +4476,9 @@ void WriteStackingXForm( FILE *fp, bool binary, ModelSet *hmm_set,  StackingXFor
     } 
     else
     {
-      for (i = 0; i < xform->layer[0].mNBlocks; i++) 
+      for (i = 0; i < xform->mpLayer[0].mNBlocks; i++) 
       {
-        if (xform->layer[0].block[i]->mXFormType != XT_LINEAR) 
+        if (xform->mpLayer[0].mpBlock[i]->mXFormType != XT_LINEAR) 
         {
           isHTKCompatible = 0;
           break;
@@ -4511,34 +4505,34 @@ void WriteStackingXForm( FILE *fp, bool binary, ModelSet *hmm_set,  StackingXFor
       if (isHTKCompatible) 
       {
         PutKwd(fp, binary, KID_BlockInfo);
-        PutInt(fp, binary, xform->layer[i].mNBlocks);
+        PutInt(fp, binary, xform->mpLayer[i].mNBlocks);
         PutNLn(fp, binary);
   
-        for (j = 0; j < xform->layer[i].mNBlocks; j++) 
+        for (j = 0; j < xform->mpLayer[i].mNBlocks; j++) 
         {
-          PutInt(fp, binary, xform->layer[i].block[j]->mOutSize);
+          PutInt(fp, binary, xform->mpLayer[i].mpBlock[j]->mOutSize);
         }
   
         PutNLn(fp, binary);
       } 
-      else if (xform->layer[i].mNBlocks > 1) 
+      else if (xform->mpLayer[i].mNBlocks > 1) 
       {
         PutKwd(fp, binary, KID_NumBlocks);
-        PutInt(fp, binary, xform->layer[i].mNBlocks);
+        PutInt(fp, binary, xform->mpLayer[i].mNBlocks);
         PutNLn(fp, binary);
       }
   
-      for (j = 0; j < xform->layer[i].mNBlocks; j++) {
-        if (isHTKCompatible || xform->layer[i].mNBlocks > 1) {
+      for (j = 0; j < xform->mpLayer[i].mNBlocks; j++) {
+        if (isHTKCompatible || xform->mpLayer[i].mNBlocks > 1) {
           PutKwd(fp, binary, KID_Block);
           PutInt(fp, binary, j+1);
           PutNLn(fp, binary);
         }
-        if (xform->layer[i].block[j]->mpMacro) {
-          fprintf(fp, "~x \"%s\"", xform->layer[i].block[j]->mpMacro->mpName);
+        if (xform->mpLayer[i].mpBlock[j]->mpMacro) {
+          fprintf(fp, "~x \"%s\"", xform->mpLayer[i].mpBlock[j]->mpMacro->mpName);
           PutNLn(fp, binary);
         } else {
-          WriteXForm(fp, binary, xform->layer[i].block[j]);
+          WriteXForm(fp, binary, xform->mpLayer[i].mpBlock[j]);
         }
       }
     }
@@ -5075,10 +5069,10 @@ void WriteStackingXForm( FILE *fp, bool binary, ModelSet *hmm_set,  StackingXFor
   ResetXFormInstances()
   {
     XFormInstance *inst;
-    for (inst = mpXFormInstances; inst != NULL; inst = inst->next) 
+    for (inst = mpXFormInstances; inst != NULL; inst = inst->mpNext) 
     {
-      inst->statCacheTime = UNDEF_TIME;
-      inst->time          = UNDEF_TIME;
+      inst->mStatCacheTime = UNDEF_TIME;
+      inst->mTime          = UNDEF_TIME;
     }
   }
 
@@ -5089,7 +5083,7 @@ void WriteStackingXForm( FILE *fp, bool binary, ModelSet *hmm_set,  StackingXFor
   {
     XFormInstance *inst;
     
-    for (inst = mpXFormInstances; inst != NULL; inst = inst->next) 
+    for (inst = mpXFormInstances; inst != NULL; inst = inst->mpNext) 
     {
       if (inst->mpXForm->mDelay > 0) {
         XFormPass(inst, obs, time, dir);

@@ -67,10 +67,10 @@ void usage(char *progname)
   exit(-1);
 }
 
-typedef struct _StrListElem StrListElem;
-struct _StrListElem {
-
-  StrListElem *next;
+//typedef struct _StrListElem StrListElem;
+struct StrListElem 
+{
+  StrListElem *mpNext;
   char str[1];
 };
 
@@ -152,7 +152,7 @@ int main(int argc, char *argv[]) {
                   if (!*last) Error("Insufficient memory");
                   chrptr = strcpy((*last)->str, optarg);
                   for (; *chrptr; chrptr++) if (*chrptr == '\\') *chrptr = '/';
-                  last = &(*last)->next;
+                  last = &(*last)->mpNext;
                   *last = NULL;
                   ++nMLFs;
 
@@ -257,7 +257,7 @@ int main(int argc, char *argv[]) {
   candidates = (struct candidate *) malloc(sizeof(struct candidate) * nMLFs);
   if (!candidates) Error("Insufficient memory");
 
-  for (MLF_fn = MLF_files, i=0; MLF_fn; MLF_fn = MLF_fn->next, i++) {
+  for (MLF_fn = MLF_files, i=0; MLF_fn; MLF_fn = MLF_fn->mpNext, i++) {
     MLFfps[i] = OpenInputMLF(MLF_fn->str);
   }
 
@@ -272,7 +272,7 @@ int main(int argc, char *argv[]) {
     // - 1st MLF is read sequentially record by record.
     // - In 2nd to nth MLF, records are searched by name obtained from 1st MLF.
 
-    for (i=0, MLF_fn=MLF_files; i < nMLFs; i++, MLF_fn=MLF_fn->next) {
+    for (i=0, MLF_fn=MLF_files; i < nMLFs; i++, MLF_fn=MLF_fn->mpNext) {
       Label *tlabs;
 
       if (!OpenInputLabelFile(label_file, NULL, NULL, MLFfps[i], MLF_fn->str)) {
@@ -295,7 +295,7 @@ int main(int argc, char *argv[]) {
     } else {
 
       ///////// For each corespondence set... ////////
-      for (tlptr = labels; tlptr != NULL; tlptr=tlptr->next) {
+      for (tlptr = labels; tlptr != NULL; tlptr=tlptr->mpNext) {
 
         ////////////// Do the voting //////////////
 
@@ -363,7 +363,7 @@ int main(int argc, char *argv[]) {
 
         if (best_candidate->label->mpName) {
           Label label = *best_candidate->label;
-          label.next  = label.nextLevel = NULL;
+          label.mpNext  = label.nextLevel = NULL;
           label.score = best_voting_score;
           WriteLabels(out_MLF_fp, &label, out_lbl_frm, 100000, label_file, out_MLF_fn);
         }

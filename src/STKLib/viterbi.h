@@ -26,7 +26,11 @@
 //typedef struct _Network Network;
 //typedef struct _SubNet SubNet;
 //typedef struct _Cache Cache;
-typedef struct _WLR WLR;
+//typedef struct _WLR WLR;
+class Cache;
+class WLR;
+class SubNet;
+class Network;
 
 
 class Cache 
@@ -80,7 +84,7 @@ public:
   Cache *outPCache;
   Cache *mixPCache;
 
-  long  time;
+  long  mTime;
   Token *bestToken;
   Node  *bestNode;
   struct my_hsearch_data wordHash;
@@ -133,24 +137,28 @@ struct AlphaBeta
   FloatInLog betaAccuracy;
 };
 
+
 class FWBWR 
 {
 public:
-  FWBWR *     next;
-  int         time;
+  FWBWR *     mpNext;
+  int         mTime;
   AlphaBeta   state[1];
 };
 
-struct _WLR {
-  Node  *node;
-  int   state_idx;
-  FLOAT like;
-  long  time;
-  WLR   *next;
-  int   refs;
+
+class WLR 
+{
+public:
+  Node  *     node;
+  int         state_idx;
+  FLOAT       like;
+  long        mTime;
+  WLR   *     mpNext;
+  int         refs;
 #ifdef DEBUG_MSGS
-  WLR   *tmpNext;
-  BOOL  freed;
+  WLR   *     tmpNext;
+  BOOL        freed;
 #endif
 };
 

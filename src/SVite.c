@@ -404,7 +404,7 @@ int main(int argc, char *argv[])
   }
   lfp = OpenOutputMLF(out_MLF);
 
-  for (file_name = feature_files; file_name; file_name = file_name->next) {
+  for (file_name = feature_files; file_name; file_name = file_name->mpNext) {
 
     if (trace_flag & 1) {
       TraceLog("Processing file %d/%d '%s'", ++fcnt,
@@ -498,7 +498,7 @@ int main(int argc, char *argv[])
       Label *label;
       int nFrames = header.nSamples - hset.mTotalDelay;
       for (label = labels; label->nextLevel != NULL; label = label->nextLevel);
-      for (; label != NULL; label = label->next) {
+      for (; label != NULL; label = label->mpNext) {
         fprintf(stdout, "%s ", label->mpName);
       }
       TraceLog(" ==  [%d frames] %f", nFrames, like / nFrames);
@@ -543,7 +543,7 @@ int main(int argc, char *argv[])
   while (feature_files) 
   {
     file_name     = feature_files;
-    feature_files = feature_files->next;
+    feature_files = feature_files->mpNext;
     free(file_name);
   }
   //my_hdestroy_r(&cfgHash, 0);

@@ -1,16 +1,17 @@
 #ifndef STK_Matrix_h
 #define STK_Matrix_h
 
+#include "Error.h"
 #include <cstddef>
-//#include <cstdlib>
-#include <stdlib.h>
+#include <cstdlib>
+//#include <stdlib.h>
 #include <stdexcept>
+#include <iostream>
+
 extern "C"{
   #include <cblas.h>
 }
-#include"Error.h"
 
-#include <iostream>
 
 #define CHECKSIZE
 
@@ -28,12 +29,13 @@ namespace STK
     STORAGE_TRANSPOSED
   } StorageType;
   
+  
 
   // declare the class so the header knows about it
   template<typename _ElemT>
     class Matrix;
 
-
+  
   // we need to declare the friend << operator here
   template<typename _ElemT>
     std::ostream & operator << (std::ostream & out, Matrix<_ElemT> & m);
@@ -308,8 +310,37 @@ namespace STK
 } // namespace STK
 
 
+
+//*****************************************************************************
+//*****************************************************************************
 // we need to include the implementation
 #include "Matrix.tcc"
+//*****************************************************************************
+//*****************************************************************************
 
+
+/******************************************************************************
+ ******************************************************************************
+ * The following section contains specialized template definitions
+ * whose implementation is in Matrix.cc
+ */
+namespace STK
+{
+  template<>
+    Matrix<float> &
+    Matrix<float>::
+    FastRowSigmoid();
+    
+  template<>
+    Matrix<float> &
+    Matrix<float>::
+    AddMatMult(Matrix<float> & a, Matrix<float> & b);
+    
+  template<>
+    Matrix<float> &
+    Matrix<float>::
+    FastRowSoftmax();
+} // namespace STK
+    
 //#ifndef STK_Matrix_h
 #endif 

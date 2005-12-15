@@ -13,6 +13,7 @@
 #ifndef STK_Models_h
 #define STK_Models_h
 
+#include "Matrix.h"
 #include "common.h"
 #include "stkstream.h"
 #include <search.h>
@@ -546,7 +547,7 @@ namespace STK
     struct 
     {
     public:
-      Mixture *               estimates;
+      Mixture *               mpEstimates;
       FLOAT                   weight;
       FLOAT                   weight_accum; //used for reestimation
       FLOAT                   weight_accum_den;
@@ -632,7 +633,7 @@ namespace STK
   {
   public:
     XForm *                 mpXForm;
-    FLOAT                   norm;
+    FLOAT                   mNorm;
     FLOAT *                 mpStats;
   };
   
@@ -694,6 +695,7 @@ namespace STK
   {
   public:
     size_t                  mNStates;
+    //Matrix<FLOAT>           mMatrix;
     FLOAT                   matrix[1];
   
     void
@@ -714,7 +716,7 @@ namespace STK
   public:
     XFormStatCache *        mpUpperLevelStats;
     XForm *                 mpXForm;
-    int                     norm;
+    int                     mNorm;
     FLOAT *                 mpStats;
   };
 
@@ -728,16 +730,16 @@ namespace STK
   public:
     XFormInstance *       mpInput;
     XForm *               mpXForm;
-    int                   time;
-    XFormInstance  *      next; // Chain of all instances
+    int                   mTime;
+    XFormInstance  *      mpNext; // Chain of all instances
     XFormStatCache *      mpXFormStatCache;
     size_t                mNumberOfXFormStatCaches;
     size_t                mOutSize;
-    int                   statCacheTime;
-    char *                memory;
+    int                   mStatCacheTime;
+    char *                mpMemory;
     int                   mTotalDelay;
     
-    FLOAT                 out_vec[1]; 
+    FLOAT                 mpOutputVector[1]; 
     
     FLOAT *
     XFormPass(FLOAT *in_vec, int time, PropagDir dir);
@@ -812,20 +814,33 @@ namespace STK
   };
 
   
+  /** *************************************************************************
+   ** *************************************************************************
+   * @brief Composite XForm Layer represenation
+   *
+   * This class represents a layer for Composite XForm. It holds separate 
+   * blocks. See also CompositeXForm class.
+   */
   class XFormLayer
   {
   public:
-    FLOAT *             out_vec;
+    FLOAT *             mpOutputVector;
     size_t              mNBlocks;
-    XForm **            block;
+    XForm **            mpBlock;
   }; // class XFormLayer
   
   
+  /** *************************************************************************
+   ** *************************************************************************
+   * @brief Composite XForm 
+   * 
+   * The base composite XForm holds elementary layers of the form
+   */
   class CompositeXForm : public XForm 
   {
   public:
     size_t              mNLayers;    
-    XFormLayer          layer[1];
+    XFormLayer          mpLayer[1];
     
     /**
      * @brief Composite XForm evaluation 
@@ -841,9 +856,15 @@ namespace STK
              PropagDir  direction);
   };
   
+  
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Linear XForm representation
+   */
   class LinearXForm : public XForm 
   {
   public:
+    Matrix<FLOAT>       mMatrix;
     FLOAT               matrix[1];
     
     /**
@@ -860,6 +881,11 @@ namespace STK
              PropagDir  direction);
   };
   
+  
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Bias XForm representation
+   */
   class BiasXForm : public XForm 
   {
   public:
@@ -881,7 +907,10 @@ namespace STK
   };
   
   
-  
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Function XForm representation
+   */
   class FuncXForm : public XForm 
   {
   public:
@@ -903,7 +932,10 @@ namespace STK
   };
   
   
-  
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Copy XForm representation
+   */
   class CopyXForm : public XForm 
   {
   public:
@@ -921,15 +953,18 @@ namespace STK
     Evaluate(FLOAT *    pInputVector, 
              FLOAT *    pOutputVector,
              char *     pMemory,
-             PropagDir  direction);
-  
+             PropagDir  direction);  
   };
   
   
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Stacking XForm representation
+   */
   class StackingXForm : public XForm 
   {
   public:
-    int                 horiz_stack;
+    int                 mHorizStack;
   
     /**
      * @brief Stacking XForm evaluation 
@@ -978,15 +1013,15 @@ namespace STK
   class ReplaceItemUserData
   {
   public:
-    MacroData *        mpOldData;
-    MacroData *        mpNewData;
-    int           mType;
+    MacroData *         mpOldData;
+    MacroData *         mpNewData;
+    int                 mType;
   };
 
   struct GlobalStatsUserData
   {
-    FLOAT *       observation;
-    int           time;
+    FLOAT *             observation;
+    int                 mTime;
   } ;
   
   class WriteStatsForXFormUserData 

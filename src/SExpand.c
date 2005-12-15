@@ -273,7 +273,7 @@ int main(int argc, char *argv[]) {
   in_MLF_fp  = OpenInputMLF(in_MLF_fn);
   out_MLF_fp = OpenOutputMLF(out_MLF_fn);
 
-  for (file_name=feature_files; file_name != NULL; file_name=file_name->next) {
+  for (file_name=feature_files; file_name != NULL; file_name=file_name->mpNext) {
     if (trace_flag & 1) {
       TraceLog("Processing file %d/%d '%s'", ++fcnt, nfeature_files,file_name->logical);
     }

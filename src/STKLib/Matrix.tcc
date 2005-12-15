@@ -1,16 +1,24 @@
+#ifndef STK_Matrix_tcc
+#define STK_Matrix_tcc
+
+#pragma GCC system_header
+
+#include "common.h"
 #include <cstdlib>
 #include <malloc.h>
 #include <cblas.h>
 #include <cassert>
-
 #include <cmath>
+
+
 static union
 {
-        double d;
-        struct
-        {
-                int j,i;
-        } n;
+  double d;
+  struct
+  {
+    int j;
+    int i;
+  } n;
 } qn_d2i;
 
 #define QN_EXP_A (1048576/M_LN2)
@@ -18,12 +26,15 @@ static union
 //#define EXP2(y) (qn_d2i.n.j = (int) (QN_EXP_A*(y)) + (1072693248 - QN_EXP_C), qn_d2i.d)
 #define FAST_EXP(y) (qn_d2i.n.i = (int) (QN_EXP_A*(y)) + (1072693248 - QN_EXP_C), qn_d2i.d)
 
+/*
 void sigmoid_vec(float *in, float *out, int size)
 {
   while(size--) *out++ = 1.0/(1.0 + FAST_EXP(-*in++));
 }
-
-float i_max_double (float *a, int len) {
+*/
+/*
+float i_max_double(float *a, int len) 
+{
   int i;
   float max;
   max = a[0];
@@ -35,6 +46,8 @@ float i_max_double (float *a, int len) {
   return max;
 }
 
+
+/*
 void softmax_vec(float *in, float *out, int size)
 {
   int i;
@@ -52,7 +65,7 @@ void softmax_vec(float *in, float *out, int size)
     out[i] /= sum;
   }
 }
-
+*/
 namespace STK
 {
 //******************************************************************************
@@ -193,6 +206,7 @@ namespace STK
     }
   }
 
+  
 //******************************************************************************
   template<typename _ElemT>
   _ElemT &
@@ -212,7 +226,8 @@ namespace STK
     }
     
   }
-  
+
+    
 //******************************************************************************
   template<typename _ElemT>
   Matrix<_ElemT> &
@@ -239,7 +254,11 @@ namespace STK
     return *this;
   }; // AddMatMult(const ThisType & a, const ThisType & b)
   
+
+//******************************************************************************
+/*
   template<>
+  inline
   Matrix<float> &
   Matrix<float>::
   AddMatMult(Matrix<float> & a, Matrix<float> & b)
@@ -257,7 +276,7 @@ namespace STK
     }
     return *this;
   }; // AddMatMult(const ThisType & a, const ThisType & b)
-
+*/
 
 //******************************************************************************
   template<typename _ElemT>
@@ -269,16 +288,22 @@ namespace STK
     return *this;
   }
   
+
+//******************************************************************************
+  /*
   template<>
+  inline
   Matrix<float> &
   Matrix<float>::
   FastRowSigmoid()
   {
-    for(int row = 0; row < this->Rows(); row++){
+    for(size_t row = 0; row < this->Rows(); row++)
+    {
       sigmoid_vec(this->Row(row), this->Row(row), this->Cols());
     }
     return *this;
   }
+  */
 //******************************************************************************
   template<typename _ElemT>
   Matrix<_ElemT> &
@@ -289,17 +314,20 @@ namespace STK
     return *this;
   }
   
+//******************************************************************************
+/*
   template<>
+  inline
   Matrix<float> &
   Matrix<float>::
   FastRowSoftmax()
   {
-    for(int row = 0; row < this->Rows(); row++){
+    for(size_t row = 0; row < this->Rows(); row++){
       softmax_vec(this->Row(row), this->Row(row), this->Cols());
     }
     return *this;
   }
-//******************************************************************************
+*/
   template<typename _ElemT>
   Matrix<_ElemT> &
   Matrix<_ElemT>::
@@ -324,6 +352,7 @@ namespace STK
   }
 //******************************************************************************
 
+//******************************************************************************
   // Copy constructor
   template<typename _ElemT>
     WindowMatrix<_ElemT>::
@@ -462,3 +491,6 @@ namespace STK
     }
 
 }// namespace STK
+
+// #define STK_Matrix_tcc
+#endif 

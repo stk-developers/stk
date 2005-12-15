@@ -221,19 +221,19 @@ int main(int argc, char *argv[]) {
     // MAIN FILE LOOP
   for (file_name = feature_files;
       file_name != NULL;
-      file_name = out_by_labels ? file_name->next : file_name->next->next) {
+      file_name = out_by_labels ? file_name->mpNext : file_name->mpNext->mpNext) {
 
     if (trace_flag & 1) {
       if (!out_by_labels) {
         TraceLog("Processing file pair %d/%d '%s' <-> %s",  ++fcnt,
-        nfeature_files/2, file_name->physical,file_name->next->logical);
+        nfeature_files/2, file_name->physical,file_name->mpNext->logical);
       } else {
         TraceLog("Processing file %d/%d '%s'", ++fcnt, nfeature_files,file_name->logical);
       }
     }
     int nFrames;
-    char *phys_fn = (!out_by_labels ? file_name->next : file_name)->physical;
-    char *lgcl_fn = (!out_by_labels ? file_name->next : file_name)->logical;
+    char *phys_fn = (!out_by_labels ? file_name->mpNext : file_name)->physical;
+    char *lgcl_fn = (!out_by_labels ? file_name->mpNext : file_name)->logical;
 
     // read sentence weight definition if any ( physical_file.fea[s,e]{weight} )
     if ((chrptr = strrchr(phys_fn, '{')) != NULL &&
@@ -271,7 +271,7 @@ int main(int argc, char *argv[]) {
       }
       if (nFrames != header_out.nSamples) {
         Error("Mismatch in number of frames in input/output feature file pair: "
-              "'%s' <-> '%s'.", file_name->next->physical, file_name->physical);
+              "'%s' <-> '%s'.", file_name->mpNext->physical, file_name->physical);
       }
       
     } else {            // ... otherwise, read corresponding label file
@@ -302,7 +302,7 @@ int main(int argc, char *argv[]) {
       if (lbl_list_file) {
         //Create NN output example vector from lables
         for (j = 0; j < NNet_instance->mOutSize; j++) obs_out[j] = 0;
-        while (lbl_ptr && lbl_ptr->stop < time) lbl_ptr = lbl_ptr->next;
+        while (lbl_ptr && lbl_ptr->stop < time) lbl_ptr = lbl_ptr->mpNext;
         if (lbl_ptr && lbl_ptr->start <= time) obs_out[(int) lbl_ptr->data - 1] = 1;
       } else {
         //Get NN output example vector from obsMx_out matrix
@@ -460,7 +460,7 @@ int main(int argc, char *argv[]) {
   if (src_mlf)  fclose(ilfp);
   while (feature_files) {
     file_name = feature_files;
-    feature_files = feature_files->next;
+    feature_files = feature_files->mpNext;
     free(file_name);
   }
   return 0;

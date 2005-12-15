@@ -172,7 +172,7 @@ int main(int argc, char *argv[]) {
     input = hset.inputXForm;
   }
 
-  for (file_name=feature_files; file_name != NULL; file_name=file_name->next) {
+  for (file_name=feature_files; file_name != NULL; file_name=file_name->mpNext) {
     if (trace_flag & 1) TraceLog("Processing file %d/%d '%s'",
                                 ++fcnt, nfeature_files, file_name->logical);
     obsMx = ReadHTKFeatures(file_name->physical, swap_features,
@@ -225,7 +225,7 @@ int main(int argc, char *argv[]) {
 
   while (feature_files) {
     file_name = feature_files;
-    feature_files = feature_files->next;
+    feature_files = feature_files->mpNext;
     free(file_name);
   }
   return 0;

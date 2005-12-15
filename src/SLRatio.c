@@ -47,7 +47,7 @@ LRTrace *MakeLRTraceTable(Network *net, int *nWords, Token **filler_end)
 
   *nWords = 0;
 
-  for (node=net->first; node != NULL; node = node->next) {
+  for (node=net->first; node != NULL; node = node->mpNext) {
     if (node->mType == (NT | NT_Sticky) && node->pronun == NULL) break;
   }
   if (node == NULL) {
@@ -55,7 +55,7 @@ LRTrace *MakeLRTraceTable(Network *net, int *nWords, Token **filler_end)
   }
   *filler_end = node->exitToken;
 
-  for (node=net->first; node != NULL; node = node->next) {
+  for (node=net->first; node != NULL; node = node->mpNext) {
     if (node->mType == (NT | NT_Sticky) && node->pronun != NULL) ++*nWords;
   }
   if (*nWords == 0) {
@@ -64,7 +64,7 @@ LRTrace *MakeLRTraceTable(Network *net, int *nWords, Token **filler_end)
   if ((lrt = (LRTrace *) malloc(*nWords * sizeof(LRTrace))) == NULL) {
     Error("Insufficient memory");
   }
-  for (i = 0, node=net->first; node != NULL; node = node->next) {
+  for (i = 0, node=net->first; node != NULL; node = node->mpNext) {
     if (node->mType == (NT | NT_Sticky) && node->pronun != NULL) {
       lrt[i].wordEnd = node;
       i++;
@@ -423,7 +423,7 @@ int main(int argc, char *argv[]) {
   }
   lfp = OpenOutputMLF(out_MLF);
 
-  for (file_name = feature_files; file_name; file_name = file_name->next) {
+  for (file_name = feature_files; file_name; file_name = file_name->mpNext) {
 
     if (trace_flag & 1) {
       TraceLog("Processing file %d/%d '%s'", ++fcnt,
@@ -518,8 +518,8 @@ int main(int argc, char *argv[]) {
           continue;
         }
         lrt[j].lastLR = lhRatio;
-        wordStartTime = (long long) (word_end->wlr && word_end->wlr->next
-                        ? word_end->wlr->next->time : 0);
+        wordStartTime = (long long) (word_end->wlr && word_end->wlr->mpNext
+                        ? word_end->wlr->mpNext->mTime : 0);
 
         KillToken(word_end);
         if (lrt[j].candidateLR > lhRatio && lrt[j].candidateEndTime > wordStartTime) {
@@ -530,7 +530,7 @@ int main(int argc, char *argv[]) {
                                out_MLF, out_lbl_fmt, header.sampPeriod);
         }
         lrt[j].candidateStartTime = wordStartTime;
-        lrt[j].candidateEndTime = (long long) net.time;
+        lrt[j].candidateEndTime = (long long) net.mTime;
         lrt[j].candidateLR = lhRatio;
       }
       KillToken(filler_end);
@@ -566,7 +566,7 @@ int main(int argc, char *argv[]) {
 
   while (feature_files) {
     file_name     = feature_files;
-    feature_files = feature_files->next;
+    feature_files = feature_files->mpNext;
     free(file_name);
   }
   //my_hdestroy_r(&cfgHash, 0);

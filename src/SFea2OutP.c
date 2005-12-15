@@ -186,7 +186,7 @@ int main(int argc, char *argv[]) {
     Error("Invalid HMM set distribution kind <%s>", gpKwds[hset.outPDF_kind]);
   }
 
-  for (file_name = feature_files; file_name; file_name = file_name->next) {
+  for (file_name = feature_files; file_name; file_name = file_name->mpNext) {
     obsMx = ReadHTKFeatures(file_name->physical, swap_features,
                             startFrmExt, endFrmExt, targetKind,
                             derivOrder, derivWinLengths, &header);

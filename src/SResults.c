@@ -63,18 +63,20 @@ void usage(char *progname)
   exit(-1);
 }
 
-typedef struct _StrListElem StrListElem;
-struct _StrListElem {
-
-  StrListElem *next;
-  char str[1];
+//typedef struct _StrListElem StrListElem;
+class StrListElem 
+{
+public:
+  StrListElem * mpNext;
+  char          str[1];
 };
 
 StrListElem *MLF_files = NULL;
 StrListElem *file_name = NULL;
 StrListElem **last = &MLF_files;
 
-typedef struct {
+typedef struct 
+{
   unsigned id:8*sizeof(unsigned)-1;
   unsigned is_hit:1;
   FLOAT score;
@@ -269,7 +271,7 @@ int main(int argc, char *argv[]) {
 
       AlingTranscriptions(&reclabels, reflabels, NULL);
 
-      for (tlptr=reclabels; tlptr!=NULL; tlptr=tlptr->next) {
+      for (tlptr=reclabels; tlptr!=NULL; tlptr=tlptr->mpNext) {
         if (tlptr->nextLevel->mpName != tlptr->mpName) err = 1;
 
         if (!tlptr->nextLevel->mpName) ins++;
@@ -289,7 +291,7 @@ int main(int argc, char *argv[]) {
         printf("Aligned transcription: %s vs %s", ref_lab_fn, rec_lab_fn);
         for (rec=0; rec < 2; rec++) {
           fputs(rec ? "\n REC:" : "\n LAB:", stdout);
-          for (reclptr=reclabels; reclptr!=NULL; reclptr=reclptr->next) {
+          for (reclptr=reclabels; reclptr!=NULL; reclptr=reclptr->mpNext) {
             Label *reflptr = reclptr->nextLevel;
             char *reclstr = (char*) (reclptr->mpName ? reclptr->mpName : "");
             char *reflstr = (char*) (reflptr->mpName ? reflptr->mpName : "");
@@ -308,7 +310,7 @@ int main(int argc, char *argv[]) {
       ltab = (Label **) malloc(sizeof(Label *) * rec_stats.nLabelsRead);
       if (ltab == NULL) Error("Insufficient memory");
 
-      for (n=0, tlptr=reclabels; tlptr!=NULL; tlptr=tlptr->next) {
+      for (n=0, tlptr=reclabels; tlptr!=NULL; tlptr=tlptr->mpNext) {
         if (tlptr->score < score_threshold) continue;
         ltab[n++] = tlptr;
       }
@@ -324,7 +326,7 @@ int main(int argc, char *argv[]) {
       tlptr = reflabels;
       for (i = 0; i < n; i++) {
         Label *tlptr2;
-        while (tlptr && ((tlptr->start+tlptr->stop)/2) < ltab[i]->start) tlptr = tlptr->next;
+        while (tlptr && ((tlptr->start+tlptr->stop)/2) < ltab[i]->start) tlptr = tlptr->mpNext;
 
         kwd_tab[nkwds].id     = (int) ltab[i]->data - 1;
         kwd_tab[nkwds].score  = ltab[i]->score;
@@ -332,7 +334,7 @@ int main(int argc, char *argv[]) {
 
         for (tlptr2 = tlptr;
             tlptr2 && ((tlptr2->start+tlptr2->stop)/2) <= ltab[i]->stop;
-            tlptr2 = tlptr2->next) {
+            tlptr2 = tlptr2->mpNext) {
           if (ltab[i]->mpName == tlptr2->mpName) {
             kwd_tab[nkwds].is_hit = 1;
             break;
@@ -341,7 +343,7 @@ int main(int argc, char *argv[]) {
         nkwds++;
       }
 
-      for (tlptr = reflabels; tlptr != NULL; tlptr=tlptr->next) {
+      for (tlptr = reflabels; tlptr != NULL; tlptr=tlptr->mpNext) {
         kwd_stats[(int) tlptr->data - 1].actual++;
       }
 

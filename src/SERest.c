@@ -497,7 +497,7 @@ int main(int argc, char *argv[]) {
   for (file_name = feature_files;
       file_name != NULL;
       file_name = one_pass_reest || (parallel_mode == 0 && update_type != UT_ML)
-                  ? file_name->next->next : file_name->next) 
+                  ? file_name->mpNext->mpNext : file_name->mpNext) 
   {
     if (trace_flag & 1) 
     {
@@ -505,7 +505,7 @@ int main(int argc, char *argv[]) {
       {
         TraceLog("Processing file pair %d/%d '%s' <-> %s",  ++fcnt,
                  nfeature_files / (one_pass_reest ? 2 : 1),
-                 file_name->logical,file_name->next->logical);
+                 file_name->logical,file_name->mpNext->logical);
       } 
       else 
       {
@@ -530,8 +530,8 @@ int main(int argc, char *argv[]) {
 
       if (update_type != UT_ML) {
         // Second set of accums is for compeating models
-        //ReadAccums(file_name->next->physical, 1.0, &hset, &S, &P2, update_type);
-        hset.ReadAccums(file_name->next->physical, 1.0, &S, &P2, update_type);
+        //ReadAccums(file_name->mpNext->physical, 1.0, &hset, &S, &P2, update_type);
+        hset.ReadAccums(file_name->mpNext->physical, 1.0, &S, &P2, update_type);
         totLogPosterior += update_type == UT_MPE ? P2 : P - P2;
 
         if (trace_flag & 1) {
@@ -540,8 +540,8 @@ int main(int argc, char *argv[]) {
       }
     } else {
       int nFrames;
-      char *phys_fn = (one_pass_reest ? file_name->next : file_name)->physical;
-      char *lgcl_fn = (one_pass_reest ? file_name->next : file_name)->logical;
+      char *phys_fn = (one_pass_reest ? file_name->mpNext : file_name)->physical;
+      char *lgcl_fn = (one_pass_reest ? file_name->mpNext : file_name)->logical;
 
       // read sentence weight definition if any ( physical_file.fea[s,e]{weight} )
       if ((chrptr = strrchr(phys_fn, '{')) != NULL &&
@@ -594,7 +594,7 @@ int main(int argc, char *argv[]) {
           }
           Error("Mismatch in number of frames in single pass re-estimation "
                 "feature file pair: '%s' <-> '%s'%s",
-                file_name->next->physical, file_name->physical,
+                file_name->mpNext->physical, file_name->physical,
                 hset_alig->mTotalDelay != hset.mTotalDelay ?
                 ". Consider different delays of alignment/source HMM set!":"");
         }
@@ -784,7 +784,7 @@ int main(int argc, char *argv[]) {
   while (feature_files) 
   {
     file_name = feature_files;
-    feature_files = feature_files->next;
+    feature_files = feature_files->mpNext;
     free(file_name);
   }
   

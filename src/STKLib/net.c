@@ -35,7 +35,7 @@
 void FreeNetwork(Node *node) {
   Node *tnode;
   while (node) {
-    tnode = node->next;
+    tnode = node->mpNext;
     free(node->links);
     free(node->backlinks);
     free(node);
@@ -65,7 +65,7 @@ Node *MakeNetworkFromLabels(Label *labels, enum NodeType node_type)
 //  first->exitToken     = last->exitToken     = NULL;
 
   node = first;
-  for (lp = labels; lp != NULL; lp = lp->next) {
+  for (lp = labels; lp != NULL; lp = lp->mpNext) {
     Node *tnode;
 
     if ((tnode            = (Node *) calloc(1, sizeof(Node))) == NULL ||
@@ -88,15 +88,15 @@ Node *MakeNetworkFromLabels(Label *labels, enum NodeType node_type)
     tnode->stop       = lp->stop;
     tnode->backlinks[0].node = node;
     tnode->backlinks[0].like = 0.0;
-    node->next = tnode;
+    node->mpNext = tnode;
     node = tnode;
   }
-  node->next = last;
+  node->mpNext = last;
   node->links[0].node    = last;
   node->links[0].like    = 0.0;
   last->backlinks[0].node = node;
   last->backlinks[0].like = 0.0;
-  last->next = NULL;
+  last->mpNext = NULL;
   return first;
 }
 
@@ -118,7 +118,7 @@ void ExpandWordNetworkByDictionary(
 
   assert(first != NULL || first->mType & NT || first->pronun == NULL);
 
-  for (node = first; node != NULL; prev = node, node = node->next) {
+  for (node = first; node != NULL; prev = node, node = node->mpNext) {
 
     if (!(node->mType & NT)) continue;
 
@@ -192,7 +192,7 @@ void ExpandWordNetworkByDictionary(
           pronun_prev->nlinks        = 1;
           pronun_prev->links[0].node = tnode;
           pronun_prev->links[0].like = 0.0;
-          pronun_prev->next          = tnode;
+          pronun_prev->mpNext          = tnode;
         }
         pronun_prev = tnode;
       }
@@ -218,7 +218,7 @@ void ExpandWordNetworkByDictionary(
           pronun_prev->nlinks        = 1;
           pronun_prev->links[0].node = tnode;
           pronun_prev->links[0].like = 0.0;
-          pronun_prev->next          = tnode;
+          pronun_prev->mpNext          = tnode;
         }
         pronun_prev = tnode;
       }
@@ -243,10 +243,10 @@ void ExpandWordNetworkByDictionary(
         forwnode->backlinks[forwnode->nbacklinks++].like = node->links[j].like;
         pronun_prev->links[j] = node->links[j];
       }
-      if (prev != NULL) prev->next = pronun_first;
+      if (prev != NULL) prev->mpNext = pronun_first;
       prev = pronun_prev;
     }
-    prev->next = node->next;
+    prev->mpNext = node->mpNext;
     free(node->links);
     free(node->backlinks);
     free(node);
@@ -264,7 +264,7 @@ Node *DiscardUnwantedInfoInNetwork(Node *first, STKNetworkOutputFormat format)
   Node *node;
   int  i;
 
-  for (node = first; node != NULL; node = node->next)  {
+  for (node = first; node != NULL; node = node->mpNext)  {
     if (format.no_LM_likes) {
       for (i=0; i < node->nlinks;     i++) node->links    [i].like = 0.0;
       for (i=0; i < node->nbacklinks; i++) node->backlinks[i].like = 0.0;
@@ -315,12 +315,12 @@ void WriteSTKNetwork(
   int n, l=0;
   Node *node;
 
-  for (n = 0, node = first; node != NULL; node = node->next, n++)  {
+  for (n = 0, node = first; node != NULL; node = node->mpNext, n++)  {
     node->aux = n;
     l += node->nlinks;
   }
   fprintf(lfp,"N=%d L=%d\n", n, l);
-  for (node = first; node != NULL; node = node->next) {
+  for (node = first; node != NULL; node = node->mpNext) {
     int j;
 
     if (format.all_field_names) fputs("I=", lfp);
@@ -381,7 +381,7 @@ void WriteSTKNetwork(
 
   if (format.arc_defs_to_end) {
     l = 0;
-    for (node = first; node != NULL; node = node->next) {
+    for (node = first; node != NULL; node = node->mpNext) {
       int j;
 
       for (j = 0; j < node->nlinks; j ++) {
@@ -421,7 +421,7 @@ static int LatticeLocalOptimization_ForwardPass(Node *first, int strictTiming)
   Node *node, *tnode;
   int node_removed = 0;
   FLOAT tlike;
-  for (node = first; node != NULL; node = node->next) {
+  for (node = first; node != NULL; node = node->mpNext) {
     for (i = 0; i < node->nlinks; i++) {
     //for (tnode = inode; tnode != NULL; tnode = (tnode == inode ? jnode : NULL)) {
       tnode = node->links[i].node;
@@ -564,16 +564,16 @@ static int LatticeLocalOptimization_ForwardPass(Node *first, int strictTiming)
         // Make sure that topological order of new inode's links
         // (inherited from jnode) is higher than inode's order.
         // In the 'next' list, move inode to jnode's lower position
-          inode->backnext->next = inode->next;
-          inode->next->backnext = inode->backnext;
-          inode->next           = jnode->next;
+          inode->backnext->mpNext = inode->mpNext;
+          inode->mpNext->backnext = inode->backnext;
+          inode->mpNext           = jnode->mpNext;
           inode->backnext       = jnode->backnext;
-          inode->backnext->next = inode;
-          inode->next->backnext = inode;
+          inode->backnext->mpNext = inode;
+          inode->mpNext->backnext = inode;
           inode->aux = jnode->aux;
         } else {
-          jnode->next->backnext = jnode->backnext;
-          jnode->backnext->next = jnode->next;
+          jnode->mpNext->backnext = jnode->backnext;
+          jnode->backnext->mpNext = jnode->mpNext;
         }
         inode->mType |= jnode->mType & NT_True;
         free(jnode->links);
@@ -599,8 +599,8 @@ Node *ReverseNetwork(Node *first)
     node->nlinks = node->nbacklinks;
     node->backlinks  = links;
     node->nbacklinks = nlinks;
-    Node *next     = node->next;
-    node->next     = node->backnext;
+    Node *next     = node->mpNext;
+    node->mpNext     = node->backnext;
     node->backnext = next;
     node->aux      = -node->aux;
     last = node;
@@ -634,9 +634,9 @@ void LatticeLocalOptimization(Node *first, int strictTiming, int trace_flag)
   // For each node, sort links by pointer value to allow
   // for easy comparison whether two nodes have the same set of links
 
-  for (node = first; node != NULL; node = node->next)  {
+  for (node = first; node != NULL; node = node->mpNext)  {
     node->aux = 0;
-    node->backnext = node->next;
+    node->backnext = node->mpNext;
     qsort(node->links, node->nlinks, sizeof(Link), lnkcmp);
     qsort(node->backlinks, node->nbacklinks, sizeof(Link), lnkcmp);
   }
@@ -645,16 +645,16 @@ void LatticeLocalOptimization(Node *first, int strictTiming, int trace_flag)
 // printf("Sorting nodes...\n");
 
   first->aux = 1;
-  for (lastnode = node = first; node != NULL; node = node->next) {
+  for (lastnode = node = first; node != NULL; node = node->mpNext) {
     for (i=0; i < node->nlinks; i++) {
       Node *lnknode = node->links[i].node;
       if (lnknode->aux == 0) {
         for (j=0; j<lnknode->nbacklinks && lnknode->backlinks[j].node->aux==1; j++);
         if (j == lnknode->nbacklinks) {
-          lastnode->next = lnknode;
+          lastnode->mpNext = lnknode;
           lastnode  = lnknode;
           lnknode->aux = 1;
-          lnknode->next = NULL;
+          lnknode->mpNext = NULL;
         }
       }
     }
@@ -665,24 +665,24 @@ void LatticeLocalOptimization(Node *first, int strictTiming, int trace_flag)
     // Anyway this optimization algorithm is not optimal for graphs with cycles.
     for (node = first; node != NULL; node = node->backnext) node->aux = 0;
     first->aux = 1;
-    for (lastnode = node = first; node != NULL; node = node->next) {
+    for (lastnode = node = first; node != NULL; node = node->mpNext) {
       for (i=0; i < node->nlinks; i++) {
         Node *lnknode = node->links[i].node;
         if (lnknode->aux == 0) {
-          lastnode->next = lnknode;
+          lastnode->mpNext = lnknode;
           lastnode  = lnknode;
           lnknode->aux = 1;
-          lnknode->next = NULL;
+          lnknode->mpNext = NULL;
         }
       }
     }
-    for (node=first; node->next->nlinks != 0; node=node->next);
+    for (node=first; node->mpNext->nlinks != 0; node=node->mpNext);
 
-    if (node->next->next) { // Final node is not at the and of chain
-      lastnode->next = node->next;
-      node->next = node->next->next;
-      lastnode = lastnode->next;
-      lastnode->next = NULL;
+    if (node->mpNext->mpNext) { // Final node is not at the and of chain
+      lastnode->mpNext = node->mpNext;
+      node->mpNext = node->mpNext->mpNext;
+      lastnode = lastnode->mpNext;
+      lastnode->mpNext = NULL;
     }
   }
 
@@ -703,21 +703,21 @@ void LatticeLocalOptimization(Node *first, int strictTiming, int trace_flag)
   if (unreachable) Error("Networks contains unreachable nodes");
 
   first->backnext = NULL;
-  for (node=first; node->next != NULL; node=node->next) {
-    node->next->backnext = node;
+  for (node=first; node->mpNext != NULL; node=node->mpNext) {
+    node->mpNext->backnext = node;
   }
-  for (i=1, node=first; node != NULL; node = node->next, i++) {
+  for (i=1, node=first; node != NULL; node = node->mpNext, i++) {
     node->aux=i;
   }
   for (;;) {
     if (trace_flag & 2) {
-      for (i=0,node=first; node; node=node->next,i++);
+      for (i=0,node=first; node; node=node->mpNext,i++);
       TraceLog("Forward pass.... (number of nodes: %d)", i);
     }
     LatticeLocalOptimization_ForwardPass(first, strictTiming);
 
     if (trace_flag & 2) {
-      for (i=0,node=first; node; node=node->next,i++);
+      for (i=0,node=first; node; node=node->mpNext,i++);
       TraceLog("Backward pass... (number of nodes: %d)", i);
     }
     if (!LatticeLocalOptimization_BackwardPass(first, strictTiming)) break;
@@ -738,7 +738,7 @@ void ExpandMonophoneNetworkToTriphones(
     ENTRY e, *ep;
     Node *prev = NULL;
     did_we_clone = 0;
-    for (node = first; node != NULL; prev = node, node = node->next) {
+    for (node = first; node != NULL; prev = node, node = node->mpNext) {
       if (node->nlinks == 0 || node->nbacklinks == 0 ||
          (node->nlinks == 1 && node->nbacklinks == 1)) {
         continue;
@@ -807,11 +807,11 @@ void ExpandMonophoneNetworkToTriphones(
           forwlink.node->backlinks[forwlink.node->nbacklinks++].like = forwlink.like;
           backlink.node->    links[backlink.node->nlinks  ].node     = tnode;
           backlink.node->    links[backlink.node->nlinks++].like     = backlink.like;
-          prev->next = tnode;
+          prev->mpNext = tnode;
           prev = tnode;
         }
       }
-      prev->next = node->next;
+      prev->mpNext = node->mpNext;
       free(node->links);
       free(node->backlinks);
       free(node);
@@ -822,11 +822,11 @@ void ExpandMonophoneNetworkToTriphones(
   // Assign to each node unique number, which will later allow to find groups of
   // expanded triphone nodes corresponding to original monophone nodes.
   int nbackmononodes, nforwmononodes, id = 0;
-  for (node = first; node != NULL; node = node->next) node->aux = id++;
+  for (node = first; node != NULL; node = node->mpNext) node->aux = id++;
 
   // Expand monophone nodes to triphone nodes
   Node *prev = NULL;
-  for (node = first; node != NULL; prev = node, node = node->next) {
+  for (node = first; node != NULL; prev = node, node = node->mpNext) {
     ENTRY e, *ep;
 
     if (node->mType & NT ||
@@ -942,11 +942,11 @@ void ExpandMonophoneNetworkToTriphones(
           tlink->node->links[tlink->node->nlinks  ].node = tnode;
           tlink->node->links[tlink->node->nlinks++].like = tlink->like;
         }
-        prev->next = tnode;
+        prev->mpNext = tnode;
         prev = tnode;
       }
     }
-    prev->next = node->next;
+    prev->mpNext = node->mpNext;
     free(node->links);
     free(node->backlinks);
     free(node);
@@ -954,7 +954,7 @@ void ExpandMonophoneNetworkToTriphones(
   }
 
   // Give triphone names to phone nodes and create hash of these names
-  for (node = first; node != NULL; node = node->next) {
+  for (node = first; node != NULL; node = node->mpNext) {
     ENTRY e, *ep;
     Node *lc, *rc;
     char *lcname, *rcname, *triname;
@@ -1077,7 +1077,7 @@ void SelfLinksToNullNodes(Node *first)
   int i, j;
   Node *node, *tnode;
 
-  for (node = first; node != NULL; node = node->next) {
+  for (node = first; node != NULL; node = node->mpNext) {
     for (i=0; i < node->nlinks; i++) {
       if (node->links[i].node == node) {
         if ((tnode           = (Node *) calloc(1, sizeof(Node))) == NULL ||
@@ -1104,8 +1104,8 @@ void SelfLinksToNullNodes(Node *first)
         tnode->links[0].like     = 0.0;
         tnode->backlinks[0].node = node;
         tnode->backlinks[0].like = node->links[i].like;
-        tnode->next = node->next;
-        node->next = tnode;
+        tnode->mpNext = node->mpNext;
+        node->mpNext = tnode;
       }
     }
   }
@@ -1114,14 +1114,18 @@ void SelfLinksToNullNodes(Node *first)
 // Remove null nones having less than three predecessors or less than three successors
 int RemoveRedundantNullNodes(Node *first)
 {
-  Node *node, *tnode;
-  int i, j, node_removed = 0;
+  Node *    node;
+  Node *    tnode;
+  int       i;
+  int       j;
+  int       k;
+  int       node_removed = 0;
 
   first->backnext = NULL;
-  for (node = first; node->next != NULL; node = node->next) {
-    node->next->backnext = node;
+  for (node = first; node->mpNext != NULL; node = node->mpNext) {
+    node->mpNext->backnext = node;
   }
-  for (node = first; node != NULL; node = node->next) {
+  for (node = first; node != NULL; node = node->mpNext) {
     if (node->mType & NT && node->pronun == NULL &&
         node->nlinks != 0 && node->nbacklinks != 0  &&
        (node->nlinks == 1 || node->nbacklinks == 1 ||
@@ -1194,8 +1198,8 @@ int RemoveRedundantNullNodes(Node *first)
           }
         }
       }
-      node->backnext->next = node->next;
-      node->next->backnext = node->backnext;
+      node->backnext->mpNext = node->mpNext;
+      node->mpNext->backnext = node->backnext;
       tnode = node;
       node = node->backnext;
       free(tnode->links);
@@ -1265,7 +1269,7 @@ void ComputeAproximatePhoneAccuracy(Node *first, int type)
   int ncorr_phns = 0, i = 0;
   long long maxStopTime;
 
-  for (node = first; node != NULL; node = node->next) {
+  for (node = first; node != NULL; node = node->mpNext) {
     if (node->mType & NT_Phone && node->mType & NT_True) ncorr_phns++;
   }
   if (ncorr_phns == 0) Error("No correct phoneme node in network");
@@ -1273,7 +1277,7 @@ void ComputeAproximatePhoneAccuracy(Node *first, int type)
   corr_phn = (struct CorrPhnRec *)malloc(sizeof(struct CorrPhnRec)*ncorr_phns);
   if (corr_phn == NULL) Error("Insufficient memory");
 
-  for (node = first; node != NULL; node = node->next) {
+  for (node = first; node != NULL; node = node->mpNext) {
     if (node->mType & NT_Phone && node->mType & NT_True) {
       corr_phn[i++].node = node;
     }
@@ -1287,7 +1291,7 @@ void ComputeAproximatePhoneAccuracy(Node *first, int type)
     maxStopTime = HIGHER_OF(maxStopTime, corr_phn[i].node->stop);
     corr_phn[i].maxStopTimeTillNow = maxStopTime;
   }
-  for (node = first; node != NULL; node = node->next) {
+  for (node = first; node != NULL; node = node->mpNext) {
     if (!(node->mType & NT_Phone)) continue;
 
     if (node->stop  <= node->start ||
@@ -1579,7 +1583,7 @@ Node *ReadSTKNetworkInOldFormat(
             "Number of links is expected", nodeId, file_name);
     }
     if (nodeType == 'S') { // Add links to the final node of the subnetwork
-      while (node->next != NULL) node = node->next;
+      while (node->mpNext != NULL) node = node->mpNext;
     }
     if (numOfLinks) {
       if ((node->links = (Link *) malloc(numOfLinks * sizeof(Link))) == NULL) {
@@ -1641,7 +1645,7 @@ Node *ReadSTKNetworkInOldFormat(
     Error("Start node and final node must be Null nodes (%s)", file_name);
   }
   for (i = 0; i < numOfNodes-1; i++) {
-    nodes[i]->next = nodes[i+1];
+    nodes[i]->mpNext = nodes[i+1];
   }
 
   // create back links
@@ -2003,9 +2007,9 @@ Node *ReadSTKNetwork(
   my_hdestroy_r(&node_hash, 1);
   lnode = last;
   first = last = NULL;
-  if (lnode) lnode->next = NULL;
+  if (lnode) lnode->mpNext = NULL;
   for (node = lnode; node != NULL; fnode = node, node = node->backnext) {
-    if (node->backnext) node->backnext->next = node;
+    if (node->backnext) node->backnext->mpNext = node;
 
     if (node->nlinks == 0) {
       if (last)
@@ -2051,22 +2055,22 @@ Node *ReadSTKNetwork(
     Error("Network contain no start node or no final node (%s)", file_name);
   }
   if (first != fnode) {
-    if (first->next)     first->next->backnext = first->backnext;
-    if (first->backnext) first->backnext->next = first->next;
+    if (first->mpNext)     first->mpNext->backnext = first->backnext;
+    if (first->backnext) first->backnext->mpNext = first->mpNext;
     if (first == lnode)  lnode = first->backnext;
 
     first->backnext = NULL;
     fnode->backnext = first;
-    first->next = fnode;
+    first->mpNext = fnode;
   }
   if (last != lnode) {
-    if (last->next)     last->next->backnext = last->backnext;
-    if (last->backnext) last->backnext->next = last->next;
-    last->next = NULL;
-    lnode->next = last;
+    if (last->mpNext)     last->mpNext->backnext = last->backnext;
+    if (last->backnext) last->backnext->mpNext = last->mpNext;
+    last->mpNext = NULL;
+    lnode->mpNext = last;
     last->backnext = lnode;
   }
-  for (node = first; node != NULL; node = node->next) {
+  for (node = first; node != NULL; node = node->mpNext) {
     if (node->mType == (NT_Phone | NT_Model)) {
       node->mType = NT_Phone;
     }
@@ -2080,7 +2084,7 @@ Node *ReadSTKNetwork(
   if (first->pronun != NULL) {
     node = (Node *) calloc(1, sizeof(Node));
     if (node == NULL) Error("Insufficient memory");
-    node->next       = first;
+    node->mpNext       = first;
     node->backnext   = NULL;
     first->backnext  = node;
     node->mType       = NT;
@@ -2104,8 +2108,8 @@ Node *ReadSTKNetwork(
   if (last->pronun != NULL) {
     node = (Node *) calloc(1, sizeof(Node));
     if (node == NULL) Error("Insufficient memory");
-    last->next      = node;
-    node->next      = NULL;
+    last->mpNext      = node;
+    node->mpNext      = NULL;
     node->backnext  = last;
     node->mType      = NT;
     node->pronun    = NULL;
@@ -2143,13 +2147,13 @@ void dnet(Node *net, int nAuxNodePtrs, ...)
 
   if (fp == NULL) return;
 
-  for (node = net; node != NULL; node = node->next) {
+  for (node = net; node != NULL; node = node->mpNext) {
     node->estate_id = i++;
   }
   fprintf(fp, "digraph \"dnet%d\" {\nrankdir=LR\n", dnetcnt++);
 
 
-  for (node = net; node != NULL; node = node->next) {
+  for (node = net; node != NULL; node = node->mpNext) {
     fprintf(fp, "n%d [shape=%s,label=\"%d:%s", node->estate_id,
             node->mType & NT ? "box" : "ellipse", node->estate_id,
             node->mType & NT ? (node->pronun ?
@@ -2172,16 +2176,16 @@ void dnet(Node *net, int nAuxNodePtrs, ...)
       }
     }
     fprintf(fp, "\"];\n");
-//    if (node->next != NULL) {
+//    if (node->mpNext != NULL) {
 //     fprintf(fp,"n%d -> n%d [color=black,weight=1]\n",
-//             node->estate_id, node->next->estate_id);
+//             node->estate_id, node->mpNext->estate_id);
 //    }
 //    if (node->backnext != NULL) {
 //     fprintf(fp,"n%d -> n%d [color=gray,weight=1]\n",
 //             node->estate_id, node->backnext->estate_id);
 //    }
   }
-  for (node = net; node != NULL; node = node->next) {
+  for (node = net; node != NULL; node = node->mpNext) {
     for (i = 0; i < node->nlinks; i++) {
       fprintf(fp,"n%d -> n%d [color=blue,weight=1",
               node->estate_id,node->links[i].node->estate_id);
@@ -2287,10 +2291,10 @@ Node *ReadHTKLattice(
           if (last == NULL) {
             first = nodes[node_id];
           } else {
-            last->next = nodes[node_id];
+            last->mpNext = nodes[node_id];
           }
           last = nodes[node_id];
-          nodes[node_id]->next = NULL;
+          nodes[node_id]->mpNext = NULL;
 
           node_word = NULL;
           node_var  = 0;
@@ -2398,8 +2402,8 @@ Node *ReadHTKLattice(
           }
           node->mType = NT_Phone;
           node->nlinks = node->nbacklinks = 1;
-          node->next   = last->next;
-          last->next = node;
+          node->mpNext   = last->mpNext;
+          last->mpNext = node;
           node->phoneAccuracy = 1.0;
 
           if (!(labelFormat.TIMES_OFF)) {
@@ -2462,8 +2466,8 @@ Node *ReadHTKLattice(
   fnode = first;
   first = last = NULL;
   if (fnode) fnode->backnext = NULL;
-  for (node = fnode; node != NULL; lnode = node, node = node->next) {
-    if (node->next) node->next->backnext = node;
+  for (node = fnode; node != NULL; lnode = node, node = node->mpNext) {
+    if (node->mpNext) node->mpNext->backnext = node;
 
     if (node->nlinks == 0) {
       if (last)
@@ -2480,23 +2484,23 @@ Node *ReadHTKLattice(
     Error("Network contain no start node or no final node (%s)", file_name);
   }
   if (first != fnode) {
-    if (first->next) first->next->backnext = first->backnext;
-    first->backnext->next = first->next;
+    if (first->mpNext) first->mpNext->backnext = first->backnext;
+    first->backnext->mpNext = first->mpNext;
     first->backnext = NULL;
     fnode->backnext = first;
-    first->next = fnode;
+    first->mpNext = fnode;
   }
   if (last != lnode) {
-    if (last->backnext) last->backnext->next = last->next;
-    last->next->backnext = last->backnext;
-    last->next = NULL;
-    lnode->next = last;
+    if (last->backnext) last->backnext->mpNext = last->mpNext;
+    last->mpNext->backnext = last->backnext;
+    last->mpNext = NULL;
+    lnode->mpNext = last;
     last->backnext = lnode;
   }
   if (first->pronun != NULL) {
     node = (Node *) calloc(1, sizeof(Node));
     if (node == NULL) Error("Insufficient memory");
-    node->next       = first;
+    node->mpNext       = first;
     node->backnext   = NULL;
     first->backnext  = node;
     node->mType       = NT;
@@ -2521,8 +2525,8 @@ Node *ReadHTKLattice(
   if (last->pronun != NULL) {
     node = (Node *) calloc(1, sizeof(Node));
     if (node == NULL) Error("Insufficient memory");
-    last->next      = node;
-    node->next      = NULL;
+    last->mpNext      = node;
+    node->mpNext      = NULL;
     node->backnext  = last;
 
     node->mType      = NT;
@@ -2558,11 +2562,11 @@ void WriteSTKNetworkInOldFormat(
   int i;
   Node *node;
 
-  for (i = 0, node = first; node != NULL; node = node->next, i++)  {
+  for (i = 0, node = first; node != NULL; node = node->mpNext, i++)  {
     node->aux = i;
   }
   fprintf(lfp,"NUMNODES: %d\n", i);
-  for (i = 0, node = first; node != NULL; node = node->next, i++) {
+  for (i = 0, node = first; node != NULL; node = node->mpNext, i++) {
     int j,
     type = node->mType & NT_Model       ? 'M'  :
            node->mType & NT_Phone       ? 'M'  :

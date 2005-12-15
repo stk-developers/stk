@@ -189,7 +189,7 @@ int main(int argc, char *argv[]) {
   //ResetAccumsForHMMSet(&hset);
   hset.ResetAccums();
 
-  for (i=0,file_name=acc_files;file_name!=NULL;i++,file_name=file_name->next) {
+  for (i=0,file_name=acc_files;file_name!=NULL;i++,file_name=file_name->mpNext) {
     if (trace_flag & 1) {
       TraceLog("Processing file '%s'", file_name->str);
     }
@@ -221,7 +221,7 @@ int main(int argc, char *argv[]) {
 
   while (acc_files) {
     file_name = acc_files;
-    acc_files = acc_files->next;
+    acc_files = acc_files->mpNext;
     free(file_name);
   }
 

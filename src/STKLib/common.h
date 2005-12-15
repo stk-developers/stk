@@ -117,20 +117,20 @@ using namespace STK;
     size_t              tabsize;
   };
   
+  
   struct readline_data 
   {
-    char *buffer;
-    int  size;
+    char *              buffer;
+    int                 size;
   };
   
-  //typedef struct _FileListElem FileListElem;
   
   class FileListElem 
   {
   public:
-    FileListElem *next;
-    char *physical;
-    char logical[1];
+    FileListElem *      mpNext;
+    char *              physical;
+    char                logical[1];
   };
   
   //#define Error(...) _Error_(__func__, __FILE__, __LINE__, __VA_ARGS__)

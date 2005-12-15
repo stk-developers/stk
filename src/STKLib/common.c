@@ -1096,7 +1096,7 @@
     chrptr = strchr((*last)->logical, '=');
     if (chrptr) *chrptr = '\0';
     (*last)->physical = chrptr ? chrptr+1: (*last)->logical;
-    last = &(*last)->next;
+    last = &(*last)->mpNext;
     *last = NULL;
     return last;
   }

@@ -314,10 +314,10 @@ int main(int argc, char *argv[]) {
   }
 
 
-  for (file_name = feature_files; file_name != NULL; file_name = file_name->next->next) {
+  for (file_name = feature_files; file_name != NULL; file_name = file_name->mpNext->mpNext) {
     if (trace_flag & 1) {
       TraceLog("Processing file pair %d/%d '%s' <-> %s",  ++fcnt,
-              nfeature_files/2, file_name->physical,file_name->next->physical);
+              nfeature_files/2, file_name->physical,file_name->mpNext->physical);
     }
 
     FLOAT P;
@@ -334,8 +334,8 @@ int main(int argc, char *argv[]) {
 
     FLOAT mmi_P;
     // Second set of accums is for compeating models
-    //ReadAccums(file_name->next->physical, 1.0, &hset, &S, &mmi_P, update_type);
-    hset.ReadAccums(file_name->next->physical, 1.0, &S, &mmi_P, update_type);
+    //ReadAccums(file_name->mpNext->physical, 1.0, &hset, &S, &mmi_P, update_type);
+    hset.ReadAccums(file_name->mpNext->physical, 1.0, &S, &mmi_P, update_type);
     totLogPosterior += P - mmi_P;
 
     if (trace_flag & 1) {
@@ -395,7 +395,7 @@ int main(int argc, char *argv[]) {
   free(hset.varFloor);
   while (feature_files) {
     file_name = feature_files;
-    feature_files = feature_files->next;
+    feature_files = feature_files->mpNext;
     free(file_name);
   }
 
