@@ -216,7 +216,7 @@ int main(int argc, char *argv[]) {
   RHFBuffer rhfbuff                  = {0};
   RHFBuffer rhfbuff_alig             = {0};
   ExpansionOptions expOptions        = {0};
-  STKNetworkOutputFormat out_net_fmt = {0};
+  STKNetworkOutputFormat in_net_fmt = {0};
   LabelFormat in_lbl_fmt = {0};
   in_lbl_fmt.TIMES_OFF = 1;
 
@@ -458,9 +458,10 @@ int main(int argc, char *argv[]) {
     if (ilfp  == NULL) 
       Error("Cannot open network file: %s", network_file);
 
-    Node *node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash, 0, in_lbl_fmt,
+    Node *node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash, 
+                                notInDictAction, in_lbl_fmt,
                                 header.sampPeriod, network_file, NULL);
-    NetworkExpansionsAndOptimizations(node, expOptions, out_net_fmt, &dictHash,
+    NetworkExpansionsAndOptimizations(node, expOptions, in_net_fmt, &dictHash,
                                       &nonCDphHash, &phoneHash);
     InitNetwork(&net, node, hset_alig, &hset);
     fclose(ilfp);
@@ -617,11 +618,11 @@ int main(int argc, char *argv[]) {
           node = MakeNetworkFromLabels(labels, dictionary ? NT : NT_Phone);
           ReleaseLabels(labels);
         } else if (in_transc_fmt == TF_STK) {
-          node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash, 0, in_lbl_fmt,
+          node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash, notInDictAction, in_lbl_fmt,
                               header.sampPeriod, label_file, src_mlf);
         } else Error("Too bad. What did you do ?!?");
 
-        NetworkExpansionsAndOptimizations(node, expOptions, out_net_fmt, &dictHash,
+        NetworkExpansionsAndOptimizations(node, expOptions, in_net_fmt, &dictHash,
                                           &nonCDphHash, &phoneHash);
         InitNetwork(&net, node, hset_alig, &hset);
         CloseInputLabelFile(ilfp, src_mlf);

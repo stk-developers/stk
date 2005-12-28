@@ -303,8 +303,9 @@ int main(int argc, char *argv[]) {
         if (trace_flag & 1) TraceLog("Processing file %d '%s'", ++fcnt, label_file);
       }
       if (in_transc_fmt == TF_HTK || in_transc_fmt == TF_MLF) {
-        labels = ReadLabels(in_MLF_fp, &dictHash, UL_ERROR, in_lbl_fmt,
-                            /*sampleRate*/ 1, label_file, in_MLF_fn, NULL);
+        labels = ReadLabels(in_MLF_fp, dictionary ? &dictHash : &phoneHash,
+                                       dictionary ? UL_ERROR : UL_INSERT, in_lbl_fmt,
+                                       /*sampleRate*/ 1, label_file, in_MLF_fn, NULL);
         node = MakeNetworkFromLabels(labels, NT);
         ReleaseLabels(labels);
       } else if (in_transc_fmt == TF_STK || in_transc_fmt == TF_MNF) {
