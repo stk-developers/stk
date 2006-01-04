@@ -378,7 +378,9 @@
     if (freeKeys) 
     {
       for (i = 0; i < tab->nentries; i++)
+      {
         free(tab->entry[i]->key);
+      }
     }
     hdestroy_r(&tab->tab);
     free(tab->entry);

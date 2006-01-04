@@ -10,6 +10,8 @@
  *                                                                         *
  ***************************************************************************/
 
+#include "fileio.h"
+#include "stkstream.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,7 +24,8 @@
 #include <io.h>
 #include <direct.h>
 #endif
-#include "fileio.h"
+
+using namespace STK;
 
 int WriteHTKHeader (FILE * fp_out, HTK_Header header, bool swap)
 {
@@ -311,6 +314,7 @@ FLOAT *ReadHTKFeatures(
   int                   comp;
   int                   coefSize;
   char *                chptr;
+  istkstream            istr;
 
   // remove final spaces from file name
   for (i = strlen(file_name)-1; i >= 0 && isspace(file_name[i]); i--) 
@@ -335,10 +339,13 @@ FLOAT *ReadHTKFeatures(
   {
     if (buff->last_file_name) 
     {
-      if (buff->fp != stdin) fclose(buff->fp);
+      if (buff->fp != stdin) 
+        fclose(buff->fp);
+      
       free(buff->last_file_name);
       buff->last_file_name = NULL;
     }
+    
     
     if (!strcmp(file_name, "-")) 
       buff->fp = stdin;
@@ -347,6 +354,13 @@ FLOAT *ReadHTKFeatures(
     
     if (buff->fp == NULL) 
       Error("Cannot open feature file: '%s'", file_name);
+    
+    /*
+    istr.open(file_name, ios::binary);
+    if (!istr.good())
+      Error("Cannot open feature file: '%s'", file_name);
+    buff->fp = istr.file();  
+    */
     
     if (ReadHTKHeader(buff->fp, header, swap)) 
       Error("Invalid HTK header in feature file: '%s'", file_name);
@@ -357,8 +371,8 @@ FLOAT *ReadHTKFeatures(
       // are appended after HTK header.
 
       int coefs = header->sampSize/sizeof(INT_16);
-      buff->A = (float*) realloc(buff->A, coefs * sizeof(FLOAT_32));
-      buff->B = (float*) realloc(buff->B, coefs * sizeof(FLOAT_32));
+      buff->A = (FLOAT*) realloc(buff->A, coefs * sizeof(FLOAT_32));
+      buff->B = (FLOAT*) realloc(buff->B, coefs * sizeof(FLOAT_32));
       if (buff->A == NULL || buff->B == NULL) Error("Insufficient memory");
 
       e  = ReadHTKFeature(buff->fp, buff->A, coefs, swap, 0, 0, 0);
@@ -544,6 +558,9 @@ FLOAT *ReadHTKFeatures(
       }
     }
   }
+  
+  //istr.close();
+  fclose(buff->fp);
   return feaMx;
 }
 
@@ -564,7 +581,7 @@ void ReadCepsNormFile(const char *file, char **last_file, FLOAT **vec_buff,
   }
   free(*last_file);
   *last_file=strdup(file);
-  *vec_buff = (float*) realloc(*vec_buff, coefs * sizeof(FLOAT));
+  *vec_buff = (FLOAT*) realloc(*vec_buff, coefs * sizeof(FLOAT));
 
   if (*last_file == NULL || *vec_buff== NULL) {
     Error("Insufficient memory");

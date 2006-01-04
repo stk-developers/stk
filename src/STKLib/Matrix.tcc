@@ -1,3 +1,10 @@
+
+/** @file Matrix.tcc
+ *  This is an internal header file, included by other library headers.
+ *  You should not attempt to use it directly.
+ */
+
+
 #ifndef STK_Matrix_tcc
 #define STK_Matrix_tcc
 
@@ -6,9 +13,12 @@
 #include "common.h"
 #include <cstdlib>
 #include <malloc.h>
-#include <cblas.h>
+//#include <cblas.h>
 #include <cassert>
 #include <cmath>
+extern "C"{
+  #include <cblas.h>
+}
 
 
 static union
@@ -119,7 +129,7 @@ namespace STK
       this->mpData        = static_cast<_ElemT *> (data);
 
       this->mStorageType = st;
-      this->mMRows      = rows;
+      this->mainMRows      = rows;
       this->mMCols      = cols;
       this->mMRealCols  = real_cols;
       this->mMSkip      = skip;
@@ -216,12 +226,10 @@ namespace STK
     assert(mStorageType == STORAGE_REGULAR || mStorageType == STORAGE_TRANSPOSED);
     if (mStorageType == STORAGE_REGULAR)
     {
-      //std::cout << "prisup k off = " << r * mMRealCols + c << std::endl;
       return *(mpData + r * mMRealCols + c);
     }
     else
     {
-      //std::cout << "prisup k off = " << c * mMRealCols + r << std::endl;
       return *(mpData + c * mMRealCols + r);      
     }
     

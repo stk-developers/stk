@@ -31,6 +31,8 @@
 
 namespace STK
 {  
+  class ModelSetIOBase;
+  class ModelSet;
   class MacroHash;  
   class MacroData;
   class Macro;
@@ -108,38 +110,39 @@ namespace STK
   //@}
   
   
-  
   /** *************************************************************************
    ** *************************************************************************
-   *  @brief MMF file input operation encapsulation
+   *  @brief Model IO interface (abstract class
    */
-   class MmfReader
-   {
-   private:
-      istkstream        mStream;   ///< stream to read from
-      int               mCurLine;  ///< current line
-      int               mCurCol;   ///< current column
-      
-   public:      
-      /**
-       * @name File operation functions
-       */
-      //@{
-      FLOAT       GetFloat();
-      int         GetInt();
-      char *      GetString(int eofNotExpected);
-      void        SkipSpaces();
-      void        UngetString();
-      //@}
-      
-      const std::string
-      FileName() const
-      {
-        return mStream.name();
-      }
-      
-   };
+  class ModelSetIOBase
+  {
+    int x;
+  public:
+    ModelSetIOBase() {};
+    
+    virtual
+    ~ModelSetIOBase() {};
+    
+    /**
+     * @brief Loads a model set from stream
+     * @param pModelSet ModelSet structure to load
+     * @param rFileName file name 
+     * @return true on success, false on failure
+     */
+    virtual bool
+    Load(ModelSet & rModelSet, const std::string & rFileName, char * expectHMM) = 0;
+    
+    /**
+     * @brief Writes a model set to stream
+     * @param ModelSet ModelSet structure to load
+     * @param rFileName file name 
+     * @return true on success, false on failure
+     */
+    virtual bool
+    Save(ModelSet & rModelSet, const std::string & rFileName) = 0;
+  }; // class ModelIO
   
+    
   
   
   /** *************************************************************************
@@ -155,11 +158,15 @@ namespace STK
     /// Default constructor
     MacroData() : mpMacro(NULL) {}
     
+    virtual
+    ~MacroData() {};
+    
     // we'll make the Macro class a frien as it will increment the mLinksCount
     friend class Macro;
     
     virtual void
-    Scan(int mask, HMMSetNodeName nodeName, ScanAction action, void *userData) = 0;
+    Scan(int mask, HMMSetNodeName nodeName, ScanAction action, void *userData)
+    { }
   }; // class MacroData
 
   
@@ -245,7 +252,7 @@ namespace STK
   public:
 
   private:
-  
+    ModelSetIOBase  * mpIOBase;
     
     /// This group of methods does exactly what their names state
     /// @{ 
@@ -336,16 +343,16 @@ namespace STK
      * @param rOutputExt output file's implicit extension
      * @param binary write in binary mode if true
      */
-    WriteMmf(const std::string & rFileName, 
-             const std::string & rOutputDir,
-             const std::string & rOutputExt, bool binary);
+    WriteMmf(const char * pFileName, 
+             const char * pOutputDir,
+             const char * pOutputExt, bool binary);
     
     void 
     /**
      * @brief Writes HMM statistics to a file
      * @param rFileName file to write to
      */
-    WriteHMMStats(const std::string & rFileName);             
+    WriteHMMStats(const char * pFileName);             
     
     
     /**
@@ -356,10 +363,10 @@ namespace STK
      * @param totLogLike 
      */
     void 
-    WriteAccums(const std::string & rFileName, 
-                const std::string & rOutputDir,
-                long                totFrames, 
-                FLOAT               totLogLike);
+    WriteAccums(const char * pFileName, 
+                const char * pOutputDir,
+                long         totFrames, 
+                FLOAT        totLogLike);
     
     void 
     /**
@@ -367,7 +374,7 @@ namespace STK
      * @param rOutDir 
      * @param binary 
      */
-    WriteXFormStatsAndRunCommands(const std::string & rOutDir, bool binary);
+    WriteXFormStatsAndRunCommands(const char * pOutDir, bool binary);
     //@}
     
     
@@ -397,7 +404,7 @@ namespace STK
      *  
      *  The entire stream is read and propriate structures are constructed.
      */  
-    ParseMmf(const std::string & rName, char * expectHMM);
+    ParseMmf(const char * pName, char * expectHMM);
     
     void 
     /**
@@ -405,9 +412,9 @@ namespace STK
      * @param rFileName  file to open
      *
      */
-    ReadHMMList(const std::string & rFileName, 
-                const std::string & rInMmfDir, 
-                const std::string & rInMmfExt);
+    ReadHMMList(const char * pFileName, 
+                const char * pInMmfDir, 
+                const char * pInMmfExt);
     
     /**
      * @brief Reads accumulators from file
@@ -418,18 +425,18 @@ namespace STK
      * @param MMI_denominator_accums 
      */
     void
-    ReadAccums(const std::string & rFileName, 
-               float               weight,
-               long *              totFrames, 
-               FLOAT *             totLogLike, 
-               int                 mmiDenominatorAccums);
+    ReadAccums(const char * pFileName, 
+               float        weight,
+               long *       totFrames, 
+               FLOAT *      totLogLike, 
+               int          mmiDenominatorAccums);
     
     
     void
-    ReadXFormStats(const std::string & rOutDir, bool binary);
+    ReadXFormStats(const char * pOutDir, bool binary);
     
     void
-    ReadXFormList(const std::string & rFileName);
+    ReadXFormList(const char * pFileName);
     //@}
     
     
@@ -449,7 +456,7 @@ namespace STK
     ComputeGlobalStats(FLOAT *observation, int time);
     
     void 
-    UpdateFromAccums(const std::string & rOutputDir);
+    UpdateFromAccums(const char * pOutputDir);
     
     void 
     DistributeMacroOccurances();
@@ -495,14 +502,14 @@ namespace STK
     size_t                    mNStates;
     Transition *              mpTransition;
     State **                  mpState;
-    State *                   state[1];
+    //State *                   state[1];
     
   public:
     /// Constructor
     Hmm(size_t nStates);
     
     /// Destructor
-    ~Hmm();
+    virtual ~Hmm();
     
     void
     /**
@@ -524,6 +531,17 @@ namespace STK
           HMMSetNodeName  nodeNameBuffer,
           ScanAction      action, 
           void *          pUserData);
+          
+    /**
+     * @brief Returns number of states
+     * @return integer with number of states
+     */
+    size_t
+    NStates() const
+    {
+      return mNStates;
+    }
+    
   };
   
   
@@ -535,6 +553,20 @@ namespace STK
   class State : public MacroData  
   {
   public:
+    
+    /**
+     * @brief The constructor
+     * @param numMixes Number of gaussian mixtures to use
+     */
+    State(size_t numMixes);
+    
+    /**
+     * @brief The destructor
+     */     
+    virtual 
+    ~State();
+    
+    
     long                      mID;
   
     KeywordID                 mOutPdfKind;
@@ -544,14 +576,14 @@ namespace STK
       int                     PDF_obs_coef;
     };
   
-    struct 
+    struct MixtureLink
     {
     public:
       Mixture *               mpEstimates;
       FLOAT                   weight;
       FLOAT                   weight_accum; //used for reestimation
       FLOAT                   weight_accum_den;
-    } mpMixture[1];
+    } *                     mpMixture;
     
     void
     /**
@@ -586,6 +618,14 @@ namespace STK
   class Mixture : public MacroData 
   {
   public:
+    /// The (empty) constructor
+    Mixture() {};
+    
+    /// The (empty) destructor
+    virtual
+    ~Mixture() {};
+    
+    
     long                      mID;
     Mean *                    mpMean;
     Variance *                mpVariance;
@@ -645,11 +685,23 @@ namespace STK
   class Mean : public MacroData 
   {
   public:
+    /**
+     * @brief The consturctor
+     * @param vectorSize Mean vector size
+     * @param allocateAccums if true, memory for accumulators is allocated
+     */
+    Mean(size_t vectorSize, bool allocateAccums);
+    
+    /// The destructor
+    virtual
+    ~Mean();
+    
+    
     size_t                  mVectorSize;
     XFormStatAccum *        mpXFormStatAccum;
     size_t                  mNumberOfXFormStatAccums;
     bool                    mUpdatableFromStatAccums;
-    FLOAT                   mVector[1];
+    FLOAT *                 mpVectorO;
     
     
     void
@@ -668,13 +720,24 @@ namespace STK
   class Variance : public MacroData 
   {
   public:
+    /**
+     * @brief The consturctor
+     * @param vectorSize Mean vector size
+     * @param allocateAccums if true, memory for accumulators is allocated
+     */
+    Variance(size_t vectorSize, bool allocateAccums);
+    
+    /// The destructor
+    virtual
+    ~Variance();
+  
+      
   //  BOOL         diagonal;
     size_t                  mVectorSize;
     XFormStatAccum *        mpXFormStatAccum;
     size_t                  mNumberOfXFormStatAccums;
     bool                    mUpdatableFromStatAccums;
-    FLOAT                   mVector[1];
-    
+    FLOAT *                 mpVectorO;    
     
     void
     /**
@@ -694,9 +757,20 @@ namespace STK
   class Transition : public MacroData 
   {
   public:
+    /**
+     * @brief The constructor
+     * @param nStates Number of states
+     * @param allocateAccums if true, memory for accumulators is allocated
+     */
+    Transition(size_t nStates, bool allocateAccums);
+    
+    /// The destructor
+    virtual
+    ~Transition();
+  
     size_t                  mNStates;
     //Matrix<FLOAT>           mMatrix;
-    FLOAT                   matrix[1];
+    FLOAT *                 mpMatrixO;
   
     void
     /**
@@ -728,6 +802,17 @@ namespace STK
   class XFormInstance : public MacroData 
   {
   public:
+    /**
+     * @brief The constructor
+     * @param vectorSize size of output vector
+     */
+    XFormInstance(size_t vectorSize);
+    
+    /// the destructor
+    virtual
+    ~XFormInstance();
+    
+  
     XFormInstance *       mpInput;
     XForm *               mpXForm;
     int                   mTime;
@@ -739,7 +824,7 @@ namespace STK
     char *                mpMemory;
     int                   mTotalDelay;
     
-    FLOAT                 mpOutputVector[1]; 
+    FLOAT *               mpOutputVector; 
     
     FLOAT *
     XFormPass(FLOAT *in_vec, int time, PropagDir dir);
@@ -827,6 +912,20 @@ namespace STK
     FLOAT *             mpOutputVector;
     size_t              mNBlocks;
     XForm **            mpBlock;
+    
+    /// The (empty) constructor
+    XFormLayer();
+    
+    /// The destructor
+    ~XFormLayer();
+    
+    XForm **
+    /**
+     * @brief Inits (creates) the blocks
+     * @param nBlocks number of blocks in the layer
+     * @return pointer to the newly created array of pointers to XForms
+     */
+    InitBlocks(size_t nBlocks);
   }; // class XFormLayer
   
   
@@ -839,8 +938,18 @@ namespace STK
   class CompositeXForm : public XForm 
   {
   public:
+    /**
+     * @brief The constructor
+     * @param nLayers number of layers the composite should have
+     */
+    CompositeXForm(size_t nLayers);
+    
+    /// The destructor
+    virtual
+    ~CompositeXForm();    
+    
     size_t              mNLayers;    
-    XFormLayer          mpLayer[1];
+    XFormLayer *        mpLayer;
     
     /**
      * @brief Composite XForm evaluation 
@@ -864,8 +973,20 @@ namespace STK
   class LinearXForm : public XForm 
   {
   public:
+    /**
+     * @brief The constructor
+     * @param inSize input vector size
+     * @param outSize output vector size
+     */
+    LinearXForm(size_t inSize, size_t outSize);
+    
+    /// The destructor
+    virtual
+    ~LinearXForm();
+  
+    
     Matrix<FLOAT>       mMatrix;
-    FLOAT               matrix[1];
+    FLOAT *             mpMatrixO;
     
     /**
      * @brief Linear XForm evaluation 
@@ -889,7 +1010,17 @@ namespace STK
   class BiasXForm : public XForm 
   {
   public:
-    FLOAT               mVector[1];
+    /**
+     * @brief The constructor
+     * @param vectorSize size of
+     */
+    BiasXForm(size_t vectorSize);
+    
+    virtual
+    ~BiasXForm();
+    
+    Matrix<FLOAT>       mVector;
+    FLOAT *             mpVectorO;
     
     
     /**
@@ -914,8 +1045,17 @@ namespace STK
   class FuncXForm : public XForm 
   {
   public:
-    int                 mFuncId;
-  
+    /**
+     * @brief The constructor
+     * @param size parameter vector size
+     * @param funcId function ID
+     */
+    FuncXForm(size_t size, int funcId);
+    
+    virtual
+    ~FuncXForm();
+    
+    int                 mFuncId;  
   
     /**
      * @brief Function XForm evaluation 
@@ -939,8 +1079,17 @@ namespace STK
   class CopyXForm : public XForm 
   {
   public:
-    int                 indices[1];
-  
+    /**
+     * @brief The constructor
+     * @param inSize size of input vector
+     * @param outSize size of output vector
+     */
+    CopyXForm(size_t inSize, size_t outSize);
+    
+    virtual
+    ~CopyXForm();
+    
+    int *               mpIndices;  
   
     /**
      * @brief Copy XForm evaluation 
@@ -964,6 +1113,17 @@ namespace STK
   class StackingXForm : public XForm 
   {
   public:
+    /**
+     * @brief The Constructor
+     * @param stackSize size of the stack
+     * @param inSize size of the input vector
+     */
+    StackingXForm(size_t stackSize, size_t inSize);
+    
+    /// The destructor
+    virtual
+    ~StackingXForm();
+    
     int                 mHorizStack;
   
     /**
@@ -1040,6 +1200,7 @@ namespace STK
   extern bool           gHmmsIgnoreMacroRedefinition;         ///< Controls macro redefinition behavior
   extern const char *   gpHListFilter;                        ///< HMM list Filter command
   extern FunctionTable  gFuncTable[];                         ///< FuncXForm function table
+  extern size_t         gFuncTableSize;                       ///< Number of bytes when gFuncTable inicialized
   extern char *         gpKwds[KID_MaxKwdID];                 ///< MMF keyword table
                                                            
 
@@ -1048,6 +1209,9 @@ namespace STK
    * @brief Passes the vector through XFormInstance
    */
   FLOAT *     XFormPass(XFormInstance *xformInstance, FLOAT *in_vec, int time, PropagDir dir);
+
+  void        ReleaseMacroHash(struct my_hsearch_data *macro_hash);
+  Macro *     FindMacro(struct my_hsearch_data *macro_hash, const char *name);
   
   void        PutFlt(FILE *fp, bool binary, FLOAT f);
   void        PutInt(FILE *fp, bool binary, int i);
@@ -1060,8 +1224,6 @@ namespace STK
   void        RemoveSpaces(FILE *fp);
   void        UngetString(void);
   
-  void        ReleaseMacroHash(struct my_hsearch_data *macro_hash);
-  Macro *     FindMacro(struct my_hsearch_data *macro_hash, const char *name);
   
   int         CheckKwd(const char *str, KeywordID kwdID);
   void        InitKwdTable();

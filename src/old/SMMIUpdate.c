@@ -357,17 +357,21 @@ int main(int argc, char *argv[]) {
       Variance *tmpvar = macro ? (Variance *) macro->data : NULL;
 //      assert(!tmpvar || hset.mInputVectorSize == tmpvar->mVectorSize);
 
-      hset.varFloor = (Variance *) malloc(sizeof(Variance)+((tmpvar ? tmpvar->mVectorSize : hset.mInputVectorSize)-1)*sizeof(FLOAT));
-      if (hset.varFloor == NULL) Error("Insufficient memory");
-
-      hset.varFloor->mVectorSize = tmpvar ? tmpvar->mVectorSize : hset.mInputVectorSize;
+      //***
+      // old malloc
+      //hset.varFloor = (Variance *) malloc(sizeof(Variance)+((tmpvar ? tmpvar->mVectorSize : hset.mInputVectorSize)-1)*sizeof(FLOAT));
+      //if (hset.varFloor == NULL) Error("Insufficient memory");
+      //
+      //hset.varFloor->mVectorSize = tmpvar ? tmpvar->mVectorSize : hset.mInputVectorSize;
+      
+      hset.varFloor = new Variance((tmpvar ? tmpvar->mVectorSize : hset.mInputVectorSize), false);
 
       for (i = 0; i < hset.varFloor->mVectorSize; i++) {
         if (macro) {
-          hset.varFloor->mVector[i] =
+          hset.varFloor->mpVectorO[i] =
              tmpvar && ((float) min_variance <= 0.0 ||
-                        tmpvar->mVector[i] < 1/min_variance)
-             ? tmpvar->mVector[i] : 1 / min_variance;
+                        tmpvar->mpVectorO[i] < 1/min_variance)
+             ? tmpvar->mpVectorO[i] : 1 / min_variance;
         }
       }
     }
@@ -392,7 +396,7 @@ int main(int argc, char *argv[]) {
 
 //  my_hdestroy_r(&labelHash, 0);
 
-  free(hset.varFloor);
+  delete hset.varFloor;
   while (feature_files) {
     file_name = feature_files;
     feature_files = feature_files->mpNext;

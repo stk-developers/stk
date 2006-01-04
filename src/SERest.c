@@ -11,23 +11,29 @@
  ***************************************************************************/
 
 #define VERSION "0.7 "__TIME__" "__DATE__
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include <malloc.h>
-#include <assert.h>
+
 #include "STKLib/fileio.h"
 #include "STKLib/common.h"
 #include "STKLib/Models.h"
 #include "STKLib/viterbi.h"
 #include "STKLib/labels.h"
 #include "STKLib/stkstream.h"
+
+#include "STKLib/MmfIO.h"
+
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <malloc.h>
+#include <assert.h>
 #ifndef WIN32
 #include <unistd.h>
 #else
 #include "getopt.h"
 #endif
 
+#include <iostream>
+using namespace std;
 using namespace STK;
 
 void usage(char *progname)
@@ -118,7 +124,10 @@ int main(int argc, char *argv[]) {
   char *              chrptr;
   
 //  struct my_hsearch_data labelHash;
-  struct my_hsearch_data nonCDphHash, phoneHash, dictHash, cfgHash;
+  struct my_hsearch_data nonCDphHash;
+  struct my_hsearch_data phoneHash;
+  struct my_hsearch_data dictHash;
+  struct my_hsearch_data cfgHash;
 
   FLOAT               totLogLike      = 0;
   FLOAT               totLogPosterior = 0;
@@ -226,10 +235,12 @@ int main(int argc, char *argv[]) {
   hset.Init(MODEL_SET_WITH_ACCUM);
   
   if (!my_hcreate_r(100,  &dictHash)
-  || !my_hcreate_r(100,  &phoneHash)
-  || !my_hcreate_r(100,  &cfgHash)) {
+      || !my_hcreate_r(100,  &phoneHash)
+      || !my_hcreate_r(100,  &cfgHash)) 
+  {
     Error("Insufficient memory");
   }
+  
   i = ParseOptions(argc, argv, optionStr, SNAME, &cfgHash);
   htk_compat   = GetParamBool(&cfgHash,SNAME":HTKCOMPAT", false);
 
@@ -378,9 +389,11 @@ int main(int argc, char *argv[]) {
     }
     my_fclose(sfp);
   }
-  
+
+    
   for (src_mmf=strtok(src_mmf, ","); src_mmf != NULL; src_mmf=strtok(NULL, ",")) 
   {
+    //gMmfIO.Load(hset, src_mmf, NULL);
     hset.ParseMmf(src_mmf, NULL);
     //ReadHMMSet(src_mmf, &hset, NULL);
   }
@@ -404,7 +417,7 @@ int main(int argc, char *argv[]) {
   {
     hset_alig = &hset;
   }
-  
+
   if (parallel_mode == 0) 
     one_pass_reest = 0;
 
@@ -419,9 +432,12 @@ int main(int argc, char *argv[]) {
     
   if ((nfeature_files & 1) && update_type != UT_ML && parallel_mode == 0)
     Error("%s update requires even number (two sets) of accumulator files", ut_str);
+    
   
+try
+{ 
   if (src_hmm_list) 
-    hset.ReadHMMList(src_hmm_list, src_hmm_dir, src_hmm_ext);
+    hset.ReadHMMList(src_hmm_list, src_hmm_dir ? src_hmm_dir : "", src_hmm_ext ? src_hmm_ext : "");
     
   if (alg_hmm_list) 
     hset_alig->ReadHMMList(alg_hmm_list, alg_hmm_dir, alg_hmm_ext);
@@ -546,9 +562,12 @@ int main(int argc, char *argv[]) {
 
       // read sentence weight definition if any ( physical_file.fea[s,e]{weight} )
       if ((chrptr = strrchr(phys_fn, '{')) != NULL &&
-        ((i=0), sscanf(chrptr, "{%f}%n", &sentWeight, &i), chrptr[i] == '\0')) {
+          ((i=0), sscanf(chrptr, "{%f}%n", &sentWeight, &i), chrptr[i] == '\0')) 
+      {
         *chrptr = '\0';
-      } else {
+      } 
+      else 
+      {
         sentWeight = 1.0;
       }
       if (cmn_mask) process_mask(lgcl_fn, cmn_mask, cmn_file);
@@ -557,6 +576,10 @@ int main(int argc, char *argv[]) {
                               startFrmExt, endFrmExt, targetKind,
                               derivOrder, derivWinLengths, &header,
                               cmn_path, cvn_path, cvg_file, &rhfbuff);
+                              
+      // we won't use rhfbuff anymore so we free some of its allocated
+      // structure members
+      free(rhfbuff.last_file_name);
 
       if (hset.mInputVectorSize != header.sampSize / sizeof(float)) {
         Error("Vector size [%d] in '%s' is incompatible with source HMM set [%d]",
@@ -579,6 +602,9 @@ int main(int argc, char *argv[]) {
                                      startFrmExt_alig, endFrmExt_alig, targetKind_alig,
                                      derivOrder_alig, derivWinLengths_alig, &header_alig,
                                      cmn_path_alig, cvn_path_alig, cvg_file_alig, &rhfbuff_alig);
+        // we won't use rhfbuff anymore so we free some of its allocated
+        // structure members
+        free(rhfbuff_alig.last_file_name);
 
         if (hset_alig->mInputVectorSize != header_alig.sampSize/sizeof(float)) {
           Error("Vector size [%d] in '%s' is incompatible with alignment HMM set [%d]",
@@ -603,6 +629,7 @@ int main(int argc, char *argv[]) {
         header_alig = header;
         obsMx_alig  = obsMx;
       }
+      
       if (!network_file) {
         Node *node = NULL;
         strcpy(label_file, file_name->logical);
@@ -611,16 +638,23 @@ int main(int argc, char *argv[]) {
                                   in_transc_fmt == TF_STK ? "net" : "lab",
                                   ilfp, src_mlf);
 
-        if (in_transc_fmt == TF_HTK) {
+        if (in_transc_fmt == TF_HTK) 
+        {
           labels = ReadLabels(ilfp, dictionary ? &dictHash : &phoneHash,
                                     dictionary ? UL_ERROR : UL_INSERT, in_lbl_fmt,
                                     header.sampPeriod, label_file, src_mlf, NULL);
           node = MakeNetworkFromLabels(labels, dictionary ? NT : NT_Phone);
           ReleaseLabels(labels);
-        } else if (in_transc_fmt == TF_STK) {
+        } 
+        else if (in_transc_fmt == TF_STK) 
+        {
           node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash, notInDictAction, in_lbl_fmt,
                               header.sampPeriod, label_file, src_mlf);
-        } else Error("Too bad. What did you do ?!?");
+        } 
+        else 
+        {
+          Error("Too bad. What did you do ?!?");
+        }
 
         NetworkExpansionsAndOptimizations(node, expOptions, in_net_fmt, &dictHash,
                                           &nonCDphHash, &phoneHash);
@@ -721,17 +755,20 @@ int main(int argc, char *argv[]) {
       Variance *tmpvar = macro ? (Variance *) macro->mpData : NULL;
 //      assert(!tmpvar || hset.mInputVectorSize == tmpvar->mVectorSize);
 
-      hset.mpVarFloor = (Variance *) malloc(sizeof(Variance)+((tmpvar ? tmpvar->mVectorSize : hset.mInputVectorSize)-1)*sizeof(FLOAT));
-      if (hset.mpVarFloor == NULL) Error("Insufficient memory");
+      //***
+      // old malloc
+      //hset.mpVarFloor = (Variance *) malloc(sizeof(Variance)+((tmpvar ? tmpvar->mVectorSize : hset.mInputVectorSize)-1)*sizeof(FLOAT));
+      //if (hset.mpVarFloor == NULL) Error("Insufficient memory");
+      //hset.mpVarFloor->mVectorSize = tmpvar ? tmpvar->mVectorSize : hset.mInputVectorSize;
 
-      hset.mpVarFloor->mVectorSize = tmpvar ? tmpvar->mVectorSize : hset.mInputVectorSize;
-
+      hset.mpVarFloor = new Variance((tmpvar ? tmpvar->mVectorSize : hset.mInputVectorSize), false);
+      
       for (i = 0; i < hset.mpVarFloor->mVectorSize; i++) {
         if (macro) {
-          hset.mpVarFloor->mVector[i] =
+          hset.mpVarFloor->mpVectorO[i] =
             tmpvar && ((float) min_variance <= 0.0 ||
-                        tmpvar->mVector[i] < 1/min_variance)
-            ? tmpvar->mVector[i] : 1 / min_variance;
+                        tmpvar->mpVectorO[i] < 1/min_variance)
+            ? tmpvar->mpVectorO[i] : 1 / min_variance;
         }
       }
     }
@@ -763,7 +800,7 @@ int main(int argc, char *argv[]) {
   hset.Release();
 
 //  my_hdestroy_r(&labelHash, 0);
-  my_hdestroy_r(&phoneHash, 1);
+  my_hdestroy_r(&phoneHash, 0);
   my_hdestroy_r(&nonCDphHash, 0);
   FreeDictionary(&dictHash);
   
@@ -775,7 +812,7 @@ int main(int argc, char *argv[]) {
   if (network_file) 
     ReleaseNetwork(&net);
   
-  free(hset.mpVarFloor);
+  delete hset.mpVarFloor;
   free(derivWinLengths);
   free(derivWinLengths_alig);
   
@@ -788,7 +825,12 @@ int main(int argc, char *argv[]) {
     feature_files = feature_files->mpNext;
     free(file_name);
   }
-  
+}
+catch(...)
+{
+  cerr << "xxx" << endl;
+}
+    
   return 0;
 }
 

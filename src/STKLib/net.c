@@ -32,12 +32,14 @@
 
 #define SIGNIFICANT_PROB_DIFFERENCE (0.01)
 
-void FreeNetwork(Node *node) {
+void FreeNetwork(Node *node) 
+{
   Node *tnode;
   while (node) {
     tnode = node->mpNext;
     free(node->links);
     free(node->backlinks);
+    free(node->mpName);
     free(node);
     node = tnode;
   }

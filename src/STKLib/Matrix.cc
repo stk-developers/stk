@@ -1,5 +1,16 @@
+/** 
+ * @file Matrix.cc 
+ * 
+ * Implementation of specialized Matrix template methods 
+ */
 
 #include "Matrix.h"
+
+extern "C" 
+{
+# include <cblas.h>
+}
+
 
 namespace STK
 {

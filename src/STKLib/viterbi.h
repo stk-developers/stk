@@ -32,6 +32,12 @@ class WLR;
 class SubNet;
 class Network;
 
+typedef enum 
+{
+  SP_ALL, 
+  SP_TRUE_ONLY
+} SearchPathsType;
+
 
 class Cache 
 {
@@ -71,37 +77,37 @@ class Network
 public:
 //Subnet part
 //  int   nnodes;
-  Node  *first;
-  Node  *last;
+  Node  *       first;
+  Node  *       last;
 //  Node  *nodes;
 
-  Node  *activeModels;
-  Node  *activeNodes;
-  int   activeTokens;
+  Node  *       activeModels;
+  Node  *       activeNodes;
+  int           activeTokens;
 
-  int   nNetStates;
-  Token *auxTokens;
-  Cache *outPCache;
-  Cache *mixPCache;
+  int           nNetStates;
+  Token *       auxTokens;
+  Cache *       outPCache;
+  Cache *       mixPCache;
 
-  long  mTime;
-  Token *bestToken;
-  Node  *bestNode;
-  struct my_hsearch_data wordHash;
+  long          mTime;
+  Token *       bestToken;
+  Node  *       bestNode;
+  struct        my_hsearch_data wordHash;
 // Passing parameters
-  State *threshState;
-  FLOAT beamThresh;
-  FLOAT wordThresh;
+  State *       threshState;
+  FLOAT         beamThresh;
+  FLOAT         wordThresh;
 
-  FLOAT wPenalty;
-  FLOAT mPenalty;
-  FLOAT pronScale;
-  FLOAT lmScale;
-  FLOAT tranScale;
-  FLOAT outpScale;
-  FLOAT ocpScale;
-  FLOAT pruningThresh;
-  enum {SP_All, SP_TrueOnly} SearchPaths;
+  FLOAT         wPenalty;
+  FLOAT         mPenalty;
+  FLOAT         pronScale;
+  FLOAT         lmScale;
+  FLOAT         tranScale;
+  FLOAT         outpScale;
+  FLOAT         ocpScale;
+  FLOAT         pruningThresh;
+  SearchPathsType SearchPaths;
 
   FLOAT (*OutputProbability)(State *state, FLOAT *observation, Network *network);
   int (*PassTokenInNetwork)(Token *from, Token *to, FLOAT addLogLike);
@@ -143,7 +149,7 @@ class FWBWR
 public:
   FWBWR *     mpNext;
   int         mTime;
-  AlphaBeta   state[1];
+  AlphaBeta   mpState[1];
 };
 
 

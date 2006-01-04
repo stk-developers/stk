@@ -20,9 +20,9 @@ const char *dict_filter;
 
 
 void ReadDictionary(
-  const char *dictFileName,
-  struct my_hsearch_data *wordHash,
-  struct my_hsearch_data *phoneHash)
+    const char *dictFileName,
+    struct my_hsearch_data *wordHash,
+    struct my_hsearch_data *phoneHash)
 {
   char line[1024];
   int line_no = 0;

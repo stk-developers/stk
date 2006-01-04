@@ -52,8 +52,6 @@ namespace STK
       // and for different stream type we perform different closing
       if (stream_type == basic_stkbuf::t_file)
       {
-        std::cerr << "basic_stkbuf.close(): fileptr = " << reinterpret_cast<int>(this->fileptr) << std::endl;
-        std::cerr << "basic_stkbuf.close(): file() =  " << reinterpret_cast<int>(this->file()) << std::endl;
         //fclose(file());
       }
       else if (stream_type == basic_stkbuf::t_pipe)

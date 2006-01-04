@@ -24,6 +24,8 @@
 
 namespace STK
 {
+  
+  
   int             hmm_read_binary;
   int             current_mmf_line = 1;
   int             string_unget = 0;
@@ -84,6 +86,8 @@ namespace STK
     {exp_vec,     KID_Exp},     {sqrt_vec,    KID_Sqrt},
     {softmax_vec, KID_SoftMax}
   };
+  
+  size_t gFuncTableSize = sizeof(*gFuncTable);
 
   
   void ReplaceItem(int macro_type, HMMSetNodeName nodeName, MacroData * pData, void * pUserData)
@@ -100,9 +104,9 @@ namespace STK
       {
         for (i = 0; i < hmm->mNStates-2; i++) 
         {
-          if (hmm->state[i] == ud->mpOldData) 
+          if (hmm->mpState[i] == ud->mpOldData) 
           {
-            hmm->state[i] = (State*) ud->mpNewData;
+            hmm->mpState[i] = (State*) ud->mpNewData;
           }
         }
       } 
@@ -234,7 +238,7 @@ namespace STK
       Macro *macro = (Macro *) macro_hash->entry[i]->data;
       free(macro->mpName);
       free(macro->mpFileName);
-      free(macro);
+      delete macro;
       macro_hash->entry[i]->data = NULL;
     }
     my_hdestroy_r(macro_hash, 0);
@@ -242,20 +246,8 @@ namespace STK
   
   void ReleaseItem(int macro_type,HMMSetNodeName nodeName,MacroData * pData, void * pUserData)
   {
-    unsigned int i;
-    
-    CompositeXForm *cxf = (CompositeXForm *) pData;
-    
-    if (macro_type == 'x' && cxf->mXFormType == XT_COMPOSITE) 
-    {
-      for (i = 0; i < cxf->mNLayers-1; i++) free(cxf->mpLayer[i].mpOutputVector);
-      for (i = 0; i < cxf->mNLayers;   i++) free(cxf->mpLayer[i].mpBlock);
-    }
-    if (macro_type == 'j') free(((XFormInstance *) pData)->mpMemory);
-  
-    free(pData);
+    delete pData;
   }
-  
   
   
   int CheckKwd(const char *str, KeywordID kwdID)
@@ -494,11 +486,11 @@ namespace STK
     if (macro_type == mt_mean || macro_type == mt_variance) {
       if (macro_type == mt_mean) {
         size   = ((Mean *)pData)->mVectorSize;
-        vector = ((Mean *)pData)->mVector + size;
+        vector = ((Mean *)pData)->mpVectorO + size;
         size   = (size + 1) * 2;
       } else if (macro_type == mt_variance) {
         size   = ((Variance *)pData)->mVectorSize;
-        vector = ((Variance *)pData)->mVector + size;
+        vector = ((Variance *)pData)->mpVectorO + size;
         size   = (size * 2 + 1) * 2;
       }
   
@@ -514,7 +506,7 @@ namespace STK
       }
     } else if (macro_type == mt_transition) {
       size   = SQR(((Transition *) pData)->mNStates);
-      vector = ((Transition *) pData)->matrix + size;
+      vector = ((Transition *) pData)->mpMatrixO + size;
   
       for (i = 0; i < size; i++) vector[i] = LOG_0;
     }
@@ -548,17 +540,17 @@ namespace STK
       
       for (i = 0; i < vec_size; i++) 
       {
-        mixture->mpMean->mVector[vec_size + i] += obs[i];
+        mixture->mpMean->mpVectorO[vec_size + i] += obs[i];
       }
       
-      mixture->mpMean->mVector[2 * vec_size] += 1;
+      mixture->mpMean->mpVectorO[2 * vec_size] += 1;
   
       for (i = 0; i < vec_size; i++) 
       {
-        mixture->mpVariance->mVector[vec_size  +i] += SQR(obs[i]);
-        mixture->mpVariance->mVector[2*vec_size+i] += obs[i];
+        mixture->mpVariance->mpVectorO[vec_size  +i] += SQR(obs[i]);
+        mixture->mpVariance->mpVectorO[2*vec_size+i] += obs[i];
       }
-      mixture->mpVariance->mVector[3 * vec_size] += 1;
+      mixture->mpVariance->mpVectorO[3 * vec_size] += 1;
     }
   }
   
@@ -642,8 +634,6 @@ namespace STK
   
   void 
   Hmm::
-  //ScanHMM(Hmm *hmm, int mask, HMMSetNodeName nodeName,
-  //            ScanAction action, void *pUserData)
   Scan(int mask, HMMSetNodeName nodeName,
        ScanAction action, void *pUserData)
   {
@@ -666,10 +656,10 @@ namespace STK
     {
       for (i=0; i < mNStates-2; i++) 
       {
-        if (!state[i]->mpMacro) 
+        if (!mpState[i]->mpMacro) 
         {
           if (n > 0 ) snprintf(chptr, n, ".state[%d]", i+2);            
-          state[i]->Scan(mask, nodeName, action, pUserData);
+          mpState[i]->Scan(mask, nodeName, action, pUserData);
         }
       }
     }
@@ -687,6 +677,8 @@ namespace STK
     }
   }
   
+  //***************************************************************************
+  //***************************************************************************
   void 
   State::
   Scan(int mask, HMMSetNodeName nodeName,  ScanAction action, void *pUserData)
@@ -727,6 +719,29 @@ namespace STK
     }
   }
   
+  
+  //***************************************************************************
+  //***************************************************************************
+  State::
+  State(size_t numMixtures)
+  {
+    mpMixture = (numMixtures > 0) ? new MixtureLink[numMixtures] : NULL;    
+  }
+  
+  
+  //***************************************************************************
+  //***************************************************************************
+  State::
+  ~State()
+  {
+    if (mpMixture != NULL)
+      delete [] mpMixture;
+  }
+  
+  
+  
+  //***************************************************************************
+  //***************************************************************************
   void 
   Mixture::
   Scan(int mask, HMMSetNodeName nodeName, ScanAction action, void *pUserData)
@@ -1281,7 +1296,7 @@ namespace STK
         xfsa   = ((Mean *)pData)->mpXFormStatAccum;
         nxfsa  = ((Mean *)pData)->mNumberOfXFormStatAccums;
         size   = ((Mean *)pData)->mVectorSize;
-        vector = ((Mean *)pData)->mVector+size;
+        vector = ((Mean *)pData)->mpVectorO+size;
         size   = size + 1;
       } 
       else if (macro_type == mt_variance) 
@@ -1289,7 +1304,7 @@ namespace STK
         xfsa   = ((Variance *)pData)->mpXFormStatAccum;
         nxfsa  = ((Variance *)pData)->mNumberOfXFormStatAccums;
         size   = ((Variance *)pData)->mVectorSize;
-        vector = ((Variance *)pData)->mVector+size;
+        vector = ((Variance *)pData)->mpVectorO+size;
         size   = size * 2 + 1;
       }
   
@@ -1339,7 +1354,7 @@ namespace STK
     else if (macro_type == mt_transition) 
     {
       size   = SQR(((Transition *) pData)->mNStates);
-      vector = ((Transition *) pData)->matrix + size;
+      vector = ((Transition *) pData)->mpMatrixO + size;
   
       if (fwrite(vector, sizeof(FLOAT), size, ud->fp) != size) 
       {
@@ -1367,7 +1382,7 @@ namespace STK
         xfsa   = ((Mean *)pData)->mpXFormStatAccum;
         nxfsa  = ((Mean *)pData)->mNumberOfXFormStatAccums;
         size   = ((Mean *)pData)->mVectorSize;
-        vector = ((Mean *)pData)->mVector+size;
+        vector = ((Mean *)pData)->mpVectorO+size;
         size   = size + 1;
       } 
       else if (macro_type == mt_variance) 
@@ -1375,7 +1390,7 @@ namespace STK
         xfsa   = ((Variance *)pData)->mpXFormStatAccum;
         nxfsa  = ((Variance *)pData)->mNumberOfXFormStatAccums;
         size   = ((Variance *)pData)->mVectorSize;
-        vector = ((Variance *)pData)->mVector+size;
+        vector = ((Variance *)pData)->mpVectorO+size;
         size   = size * 2 + 1;
       }
   
@@ -1414,7 +1429,7 @@ namespace STK
     else if (macro_type == mt_transition) 
     {
       size_t nstates = ((Transition *) pData)->mNStates;
-      vector = ((Transition *) pData)->matrix + SQR(nstates);
+      vector = ((Transition *) pData)->mpMatrixO + SQR(nstates);
   
       for (i=0; i < nstates; i++) 
       {
@@ -1481,7 +1496,7 @@ namespace STK
         xfsa   = ((Mean *)pData)->mpXFormStatAccum;
         nxfsa  = ((Mean *)pData)->mNumberOfXFormStatAccums;
         size   = ((Mean *)pData)->mVectorSize;
-        vector = ((Mean *)pData)->mVector+size;
+        vector = ((Mean *)pData)->mpVectorO+size;
         size   = size + 1;
       } 
       else if (macro_type == mt_variance) 
@@ -1489,7 +1504,7 @@ namespace STK
         xfsa   = ((Variance *)pData)->mpXFormStatAccum;
         nxfsa  = ((Variance *)pData)->mNumberOfXFormStatAccums;
         size   = ((Variance *)pData)->mVectorSize;
-        vector = ((Variance *)pData)->mVector+size;
+        vector = ((Variance *)pData)->mpVectorO+size;
         size   = size * 2 + 1;
       }
   
@@ -1581,7 +1596,7 @@ namespace STK
     } else if (macro_type == mt_transition) {
       FLOAT f;
       size   = SQR(((Transition *) pData)->mNStates);
-      vector =     ((Transition *) pData)->matrix + size;
+      vector =     ((Transition *) pData)->mpMatrixO + size;
   
       for (i = 0; i < size; i++) {
         if (fread(&f, sizeof(FLOAT), 1, ud->fp) != 1) {
@@ -1603,43 +1618,23 @@ namespace STK
   //**************************************************************************
   Hmm::
   Hmm(size_t nStates) : 
-    mNStates(0), mpTransition(NULL), mpState(NULL)
+    mpTransition(NULL)
   {
     // we allocate pointers for states. The -2 is for the non-emmiting states
-    mpState = new State* [mNStates - 2];
-    mNStates = nStates;
+    mpState   = new State*[nStates - 2];
+    mNStates  = nStates;
   }
   
-  
+  //**************************************************************************
   //**************************************************************************
   Hmm::
   ~Hmm()
   {
-    size_t  i;
-    
-    // we go through each state and check whether it is pointed to by 
-    // some macro
-    if (mpState != NULL)
-    {
-      for (i = 0; i < mNStates; i++)
-      {
-        if ((static_cast<State *>(mpState[i]))->mpMacro == NULL)
-          delete mpState[i];
-      }
-      
-      delete [] mpState;
-    }
-    
-    // delete transition object if not pointed to by macro
-    if (mpTransition != NULL)
-    {
-      if (mpTransition->mpMacro == NULL)
-        delete mpTransition;
-    }
+    delete [] mpState;
   }
   
-  
   //**************************************************************************  
+  //**************************************************************************
   void
   Hmm::
   UpdateFromAccums(const ModelSet * pModelSet)
@@ -1648,8 +1643,8 @@ namespace STK
   
     for (i = 0; i < mNStates - 2; i++) 
     {
-      if (!this->state[i]->mpMacro) 
-        state[i]->UpdateFromAccums(pModelSet, this);
+      if (!this->mpState[i]->mpMacro) 
+        mpState[i]->UpdateFromAccums(pModelSet, this);
     }
   
     if (!mpTransition->mpMacro) 
@@ -1671,7 +1666,7 @@ namespace STK
   
     for (i = 0; i < this->mpVariance->mVectorSize; i++) 
     {
-      cov_det -= log(this->mpVariance->mVector[i]);
+      cov_det -= log(this->mpVariance->mpVectorO[i]);
     }
     this->mGConst = cov_det + M_LOG_2PI * this->mpVariance->mVectorSize;
   }
@@ -1688,8 +1683,8 @@ namespace STK
     if (pModelSet->mMmiUpdate == 1 || pModelSet->mMmiUpdate == -1) 
     {
       int vec_size    = mpVariance->mVectorSize;
-      FLOAT *mean_vec = mpMean->mVector;
-      FLOAT *var_vec  = mpVariance->mVector;
+      FLOAT *mean_vec = mpMean->mpVectorO;
+      FLOAT *var_vec  = mpVariance->mpVectorO;
   
       FLOAT *vac_num  = var_vec + 1 * vec_size;
       FLOAT *mac_num  = var_vec + 2 * vec_size;
@@ -1746,13 +1741,13 @@ namespace STK
         mean_vec[i]    = new_mean;
   
         if (pModelSet->mpVarFloor) {
-          var_vec[i] = LOWER_OF(var_vec[i], pModelSet->mpVarFloor->mVector[i]);
+          var_vec[i] = LOWER_OF(var_vec[i], pModelSet->mpVarFloor->mpVectorO[i]);
         }
       }
     } else if (pModelSet->mMmiUpdate == 2 || pModelSet->mMmiUpdate == -2 ) { // MFE update
       int vec_size    = mpVariance->mVectorSize;
-      FLOAT *mean_vec = mpMean->mVector;
-      FLOAT *var_vec  = mpVariance->mVector;
+      FLOAT *mean_vec = mpMean->mpVectorO;
+      FLOAT *var_vec  = mpVariance->mpVectorO;
   
       FLOAT *vac_mle  = var_vec + 1 * vec_size;
       FLOAT *mac_mle  = var_vec + 2 * vec_size;
@@ -1810,7 +1805,7 @@ namespace STK
         mean_vec[i]    = new_mean;
   
         if (pModelSet->mpVarFloor) {
-          var_vec[i] = LOWER_OF(var_vec[i], pModelSet->mpVarFloor->mVector[i]);
+          var_vec[i] = LOWER_OF(var_vec[i], pModelSet->mpVarFloor->mpVectorO[i]);
         }
       }
     } 
@@ -1839,14 +1834,46 @@ namespace STK
   // Mean section
   //**************************************************************************  
   //**************************************************************************  
+  Mean::
+  Mean(size_t vectorSize, bool allocateAccums)
+  {
+    size_t accum_size = 0;
+    
+    if (allocateAccums) 
+      accum_size = (vectorSize + 1) * 2; // * 2 for MMI accums
+    
+    mpVectorO = new FLOAT[vectorSize + accum_size];
+    
+    mVectorSize               = vectorSize;    
+    mpXFormStatAccum          = NULL;
+    mNumberOfXFormStatAccums  = 0;
+    mUpdatableFromStatAccums  = true;
+}  
+  
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  Mean::
+  ~Mean()
+  {
+    if (mpXFormStatAccum != NULL)
+    {
+      free(mpXFormStatAccum->mpStats);
+      free(mpXFormStatAccum);
+    }
+    delete [] mpVectorO;
+  }  
+  
+  //**************************************************************************  
+  //**************************************************************************  
   void
   Mean::
   UpdateFromAccums(const ModelSet * pModelSet)
   {
     int      i;
-    FLOAT *  vec  = mVector;
-    FLOAT *  acc  = mVector + 1 * mVectorSize;
-    FLOAT    nrm  = mVector  [2 * mVectorSize];
+    FLOAT *  vec  = mpVectorO;
+    FLOAT *  acc  = mpVectorO + 1 * mVectorSize;
+    FLOAT    nrm  = mpVectorO  [2 * mVectorSize];
   
     if (pModelSet->mUpdateMask & UM_MEAN) 
     {
@@ -1878,10 +1905,10 @@ namespace STK
           
           for (r = 0; r < xform->mOutSize; r++) 
           {
-            mVector[pos + r] = 0;
+            mpVectorO[pos + r] = 0;
             for (c = 0; c < in_size; c++) 
             {
-              mVector[pos + r] += mnv[c] * xform->matrix[in_size * r + c];
+              mpVectorO[pos + r] += mnv[c] * xform->mpMatrixO[in_size * r + c];
             }
           }
           pos += xform->mOutSize;
@@ -1898,6 +1925,36 @@ namespace STK
   // Variance section
   //**************************************************************************  
   //**************************************************************************  
+  Variance::
+  Variance(size_t vectorSize, bool allocateAccums)
+  {
+    size_t accum_size = 0;
+    
+    if (allocateAccums) 
+      accum_size = (2*vectorSize + 1) * 2; // * 2 for MMI accums
+    
+    mpVectorO = new FLOAT[vectorSize + accum_size];
+    mVectorSize               = vectorSize;    
+    mpXFormStatAccum          = NULL;
+    mNumberOfXFormStatAccums  = 0;
+    mUpdatableFromStatAccums  = true;
+  }  
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  Variance::
+  ~Variance()
+  {
+    if (mpXFormStatAccum != NULL)
+    {
+      free(mpXFormStatAccum->mpStats);
+      free(mpXFormStatAccum);
+    }
+    delete [] mpVectorO;
+  }  
+  
+  //**************************************************************************  
+  //**************************************************************************  
   void
   Variance::
   UpdateFromAccums(const ModelSet * pModelSet)
@@ -1908,10 +1965,10 @@ namespace STK
     {
       if (mNumberOfXFormStatAccums == 0) 
       {
-        FLOAT *vec  = mVector;
-        FLOAT *vac  = mVector + 1 * mVectorSize;
-        FLOAT *mac  = mVector + 2 * mVectorSize;
-        FLOAT *nrm  = mVector + 3 * mVectorSize;
+        FLOAT *vec  = mpVectorO;
+        FLOAT *vac  = mpVectorO + 1 * mVectorSize;
+        FLOAT *mac  = mpVectorO + 2 * mVectorSize;
+        FLOAT *nrm  = mpVectorO + 3 * mVectorSize;
         
         for (i = 0; i < mVectorSize; i++) 
         {
@@ -1927,7 +1984,7 @@ namespace STK
           if (pModelSet->mpVarFloor && 
               pModelSet->mpVarFloor->mVectorSize == mVectorSize) 
           {
-            vec[i] = LOWER_OF(vec[i], pModelSet->mpVarFloor->mVector[i]);
+            vec[i] = LOWER_OF(vec[i], pModelSet->mpVarFloor->mpVectorO[i]);
           }
         }
       } 
@@ -1953,24 +2010,24 @@ namespace STK
           
           for (r = 0; r < xform->mOutSize; r++) 
           {
-            mVector[pos + r] = 0.0;
+            mpVectorO[pos + r] = 0.0;
   
             for (c = 0; c < in_size; c++) 
             {
               FLOAT aux = 0;
               for (t = 0; t <= c; t++) 
               {
-                aux += cov[c * (c+1)/2 + t]    * xform->matrix[in_size * r + t];
+                aux += cov[c * (c+1)/2 + t]    * xform->mpMatrixO[in_size * r + t];
               }
   
               for (; t < in_size; t++) 
               {
-                aux += cov[t * (t+1)/2 + c]    * xform->matrix[in_size * r + t];
+                aux += cov[t * (t+1)/2 + c]    * xform->mpMatrixO[in_size * r + t];
               }
               
-              mVector[pos + r] += aux * xform->matrix[in_size * r + c];
+              mpVectorO[pos + r] += aux * xform->mpMatrixO[in_size * r + c];
             }
-            mVector[pos + r] = 1 / mVector[pos + r];
+            mpVectorO[pos + r] = 1 / mpVectorO[pos + r];
           }
           pos += xform->mOutSize;
         }
@@ -1985,6 +2042,26 @@ namespace STK
   // Transition section
   //**************************************************************************  
   //**************************************************************************  
+  Transition::
+  Transition(size_t nStates, bool allocateAccums)
+  {
+    size_t  alloc_size;
+    alloc_size = allocateAccums ? 2 * SQR(nStates) + nStates: SQR(nStates);
+    
+    mpMatrixO = new FLOAT[alloc_size];
+    mNStates = nStates;
+  }
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  Transition::
+  ~Transition()
+  {
+    delete [] mpMatrixO;
+  }
+
+  //**************************************************************************  
+  //**************************************************************************  
   void
   Transition::
   UpdateFromAccums(const ModelSet * pModelSet)
@@ -1992,8 +2069,8 @@ namespace STK
     int       i;
     int       j;
     int       nstates = mNStates;
-    FLOAT *   vec = matrix;
-    FLOAT *   acc = matrix + 1 * SQR(mNStates);
+    FLOAT *   vec = mpMatrixO;
+    FLOAT *   acc = mpMatrixO + 1 * SQR(mNStates);
   
     if (pModelSet->mUpdateMask & UM_TRANSITION) 
     {
@@ -2048,7 +2125,7 @@ namespace STK
         else 
         {
           size_t j; // find the state number
-          for (j=0; j < pHmm->mNStates && pHmm->state[j] != this; j++)
+          for (j=0; j < pHmm->mNStates && pHmm->mpState[j] != this; j++)
             ;
           Warning("No occupation of '%s[%d]', state is not updated",
                   pHmm->mpMacro->mpName, j + 1);
@@ -2063,10 +2140,10 @@ namespace STK
         {
           if (mpMixture[i].weight_accum / accum_sum < pModelSet->mMinMixWeight) 
           {
-            if (pHmm) 
+            if (2) 
             {
               size_t j;
-              for (j=0; j < pHmm->mNStates && pHmm->state[j] != this; j++)
+              for (j=0; j < pHmm->mNStates && pHmm->mpState[j] != this; j++)
                 ; // find the state number
               Warning("Discarding mixture %d of Hmm %s state %d because of too low mixture weight",
                       i, pHmm->mpMacro->mpName, j + 1);
@@ -2110,6 +2187,30 @@ namespace STK
   
 
   //***************************************************************************
+  //***************************************************************************
+  // XFormInstance seciton
+  //***************************************************************************
+  //***************************************************************************
+  XFormInstance::
+  XFormInstance(size_t vectorSize)
+  {
+    mpOutputVector  = new FLOAT[vectorSize];
+    mOutSize        = vectorSize;
+  }
+  
+  //***************************************************************************
+  //***************************************************************************
+  XFormInstance::
+  ~XFormInstance()
+  {
+    free(mpXFormStatCache->mpStats);
+    free(mpXFormStatCache);
+    delete [] mpOutputVector;
+    delete [] mpMemory;
+  }
+  
+  //***************************************************************************
+  //***************************************************************************
   FLOAT *
   XFormInstance::
   XFormPass(FLOAT * pInputVector, int time, PropagDir dir)
@@ -2133,14 +2234,69 @@ namespace STK
     return mpOutputVector;
   }; // XFormPass(FLOAT *in_vec, int time, PropagDir dir)
   
+
+    
+  //**************************************************************************  
+  //**************************************************************************  
+  // XFormLayer section
+  //**************************************************************************  
+  //**************************************************************************  
+  XFormLayer::
+  XFormLayer() : mpOutputVector(NULL), mNBlocks(0), mpBlock(NULL) 
+  {
+    // we don't do anything here, all is done by the consructor call
+  }
   
-  
-  
-  
+  //**************************************************************************  
+  //**************************************************************************  
+  XFormLayer::
+  ~XFormLayer()
+  {
+    // delete the pointers
+    delete [] mpOutputVector;
+    delete [] mpBlock;
+  }
+
+  //**************************************************************************  
+  //**************************************************************************  
+  XForm **
+  XFormLayer::
+  InitBlocks(size_t nBlocks)
+  {
+    mpBlock  = new XForm*[nBlocks];
+    mNBlocks = nBlocks;
+    
+    for (size_t i = 0; i < nBlocks; i++) 
+      mpBlock[i] = NULL;
+      
+    return mpBlock;
+  }
   
   //**************************************************************************  
   //**************************************************************************  
   // CompositeXForm section
+  //**************************************************************************  
+  //**************************************************************************  
+  CompositeXForm::
+  CompositeXForm(size_t nLayers)
+  {
+    mpLayer = new XFormLayer[nLayers];
+    
+    // set some properties
+    mMemorySize = 0;
+    mDelay      = 0;
+    mNLayers    = nLayers;
+    mXFormType = XT_COMPOSITE;    
+  }
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  CompositeXForm::
+  ~CompositeXForm()
+  {
+    
+  }
+  
   //**************************************************************************  
   //**************************************************************************  
   //virtual 
@@ -2178,6 +2334,30 @@ namespace STK
   // LinearXForm section
   //**************************************************************************  
   //**************************************************************************  
+  LinearXForm::
+  LinearXForm(size_t inSize, size_t outSize):
+    mMatrix(inSize, outSize)
+  {
+    //ret = (LinearXForm *) malloc(sizeof(LinearXForm)+(out_size*in_size-1)*sizeof(ret->mpMatrixO[0]));
+    //if (ret == NULL) Error("Insufficient memory");
+    mpMatrixO     = new FLOAT[inSize * outSize];    
+    mOutSize      = outSize;
+    mInSize       = inSize;
+    mMemorySize   = 0;
+    mDelay        = 0;
+    mXFormType    = XT_LINEAR;
+  }
+    
+  //**************************************************************************  
+  //**************************************************************************  
+  LinearXForm::
+  ~LinearXForm()
+  {
+    delete [] mpMatrixO;
+  }
+  
+  //**************************************************************************  
+  //**************************************************************************  
   //virtual 
   FLOAT *
   LinearXForm::
@@ -2195,7 +2375,7 @@ namespace STK
       pOutputVector[r] = 0.0;
       for (c = 0; c < mInSize; c++) 
       {
-        pOutputVector[r] += pInputVector[c] * matrix[mInSize * r + c];
+        pOutputVector[r] += pInputVector[c] * mpMatrixO[mInSize * r + c];
       }
     }
     return pOutputVector;  
@@ -2205,6 +2385,28 @@ namespace STK
   //**************************************************************************  
   //**************************************************************************  
   // BiasXForm section
+  //**************************************************************************  
+  //**************************************************************************  
+  BiasXForm::
+  BiasXForm(size_t vectorSize) :
+    mVector(1, vectorSize)
+  {
+    mpVectorO     = new FLOAT[vectorSize];  
+    mInSize       = vectorSize;
+    mOutSize      = vectorSize;
+    mMemorySize   = 0;
+    mDelay        = 0;
+    mXFormType    = XT_BIAS;
+}
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  BiasXForm::
+  ~BiasXForm()
+  {
+    delete [] mpVectorO;
+  }
+  
   //**************************************************************************  
   //**************************************************************************  
   //virtual 
@@ -2219,7 +2421,7 @@ namespace STK
     
     for (i = 0; i < mOutSize; i++) 
     {
-      pOutputVector[i] = pInputVector[i] + mVector[i];
+      pOutputVector[i] = pInputVector[i] + mpVectorO[i];
     }
     return pOutputVector;
   }; //Evaluate(...)
@@ -2228,6 +2430,25 @@ namespace STK
   //**************************************************************************  
   //**************************************************************************  
   // FuncXForm section
+  //**************************************************************************  
+  //**************************************************************************  
+  FuncXForm::
+  FuncXForm(size_t size, int funcId)
+  {
+    mFuncId       = funcId;
+    mInSize       = size;
+    mOutSize      = size;
+    mMemorySize   = 0;
+    mDelay        = 0;
+    mXFormType    = XT_FUNC;
+  }  
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  FuncXForm::
+  ~FuncXForm()
+  {}
+  
   //**************************************************************************  
   //**************************************************************************  
   //virtual 
@@ -2248,6 +2469,27 @@ namespace STK
   // CopyXForm section
   //**************************************************************************  
   //**************************************************************************  
+  CopyXForm::
+  CopyXForm(size_t inSize, size_t outSize)
+  {
+    mpIndices     = new int[outSize];
+    mOutSize      = outSize;
+    mInSize       = inSize;
+    mMemorySize   = 0;
+    mDelay        = 0;
+    mXFormType    = XT_COPY;
+  }
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  CopyXForm::
+  ~ CopyXForm()
+  {
+    delete [] mpIndices;
+  }
+  
+  //**************************************************************************  
+  //**************************************************************************  
   //virtual 
   FLOAT *
   CopyXForm::
@@ -2260,7 +2502,7 @@ namespace STK
     
     for (i = 0; i < mOutSize; i++) 
     {
-      pOutputVector[i] = pInputVector[indices[i]];
+      pOutputVector[i] = pInputVector[mpIndices[i]];
     }
     return pOutputVector;
   }; //Evaluate(...)
@@ -2269,6 +2511,27 @@ namespace STK
   //**************************************************************************  
   //**************************************************************************  
   // StackingXForm section
+  //**************************************************************************  
+  //**************************************************************************  
+  StackingXForm::
+  StackingXForm(size_t stackSize, size_t inSize)
+  {
+    size_t out_size = stackSize * inSize;
+  
+    mOutSize      = out_size;
+    mInSize       = inSize;
+    mMemorySize   = out_size * sizeof(FLOAT);
+    mDelay        = stackSize - 1;
+    mHorizStack   = 0;
+    mXFormType    = XT_STACKING;      
+  }
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  StackingXForm::
+  ~StackingXForm()
+  { }
+  
   //**************************************************************************  
   //**************************************************************************  
   //virtual 
@@ -2310,6 +2573,8 @@ namespace STK
     return pOutputVector;
   }; //Evaluate(...)
     
+  
+  //***************************************************************************
   //***************************************************************************
   void 
   ModelSet::
@@ -2353,14 +2618,14 @@ namespace STK
       PutInt(fp, binary, i+2);
       PutNLn(fp, binary);
   
-      if (hmm->state[i]->mpMacro) 
+      if (hmm->mpState[i]->mpMacro) 
       {
-        fprintf(fp, "~s \"%s\"", hmm->state[i]->mpMacro->mpName);
+        fprintf(fp, "~s \"%s\"", hmm->mpState[i]->mpMacro->mpName);
         PutNLn(fp, binary);
       } 
       else 
       {
-        WriteState(fp, binary, hmm->state[i]);
+        WriteState(fp, binary, hmm->mpState[i]);
       }
     }
     
@@ -2380,8 +2645,8 @@ namespace STK
   //***************************************************************************
   void 
   ModelSet::
-  WriteMmf(const std::string & rFileName, const std::string & rOutputDir,
-           const std::string & rOutputExt, bool binary)
+  WriteMmf(const char * pFileName, const char * pOutputDir,
+           const char * pOutputExt, bool binary)
   //void WriteHMMSet(const char *mmfName, const char *out_mmf_dir,
   //               const char *out_mmf_ext, bool binary, ModelSet *hmm_set)
   {
@@ -2396,7 +2661,7 @@ namespace STK
       if (macro->mpFileName == NULL) 
         continue; // Artificial macro not read from file
   
-      if (lastFileName == NULL || (rFileName.empty() && strcmp(lastFileName, macro->mpFileName))) 
+      if (lastFileName == NULL || (!pFileName && strcmp(lastFileName, macro->mpFileName))) 
       {
         // New macro file
         lastFileName = macro->mpFileName;
@@ -2404,13 +2669,13 @@ namespace STK
         if (fp && fp != stdout) 
           fclose(fp);
   
-        if (!strcmp(!rFileName.empty() ? rFileName.c_str() : macro->mpFileName, "-")) 
+        if (!strcmp(pFileName ? pFileName : macro->mpFileName, "-")) 
         {
           fp = stdout;
         }
         else 
         {
-          MakeFileName(mmfile, !rFileName.empty() ? rFileName.c_str() : macro->mpFileName, rOutputDir.c_str(), rOutputExt.c_str());
+          MakeFileName(mmfile, pFileName ? pFileName : macro->mpFileName, pOutputDir, pOutputExt);
           
           if ((fp  = fopen(mmfile, "wb")) == NULL) 
             Error("Cannot open output MMF %s", mmfile);
@@ -2482,6 +2747,7 @@ namespace STK
     this->mParamKind            = -1;
     this->mOutPdfKind           = KID_UNSET;
     this->mDurKind              = KID_UNSET;
+    this->mNMixtures            = 0;
     this->mNStates              = 0;
     this->mAllocAccums          = flags & MODEL_SET_WITH_ACCUM ? true : false;
     this->mTotalDelay           = 0;
@@ -2536,11 +2802,11 @@ namespace STK
   //**************************************************************************  
   void
   ModelSet::
-  ReadAccums(const std::string & rFileName, 
-             float               weight,
-             long *              totFrames, 
-             FLOAT *             totLogLike, 
-             int                 mmiDenominatorAccums)
+  ReadAccums(const char * pFileName, 
+             float        weight,
+             long *       totFrames, 
+             FLOAT *      totLogLike, 
+             int          mmiDenominatorAccums)
   {
     istkstream                in;
     FILE *                    fp;
@@ -2562,17 +2828,17 @@ namespace STK
     macro_name[sizeof(macro_name)-1] = '\0';
   
     // open the file
-    in.open(rFileName, ios::binary);
+    in.open(pFileName, ios::binary);
     if (!in.good())
     {
-      Error("Cannot open input accumulator file: '%s'", rFileName.c_str());
+      Error("Cannot open input accumulator file: '%s'", pFileName);
     }
     fp = in.file();
     
     if (fread(totFrames,  sizeof(long),  1, fp) != 1 ||
         fread(totLogLike, sizeof(FLOAT), 1, fp) != 1) 
     {
-      Error("Invalid accumulator file: '%s'", rFileName.c_str());
+      Error("Invalid accumulator file: '%s'", pFileName);
     }
   
     //:KLUDGE:
@@ -2580,7 +2846,7 @@ namespace STK
     *totFrames  *= weight;
     *totLogLike *= weight;
   
-    strcpy(ud.mpFileName, rFileName.c_str());
+    strcpy(ud.mpFileName, pFileName);
     ud.fp      = fp;
     ud.mpModelSet = this;
     ud.mWeight  = weight;
@@ -2617,7 +2883,7 @@ namespace STK
         if (c != '~'       || !strchr("hsmuvt", t = getc(fp)) ||
           getc(fp) != ' ' || getc(fp) != '"') 
         {
-          Error("Incomatible accumulator file: '%s'", rFileName.c_str());
+          Error("Incomatible accumulator file: '%s'", pFileName);
         }
       }
   
@@ -2644,7 +2910,7 @@ namespace STK
       skip_accum = 0;
       if (fread(&occurances, sizeof(occurances), 1, fp) != 1) 
       {
-        Error("Invalid accumulator file: '%s'", rFileName.c_str());
+        Error("Invalid accumulator file: '%s'", pFileName);
       }
   
       if (!mmiDenominatorAccums) macro->mOccurances += occurances;
@@ -2662,22 +2928,23 @@ namespace STK
     }
     
     in.close();
+    //delete [] ud.mpFileName;
     free(ud.mpFileName);    
   }; // ReadAccums(...)
 
   //**************************************************************************  
   void
   ModelSet::
-  WriteAccums(const std::string & rFileName, 
-              const std::string & rOutputDir,
-              long                totFrames, 
-              FLOAT               totLogLike)
+  WriteAccums(const char * pFileName, 
+              const char * pOutputDir,
+              long         totFrames, 
+              FLOAT        totLogLike)
   {
     FILE *                fp;
     char                  file_name[1024];
     WriteAccumUserData    ud;  
     
-    MakeFileName(file_name, rFileName.c_str(), rOutputDir.c_str(), NULL);
+    MakeFileName(file_name, pFileName, pOutputDir, NULL);
   
     if ((fp = fopen(file_name, "wb")) == NULL) 
     {
@@ -2744,7 +3011,7 @@ namespace STK
   
       for (i = 0; i < hmm->mNStates - 2; i++) 
       {
-        State *state = hmm->state[i];
+        State *state = hmm->mpState[i];
   
         if (state->mpMacro) 
           state->mpMacro->mOccurances += macro->mOccurances;
@@ -2785,7 +3052,7 @@ namespace STK
   //**************************************************************************  
   void
   ModelSet::
-  UpdateFromAccums(const std::string & rOutputDir)
+  UpdateFromAccums(const char * pOutputDir)
   {
     Macro * macro;
     size_t  i;
@@ -2897,9 +3164,9 @@ namespace STK
   //**************************************************************************  
   void
   ModelSet::
-  ReadHMMList(const std::string & rFileName, 
-              const std::string & rInMmfDir, 
-              const std::string & rInMmfExt)
+  ReadHMMList(const char * pFileName, 
+              const char * pInMmfDir, 
+              const char * pInMmfExt)
   {
     struct readline_data      rld = {0};
     char *                    lhmm;
@@ -2911,9 +3178,9 @@ namespace STK
     char                      mmfile[1024];
     FILE *                    fp;
   
-    if ((fp = my_fopen(rFileName.c_str(), "rt", gpHListFilter)) == NULL) 
+    if ((fp = my_fopen(pFileName, "rt", gpHListFilter)) == NULL) 
     {
-      Error("Cannot open file: '%s'", rFileName.c_str());
+      Error("Cannot open file: '%s'", pFileName);
     }
     
     while ((lhmm = fhmm = readline(fp, &rld)) != NULL) 
@@ -2921,25 +3188,25 @@ namespace STK
       line_no++;
       
       if (getHTKstr(lhmm, &chptr)) 
-        Error("%s (%s:%d)", chptr, rFileName.c_str(), line_no);
+        Error("%s (%s:%d)", chptr, pFileName, line_no);
       
       if (*chptr && getHTKstr(fhmm = chptr, &chptr)) 
-        Error("%s (%s:%d)", chptr, rFileName.c_str(), line_no);
+        Error("%s (%s:%d)", chptr, pFileName, line_no);
       
       if ((macro = FindMacro(&mHmmHash, fhmm)) == NULL) 
       {
         mmfile[0] = '\0';
         
-        if (!rInMmfDir.empty()) 
-          strcat(strcat(mmfile, rInMmfDir.c_str()), "/");
+        if (pInMmfDir) 
+          strcat(strcat(mmfile, pInMmfDir), "/");
         
         strcat(mmfile, fhmm);
         
-        if (!rInMmfExt.empty()) 
-          strcat(strcat(mmfile, "."), rInMmfExt.c_str());
+        if (pInMmfExt) 
+          strcat(strcat(mmfile, "."), pInMmfExt);
         
         ParseMmf(mmfile, fhmm);
-  
+        
         if ((macro = FindMacro(&mHmmHash, fhmm)) == NULL)
           Error("Definition of model '%s' not found in file '%s'", fhmm, mmfile);
       }
@@ -2954,12 +3221,12 @@ namespace STK
         {
           if (gHmmsIgnoreMacroRedefinition == 0) 
           {
-            Error("Redefinition of HMM %s (%s:%d)", lhmm, rFileName.c_str(), line_no);
+            Error("Redefinition of HMM %s (%s:%d)", lhmm, pFileName, line_no);
           } 
           else 
           {
             Warning("Redefinition of HMM %s (%s:%d) is ignored",
-                    lhmm, rFileName.c_str(), line_no);
+                    lhmm, pFileName, line_no);
           }
         } 
         else 
@@ -2968,9 +3235,8 @@ namespace STK
         }
       }
     }
-    
     if (ferror(fp) || my_fclose(fp))
-      Error("Cannot read HMM list file %s", rFileName.c_str());
+      Error("Cannot read HMM list file %s", pFileName);
   }
   
   
@@ -3007,7 +3273,11 @@ namespace STK
       return macro;
     }
     
-    if ((macro = (Macro *) malloc(sizeof(Macro))) == NULL ||
+    // create new macro
+    macro = new Macro;
+    
+    //if ((macro = (Macro *) malloc(sizeof(Macro))) == NULL ||
+    if (
       (macro->mpName = strdup(rNewName.c_str())) == NULL              ||
       (macro->mpFileName = NULL, current_mmf_name
         && (macro->mpFileName = strdup(current_mmf_name)) == NULL)) 
@@ -3079,18 +3349,21 @@ namespace STK
   
     keyword = GetString(fp, 1);
     
+    
     if (!CheckKwd(keyword, KID_NumStates))
       Error("Keyword <NumStates> expected (%s:%d)", current_mmf_name, current_mmf_line);
   
     nstates = GetInt(fp);
-  
-    if ((ret = (Hmm *) malloc(sizeof(Hmm) + (nstates-3) * sizeof(State *))) == NULL) 
-      Error("Insufficient memory");
-  
-    ret->mNStates = nstates;
+    //***
+    // old malloc
+    // if ((ret = (Hmm *) malloc(sizeof(Hmm) + (nstates-3) * sizeof(State *))) == NULL) 
+    //   Error("Insufficient memory");
+    // ret->mNStates = nstates;
+    ret = new Hmm(nstates);  
+    
   
     for (i=0; i<nstates-2; i++) 
-      ret->state[i] = NULL;
+      ret->mpState[i] = NULL;
   
     for (i=0; i<nstates-2; i++) 
     {
@@ -3105,11 +3378,11 @@ namespace STK
       if (state_id < 2 || state_id >= nstates) 
         Error("State number out of the range (%s:%d)", current_mmf_name, current_mmf_line);
   
-      if (ret->state[state_id-2] != NULL) 
+      if (ret->mpState[state_id-2] != NULL) 
         Error("Redefinition of state (%s:%d)", current_mmf_name, current_mmf_line);
   
-      ret->state[state_id-2] = ReadState(fp, NULL);
-  //    printf("\n%d: %x\n", state_id-2, ret->state[state_id-2]);
+      ret->mpState[state_id-2] = ReadState(fp, NULL);
+  //    printf("\n%d: %x\n", state_id-2, ret->mpState[state_id-2]);
     }
   
     ret->mpTransition    = ReadTransition(fp, NULL);
@@ -3132,10 +3405,12 @@ namespace STK
   ModelSet::
   ReadState(FILE * fp, Macro * macro)
   {
-    State *ret;
-    char *keyword;
-    int mixture_id, i, num_mixes = 1;
-    FLOAT mixture_weight;
+    State *     ret;
+    char *      keyword;
+    int         mixture_id;
+    int         i;
+    int         num_mixes = 1;
+    FLOAT       mixture_weight;
   
   //  puts("ReadState");
     keyword = GetString(fp, 1);
@@ -3167,10 +3442,13 @@ namespace STK
       keyword = GetString(fp, 1);
     }
   
-    ret = (State*) malloc(sizeof(State) + (num_mixes-1)*sizeof(ret->mpMixture[0]));
-    
-    if (ret == NULL) 
-      Error("Insufficient memory");
+    // ***
+    // old malloc
+    // ret = (State*) malloc(sizeof(State) + (num_mixes-1)*sizeof(ret->mpMixture[0]));
+    //
+    // if (ret == NULL) 
+    //  Error("Insufficient memory");
+    ret = new State(num_mixes);
   
     if (mOutPdfKind == KID_PDFObsVec) 
     {
@@ -3253,12 +3531,12 @@ namespace STK
     ret->mID = mNStates;
     mNStates++;
     ret->mpMacro = macro;
-  //  puts("ReadState exit");
   
     return ret;
   }
 
-
+  //***************************************************************************
+  //***************************************************************************
   Mixture *
   ModelSet::
   ReadMixture(FILE *fp, Macro *macro)
@@ -3281,9 +3559,12 @@ namespace STK
       return (Mixture *) macro->mpData;
     }
   
-    if ((ret = (Mixture *) malloc(sizeof(Mixture))) == NULL)
-      Error("Insufficient memory");
-  
+    //***
+    // old free
+    //
+    //if ((ret = (Mixture *) malloc(sizeof(Mixture))) == NULL)
+    //  Error("Insufficient memory");
+    ret = new Mixture;  
   
     if (CheckKwd(keyword, KID_InputXForm)) 
     {
@@ -3319,25 +3600,31 @@ namespace STK
       if (keyword != NULL) UngetString();
     }
   
-    ret->mID = mNStates;
-    mNStates++;
+    ret->mID = mNMixtures;
+    mNMixtures++;
     ret->mpMacro = macro;
   
     return ret;
   }
 
 
+  //***************************************************************************
+  //***************************************************************************
   Mean *
   ModelSet::
   ReadMean(FILE *fp, Macro *macro)
   {
-    Mean *ret;
-    char *keyword;
-    int vec_size, i, accum_size = 0;
+    Mean *    ret;
+    char *    keyword;
+    int       vec_size;
+    int       i;
+    int       accum_size = 0;
   
   //  puts("ReadMean");
     keyword = GetString(fp, 1);
-    if (!strcmp(keyword, "~u")) {
+    
+    if (!strcmp(keyword, "~u")) 
+    {
       keyword = GetString(fp, 1);
       if ((macro = FindMacro(&mMeanHash, keyword)) == NULL) {
         Error("Undefined reference to macro ~u %s (%s:%d)", keyword, current_mmf_name, current_mmf_line);
@@ -3345,30 +3632,33 @@ namespace STK
       return  (Mean *) macro->mpData;
     }
   
-    if (!CheckKwd(keyword, KID_Mean)) {
+    if (!CheckKwd(keyword, KID_Mean))
       Error("Keyword <Mean> expected (%s:%d)", current_mmf_name, current_mmf_line);
-    }
   
     vec_size = GetInt(fp);
   
-    if (mAllocAccums) accum_size = (vec_size + 1) * 2; // * 2 for MMI accums
+    //***
+    // old malloc
+    //  
+    //if (mAllocAccums) 
+    //  accum_size = (vec_size + 1) * 2; // * 2 for MMI accums
+    //
+    //ret = (Mean *) malloc(sizeof(Mean) + (vec_size+accum_size-1) * sizeof(FLOAT));
+    //if (ret == NULL)  Error("Insufficient memory");
+    //ret->mVectorSize = vec_size;
+    ret = new Mean(vec_size, mAllocAccums);
   
-    ret = (Mean *) malloc(sizeof(Mean) + (vec_size+accum_size-1) * sizeof(FLOAT));
-    if (ret == NULL)  Error("Insufficient memory");
-  
-    ret->mVectorSize = vec_size;
-  //  printf("vec_size: %d\n", vec_size);
+//  printf("vec_size: %d\n", vec_size);
     for (i=0; i<vec_size; i++) {
-      ret->mVector[i] = GetFloat(fp);
+      ret->mpVectorO[i] = GetFloat(fp);
     }
   
-    ret->mpXFormStatAccum = NULL;
-    ret->mNumberOfXFormStatAccums = 0;
-    ret->mUpdatableFromStatAccums = true;
     ret->mpMacro = macro;
     return ret;
   }
   
+  //***************************************************************************
+  //***************************************************************************
   Variance *
   ModelSet::
   ReadVariance(FILE *fp, Macro *macro)
@@ -3394,20 +3684,21 @@ namespace STK
   
     vec_size = GetInt(fp);
   
-    if (mAllocAccums) accum_size = (2 * vec_size + 1) * 2; // * 2 for MMI accums
-  
-    ret = (Variance *) malloc(sizeof(Variance) + (vec_size+accum_size-1) * sizeof(FLOAT));
-    if (ret == NULL) Error("Insufficient memory");
-  
-    ret->mVectorSize = vec_size;
+    //***
+    // old malloc
+    //if (mAllocAccums) accum_size = (2 * vec_size + 1) * 2; // * 2 for MMI accums
+    //
+    //ret = (Variance *) malloc(sizeof(Variance) + (vec_size+accum_size-1) * sizeof(FLOAT));
+    //if (ret == NULL) Error("Insufficient memory");
+    //
+    //ret->mVectorSize = vec_size;
+    
+    ret = new Variance(vec_size, mAllocAccums);
   
     for (i=0; i<vec_size; i++) {
-      ret->mVector[i] = 1.0 / GetFloat(fp);
+      ret->mpVectorO[i] = 1.0 / GetFloat(fp);
     }
   
-    ret->mpXFormStatAccum = NULL;
-    ret->mNumberOfXFormStatAccums = 0;
-    ret->mUpdatableFromStatAccums = true;
     ret->mpMacro = macro;
     return ret;
   }
@@ -3436,17 +3727,22 @@ namespace STK
   
     nstates = GetInt(fp);
   
-    i = mAllocAccums ? 2 * SQR(nstates) + nstates: SQR(nstates);
-  
-    if ((ret = (Transition *) malloc(sizeof(Transition) + i * sizeof(ret->matrix[0]))) == NULL) {
-      Error("Insufficient memory");
-    }
-  
-    ret->mNStates = nstates;
-  
+    //***
+    // old malloc
+    //i = mAllocAccums ? 2 * SQR(nstates) + nstates: SQR(nstates);
+    //
+    //if ((ret = (Transition *) malloc(sizeof(Transition) + i * sizeof(ret->mpMatrixO[0]))) == NULL) {
+    //  Error("Insufficient memory");
+    //}
+    //
+    //ret->mNStates = nstates;
+    //
+    
+    ret = new Transition(nstates, mAllocAccums);
+    
     for (i=0; i < SQR(nstates); i++) {
-      ret->matrix[i] = GetFloat(fp);
-      ret->matrix[i] = (float) ret->matrix[i] != 0.0 ? log(ret->matrix[i]) : LOG_0;
+      ret->mpMatrixO[i] = GetFloat(fp);
+      ret->mpMatrixO[i] = (float) ret->mpMatrixO[i] != 0.0 ? log(ret->mpMatrixO[i]) : LOG_0;
     }
   
     ret->mpMacro = macro;
@@ -3510,10 +3806,20 @@ namespace STK
   
     out_vec_size = GetInt(fp);
   
-    ret = (XFormInstance *) malloc(sizeof(*ret)+(out_vec_size-1)*sizeof(FLOAT));
-    if (ret == NULL) Error("Insufficient memory");
-      ret->mpXForm = ReadXForm(fp, NULL);
-  
+    //***
+    // old malloc
+    // ret = (XFormInstance *) malloc(sizeof(*ret)+(out_vec_size-1)*sizeof(FLOAT));
+    // if (ret == NULL) Error("Insufficient memory");
+    //   
+    // 
+    
+    // create new instance
+    ret = new XFormInstance(out_vec_size);
+
+    // read instance from file    
+    ret->mpXForm = ReadXForm(fp, NULL);
+    
+    
     if (input == NULL && mInputVectorSize == -1) {
       Error("<VecSize> has not been defined yet (%s:%d)", current_mmf_name, current_mmf_line);
     }
@@ -3536,12 +3842,16 @@ namespace STK
     }
   
     ret->mpMemory = NULL;
-    if (ret->mpXForm->mMemorySize > 0 &&
-      ((ret->mpMemory = (char *) calloc(1, ret->mpXForm->mMemorySize)) == NULL)) {
-      Error("Insufficient memory");
-    }
+    
+    //***
+    // old malloc
+    //if (ret->mpXForm->mMemorySize > 0 &&
+    //  ((ret->mpMemory = (char *) calloc(1, ret->mpXForm->mMemorySize)) == NULL)) {
+    //  Error("Insufficient memory");
+    //}
+    if (ret->mpXForm->mMemorySize > 0)
+      ret->mpMemory = new char[ret->mpXForm->mMemorySize];
   
-    ret->mOutSize = out_vec_size;
     ret->mpNext = mpXFormInstances;
     mpXFormInstances = ret;
     ret->mpInput = input;
@@ -3567,6 +3877,7 @@ namespace STK
   
   //  puts("ReadXForm");
     keyword = GetString(fp, 1);
+    
     if (!strcmp(keyword, "~x")) {
       keyword = GetString(fp, 1);
       if ((macro = FindMacro(&mXFormHash, keyword)) == NULL) {
@@ -3636,25 +3947,35 @@ namespace STK
       UngetString();
     }
   
-    if ((ret = (CompositeXForm *) malloc(sizeof(CompositeXForm) +
-                                (nlayers-1) * sizeof(ret->mpLayer[0]))) == NULL) {
-      Error("Insufficient memory");
-    }
+    //if ((ret = (CompositeXForm *) malloc(sizeof(CompositeXForm) +
+    //                            (nlayers-1) * sizeof(ret->mpLayer[0]))) == NULL) {
+    //  Error("Insufficient memory");
+    //}
+    //
+    //ret->mMemorySize = 0;
+    //ret->mDelay      = 0;
+    //ret->mNLayers    = nlayers;
+    //
+    //for (i=0; i<nlayers; i++) 
+    //  ret->mpLayer[i].mpBlock = NULL;
   
-    ret->mMemorySize = 0;
-    ret->mDelay      = 0;
-    ret->mNLayers    = nlayers;
-  
-    for (i=0; i<nlayers; i++) ret->mpLayer[i].mpBlock = NULL;
-  
-    for (i=0; i<nlayers; i++) {
+    // create new Composite XForm
+    ret = new CompositeXForm(nlayers);    
+    
+    // load each layer
+    for (i=0; i<nlayers; i++) 
+    {
       keyword = GetString(fp, 1);
-      if (!CheckKwd(keyword, KID_Layer)) {
-        if (nlayers > 1) {
+      
+      if (!CheckKwd(keyword, KID_Layer)) 
+      {
+        if (nlayers > 1) 
           Error("Keyword <Layer> expected (%s:%d)", current_mmf_name, current_mmf_line);
-        }
+        
         layer_id = 1;
-      } else {
+      } 
+      else 
+      {
         layer_id = GetInt(fp);
         keyword = GetString(fp, 1);
       }
@@ -3681,15 +4002,22 @@ namespace STK
         UngetString();
       }
   
-      if ((block = (XForm **)  malloc(sizeof(XForm*) * nblocks)) == NULL) 
-        Error("Insufficient memory");
-  
-      ret->mpLayer[layer_id-1].mpBlock   = block;
-      ret->mpLayer[layer_id-1].mNBlocks = nblocks;
+      //***
+      // old malloc
+      //       if ((block = (XForm **)  malloc(sizeof(XForm*) * nblocks)) == NULL) 
+      //         Error("Insufficient memory");
+      //   
+      //       ret->mpLayer[layer_id-1].mpBlock   = block;
+      //       ret->mpLayer[layer_id-1].mNBlocks = nblocks;
+      //       
+      //       for (j = 0; j < nblocks; j++) 
+      //         block[j] = NULL;
+      //   
       
-      for (j = 0; j < nblocks; j++) 
-        block[j] = NULL;
-  
+      // initialize the blocks within the layer (returns pointer to the begining
+      // of block array
+      block = ret->mpLayer[layer_id-1].InitBlocks(nblocks);
+      
       layer_delay = 0;
       
       for (j = 0; j < nblocks; j++) 
@@ -3748,16 +4076,21 @@ namespace STK
               i, prev_out_size, i+1, layer_in_size, current_mmf_name, current_mmf_line);
         }
   
-        if ((ret->mpLayer[i-1].mpOutputVector = (FLOAT *) malloc(prev_out_size * sizeof(FLOAT))) == NULL) 
-        {
-          Error("Insufficient memory");
-        }
+        //***
+        // old malloc
+        //
+        //if ((ret->mpLayer[i-1].mpOutputVector = (FLOAT *) malloc(prev_out_size * sizeof(FLOAT))) == NULL) 
+        //{
+        //  Error("Insufficient memory");
+        //}
+        
+        ret->mpLayer[i-1].mpOutputVector = new FLOAT[prev_out_size];
       }
   
       prev_out_size = layer_out_size;
     }
   
-    ret->mXFormType = XT_COMPOSITE;
+    
     ret->mpMacro = macro;
     return ret;
   }; // ReadCompositeXForm(FILE *fp, Macro *macro) 
@@ -3768,25 +4101,40 @@ namespace STK
   ModelSet::
   ReadLinearXForm(FILE *fp, Macro *macro)
   {
-    LinearXForm *ret;
-    int in_size, out_size, i;
+    LinearXForm *   ret;
+    int             in_size;
+    int             out_size;
+    int             i;
+    int             r;
+    int             c;
+    FLOAT           tmp;
   
+    // read the parameters
     out_size = GetInt(fp);
     in_size = GetInt(fp);
   
-    ret = (LinearXForm *) malloc(sizeof(LinearXForm)+(out_size*in_size-1)*sizeof(ret->matrix[0]));
-    if (ret == NULL) Error("Insufficient memory");
-  
-  
-    for (i=0; i < out_size * in_size; i++) {
-      ret->matrix[i] = GetFloat(fp);
+    //*** 
+    // old malloc
+    //ret = (LinearXForm *) malloc(sizeof(LinearXForm)+(out_size*in_size-1)*sizeof(ret->mpMatrixO[0]));
+    //if (ret == NULL) Error("Insufficient memory");
+    
+    // create new object
+    ret = new LinearXForm(in_size, out_size);
+    
+    // fill the object with data    
+    i = 0;
+    for (r=0; r < in_size; r++)
+    {
+      for (c = 0; c < out_size; c++)
+      {
+        tmp = GetFloat(fp);
+        ret->mMatrix(r, c) = tmp;
+        //:TODO: Get rid of this old stuff
+        ret->mpMatrixO[i] = tmp;
+        i++;
+      }
     }
   
-    ret->mOutSize   = out_size;
-    ret->mInSize    = in_size;
-    ret->mMemorySize = 0;
-    ret->mDelay      = 0;
-    ret->mXFormType = XT_LINEAR;
     ret->mpMacro      = macro;
     return ret;
   }; // ReadLinearXForm(FILE *fp, Macro *macro)
@@ -3797,66 +4145,86 @@ namespace STK
   ModelSet::
   ReadBiasXForm(FILE *fp, Macro *macro)
   {
-    BiasXForm *ret;
-    int size, i;
-  
+    BiasXForm *   ret;
+    size_t        size;
+    size_t        i;
+    FLOAT         tmp;
+    
     size = GetInt(fp);
   
-    ret = (BiasXForm *) malloc(sizeof(LinearXForm)+(size-1)*sizeof(ret->mVector[0]));
-    if (ret == NULL) Error("Insufficient memory");
-  
-  
-    for (i=0; i < size; i++) {
-      ret->mVector[i] = GetFloat(fp);
+    //***
+    // old malloc
+    //     ret = (BiasXForm *) malloc(sizeof(BiasXForm)+(size-1)*sizeof(ret->mpVectorO[0]));
+    //     if (ret == NULL) Error("Insufficient memory");
+    //     
+    
+    ret = new BiasXForm(size);
+    
+    // load values
+    for (i=0; i < size; i++) 
+    {
+      tmp = GetFloat(fp);
+      ret->mVector(0, i);
+      
+      //:TODO: Get rid of the obsolete thing
+      ret->mpVectorO[i] = tmp;      
     }
   
-    ret->mInSize = ret->mOutSize = size;
-    ret->mMemorySize = 0;
-    ret->mDelay      = 0;
-    ret->mXFormType = XT_BIAS;
     ret->mpMacro      = macro;
     return ret;
   }; // ReadBiasXForm(FILE *fp, Macro *macro)
   
   
   //***************************************************************************
+  //***************************************************************************
   FuncXForm *
   ModelSet::
   ReadFuncXForm(FILE *fp, Macro *macro, int funcId)
   {
-    FuncXForm *ret;
-    int size;
+    FuncXForm * ret;
+    size_t      size;
   
-    size = GetInt(fp);
-  
-    ret = (FuncXForm *) malloc(sizeof(FuncXForm));
-    if (ret == NULL) Error("Insufficient memory");
-  
-    ret->mFuncId  = funcId;
-    ret->mInSize = ret->mOutSize = size;
-    ret->mMemorySize = 0;
-    ret->mDelay      = 0;
-    ret->mXFormType = XT_FUNC;
-    ret->mpMacro      = macro;
+    //***
+    // old malloc
+    //ret = (FuncXForm *) malloc(sizeof(FuncXForm));
+    //if (ret == NULL) Error("Insufficient memory");
+    
+    
+    size          = GetInt(fp);
+    ret           = new FuncXForm(size, funcId);
+    ret->mpMacro  = macro;
     return ret;
   }; // ReadFuncXForm(FILE *fp, Macro *macro, int funcId)
   
-  
+  //***************************************************************************
   //***************************************************************************
   CopyXForm *
   ModelSet::
   ReadCopyXForm(FILE *fp, Macro *macro)
   {
-    CopyXForm *ret;
-    int in_size, out_size, i=0, n, from, step, to;
+    CopyXForm *   ret;
+    int           in_size;
+    int           out_size;
+    int           i=0;
+    int           n;
+    int           from;
+    int           step;
+    int           to;
   
     out_size = GetInt(fp);
     in_size = GetInt(fp);
   
-    ret = (CopyXForm *) malloc(sizeof(CopyXForm)+(out_size-1)*sizeof(int));
-    if (ret == NULL) Error("Insufficient memory");
+    //***
+    // old malloc
+    //ret = (CopyXForm *) malloc(sizeof(CopyXForm)+(out_size-1)*sizeof(int));
+    //if (ret == NULL) Error("Insufficient memory");
+    
+    // create new object
+    ret = new CopyXForm(in_size, out_size);
   
-    while (i < out_size) {
+    // fill it with data
+    while (i < out_size) 
+    {
       RemoveSpaces(fp);
       if ((n = fscanf(fp, "%d:%d:%d", &from, &step, &to)) < 1) {
         if (ferror(fp)) {
@@ -3874,15 +4242,10 @@ namespace STK
       }
   
       for (n = 0; n < (to-from)/step + 1; n++, i++) {
-        ret->indices[i] = from + n * step - 1;
+        ret->mpIndices[i] = from + n * step - 1;
       }
     }
   
-    ret->mOutSize   = out_size;
-    ret->mInSize    = in_size;
-    ret->mMemorySize = 0;
-    ret->mDelay      = 0;
-    ret->mXFormType = XT_COPY;
     ret->mpMacro      = macro;
     return ret;
   }; //ReadCopyXForm(FILE *fp, Macro *macro)
@@ -3893,22 +4256,19 @@ namespace STK
   ModelSet::
   ReadStackingXForm(FILE *fp, Macro *macro)
   {
-    StackingXForm *ret;
-    int stack_size, in_size, out_size;
+    StackingXForm *   ret;
+    size_t            stack_size;
+    size_t            in_size;
   
     stack_size = GetInt(fp);
     in_size    = GetInt(fp);
-    out_size   = stack_size * in_size;
   
-    ret = (StackingXForm *) malloc(sizeof(StackingXForm));
-    if (ret == NULL) Error("Insufficient memory");
+    //***
+    // old malloc
+    //ret = (StackingXForm *) malloc(sizeof(StackingXForm));
+    //if (ret == NULL) Error("Insufficient memory");
+    ret = new StackingXForm(stack_size, in_size);
   
-    ret->mOutSize   = out_size;
-    ret->mInSize    = in_size;
-    ret->mMemorySize = out_size * sizeof(FLOAT);
-    ret->mDelay      = stack_size - 1;
-    ret->mHorizStack= 0;
-    ret->mXFormType = XT_STACKING;
     ret->mpMacro      = macro;
     return ret;
   }; //ReadStackingXForm(FILE *fp, Macro *macro)
@@ -4018,8 +4378,8 @@ namespace STK
           ud.mpNewData = inputXForm;
           ud.mType     = 'j';
   
-          this->Scan(MTM_XFORM_INSTANCE|MTM_MIXTURE,NULL,ReplaceItem, &ud);
-          ud.mpOldData->Scan(MTM_REVERSE_PASS|MTM_ALL, NULL, ReleaseItem, NULL);
+          this         ->Scan(MTM_XFORM_INSTANCE|MTM_MIXTURE,NULL,ReplaceItem, &ud);
+          ud.mpOldData ->Scan(MTM_REVERSE_PASS|MTM_ALL, NULL, ReleaseItem, NULL);
   
           for (unsigned int i = 0; i < mXFormInstanceHash.nentries; i++) 
           {
@@ -4049,11 +4409,9 @@ namespace STK
   
   void
   ModelSet::
-  ParseMmf(const std::string & rFileName, char * expectHMM)
+  ParseMmf(const char * pFileName, char * expectHMM)
   {
     //ReadHMMSet(rName.c_str(), this, expectHMM);
-  
-  
     istkstream    input_stream;
     FILE *        fp;
     char *        keyword;
@@ -4063,7 +4421,7 @@ namespace STK
     data = NULL;
     
     current_mmf_line = 1;
-    current_mmf_name = rFileName.c_str();//mmFileName;
+    current_mmf_name = pFileName;//mmFileName;
   
     /*
     if ((fp = fopen(mmFileName, "rb")) == NULL) 
@@ -4073,11 +4431,11 @@ namespace STK
     */
     
     // try to open the stream
-    input_stream.open(rFileName, ios::in|ios::binary);
+    input_stream.open(pFileName, ios::in|ios::binary);
     
     if (!input_stream.good())
     {
-      Error("Cannot open input MMF %s", rFileName.c_str());
+      Error("Cannot open input MMF %s", pFileName);
     }
     
     fp = input_stream.file();
@@ -4089,7 +4447,7 @@ namespace STK
       {
         if (ferror(fp)) 
         {
-          Error("Cannot read input MMF", rFileName.c_str());
+          Error("Cannot read input MMF", pFileName);
         }
         fclose(fp);
         return;
@@ -4102,22 +4460,22 @@ namespace STK
   
         if (type == 'o') {
           if (!ReadGlobalOptions(fp)) {
-            Error("No global option defined (%s:%d)", rFileName.c_str(), current_mmf_line);
+            Error("No global option defined (%s:%d)", pFileName, current_mmf_line);
           }
         } else {
           keyword = GetString(fp, 1);
           if ((macro = pAddMacro(type, keyword)) == NULL) {
-            Error("Unrecognized macro type ~%c (%s:%d)", type, rFileName.c_str(), current_mmf_line);
+            Error("Unrecognized macro type ~%c (%s:%d)", type, pFileName, current_mmf_line);
           }
   
           if (macro->mpData != NULL) {
             if (gHmmsIgnoreMacroRedefinition == 0) {
-              Error("Redefinition of macro ~%c %s (%s:%d)", type, keyword, rFileName.c_str(), current_mmf_line);
+              Error("Redefinition of macro ~%c %s (%s:%d)", type, keyword, pFileName, current_mmf_line);
             } else {
   //            Warning("Redefinition of macro ~%c %s (%s:%d) is ignored", type, keyword, mmFileName, current_mmf_line);
             }
           }
-  
+          XForm * cosi;
           switch (type)
           {
             case 'h': data =  ReadHMM          (fp, macro); break;
@@ -4132,12 +4490,12 @@ namespace STK
           }  
   
           assert(data != NULL);
-  
+          
           if (macro->mpData == NULL) {
             macro->mpData = data;
           } else {
             Warning("Redefinition of macro ~%c %s (%s:%d)",
-                    type, keyword, rFileName.c_str(), current_mmf_line);
+                    type, keyword, pFileName, current_mmf_line);
   
             // Macro is redefined. New item must be checked for compatibility with
             // the old one (vector sizes, delays, memory sizes) All references to
@@ -4169,17 +4527,20 @@ namespace STK
               break;
             case 'u':
               this->Scan(MTM_MIXTURE, NULL,ReplaceItem, &ud);
-              free(ud.mpOldData);
+              delete ud.mpOldData;
+              //free(ud.mpOldData);
               hash = &mMeanHash;
               break;
             case 'v':
               this->Scan(MTM_MIXTURE, NULL,ReplaceItem, &ud);
-              free(ud.mpOldData);
+              delete ud.mpOldData;
+              //free(ud.mpOldData);
               hash = &mVarianceHash;
               break;
             case 't':
               this->Scan(MTM_HMM, NULL,ReplaceItem, &ud);
-              free(ud.mpOldData);
+              delete ud.mpOldData;
+              //free(ud.mpOldData);
               hash = &mTransitionHash;
               break;
             case 'j':
@@ -4204,14 +4565,14 @@ namespace STK
       } else if (CheckKwd(keyword, KID_BeginHMM)) {
         UngetString();
         if (expectHMM == NULL) {
-          Error("Macro definition expected (%s:%d)",rFileName.c_str(),current_mmf_line);
+          Error("Macro definition expected (%s:%d)",pFileName,current_mmf_line);
         }
         //macro = AddMacroToHMMSet('h', expectHMM, hmm_set);
         macro = pAddMacro('h', expectHMM);
         
         macro->mpData = ReadHMM(fp, macro);
       } else {
-        Error("Unexpected keyword %s (%s:%d)",keyword,rFileName.c_str(),current_mmf_line);
+        Error("Unexpected keyword %s (%s:%d)",keyword,pFileName,current_mmf_line);
       }
     }
   }
@@ -4316,7 +4677,7 @@ namespace STK
     PutNLn(fp, binary);
   
     for (i=0; i < mean->mVectorSize; i++) {
-      PutFlt(fp, binary, mean->mVector[i]);
+      PutFlt(fp, binary, mean->mpVectorO[i]);
     }
   
     PutNLn(fp, binary);
@@ -4334,7 +4695,7 @@ namespace STK
     PutNLn(fp, binary);
   
     for (i=0; i < variance->mVectorSize; i++) {
-      PutFlt(fp, binary, 1/variance->mVector[i]);
+      PutFlt(fp, binary, 1/variance->mpVectorO[i]);
     }
   
     PutNLn(fp, binary);
@@ -4355,7 +4716,7 @@ namespace STK
     {
       for (j=0; j < transition->mNStates; j++) 
       {
-        FLOAT logtp = transition->matrix[i * transition->mNStates + j];
+        FLOAT logtp = transition->mpMatrixO[i * transition->mNStates + j];
         PutFlt(fp, binary, logtp > LOG_MIN ? exp(logtp) : 0.0);
       }
   
@@ -4562,7 +4923,7 @@ void WriteStackingXForm( FILE *fp, bool binary, ModelSet *hmm_set,  StackingXFor
     PutNLn(fp, binary);
     for (i=0; i < xform->mOutSize; i++) 
     {
-      PutFlt(fp, binary, xform->mVector[i]);
+      PutFlt(fp, binary, xform->mpVectorO[i]);
     }
     PutNLn(fp, binary);
   } //WriteBiasXForm(FILE *fp, bool binary, BiasXForm *xform)
@@ -4584,7 +4945,7 @@ void WriteStackingXForm( FILE *fp, bool binary, ModelSet *hmm_set,  StackingXFor
     {
       for (j=0; j < xform->mInSize; j++) 
       {
-        PutFlt(fp, binary, xform->matrix[i * xform->mInSize + j]);
+        PutFlt(fp, binary, xform->mpMatrixO[i * xform->mInSize + j]);
       }
       PutNLn(fp, binary);
     }
@@ -4611,7 +4972,7 @@ void WriteStackingXForm( FILE *fp, bool binary, ModelSet *hmm_set,  StackingXFor
     size_t      i;
     size_t      j;
     int         step = 0;
-    int *       ids = xform->indices;
+    int *       ids = xform->mpIndices;
   
     fprintf(fp, "<Copy> %d %d\n", xform->mOutSize, xform->mInSize);
   
@@ -4656,10 +5017,10 @@ void WriteStackingXForm( FILE *fp, bool binary, ModelSet *hmm_set,  StackingXFor
   //***************************************************************************
   void 
   ModelSet::
-  WriteXFormStatsAndRunCommands(const std::string & rOutDir, bool binary)
+  WriteXFormStatsAndRunCommands(const char * pOutDir, bool binary)
   {
     HMMSetNodeName                nodeNameBuffer;
-    WriteStatsForXFormUserData   userData;
+    WriteStatsForXFormUserData    userData;
     char                          fileName[1024];
     size_t                        i;
     size_t                        j;
@@ -4688,7 +5049,7 @@ void WriteStackingXForm( FILE *fp, bool binary, ModelSet *hmm_set,  StackingXFor
       userData.mpXForm = (LinearXForm *) mpXFormToUpdate[k].mpXForm;
       assert(userData.mpXForm->mXFormType == XT_LINEAR);
   
-      MakeFileName(fileName, userData.mpXForm->mpMacro->mpName, rOutDir.c_str(), NULL);
+      MakeFileName(fileName, userData.mpXForm->mpMacro->mpName, pOutDir, NULL);
       ext = fileName + strlen(fileName);
       
       strcpy(ext, ".xms"); userData.mMeanFile.mpStatsN = strdup(fileName);
@@ -4775,7 +5136,7 @@ void WriteStackingXForm( FILE *fp, bool binary, ModelSet *hmm_set,  StackingXFor
         for (j=0; j < userData.mpXForm->mInSize; j++) 
         {
           fprintf(fp, " "FLOAT_FMT,
-                  userData.mpXForm->matrix[i*userData.mpXForm->mInSize+j]);
+                  userData.mpXForm->mpMatrixO[i*userData.mpXForm->mInSize+j]);
         }
         fputs("\n", fp);
       }
@@ -4794,7 +5155,7 @@ void WriteStackingXForm( FILE *fp, bool binary, ModelSet *hmm_set,  StackingXFor
   //***************************************************************************
   void 
   ModelSet::
-  ReadXFormStats(const std::string & rOutDir, bool binary) 
+  ReadXFormStats(const char * pOutDir, bool binary) 
   {
     HMMSetNodeName                nodeNameBuffer;
     WriteStatsForXFormUserData   userData;
@@ -4818,7 +5179,7 @@ void WriteStackingXForm( FILE *fp, bool binary, ModelSet *hmm_set,  StackingXFor
       userData.mpXForm = (LinearXForm *) mpXFormToUpdate[k].mpXForm;
       assert(userData.mpXForm->mXFormType == XT_LINEAR);
   
-      MakeFileName(fileName, userData.mpXForm->mpMacro->mpName, rOutDir.c_str(), NULL);
+      MakeFileName(fileName, userData.mpXForm->mpMacro->mpName, pOutDir, NULL);
       ext = fileName + strlen(fileName);
       strcpy(ext, ".xms"); userData.mMeanFile.mpStatsN = strdup(fileName);
       strcpy(ext, ".xmo"); userData.mMeanFile.mpOccupN = strdup(fileName);
@@ -4909,7 +5270,7 @@ void WriteStackingXForm( FILE *fp, bool binary, ModelSet *hmm_set,  StackingXFor
   
       int c =0;
       for (i=0; i < userData.mpXForm->mOutSize * userData.mpXForm->mInSize; i++) {
-        c |= fscanf(fp, FLOAT_FMT, &userData.mpXForm->matrix[i]) != 1;
+        c |= fscanf(fp, FLOAT_FMT, &userData.mpXForm->mpMatrixO[i]) != 1;
       }
       if (ferror(fp)) {
         Error("Cannot read xform file '%s'", fileName);
@@ -4924,7 +5285,7 @@ void WriteStackingXForm( FILE *fp, bool binary, ModelSet *hmm_set,  StackingXFor
   void 
   ModelSet::
   //WriteHMMStats(const char *stat_file)
-  WriteHMMStats(const std::string & rFileName)
+  WriteHMMStats(const char * pFileName)
   {
     Macro *     macro;
     size_t      i = 0;
@@ -4932,9 +5293,9 @@ void WriteStackingXForm( FILE *fp, bool binary, ModelSet *hmm_set,  StackingXFor
     size_t      k;
     FILE *      fp;
   
-    if ((fp = fopen(rFileName.c_str(), "wt")) == NULL) 
+    if ((fp = fopen(pFileName, "wt")) == NULL) 
     {
-      Error("Cannot open output file: '%s'", rFileName.c_str());
+      Error("Cannot open output file: '%s'", pFileName);
     }
   
     for (macro = mpFirstMacro; macro != NULL; macro = macro->nextAll) 
@@ -4953,7 +5314,7 @@ void WriteStackingXForm( FILE *fp, bool binary, ModelSet *hmm_set,  StackingXFor
   
       for (j = 0; j < hmm->mNStates-2; j++) 
       {
-        State *state = hmm->state[j];
+        State *state = hmm->mpState[j];
         FLOAT stOccP = 0;
         for (k = 0; k < state->mNumberOfMixtures; k++) 
         {
@@ -4972,14 +5333,14 @@ void WriteStackingXForm( FILE *fp, bool binary, ModelSet *hmm_set,  StackingXFor
   void 
   ModelSet::
   //ReadXFormList(ModelSet *hmm_set, const char *xformListFileName)
-  ReadXFormList(const std::string & rFileName)
+  ReadXFormList(const char * pFileName)
   {
     char      line[1024];
     FILE *    fp;
     size_t    nlines=0;
   
-    if ((fp = fopen(rFileName.c_str(), "rt")) == NULL) {
-        Error("ReadXFormList: Cannot open file: '%s'", rFileName.c_str());
+    if ((fp = fopen(pFileName, "rt")) == NULL) {
+        Error("ReadXFormList: Cannot open file: '%s'", pFileName);
     }
   
   
@@ -4996,7 +5357,7 @@ void WriteStackingXForm( FILE *fp, bool binary, ModelSet *hmm_set,  StackingXFor
       
       if (line[i-1] != '\n' && getc(fp) != EOF) {
         Error("ReadXFormList: Line %d is too long in file: %s",
-              nlines, rFileName.c_str());
+              nlines, pFileName);
       }
   
       for (; i > 0 && isspace(line[i-1]); i--) 
@@ -5022,7 +5383,7 @@ void WriteStackingXForm( FILE *fp, bool binary, ModelSet *hmm_set,  StackingXFor
         if (line[i] != termChar) 
         {
           Error("ReadXFormList: Terminanting %c expected at line %d in file %s",
-                termChar, nlines, rFileName.c_str());
+                termChar, nlines, pFileName);
         }
         
         line[i++] = '\0';
@@ -5040,7 +5401,7 @@ void WriteStackingXForm( FILE *fp, bool binary, ModelSet *hmm_set,  StackingXFor
       if (macro == NULL) 
       {
         Error("ReadXFormList: Undefined XForm '%s' at line %d in file %s",
-              xformName, nlines, rFileName.c_str());
+              xformName, nlines, pFileName);
       }
   
       mpXFormToUpdate = (MakeXFormCommand*)
@@ -5061,6 +5422,7 @@ void WriteStackingXForm( FILE *fp, bool binary, ModelSet *hmm_set,  StackingXFor
         }
       }
     }
+    fclose(fp);
   }; //ReadXFormList(const std::string & rFileName);
   
   
@@ -5160,7 +5522,7 @@ void WriteStackingXForm( FILE *fp, bool binary, ModelSet *hmm_set,  StackingXFor
       if (tmpHash.entry[i]->data != NULL) 
       {
         Hmm *hmm  = (Hmm *) tmpHash.entry[i]->data;
-        int isTee = hmm->mpTransition->matrix[hmm->mNStates - 1] > LOG_MIN;
+        int isTee = hmm->mpTransition->mpMatrixO[hmm->mNStates - 1] > LOG_MIN;
         e.key  = tmpHash.entry[i]->key;
         e.data = (void *) isTee;
         

@@ -198,13 +198,15 @@ namespace STK
    */
   class stkios : virtual public ios
   {
+  protected:
+    stkbuf  buf;
+  
   public:
     stkios() : buf() { init(&buf) ;};
     stkios(const string& fName, ios::openmode m, const string & filter) :
       buf(fName, m, filter) { init(&buf) ; }
 
-  protected:
-    stkbuf  buf;
+    const stkbuf & rdbuf() const  { return buf; }
   };
 
 

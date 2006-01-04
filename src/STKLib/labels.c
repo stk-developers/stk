@@ -227,6 +227,7 @@ void ReleaseLabels(Label *labels)
     while (nlptr) {
       tlptr = nlptr;
       nlptr=nlptr->mpNext;
+      //free(tlptr->mpName);
       free(tlptr);
     }
   }
