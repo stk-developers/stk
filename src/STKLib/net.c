@@ -56,7 +56,7 @@ Node *MakeNetworkFromLabels(Label *labels, enum NodeType node_type)
      (last->backlinks = (Link *) malloc(sizeof(Link))) == NULL) {
     Error("Insufficient memory");
   }
-  first->mType          = last->mType          = NT;
+  first->mType         = last->mType         = NT;
   first->pronun        = last->pronun        = NULL;
   first->nlinks        = last->nbacklinks    = 1;
   first->nbacklinks    = last->nlinks        = 0;

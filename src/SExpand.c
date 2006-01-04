@@ -306,7 +306,7 @@ int main(int argc, char *argv[]) {
         labels = ReadLabels(in_MLF_fp, dictionary ? &dictHash : &phoneHash,
                                        dictionary ? UL_ERROR : UL_INSERT, in_lbl_fmt,
                                        /*sampleRate*/ 1, label_file, in_MLF_fn, NULL);
-        node = MakeNetworkFromLabels(labels, NT);
+        node = MakeNetworkFromLabels(labels, dictionary ? NT : NT_Phone);
         ReleaseLabels(labels);
       } else if (in_transc_fmt == TF_STK || in_transc_fmt == TF_MNF) {
         node = ReadSTKNetwork(in_MLF_fp, &dictHash, &phoneHash, notInDictAction,

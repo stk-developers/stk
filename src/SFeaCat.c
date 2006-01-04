@@ -94,7 +94,14 @@ int main(int argc, char *argv[]) {
   const char *out_dir;
   const char *out_ext;
   const char *inputName;
-  char *script;
+        char *script;
+        char *cmn_path;
+        char *cmn_file;
+  const char *cmn_mask;
+        char *cvn_path;
+        char *cvn_file;
+  const char *cvn_mask;
+  const char *cvg_file;
   int  trace_flag;
   int  targetKind;
   int  derivOrder;
@@ -103,6 +110,7 @@ int main(int argc, char *argv[]) {
   int endFrmExt;
   BOOL swap_features;
   BOOL swap_fea_out;
+  RHFBuffer rhfbuff = {0};
 
   if (argc == 1) usage(argv[0]);
 
@@ -119,7 +127,11 @@ int main(int argc, char *argv[]) {
     nfeature_files++;
   }
   targetKind   = GetDerivParams(&cfgHash, &derivOrder, &derivWinLengths,
-                                &startFrmExt, &endFrmExt, SNAME":",0);
+                                &startFrmExt, &endFrmExt,
+                                &cmn_path, &cmn_file, &cmn_mask,
+                                &cvn_path, &cvn_file, &cvn_mask, &cvg_file,
+                                SNAME":", 0);
+
   inputName    = GetParamStr(&cfgHash, SNAME":SOURCEINPUT",     NULL);
   swap_features=!GetParamBool(&cfgHash,SNAME":NATURALREADORDER", isBigEndian());
   swap_fea_out =!GetParamBool(&cfgHash,SNAME":NATURALWRITEORDER",isBigEndian());
@@ -175,9 +187,13 @@ int main(int argc, char *argv[]) {
   for (file_name=feature_files; file_name != NULL; file_name=file_name->mpNext) {
     if (trace_flag & 1) TraceLog("Processing file %d/%d '%s'",
                                 ++fcnt, nfeature_files, file_name->logical);
+                                
+    if(cmn_mask) process_mask(file_name->logical, cmn_mask, cmn_file);
+    if(cvn_mask) process_mask(file_name->logical, cvn_mask, cvn_file);
     obsMx = ReadHTKFeatures(file_name->physical, swap_features,
                             startFrmExt, endFrmExt, targetKind,
-                            derivOrder, derivWinLengths, &header);
+                            derivOrder, derivWinLengths, &header,
+                            cmn_path, cvn_path, cvg_file, &rhfbuff);
 
     vec_size = header.sampSize / sizeof(float);
     out_size = input ? input->mOutSize : vec_size;
@@ -193,6 +209,7 @@ int main(int argc, char *argv[]) {
     }
     header.sampKind = input ? PARAMKIND_USER : targetKind;
     header.sampSize = out_size * sizeof(float);
+    header.nSamples -= hset.totalDelay;
 
     if (WriteHTKHeader(ofp, header, 1)) {
       Error("Cannot write to output feature file: '%s'", outFile);
@@ -200,7 +217,7 @@ int main(int argc, char *argv[]) {
     time = -hset.mTotalDelay;
     ResetXFormInstances(&hset);
 
-    for (i = 0; i < header.nSamples; i++) {
+    for(i = 0; i < header.nSamples + hset.totalDelay; i++) {
       UpdateStacks(&hset, obsMx + i * vec_size, ++time, FORWARD);
       if (time <= 0) continue;
 
@@ -210,9 +227,9 @@ int main(int argc, char *argv[]) {
         Error("Cannot write to output feature file: '%s'", outFile);
       }
     }
-    totFrames += header.nSamples - hset.mTotalDelay;
+    totFrames += header.nSamples;
 
-    if (trace_flag & 1) TraceLog("[%d frames]", header.nSamples-hset.mTotalDelay);
+    if(trace_flag & 1) TraceLog("[%d frames]", header.nSamples);
     fclose(ofp);
     free(obsMx);
   }

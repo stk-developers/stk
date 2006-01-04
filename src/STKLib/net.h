@@ -26,7 +26,7 @@ class FWBWR;
 enum NodeType 
 {
   NT_Undef  = 0x00,
-  NT   = 0x01,
+  NT        = 0x01,
   NT_Model  = 0x02,
   NT_Phone  = 0x04,
   NT_Subnet = 0x08,
