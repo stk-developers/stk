@@ -108,8 +108,8 @@ int main(int argc, char *argv[]) {
   int  *derivWinLengths;
   int startFrmExt;
   int endFrmExt;
-  BOOL swap_features;
-  BOOL swap_fea_out;
+  bool swap_features;
+  bool swap_fea_out;
   RHFBuffer rhfbuff = {0};
 
   if (argc == 1) usage(argv[0]);
@@ -174,14 +174,14 @@ int main(int argc, char *argv[]) {
   for (src_mmf=strtok(src_mmf, ","); src_mmf != NULL; src_mmf=strtok(NULL, ",")) {
     hset.ParseMmf(src_mmf, NULL);
   }
-  if (src_hmm_list) ReadHMMList(&hset,     src_hmm_list, src_hmm_dir, src_hmm_ext);
+  if (src_hmm_list) hset.ReadHMMList(src_hmm_list, src_hmm_dir, src_hmm_ext);
 
   if (inputName != NULL) {
     Macro *macro = FindMacro(&hset.mXFormInstanceHash, inputName);
     if (macro == NULL) Error("Undefined source input '%s'", inputName);
-    input = (XFormInstance *) macro->data;
-  } else if (hset.inputXForm) {
-    input = hset.inputXForm;
+    input = (XFormInstance *) macro->mpData;
+  } else if (hset.mpInputXForm) {
+    input = hset.mpInputXForm;
   }
 
   for (file_name=feature_files; file_name != NULL; file_name=file_name->mpNext) {
@@ -209,19 +209,19 @@ int main(int argc, char *argv[]) {
     }
     header.sampKind = input ? PARAMKIND_USER : targetKind;
     header.sampSize = out_size * sizeof(float);
-    header.nSamples -= hset.totalDelay;
+    header.nSamples -= hset.mTotalDelay;
 
     if (WriteHTKHeader(ofp, header, 1)) {
       Error("Cannot write to output feature file: '%s'", outFile);
     }
     time = -hset.mTotalDelay;
-    ResetXFormInstances(&hset);
+    hset.ResetXFormInstances();
 
-    for(i = 0; i < header.nSamples + hset.totalDelay; i++) {
-      UpdateStacks(&hset, obsMx + i * vec_size, ++time, FORWARD);
+    for(i = 0; i < header.nSamples + hset.mTotalDelay; i++) {
+      hset.UpdateStacks(obsMx + i * vec_size, ++time, FORWARD);
       if (time <= 0) continue;
 
-      obs = XFormPass(input, obsMx + i * mVectorSize, time, FORWARD);
+      obs = XFormPass(input, obsMx + i * vec_size, time, FORWARD);
 
       if (WriteHTKFeature (ofp, obs, out_size, swap_fea_out)) {
         Error("Cannot write to output feature file: '%s'", outFile);
