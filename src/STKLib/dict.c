@@ -86,8 +86,7 @@ void ReadDictionary(
       if (*chrptr != ']') Error("Matching `]' is missing (%s:%d)",
                                 model_name, dictFileName, line_no);
       *chrptr++ = '\0';
-      new_pronun->outSymbol = strdup(model_name);
-      if (new_pronun->outSymbol == NULL) Error("Insufficient memory");
+      new_pronun->outSymbol = *model_name != '\0' ?  strdup(model_name) : NULL;
     }
 
     new_pronun->prob = strtod(chrptr, &chrptr);

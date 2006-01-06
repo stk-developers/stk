@@ -121,6 +121,8 @@ void WriteLabels(FILE* lfp, Label *label, LabelFormat labelFormat, long smpPrd,
   int ctm = labelFormat.CENTRE_TM;
 
   for (;label != NULL; label = label->mpNext) {
+    if(label->mpName == NULL) continue;
+
     if (!(labelFormat.TIMES_OFF)) {
       long long time = UNDEF_TIME;
       for (level = label; level != NULL; level = level->nextLevel) {
@@ -142,7 +144,7 @@ void WriteLabels(FILE* lfp, Label *label, LabelFormat labelFormat, long smpPrd,
     }
 
     for (level = label; level != NULL; level = level->nextLevel) {
-      if (prev == level) break;
+      if (prev == level || level->mpName == NULL) break;
 
 
       putc(' ', lfp);

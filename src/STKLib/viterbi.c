@@ -1265,14 +1265,14 @@ Label *GetLabels(Token *token)
       tmp->data = wlr->node->hmm;
       tmp->mpName = wlr->node->hmm->mpMacro->mpName;
       tmp->nextLevel = level[li+1] ? level[li+1] : level[2];
-    } else if (wlr->node->pronun->outSymbol) {
+    } else { //if (wlr->node->pronun->outSymbol) {
       li = 2;
       tmp->data = wlr->node->pronun->word;
       tmp->mpName = wlr->node->pronun->outSymbol;
       tmp->nextLevel = NULL;
-    } else {
-      free(tmp);
-      continue;
+//    } else {
+//      free(tmp);
+//      continue;
     }
 
     if (level[li]) {

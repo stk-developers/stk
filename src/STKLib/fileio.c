@@ -494,6 +494,23 @@ FLOAT *ReadHTKFeatures(
            feaMx + trg_vec_size * (totFrames - extRight - 1),
            (coefs * (1+loSrcTgzDerOrd) - trgN) * sizeof(FLOAT));
   }
+  
+  // Sentence cepstral mean normalization
+  if(cmn_file == NULL && 
+     !(PARAMKIND_Z & header->sampKind) && 
+      (PARAMKIND_Z & targetKind)) {
+    for(j=0; j < coefs; j++) {          // for each coefficient
+      FLOAT norm = 0.0;
+      for(i=0; i < totFrames; i++)      // for each frame
+        norm += feaMx[i*trg_vec_size - trgN + j];
+
+      norm /= totFrames;
+
+      for(i=0; i < totFrames; i++)      // for each frame
+        feaMx[i*trg_vec_size - trgN + j] -= norm;
+    }
+  }
+  
   // Compute missing derivatives
   for (; srcDerivOrder < derivOrder; srcDerivOrder++) {
     int winLen = derivWinLen[srcDerivOrder];
