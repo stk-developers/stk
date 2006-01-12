@@ -105,16 +105,16 @@ using namespace STK;
   {
     FORWARD,
     BACKWARD
-  } PropagDir;
+  } PropagDirectionType;
   
   struct my_hsearch_data 
   {
-    ENTRY **            entry;
-    size_t              nentries;
+    ENTRY **            mpEntry;
+    size_t              mNEntries;
   
   //private
-    struct hsearch_data tab;
-    size_t              tabsize;
+    struct hsearch_data mTab;
+    size_t              mTabSize;
   };
   
   
@@ -129,9 +129,16 @@ using namespace STK;
   {
   public:
     FileListElem *      mpNext;
-    char *              physical;
+    char *              mpPhysical;
     char                logical[1];
   };
+  
+  
+  typedef struct 
+  {
+    double logvalue; 
+    unsigned negative:1;
+  } FloatInLog;
   
   //#define Error(...) _Error_(__func__, __FILE__, __LINE__, __VA_ARGS__)
   //#define Warning(...) _Warning_(__func__, __FILE__, __LINE__, __VA_ARGS__)
@@ -152,7 +159,8 @@ using namespace STK;
   double LogAdd(double x, double y);
   double LogSub(double x, double y);
   
-  typedef struct {double logvalue; unsigned negative:1;} FloatInLog;
+  
+  
   FloatInLog FIL_Add(FloatInLog a, FloatInLog b);
   FloatInLog FIL_Sub(FloatInLog a, FloatInLog b);
   FloatInLog FIL_Mul(FloatInLog a, FloatInLog b);

@@ -10,7 +10,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#include "viterbi.h"
+#include "Viterbi.h"
 #include "labels.h"
 #include <string.h>
 #include <stdio.h>

@@ -260,7 +260,7 @@ namespace STK
     // something
     while ((!found) && (lab != limit))
     {
-      if (ProcessMask(rLabel, (*lab)->first, str))
+      if (ProcessMask(rLabel, (*lab)->mpFirst, str))
       {
         found = true;
       }
@@ -274,7 +274,7 @@ namespace STK
     if (found)
     {
       rLS                       = (*lab)->second;
-      this->mMatchedPattern     = (*lab)->first;
+      this->mMatchedPattern     = (*lab)->mpFirst;
       this->mMatchedPatternMask = str;
     }
     return found;

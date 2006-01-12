@@ -316,14 +316,14 @@
   
   int my_hcreate_r(size_t nel, struct my_hsearch_data *tab)
   { 
-    memset(&tab->tab, 0, sizeof(tab->tab));
-    if ((tab->entry = (ENTRY **) malloc(sizeof(ENTRY *)*nel)) == NULL) return 0;
-    if (!hcreate_r(nel, &tab->tab)) {
-      free(tab->entry);
+    memset(&tab->mTab, 0, sizeof(tab->mTab));
+    if ((tab->mpEntry = (ENTRY **) malloc(sizeof(ENTRY *)*nel)) == NULL) return 0;
+    if (!hcreate_r(nel, &tab->mTab)) {
+      free(tab->mpEntry);
       return 0;
     }
-    tab->nentries = 0;
-    tab->tabsize  = nel;
+    tab->mNEntries = 0;
+    tab->mTabSize  = nel;
     return 1;
   }
   
@@ -334,39 +334,39 @@
     int          cc;
   
   
-    if (action == ENTER && tab->nentries == tab->tabsize) {
+    if (action == ENTER && tab->mNEntries == tab->mTabSize) {
       struct hsearch_data newtab;
       ENTRY **epp;
   
-      epp = (ENTRY **) realloc(tab->entry, sizeof(ENTRY *) * tab->tabsize * 2);
+      epp = (ENTRY **) realloc(tab->mpEntry, sizeof(ENTRY *) * tab->mTabSize * 2);
       if (epp == NULL) {
         *ret = NULL;
         return 0;
       }
   
-      tab->entry = epp;
+      tab->mpEntry = epp;
       memset(&newtab, 0, sizeof(newtab));
-      if (!hcreate_r(tab->tabsize * 2, &newtab)) {
+      if (!hcreate_r(tab->mTabSize * 2, &newtab)) {
         *ret = NULL;
         return 0;
       }
   
-      tab->tabsize *= 2;
+      tab->mTabSize *= 2;
   
-      for (i = 0; i < tab->nentries; i++) {
-        cc = hsearch_r(*tab->entry[i], ENTER, ret, &newtab); assert(cc);
-        tab->entry[i] = *ret;
+      for (i = 0; i < tab->mNEntries; i++) {
+        cc = hsearch_r(*tab->mpEntry[i], ENTER, ret, &newtab); assert(cc);
+        tab->mpEntry[i] = *ret;
       }
   
-      hdestroy_r(&tab->tab);
-      tab->tab = newtab;
+      hdestroy_r(&tab->mTab);
+      tab->mTab = newtab;
     }
   
-    cc = hsearch_r(item, action, ret, &tab->tab);
+    cc = hsearch_r(item, action, ret, &tab->mTab);
     assert(action == FIND || cc);
   
     if (action == ENTER && (*ret)->data == item.data) {
-      tab->entry[tab->nentries++] = *ret;
+      tab->mpEntry[tab->mNEntries++] = *ret;
     }
   
     return 1;
@@ -377,13 +377,13 @@
     unsigned int i;
     if (freeKeys) 
     {
-      for (i = 0; i < tab->nentries; i++)
+      for (i = 0; i < tab->mNEntries; i++)
       {
-        free(tab->entry[i]->key);
+        free(tab->mpEntry[i]->key);
       }
     }
-    hdestroy_r(&tab->tab);
-    free(tab->entry);
+    hdestroy_r(&tab->mTab);
+    free(tab->mpEntry);
   }
   
   #include <stdlib.h>
@@ -642,12 +642,12 @@
   {
     unsigned int i;
   
-    for (i = 0; i < config_hash->nentries; i++) {
-      char *value = (char *) config_hash->entry[i]->data;
+    for (i = 0; i < config_hash->mNEntries; i++) {
+      char *value = (char *) config_hash->mpEntry[i]->data;
       if (value[0] != ' ' && value[1] != 'C') {
-        assert(strchr(config_hash->entry[i]->key, ':'));
+        assert(strchr(config_hash->mpEntry[i]->key, ':'));
         Error("Unexpected command line parameter %s",
-              strchr(config_hash->entry[i]->key, ':') + 1);
+              strchr(config_hash->mpEntry[i]->key, ':') + 1);
       }
     }
   }
@@ -660,10 +660,10 @@
     char         *key;
     char         *val;
   
-    printf("\nConfiguration Parameters[%d]\n", config_hash->nentries);
-    for (i = 0; i < config_hash->nentries; i++) {
-      key = (char *) config_hash->entry[i]->key;
-      val = (char *) config_hash->entry[i]->data;
+    printf("\nConfiguration Parameters[%d]\n", config_hash->mNEntries);
+    for (i = 0; i < config_hash->mNEntries; i++) {
+      key = (char *) config_hash->mpEntry[i]->key;
+      val = (char *) config_hash->mpEntry[i]->data;
       par = strrchr(key, ':');
       if (par) par++; else par = key;
       printf("%c %-15.*s %-20s = %-30s # -%c\n",
@@ -1097,7 +1097,7 @@
     for (; *chrptr; chrptr++) if (*chrptr == '\\') *chrptr = '/';
     chrptr = strchr((*last)->logical, '=');
     if (chrptr) *chrptr = '\0';
-    (*last)->physical = chrptr ? chrptr+1: (*last)->logical;
+    (*last)->mpPhysical = chrptr ? chrptr+1: (*last)->logical;
     last = &(*last)->mpNext;
     *last = NULL;
     return last;

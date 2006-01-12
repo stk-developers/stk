@@ -18,10 +18,13 @@
 #include "Models.h"
 #include "labels.h"
 #include "dict.h"
-#include "net.h"
+#include "Net.h"
 
 //#define DEBUG_MSGS
 //#define TRACE_TOKENS
+
+#define IS_ACTIVE(token) ((token).mLike > LOG_MIN)
+
 
 namespace STK
 {
@@ -30,13 +33,12 @@ namespace STK
   class SubNet;
   class Network;
   
+  
   typedef enum 
   {
     SP_ALL, 
     SP_TRUE_ONLY
   } SearchPathsType;
-  
-  
   
   
   typedef enum 
@@ -47,6 +49,7 @@ namespace STK
     STATE_ALIGNMENT = 4,
     FRAME_ALIGNMENT = 8
   } AlignmentType;
+  
   
   typedef enum 
   {
@@ -75,78 +78,129 @@ namespace STK
   };
   
   
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Network representation
+   */
   class Network 
   {
   public:
     //Subnet part
     //  int   nnodes;
-    Node  *       mpFirst;
-    Node  *       mpLast;
+    Node  *                 mpFirst;
+    Node  *                 mpLast;
     //  Node  *nodes;
   
-    Node  *       mpActiveModels;
-    Node  *       mpActiveNodes;
-    int           mActiveTokens;
+    Node  *                 mpActiveModels;
+    Node  *                 mpActiveNodes;
+    int                     mActiveTokens;
+                            
+    int                     mNumberOfNetStates;
+    Token *                 mpAuxTokens;
+    Cache *                 mpOutPCache;
+    Cache *                 mpMixPCache;
   
-    int           mNumberOfNetStates;
-    Token *       mpAuxTokens;
-    Cache *       mpOutPCache;
-    Cache *       mpMixPCache;
-  
-    long          mTime;
-    Token *       mpBestToken;
-    Node  *       mpBestNode;
+    long                    mTime;
+    Token *                 mpBestToken;
+    Node  *                 mpBestNode;
+    
     // struct my_hsearch_data   mWordHash;
     
     // Passing parameters
-    State *       mpThreshState;
-    FLOAT         beamThresh;
-    FLOAT         wordThresh;
-  
-    FLOAT         wPenalty;
-    FLOAT         mPenalty;
-    FLOAT         pronScale;
-    FLOAT         lmScale;
-    FLOAT         tranScale;
-    FLOAT         outpScale;
-    FLOAT         ocpScale;
-    FLOAT         pruningThresh;
-    SearchPathsType SearchPaths;
-  
-    FLOAT         (*OutputProbability) (State *state, FLOAT *observation, Network *network);
-    int           (*PassTokenInNetwork)(Token *from, Token *to, FLOAT addLogLike);
-    int           (*PassTokenInModel)(Token *from, Token *to, FLOAT addLogLike);
+    State *                 mpThreshState;
+    FLOAT                   mBeamThresh;
+    FLOAT                   mWordThresh;
+                            
+    FLOAT                   mWPenalty;  
+    FLOAT                   mMPenalty;
+    FLOAT                   mPronScale;
+    FLOAT                   mLmScale;
+    FLOAT                   mTranScale;
+    FLOAT                   mOutpScale;
+    FLOAT                   mOcpScale;
+    FLOAT                   mPruningThresh;
+    SearchPathsType         mSearchPaths;
+                              
+    FLOAT   (*OutputProbability) (State *state, FLOAT *observation, Network *network);
+    int     (*PassTokenInNetwork)(Token *from, Token *to, FLOAT addLogLike);
+    int     (*PassTokenInModel)  (Token *from, Token *to, FLOAT addLogLike);
     
-    PropagDir     propagDir;
-    int           alignment;
-    int           collectAlphaBeta;
+    PropagDirectionType     mPropagDir;
+    int                     mAlignment;
+    int                     mCollectAlphaBeta;
     
-  //  int mmi_den_pass;
-    AccumType     accumType;
-    ModelSet *    hmmSet;
-    ModelSet *    hmmSetToUpdate;
-  };
+  //  int                     mmi_den_pass;
+    AccumType               mAccumType;
+    ModelSet *              mpModelSet;
+    ModelSet *              mpModelSetToUpdate;
+    
+    
+    //*************************************************************************
+    void 
+    /**
+     * @brief Initializes the network
+     * @param net 
+     * @param first 
+     * @param hmms 
+     * @param hmmsToUptade 
+     */
+    Init(Node * pFirst, ModelSet * pHmms, ModelSet * pHmmsToUptade);
+    
+    void
+    /**
+     * @brief Releases memory occupied the network resources
+     */
+    Release();
+  }; // class Network
+  //***************************************************************************
+  //***************************************************************************
   
-  #define IS_ACTIVE(token) ((token).like > LOG_MIN)
   
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Token representation
+   */
   class Token 
   {
   public:
-    double like;
-    WLR   *wlr;
-    FloatInLog accuracy;
-  #ifdef bordel_staff
-    WLR   *twlr;
-    FLOAT bestlike;
-  #endif
-  };
+    double                  mLike;              ///< Likelihood
+    WLR   *                 wlr;                ///<
+    FloatInLog              mAccuracy;          ///< Accuracy
+#   ifdef bordel_staff
+    WLR   *                 twlr;
+    FLOAT                   bestlike;
+#   endif
   
+    /**
+     * @brief Returns true if token is active
+     */
+    bool
+    IsActive() const {return mLike > LOG_MIN;}
+    
+    /**
+     * @brief Returns pointer to an array of this token's labels
+     */
+    Label *
+    pGetLabels();
+    
+    void 
+    /**
+     * @brief Kills this token
+     */
+    Kill();
+  };
+    
+  
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Alpha and Beta pair for forward/backward propagation
+   */
   struct AlphaBeta 
   {
-    FLOAT alpha;
-    FLOAT beta;
-    FloatInLog alphaAccuracy;
-    FloatInLog betaAccuracy;
+    FLOAT       alpha;
+    FLOAT       beta;
+    FloatInLog  alphaAccuracy;
+    FloatInLog  betaAccuracy;
   };
   
   
@@ -162,14 +216,14 @@ namespace STK
   class WLR 
   {
   public:
-    Node  *     node;
-    int         state_idx;
-    FLOAT       like;
+    Node  *     mpNode;
+    int         mStateIdx;
+    FLOAT       mLike;
     long        mTime;
     WLR   *     mpNext;
     int         refs;
   #ifdef DEBUG_MSGS
-    WLR   *     tmpNext;
+    WLR   *     mpTmpNext;
     BOOL        freed;
   #endif
   };
@@ -238,3 +292,4 @@ namespace STK
 }; // namespace STK
 
 #endif  // #ifndef STK_Viterbi_h
+  

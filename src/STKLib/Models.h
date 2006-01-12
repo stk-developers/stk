@@ -465,7 +465,7 @@ namespace STK
     ResetXFormInstances();
   
     void
-    UpdateStacks(FLOAT *obs, int time,  PropagDir dir);
+    UpdateStacks(FLOAT *obs, int time,  PropagDirectionType dir);
     
     Macro *
     pAddMacro(const char type, const std::string & rNewName);    
@@ -580,9 +580,9 @@ namespace STK
     {
     public:
       Mixture *               mpEstimates;
-      FLOAT                   weight;
-      FLOAT                   weight_accum; //used for reestimation
-      FLOAT                   weight_accum_den;
+      FLOAT                   mWeight;
+      FLOAT                   mWeightAccum; //used for reestimation
+      FLOAT                   mWeightAccumDen;
     } *                     mpMixture;
     
     void
@@ -827,7 +827,7 @@ namespace STK
     FLOAT *               mpOutputVector; 
     
     FLOAT *
-    XFormPass(FLOAT *in_vec, int time, PropagDir dir);
+    XFormPass(FLOAT *in_vec, int time, PropagDirectionType dir);
   
   
     void
@@ -881,7 +881,7 @@ namespace STK
     Evaluate(FLOAT *    pInputVector, 
              FLOAT *    pOutputVector,
              char *     pMemory,
-             PropagDir  direction) = 0;
+             PropagDirectionType  direction) = 0;
   
     void
     /**
@@ -962,7 +962,7 @@ namespace STK
     Evaluate(FLOAT *    pInputVector, 
              FLOAT *    pOutputVector,
              char *     pMemory,
-             PropagDir  direction);
+             PropagDirectionType  direction);
   };
   
   
@@ -999,7 +999,7 @@ namespace STK
     Evaluate(FLOAT *    pInputVector, 
              FLOAT *    pOutputVector,
              char *     pMemory,
-             PropagDir  direction);
+             PropagDirectionType  direction);
   };
   
   
@@ -1034,7 +1034,7 @@ namespace STK
     Evaluate(FLOAT *    pInputVector, 
              FLOAT *    pOutputVector,
              char *     pMemory,
-             PropagDir  direction);
+             PropagDirectionType  direction);
   };
   
   
@@ -1068,7 +1068,7 @@ namespace STK
     Evaluate(FLOAT *    pInputVector, 
              FLOAT *    pOutputVector,
              char *     pMemory,
-             PropagDir  direction);
+             PropagDirectionType  direction);
   };
   
   
@@ -1102,7 +1102,7 @@ namespace STK
     Evaluate(FLOAT *    pInputVector, 
              FLOAT *    pOutputVector,
              char *     pMemory,
-             PropagDir  direction);  
+             PropagDirectionType  direction);  
   };
   
   
@@ -1137,7 +1137,7 @@ namespace STK
     Evaluate(FLOAT *    pInputVector, 
              FLOAT *    pOutputVector,
              char *     pMemory,
-             PropagDir  direction);
+             PropagDirectionType  direction);
   };
   
   
@@ -1196,7 +1196,8 @@ namespace STK
 
     
   
-                              
+  extern const char *   gpCurrentMmfName;
+                            
   extern bool           gHmmsIgnoreMacroRedefinition;         ///< Controls macro redefinition behavior
   extern const char *   gpHListFilter;                        ///< HMM list Filter command
   extern FunctionTable  gFuncTable[];                         ///< FuncXForm function table
@@ -1208,7 +1209,7 @@ namespace STK
   /**
    * @brief Passes the vector through XFormInstance
    */
-  FLOAT *     XFormPass(XFormInstance *xformInstance, FLOAT *in_vec, int time, PropagDir dir);
+  FLOAT *     XFormPass(XFormInstance *xformInstance, FLOAT *in_vec, int time, PropagDirectionType dir);
 
   void        ReleaseMacroHash(struct my_hsearch_data *macro_hash);
   Macro *     FindMacro(struct my_hsearch_data *macro_hash, const char *name);

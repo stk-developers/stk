@@ -125,15 +125,15 @@ void FreeDictionary(struct my_hsearch_data *wordHash) {
   size_t i;
   size_t j;
   
-  for (i = 0; i < wordHash->nentries; i++) 
+  for (i = 0; i < wordHash->mNEntries; i++) 
   {
-    Word *word = (Word *) wordHash->entry[i]->data;
+    Word *word = (Word *) wordHash->mpEntry[i]->data;
     for (j = 0; j < word->npronuns; j++) {
       free(word->pronuns[j]);
     }
     free(word->pronuns);
-    free(wordHash->entry[i]->data);
-    free(wordHash->entry[i]->key);
+    free(wordHash->mpEntry[i]->data);
+    free(wordHash->mpEntry[i]->key);
   }
   my_hdestroy_r(wordHash, 0);
 }
