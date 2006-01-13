@@ -50,49 +50,45 @@ namespace STK
   class Node
   {
   public:
-  //  union {
-      char   *mpName;
-  //    struct {
-        Hmm  *hmm;
-        Hmm  *hmmToUpdate;
-  //    };
-      Pronun *pronun;
-  //    SubNet *subnet;
-  //  };
+    char *        mpName;
+    Hmm  *        mpHmm;
+    Hmm  *        mpHmmToUpdate;
+    Pronun *      mpPronun;
   
-    int           aux;
+    int           mAux;
     int           mType;
     Node  *       mpNext;
-    Node  *       backnext;
-    int           nlinks;
-    int           nbacklinks;
-    Link  *       links;
-    Link  *       backlinks;
+    Node  *       mpBackNext;
+    int           mNLinks;
+    int           mNBackLinks;
+    Link  *       mpLinks;
+    Link  *       mpBackLinks;
   
     //time range when model can be active - apply only for model type
-    long long start;
-    long long stop;
-    FLOAT phoneAccuracy;
+    long long     mStart;
+    long long     mStop;
+    FLOAT         phoneAccuracy;
   
   #ifndef EXPANDNET_ONLY
-    Token *tokens;
-    Token *exitToken;
+    Token *       tokens;
+    Token *       exitToken;
   
     //id of first emiting state - apply only for model type
-    int   estate_id;
+    int           estate_id;
   
-    FWBWR *alphaBetaList;
-    FWBWR *alphaBetaListReverse;
+    FWBWR *       alphaBetaList;
+    FWBWR *       alphaBetaListReverse;
   
-    Node  *nextActiveModel;
-    Node  *prevActiveModel;
+    Node  *       nextActiveModel;
+    Node  *       prevActiveModel;
   
-    Node  *nextActiveNode;
-    Node  *prevActiveNode;
-    int   isActive;
-    int   isActiveNode;
+    Node  *       nextActiveNode;
+    Node  *       prevActiveNode;
+    
+    int           isActive;
+    int           isActiveNode;
   #ifndef NDEBUG
-    int   aux2;
+    int           aux2;
   #endif
   #endif
   };

@@ -125,16 +125,16 @@ void WriteLabels(FILE* lfp, Label *label, LabelFormat labelFormat, long smpPrd,
 
     if (!(labelFormat.TIMES_OFF)) {
       long long time = UNDEF_TIME;
-      for (level = label; level != NULL; level = level->nextLevel) {
-        if (time == UNDEF_TIME || time < level->start) time = level->start;
+      for (level = label; level != NULL; level = level->mpNextLevel) {
+        if (time == UNDEF_TIME || time < level->mStart) time = level->mStart;
       }
       if (time != UNDEF_TIME) {
         fprintf(lfp, "%08lld", (long long)
                 smpPrd * (2 * time + ctm) / 2 - labelFormat.left_extent);
 
         time = UNDEF_TIME;
-        for (level = label; level != NULL; level = level->nextLevel) {
-          if (time == UNDEF_TIME || time > level->stop) time = level->stop;
+        for (level = label; level != NULL; level = level->mpNextLevel) {
+          if (time == UNDEF_TIME || time > level->mStop) time = level->mStop;
         }
         if (time != UNDEF_TIME) {
           fprintf(lfp," %08lld", (long long)
@@ -143,24 +143,24 @@ void WriteLabels(FILE* lfp, Label *label, LabelFormat labelFormat, long smpPrd,
       }
     }
 
-    for (level = label; level != NULL; level = level->nextLevel) {
+    for (level = label; level != NULL; level = level->mpNextLevel) {
       if (prev == level || level->mpName == NULL) break;
 
 
       putc(' ', lfp);
       fprintHTKstr(lfp, level->mpName);
 
-      if (level->id >= 0) {
-        fprintf(lfp, "[%d]", level->id + 2);
+      if (level->mId >= 0) {
+        fprintf(lfp, "[%d]", level->mId + 2);
       }
 
-      if (!(labelFormat.SCORE_OFF) && level->score != 0.0) {
+      if (!(labelFormat.SCORE_OFF) && level->mScore != 0.0) {
         // !!! only acoustic scores should be normalized !!!
         fprintf(lfp, " %g", labelFormat.SCORE_NRM
-                            ? level->score / (level->stop - level->start)
-                            : level->score);
+                            ? level->mScore / (level->mStop - level->mStart)
+                            : level->mScore);
       }
-      if (prev) prev = prev->nextLevel;
+      if (prev) prev = prev->mpNextLevel;
     }
     fputc('\n', lfp);
     if (ferror(lfp)) {
@@ -225,7 +225,7 @@ void ReleaseLabels(Label *labels)
 
   while (labels) {
     nlptr = labels;
-    labels = labels->nextLevel;
+    labels = labels->mpNextLevel;
     while (nlptr) {
       tlptr = nlptr;
       nlptr=nlptr->mpNext;
@@ -437,19 +437,19 @@ Label *ReadLabels(
       long center_shift = labelFormat.CENTRE_TM ? sampPeriod / 2 : 0;
 
       if (!(labelFormat.TIMES_OFF)) {
-        current->start = (llv - center_shift - labelFormat.left_extent) / sampPeriod;
+        current->mStart = (llv - center_shift - labelFormat.left_extent) / sampPeriod;
       }
       chptr = endptr;
 
       llv = strtoull(chptr, &endptr, 10);
       if (endptr != chptr) {
         if (!(labelFormat.TIMES_OFF)) {
-          current->stop = (llv + center_shift + labelFormat.right_extent) / sampPeriod;
+          current->mStop = (llv + center_shift + labelFormat.right_extent) / sampPeriod;
         }
         chptr = endptr;
 
         if (stats != NULL) {
-          stats->endTime = HIGHER_OF(stats->endTime, current->stop);
+          stats->endTime = HIGHER_OF(stats->endTime, current->mStop);
         }
       }
     }
@@ -474,27 +474,27 @@ Label *ReadLabels(
       }
 
       if (unknownLabels == UL_READ) {
-      current->data = current->mpName = NULL;
+      current->mpData = current->mpName = NULL;
       } else if (unknownLabels == UL_INSERT) {
   // ??? naco e.key=strdup(e.key) => bordel v pameti
-  // current->data = current->mpName = e.data = e.key = strdup(e.key);
+  // current->mpData = current->mpName = e.data = e.key = strdup(e.key);
   e.data = strdup(e.key);
   current->mpName = (char*) e.data;
-  current->data = current->mpName;
+  current->mpData = current->mpName;
 
         if (e.key == NULL || !my_hsearch_r(e, ENTER, &ep, label_hash)) {
           Error("Insufficient memory");
         }
       } else Error("Fatal: Invalid UnknownLabelsAction value");
     } else {
-      current->data = ep->data;
+      current->mpData = ep->data;
       current->mpName = ep->key;
     }
 
     if (stats != NULL) stats->nLabelsRead++;
     dv = strtod(chptr, &endptr);
     if (endptr != chptr) {
-      current->score = dv;
+      current->mScore = dv;
       chptr = chptr;
     }
 
@@ -559,7 +559,7 @@ void AlingTranscriptions(Label **aligned_hyps, Label *new_hyp, long *weights)
     alg_hyp = (Label *) malloc(sizeof(Label));
     if (!alg_hyp) Error("Insufficient memory");
     *alg_hyp = init_label;
-    alg_hyp->score = null_cost;
+    alg_hyp->mScore = null_cost;
   }
 
   for (tlptr = alg_hyp, tlen = 0; tlptr != NULL; tlptr=tlptr->mpNext) tlen++;
@@ -575,22 +575,22 @@ void AlingTranscriptions(Label **aligned_hyps, Label *new_hyp, long *weights)
 
   ulv = 0;
   for (tlptr = alg_hyp, i=0; tlptr != NULL; tlptr=tlptr->mpNext, i++) {
-    for (llptr = tlptr, k=0; llptr !=NULL; llptr = llptr->nextLevel, k++) {
+    for (llptr = tlptr, k=0; llptr !=NULL; llptr = llptr->mpNextLevel, k++) {
       long w = weights ? weights[k] : 1;
       if (time_med_alg == 0) {
         ulv += (!llptr->mpName ? 0 : deletion_cost) * w;
       } else if (time_med_alg == 1) {
-        ulv += (!llptr->mpName ? 1 : llptr->stop-llptr->start) * w;
+        ulv += (!llptr->mpName ? 1 : llptr->mStop-llptr->mStart) * w;
       } else {
         ulv += (!llptr->mpName ? 1 : max(new_hyp
-                                       ? llptr->stop-new_hyp->start
+                                       ? llptr->mStop-new_hyp->mStart
                                        : 0, 0)) * w;
       }
 #ifdef KEEP_ORDER
       if (llptr->mpName && new_hyp &&
-         llptr->start >= new_hyp->stop) ulv = LONG_MAX;
+         llptr->mStart >= new_hyp->mStop) ulv = LONG_MAX;
 //      if (llptr->mpName && new_hyp &&
-//         llptr->start+llptr->stop >= new_hyp->start+new_hyp->stop) ulv = LONG_MAX;
+//         llptr->mStart+llptr->mStop >= new_hyp->mStart+new_hyp->mStop) ulv = LONG_MAX;
 #endif
     }
     cost[i+1] = ulv;
@@ -600,19 +600,19 @@ void AlingTranscriptions(Label **aligned_hyps, Label *new_hyp, long *weights)
   ulv = 0;
 //  for (i=0, ulv=0; i<hlen; i++) {
   for (hlptr = new_hyp, i=0; hlptr != NULL; hlptr=hlptr->mpNext, i++) {
-    for (llptr = alg_hyp, k=0; llptr !=NULL; llptr = llptr->nextLevel, k++) {
+    for (llptr = alg_hyp, k=0; llptr !=NULL; llptr = llptr->mpNextLevel, k++) {
 //    for (j=0; j < k; j++) { // k = nuber of alg_hyp levels (see cycle above)
       long w = weights ? weights[k] : 1;
       if (time_med_alg == 0) {
         ulv += insertion_cost * w;
       } else if (time_med_alg == 1) {
-        ulv += (hlptr->stop-hlptr->start) * w;
+        ulv += (hlptr->mStop-hlptr->mStart) * w;
       } else {
-        ulv += max(hlptr->stop-llptr->start, 0) * w;
+        ulv += max(hlptr->mStop-llptr->mStart, 0) * w;
       }
 #ifdef KEEP_ORDER
-      if (llptr->mpName && hlptr->start >= llptr->stop) ulv = LONG_MAX;
-//        if (llptr->mpName && hlptr->start+hlptr->stop >= llptr->start+llptr->stop) ulv = LONG_MAX;
+      if (llptr->mpName && hlptr->mStart >= llptr->mStop) ulv = LONG_MAX;
+//        if (llptr->mpName && hlptr->mStart+hlptr->mStop >= llptr->mStart+llptr->mStop) ulv = LONG_MAX;
 #endif
     }
     cost[(i+1) * (tlen+1)] = ulv;
@@ -627,7 +627,7 @@ void AlingTranscriptions(Label **aligned_hyps, Label *new_hyp, long *weights)
       hcost  = cost[ j    * (tlen+1) + i + 1];
       thcost = cost[ j    * (tlen+1) + i];
 
-      for (llptr = tlptr, k=0; llptr !=NULL; llptr = llptr->nextLevel, k++) {
+      for (llptr = tlptr, k=0; llptr !=NULL; llptr = llptr->mpNextLevel, k++) {
         long w = weights ? weights[k] : 1;
         if (time_med_alg == 0) {
           tcost  += (!llptr->mpName ? 0 : deletion_cost)            * w;
@@ -637,40 +637,40 @@ void AlingTranscriptions(Label **aligned_hyps, Label *new_hyp, long *weights)
                      : llptr->mpName != hlptr->mpName
                        ? substitution_cost : 0) * w;
         } else if (time_med_alg == 1) {
-          tcost  += (!llptr->mpName ? 1 : llptr->stop-llptr->start) * w;
-          hcost  += (hlptr->stop-hlptr->start)                    * w;
+          tcost  += (!llptr->mpName ? 1 : llptr->mStop-llptr->mStart) * w;
+          hcost  += (hlptr->mStop-hlptr->mStart)                    * w;
           thcost += (!llptr->mpName
-                    ? hlptr->stop-hlptr->start
-                    : labs(llptr->start-hlptr->start) +
-                      labs(llptr->stop-hlptr->stop)   +
+                    ? hlptr->mStop-hlptr->mStart
+                    : labs(llptr->mStart-hlptr->mStart) +
+                      labs(llptr->mStop-hlptr->mStop)   +
                       (llptr->mpName != hlptr->mpName ? 1 : 0))       * w;
         } else {
-          long hroverlap = max(llptr->mpNext && llptr->mpNext->start != UNDEF_TIME
-                               ? hlptr->stop - llptr->mpNext->start : 0, 0);
+          long hroverlap = max(llptr->mpNext && llptr->mpNext->mStart != UNDEF_TIME
+                               ? hlptr->mStop - llptr->mpNext->mStart : 0, 0);
           long troverlap = max(hlptr->mpNext
-                               ? llptr->stop-hlptr->mpNext->start : 0, 0);
+                               ? llptr->mStop-hlptr->mpNext->mStart : 0, 0);
 
-          long hloverlap = max(llptr->stop != UNDEF_TIME
-                               ? llptr->stop-hlptr->start : 0, 0);
-          long tloverlap = max(hlptr->stop-llptr->start, 0);
+          long hloverlap = max(llptr->mStop != UNDEF_TIME
+                               ? llptr->mStop-hlptr->mStart : 0, 0);
+          long tloverlap = max(hlptr->mStop-llptr->mStart, 0);
 
           tcost  += (!llptr->mpName ? 1 : tloverlap + troverlap)    * w;
           hcost  += (hloverlap + hroverlap)                       * w;
           thcost += (!llptr->mpName
                     ? hloverlap + hroverlap
                     : troverlap + hroverlap +
-                      (labs(llptr->start - hlptr->start) +
-                       labs(llptr->stop  - hlptr->stop)) +
+                      (labs(llptr->mStart - hlptr->mStart) +
+                       labs(llptr->mStop  - hlptr->mStop)) +
                       (llptr->mpName != hlptr->mpName ? 1 : 0))              * w;
         }
 #ifdef KEEP_ORDER
         if (llptr->mpName) {
-          if (hlptr->start >= llptr->stop) tcost = LONG_MAX;
-          if (llptr->start >= hlptr->stop) hcost = LONG_MAX;
+          if (hlptr->mStart >= llptr->mStop) tcost = LONG_MAX;
+          if (llptr->mStart >= hlptr->mStop) hcost = LONG_MAX;
         }
 //        if (llptr->mpName) {
-//          if (hlptr->start+hlptr->stop >= llptr->start+llptr->stop) tcost = LONG_MAX;
-//          if (llptr->start+llptr->stop >= hlptr->start+hlptr->stop) hcost = LONG_MAX;
+//          if (hlptr->mStart+hlptr->mStop >= llptr->mStart+llptr->mStop) tcost = LONG_MAX;
+//          if (llptr->mStart+llptr->mStop >= hlptr->mStart+hlptr->mStop) hcost = LONG_MAX;
 //        }
 #endif
       }
@@ -718,22 +718,22 @@ void AlingTranscriptions(Label **aligned_hyps, Label *new_hyp, long *weights)
       if (!tlptr) Error("Insufficient memory");
       *tlptr = init_label;
       tlptr->mpNext = alg_hyp;
-      if (alg_hyp) tlptr->start = alg_hyp->start;
-      tlptr->score = null_cost;
+      if (alg_hyp) tlptr->mStart = alg_hyp->mStart;
+      tlptr->mScore = null_cost;
       alg_hyp = prevlptr = tlptr;
 
-      for (llptr = tlptr->mpNext->nextLevel; llptr !=NULL; llptr = llptr->nextLevel) {
+      for (llptr = tlptr->mpNext->mpNextLevel; llptr !=NULL; llptr = llptr->mpNextLevel) {
         tmplptr = (Label *) malloc(sizeof(Label));
         if (!tmplptr) Error("Insufficient memory");
         *tmplptr = init_label;
         tmplptr->mpNext = llptr;
-        tmplptr->start = llptr->start;
-        tmplptr->score = null_cost;
-        prevlptr->nextLevel = tmplptr;
+        tmplptr->mStart = llptr->mStart;
+        tmplptr->mScore = null_cost;
+        prevlptr->mpNextLevel = tmplptr;
         prevlptr = tmplptr;
       }
 
-      prevlptr->nextLevel = NULL;
+      prevlptr->mpNextLevel = NULL;
       hlptr = new_hyp;
       i = 0; j = 1;
       break;
@@ -742,8 +742,8 @@ void AlingTranscriptions(Label **aligned_hyps, Label *new_hyp, long *weights)
       if (!hlptr) Error("Insufficient memory");
       *hlptr = init_label;
       hlptr->mpNext = new_hyp;
-      if (new_hyp) hlptr->start = new_hyp->start;
-      hlptr->score = null_cost;
+      if (new_hyp) hlptr->mStart = new_hyp->mStart;
+      hlptr->mScore = null_cost;
       new_hyp = hlptr;
       tlptr = alg_hyp;
       i = 1; j = 0;
@@ -760,20 +760,20 @@ void AlingTranscriptions(Label **aligned_hyps, Label *new_hyp, long *weights)
       case  1:
         prevlptr = NULL;
 
-        for (llptr = tlptr; llptr !=NULL; llptr = llptr->nextLevel) {
+        for (llptr = tlptr; llptr !=NULL; llptr = llptr->mpNextLevel) {
           tmplptr = (Label *) malloc(sizeof(Label));
           if (!tmplptr) Error("Insufficient memory");
           *tmplptr = init_label;
           tmplptr->mpNext = llptr->mpNext;
           llptr->mpNext = tmplptr;
-          tmplptr->stop = llptr->stop;
-          if (tmplptr->mpNext) tmplptr->start = tmplptr->mpNext->start;
-          tmplptr->score = null_cost;
-          if (prevlptr) prevlptr->nextLevel = tmplptr;
+          tmplptr->mStop = llptr->mStop;
+          if (tmplptr->mpNext) tmplptr->mStart = tmplptr->mpNext->mStart;
+          tmplptr->mScore = null_cost;
+          if (prevlptr) prevlptr->mpNextLevel = tmplptr;
           prevlptr = tmplptr;
         }
 
-        prevlptr->nextLevel = NULL;
+        prevlptr->mpNextLevel = NULL;
         j++;
         break;
       case  0:
@@ -782,9 +782,9 @@ void AlingTranscriptions(Label **aligned_hyps, Label *new_hyp, long *weights)
         *tmplptr = init_label;
         tmplptr->mpNext = hlptr->mpNext;
         hlptr->mpNext = tmplptr;
-        tmplptr->stop = hlptr->stop;
-        if (tmplptr->mpNext) tmplptr->start = tmplptr->mpNext->start;
-        tmplptr->score = null_cost;
+        tmplptr->mStop = hlptr->mStop;
+        if (tmplptr->mpNext) tmplptr->mStart = tmplptr->mpNext->mStart;
+        tmplptr->mScore = null_cost;
         i++;
         break;
       default:
@@ -796,9 +796,9 @@ void AlingTranscriptions(Label **aligned_hyps, Label *new_hyp, long *weights)
 
 
   hlptr =  new_hyp;
-  for (tlptr = alg_hyp; tlptr->nextLevel !=NULL; tlptr = tlptr->nextLevel);
+  for (tlptr = alg_hyp; tlptr->mpNextLevel !=NULL; tlptr = tlptr->mpNextLevel);
   for (; tlptr !=NULL; tlptr = tlptr->mpNext, hlptr = hlptr->mpNext) {
-    tlptr->nextLevel = hlptr;
+    tlptr->mpNextLevel = hlptr;
   }
   
   *aligned_hyps = alg_hyp;

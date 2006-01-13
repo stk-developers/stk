@@ -38,13 +38,13 @@ class Label
 {
 public:
   Label *     mpNext;
-  long long   start;
-  long long   stop;
+  long long   mStart;
+  long long   mStop;
   char  *     mpName;
-  void  *     data; // Set by ReadInputLabelFile to 'data' member of label_hash item
-  int         id;
-  FLOAT       score;
-  Label *     nextLevel;
+  void  *     mpData; // Set by ReadInputLabelFile to 'data' member of label_hash item
+  int         mId;
+  FLOAT       mScore;
+  Label *     mpNextLevel;
 };
 
 extern const Label init_label;

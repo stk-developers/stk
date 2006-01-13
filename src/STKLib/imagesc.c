@@ -90,7 +90,7 @@ XpmImage *CreateXpmImage(void *data, int x, int y, const char* data_type,
    xpmImage->cpp     = 0;
    xpmImage->ncolors = ncolors;
    xpmImage->colorTable = (XpmColor *) (xpmImage + 1);
-   xpmImage->data       = (unsigned *) (xpmImage->colorTable + ncolors);
+   xpmImage->mpData       = (unsigned *) (xpmImage->colorTable + ncolors);
 
    memset(xpmImage->colorTable, 0, ncolors * sizeof(XpmColor));
 
@@ -108,7 +108,7 @@ XpmImage *CreateXpmImage(void *data, int x, int y, const char* data_type,
    }
 
    for (i=0; i < x * y; i++) {
-     xpmImage->data[i] = (unsigned)(0.5 + (ncolors-1) * (data_dbl[i] - minValue)
+     xpmImage->mpData[i] = (unsigned)(0.5 + (ncolors-1) * (data_dbl[i] - minValue)
                                           / (maxValue - minValue));
    }
 

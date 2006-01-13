@@ -69,7 +69,7 @@ namespace STK
           Error("Model %s not defined in %sHMM set", node->mpName,
                 hmmsToUpdate != hmms ? "alignment " : "");
         }
-        node->hmm = node->hmmToUpdate = (Hmm *) macro->mpData;
+        node->mpHmm = node->mpHmmToUpdate = (Hmm *) macro->mpData;
   
         if (hmmsToUpdate != hmms) {
           macro = FindMacro(&hmmsToUpdate->mHmmHash, node->mpName);
@@ -77,7 +77,7 @@ namespace STK
             Error("Model %s not defined in HMM set", node->mpName,
                   hmmsToUpdate != hmms ? "" : "target ");
           }
-          node->hmmToUpdate = (Hmm *) macro->mpData;
+          node->mpHmmToUpdate = (Hmm *) macro->mpData;
         }
       }
     }
@@ -108,9 +108,9 @@ namespace STK
       int numOfTokens = 1;
       if (node->mType & NT_Model) 
       {
-        numOfTokens = node->hmm->mNStates;
-        node->hmmToUpdate->mpMacro->mOccurances++;
-        if (node->hmm->mpTransition->mpMatrixO[numOfTokens - 1] > LOG_MIN) {
+        numOfTokens = node->mpHmm->mNStates;
+        node->mpHmmToUpdate->mpMacro->mOccurances++;
+        if (node->mpHmm->mpTransition->mpMatrixO[numOfTokens - 1] > LOG_MIN) {
           node->mType |= NT_Tee;
         }
       } 
@@ -131,7 +131,7 @@ namespace STK
       node->estate_id = net->mNumberOfNetStates;
       
       if (node->mType & NT_Model) {
-        int nstates = node->hmm->mNStates;
+        int nstates = node->mpHmm->mNStates;
   
         if (maxStatesInModel < nstates) maxStatesInModel = nstates;
         assert(nstates >= 2); // two non-emiting states
@@ -202,7 +202,7 @@ namespace STK
   int 
   cmplnk(const void *a, const void *b)
   {
-    return ((Link *) a)->mpNode->aux - ((Link *) b)->mpNode->aux;
+    return ((Link *) a)->mpNode->mAux - ((Link *) b)->mpNode->mAux;
   }
   
   
@@ -217,11 +217,11 @@ namespace STK
   // Sort nodes for forward (Viterbi) propagation
   
     for (node = net->mpFirst; node != NULL; node = node->mpNext) {
-      node->aux = node->nbacklinks;
+      node->mAux = node->mNBackLinks;
     }
   
-    for (i = 0; i < net->mpFirst->nlinks; i++) {
-      net->mpFirst->links[i].mpNode->aux--;
+    for (i = 0; i < net->mpFirst->mNLinks; i++) {
+      net->mpFirst->mpLinks[i].mpNode->mAux--;
     }
   
     last = net->mpFirst;
@@ -234,13 +234,13 @@ namespace STK
   
       while (*curPtr) {
         if ((((*curPtr)->mType & NT_Model) && !((*curPtr)->mType & NT_Tee))
-          || (*curPtr)->aux == 0) {
-          for (j = 0; j < (*curPtr)->nlinks; j++) {
-            (*curPtr)->links[j].mpNode->aux--;
+          || (*curPtr)->mAux == 0) {
+          for (j = 0; j < (*curPtr)->mNLinks; j++) {
+            (*curPtr)->mpLinks[j].mpNode->mAux--;
           }
   
           last = (last->mpNext = *curPtr);
-          last->aux = i++;
+          last->mAux = i++;
           *curPtr = (*curPtr)->mpNext;
           short_curcuit = FALSE;
         } else {
@@ -261,22 +261,22 @@ namespace STK
   
     /// !!! What is this sorting links good for ???
     for (node = net->mpFirst; node != NULL; node = node->mpNext) {
-        if (node->nlinks > 1)
-        qsort(node->links, node->nlinks, sizeof(Link), cmplnk);
+        if (node->mNLinks > 1)
+        qsort(node->mpLinks, node->mNLinks, sizeof(Link), cmplnk);
     }
   
   // Sort nodes for backward propagation
   
     for (node = net->mpFirst; node != NULL; node = node->mpNext) {
-      node->aux = node->nlinks;
+      node->mAux = node->mNLinks;
     }
   
-    for (i = 0; i < net->mpLast->nbacklinks; i++) {
-      net->mpLast->backlinks[i].mpNode->aux--;
+    for (i = 0; i < net->mpLast->mNBackLinks; i++) {
+      net->mpLast->mpBackLinks[i].mpNode->mAux--;
     }
   
     last = net->mpLast;
-    chain = net->mpLast->backnext;
+    chain = net->mpLast->mpBackNext;
     i = 0;
   
     while (chain) {
@@ -285,23 +285,23 @@ namespace STK
   
       while (*curPtr) {
         if ((((*curPtr)->mType & NT_Model) && !((*curPtr)->mType & NT_Tee))
-          || (*curPtr)->aux == 0) {
-          for (j = 0; j < (*curPtr)->nbacklinks; j++) {
-            (*curPtr)->backlinks[j].mpNode->aux--;
+          || (*curPtr)->mAux == 0) {
+          for (j = 0; j < (*curPtr)->mNBackLinks; j++) {
+            (*curPtr)->mpBackLinks[j].mpNode->mAux--;
           }
   
-          last = (last->backnext = *curPtr);
-          last->aux = i++;
-          *curPtr = (*curPtr)->backnext;
+          last = (last->mpBackNext = *curPtr);
+          last->mAux = i++;
+          *curPtr = (*curPtr)->mpBackNext;
           short_curcuit = FALSE;
         } else {
-          curPtr = &(*curPtr)->backnext;
+          curPtr = &(*curPtr)->mpBackNext;
         }
       }
   
       /*if (short_curcuit) {
         fprintf(stderr, "Nodes in loop: ");
-        for (curPtr = &chain; *curPtr; curPtr = &(*curPtr)->backnext)
+        for (curPtr = &chain; *curPtr; curPtr = &(*curPtr)->mpBackNext)
           fprintf(stderr, "%d ", *curPtr - net->mpNodes);
         fprintf(stderr, "\n");
         Error("Loop of non-emiting nodes found in net");
@@ -310,12 +310,12 @@ namespace STK
       assert(!short_curcuit); // Shouldn't happen, since it didnot happen before
     }
   
-    last->backnext = NULL;
+    last->mpBackNext = NULL;
   
     /// !!! What is this sorting links good for ???
     for (node = net->mpFirst; node != NULL; node = node->mpNext) {
-        if (node->nbacklinks > 1)
-        qsort(node->backlinks, node->nbacklinks, sizeof(Link), cmplnk);
+        if (node->mNBackLinks > 1)
+        qsort(node->mpBackLinks, node->mNBackLinks, sizeof(Link), cmplnk);
     }
   }
   
@@ -332,14 +332,14 @@ namespace STK
       FWBWR *   newrec;
       
       newrec  = (FWBWR*) malloc(sizeof(FWBWR) +
-                                sizeof(newrec->mpState[0]) * (node->hmm->mNStates-1));
+                                sizeof(newrec->mpState[0]) * (node->mpHmm->mNStates-1));
       if (newrec == NULL) 
         Error("Insufficient memory");
         
       newrec->mpNext = node->alphaBetaListReverse;
       newrec->mTime = time;
       
-      for (i=0; i<node->hmm->mNStates; i++) 
+      for (i=0; i<node->mpHmm->mNStates; i++) 
       {
         newrec->mpState[i].alpha = newrec->mpState[i].beta = LOG_0;
       }
@@ -433,8 +433,8 @@ namespace STK
     HasCycleCounter++;
     if (!test_for_cycle) return 0;
     for (node = net->mpActiveNodes; node; node= node->nextActiveNode) {
-      int i, nlinks = FORWARD_PASS ? node->nlinks : node->nbacklinks;
-      Link *links   = FORWARD_PASS ? node->links  : node->backlinks;
+      int i, nlinks = FORWARD_PASS ? node->mNLinks : node->mNBackLinks;
+      Link *links   = FORWARD_PASS ? node->mpLinks  : node->mpBackLinks;
       if (node->aux2 == HasCycleCounter) {
         printf("Cycle in list of active nodes\n");
         return 1;
@@ -464,8 +464,8 @@ namespace STK
     if (!test_for_cycle) return 1;
   
     for (node = net->mpActiveNodes; node; node= node->nextActiveNode) {
-      int i, nlinks = FORWARD_PASS ? node->nlinks : node->nbacklinks;
-      Link *links   = FORWARD_PASS ? node->links  : node->backlinks;
+      int i, nlinks = FORWARD_PASS ? node->mNLinks : node->mNBackLinks;
+      Link *links   = FORWARD_PASS ? node->mpLinks  : node->mpBackLinks;
   
       for (i=0; i <nlinks; i++)
   
@@ -488,8 +488,8 @@ namespace STK
   void 
   MarkWordNodesLeadingFrom(Network *net, Node *node)
   {
-    int i, nlinks = FORWARD_PASS ? node->nlinks : node->nbacklinks;
-    Link *links   = FORWARD_PASS ? node->links  : node->backlinks;
+    int i, nlinks = FORWARD_PASS ? node->mNLinks : node->mNBackLinks;
+    Link *links   = FORWARD_PASS ? node->mpLinks  : node->mpBackLinks;
   
     for (i = 0; i < nlinks; i++) {
       Node *lnode = links[i].mpNode;
@@ -503,7 +503,7 @@ namespace STK
       }
       
       if(lnode->isActiveNode-- == 0) {
-        lnode->aux = 0;
+        lnode->mAux = 0;
         MarkWordNodesLeadingFrom(net, lnode);
       }
     }
@@ -515,8 +515,8 @@ namespace STK
   Node *
   ActivateWordNodesLeadingFrom(Network *net, Node *node)
   {
-    int i, nlinks = FORWARD_PASS ? node->nlinks : node->nbacklinks;
-    Link *links   = FORWARD_PASS ? node->links  : node->backlinks;
+    int i, nlinks = FORWARD_PASS ? node->mNLinks : node->mNBackLinks;
+    Link *links   = FORWARD_PASS ? node->mpLinks  : node->mpBackLinks;
   
     for (i = 0; i < nlinks; i++) {
       Node *lnode = links[i].mpNode;
@@ -529,11 +529,11 @@ namespace STK
         continue;
       }
   
-      lnode->aux++;
+      lnode->mAux++;
       if (lnode->isActiveNode < 0) continue;
   
       assert(lnode->isActiveNode == 0);
-      lnode->isActiveNode = lnode->aux;
+      lnode->isActiveNode = lnode->mAux;
   
       lnode->nextActiveNode = node->nextActiveNode;
       lnode->prevActiveNode = node;
@@ -587,8 +587,8 @@ namespace STK
   void 
   DeactivateWordNodesLeadingFrom(Network *net, Node *node)
   {
-    int i, nlinks = FORWARD_PASS ? node->nlinks : node->nbacklinks;
-    Link *links   = FORWARD_PASS ? node->links  : node->backlinks;
+    int i, nlinks = FORWARD_PASS ? node->mNLinks : node->mNBackLinks;
+    Link *links   = FORWARD_PASS ? node->mpLinks  : node->mpBackLinks;
   
     for (i = 0; i < nlinks; i++) {
       Node *lnode = links[i].mpNode;
@@ -664,7 +664,7 @@ namespace STK
   //  for (i=0; i < net->nnodes; i++) {
   //  node = &net->mpNodes[i];
     for (node = net->mpFirst; node != NULL; node = node->mpNext) {
-      int numOfTokens = (node->mType & NT_Model) ? node->hmm->mNStates : 1;
+      int numOfTokens = (node->mType & NT_Model) ? node->mpHmm->mNStates : 1;
   
       for (j=0; j < numOfTokens; j++) {
         node->tokens[j].mLike = LOG_0;
@@ -715,7 +715,7 @@ namespace STK
     if (net->mCollectAlphaBeta && !FORWARD_PASS) {
       for (node = net->mpFirst; node != NULL; node = node->mpNext) {
         if (!(node->mType & NT_Model)) continue;
-        BackwardPruning(net->mTime, node, node->hmm->mNStates-1);
+        BackwardPruning(net->mTime, node, node->mpHmm->mNStates-1);
       }
     }
   
@@ -769,7 +769,7 @@ namespace STK
   //  Node *Xnode = net->mpActiveNodes;
   /*  for (node = FORWARD_PASS ? net->mpFirst : net->mpLast;
         node != NULL;
-        node = FORWARD_PASS ? node->mpNext : node->backnext) { //*/
+        node = FORWARD_PASS ? node->mpNext : node->mpBackNext) { //*/
     for (node = net->mpActiveNodes; node != NULL; node = node->nextActiveNode) 
     {
       if ((node->mType & NT_Tee) && node->tokens[0].IsActive()) 
@@ -781,7 +781,7 @@ namespace STK
         if (!(net->mCollectAlphaBeta && !FORWARD_PASS && // backward pruning
             BackwardPruning(net->mTime, node, 0))) 
         {   // after forward pass
-          Hmm *hmm = node->hmm;
+          Hmm *hmm = node->mpHmm;
           FLOAT transP = hmm->mpTransition->mpMatrixO[hmm->mNStates - 1];
     #ifdef TRACE_TOKENS
           printf("Tee model State 0 -> Exit State ");
@@ -802,16 +802,16 @@ namespace STK
           if (net->mCollectAlphaBeta) 
           {
             if (FORWARD_PASS) 
-              WriteAlpha(net->mTime, node, node->hmm->mNStates-1, node->exitToken);
+              WriteAlpha(net->mTime, node, node->mpHmm->mNStates-1, node->exitToken);
             else 
               WriteBeta(net->mTime, node, 0, node->exitToken);
           }
           node->exitToken->mLike += net->mMPenalty;
         } 
-        else if (node->mType & NT && node->pronun != NULL) 
+        else if (node->mType & NT && node->mpPronun != NULL) 
         {
           node->exitToken->mLike += net->mWPenalty +
-                                  net->mPronScale * node->pronun->prob;
+                                  net->mPronScale * node->mpPronun->prob;
           /*if (node->exitToken->mLike < net->mWordThresh) {
             node->exitToken->mLike = LOG_0;
           }*/
@@ -819,7 +819,7 @@ namespace STK
   
         if (node->exitToken->mLike > net->mBeamThresh) 
         {
-          if (node->mType & NT && node->pronun != NULL &&
+          if (node->mType & NT && node->mpPronun != NULL &&
             net->mAlignment & WORD_ALIGNMENT) 
           {
             AddWordLinkRecord(node->exitToken, node, -1, net->mTime);
@@ -829,26 +829,26 @@ namespace STK
             AddWordLinkRecord(node->exitToken, node, -1, net->mTime);
           }
   
-          nlinks = FORWARD_PASS ? node->nlinks : node->nbacklinks;
-          links  = FORWARD_PASS ? node->links  : node->backlinks;
+          nlinks = FORWARD_PASS ? node->mNLinks : node->mNBackLinks;
+          links  = FORWARD_PASS ? node->mpLinks  : node->mpBackLinks;
   
           for (i = 0; i < nlinks; i++) 
           {
             FLOAT lmLike = links[i].mLike * net->mLmScale;
             
             if (node->exitToken->mLike + lmLike > net->mBeamThresh 
-                && (/*links[i].mpNode->start == UNDEF_TIME ||*/
-                      links[i].mpNode->start <= net->mTime) 
+                && (/*links[i].mpNode->mStart == UNDEF_TIME ||*/
+                      links[i].mpNode->mStart <= net->mTime) 
                       
-                && (  links[i].mpNode->stop  == UNDEF_TIME        ||
-                      links[i].mpNode->stop  >= net->mTime)
+                && (  links[i].mpNode->mStop  == UNDEF_TIME        ||
+                      links[i].mpNode->mStop  >= net->mTime)
                       
                 && (  net->mSearchPaths != SP_TRUE_ONLY || 
                       (node->mType & NT_True)                   || 
                       !(links[i].mpNode->mType & NT_Model))) 
             {
   #           ifdef TRACE_TOKENS
-              printf("Node %d -> Node %d ", node->aux, links[i].mpNode->aux);
+              printf("Node %d -> Node %d ", node->mAux, links[i].mpNode->mAux);
   #           endif
               net->PassTokenInNetwork(node->exitToken,
                                       &links[i].mpNode->tokens[0], lmLike);
@@ -881,8 +881,8 @@ namespace STK
       } else {
         for (node = net->mpActiveModels; node != NULL; node = node->nextActiveModel) {
           if (/*!(node->mType & NT_Model) ||*/ node->tokens[0].mLike < LOG_MIN
-            || BackwardPruning(net->mTime, node, node->hmm->mNStates-1)) continue;
-          WriteBeta(net->mTime, node, node->hmm->mNStates-1, &node->tokens[0]);
+            || BackwardPruning(net->mTime, node, node->mpHmm->mNStates-1)) continue;
+          WriteBeta(net->mTime, node, node->mpHmm->mNStates-1, &node->tokens[0]);
         }
       }
     }
@@ -920,10 +920,10 @@ namespace STK
   //  for (node = net->mpFirst; node != NULL; node = node->mpNext) {
   //    if (!(node->mType & NT_Model)) continue;
   
-      hmm = node->hmm;
+      hmm = node->mpHmm;
   
-      if (    (/*node->start != UNDEF_TIME &&*/node->start >= net->mTime)
-          ||  (  node->stop  != UNDEF_TIME &&  node->stop  <  net->mTime)
+      if (    (/*node->mStart != UNDEF_TIME &&*/node->mStart >= net->mTime)
+          ||  (  node->mStop  != UNDEF_TIME &&  node->mStop  <  net->mTime)
           ||  net->mSearchPaths == SP_TRUE_ONLY && !(node->mType & NT_True)) 
       {
         for (i = 0; i < hmm->mNStates-1; i++) 
@@ -983,7 +983,7 @@ namespace STK
             FLOAT transP = hmm->mpTransition->mpMatrixO[from * hmm->mNStates + to];
   
   #ifdef TRACE_TOKENS
-            printf("Model %d State %d -> State %d ",  node->aux, i, j);
+            printf("Model %d State %d -> State %d ",  node->mAux, i, j);
   #endif
             if (net->PassTokenInModel(&net->mpAuxTokens[i], &node->tokens[j],
                                     transP * net->mTranScale)) {
@@ -1075,7 +1075,7 @@ namespace STK
           {
             FLOAT transP = hmm->mpTransition->mpMatrixO[from * hmm->mNStates + to];
   #ifdef TRACE_TOKENS
-            printf("Model %d State %d -> Exit State ",  node->aux, i);
+            printf("Model %d State %d -> Exit State ",  node->mAux, i);
   #endif
             if (net->PassTokenInModel(&node->tokens[i],
                                     &node->tokens[hmm->mNStates - 1],
@@ -1134,7 +1134,7 @@ namespace STK
         continue;
       }
   
-      numOfTokens = node->hmm->mNStates;
+      numOfTokens = node->mpHmm->mNStates;
   
       for (j=0; j < numOfTokens; j++) {
         KillToken(&node->tokens[j]);
@@ -1410,23 +1410,23 @@ namespace STK
       if ((tmp = (Label *) malloc(sizeof(Label))) == NULL)
         Error("Insufficient memory");
   
-      tmp->score = wlr->mLike;
-      tmp->stop  = wlr->mTime;
-      tmp->id    = wlr->mStateIdx;
+      tmp->mScore = wlr->mLike;
+      tmp->mStop  = wlr->mTime;
+      tmp->mId    = wlr->mStateIdx;
   
       if (wlr->mpNode->mType & NT_Model) 
       {
         li = wlr->mStateIdx >= 0 ? 0 : 1;
-        tmp->data = wlr->mpNode->hmm;
-        tmp->mpName = wlr->mpNode->hmm->mpMacro->mpName;
-        tmp->nextLevel = level[li+1] ? level[li+1] : level[2];
+        tmp->mpData = wlr->mpNode->mpHmm;
+        tmp->mpName = wlr->mpNode->mpHmm->mpMacro->mpName;
+        tmp->mpNextLevel = level[li+1] ? level[li+1] : level[2];
       } 
-      else //if (wlr->mpNode->pronun->outSymbol) 
+      else //if (wlr->mpNode->mpPronun->outSymbol) 
       {
         li = 2;
-        tmp->data = wlr->mpNode->pronun->word;
-        tmp->mpName = wlr->mpNode->pronun->outSymbol;
-        tmp->nextLevel = NULL;
+        tmp->mpData = wlr->mpNode->mpPronun->word;
+        tmp->mpName = wlr->mpNode->mpPronun->outSymbol;
+        tmp->mpNextLevel = NULL;
       } 
       //else 
       //{
@@ -1438,28 +1438,28 @@ namespace STK
       {
   
     // if previous label mis its label on lower level, just make it
-  /*      if (li > 0 && (!level[li-1] || level[li-1]->nextLevel != level[li])) {
+  /*      if (li > 0 && (!level[li-1] || level[li-1]->mpNextLevel != level[li])) {
           Label *tmp2;
           if ((tmp2 = (Label *) malloc(sizeof(Label))) == NULL) {
             Error("Insufficient memory");
           }
-          tmp2->nextLevel = level[li];
+          tmp2->mpNextLevel = level[li];
           tmp2->mpName  = level[li]->mpName;
-          tmp2->score = level[li]->score;
-          tmp2->stop  = level[li]->stop;
-          tmp2->id    = level[li]->id;
+          tmp2->mScore = level[li]->mScore;
+          tmp2->mStop  = level[li]->stop;
+          tmp2->mId    = level[li]->mId;
   
           if (level[li-1]) {
-            level[li-1]->score -= tmp2->score;
-            level[li-1]->start  = tmp2->stop;
+            level[li-1]->mScore -= tmp2->mScore;
+            level[li-1]->mStart  = tmp2->mStop;
           }
   
           tmp2->mpNext  = level[li-1];
           level[li-1] = tmp2;
         }*/
   
-        level[li]->score -= tmp->score;
-        level[li]->start = tmp->stop;
+        level[li]->mScore -= tmp->mScore;
+        level[li]->mStart  = tmp->mStop;
       }
   
       tmp->mpNext = level[li];
@@ -1469,7 +1469,7 @@ namespace STK
     for (li = 0; li < 3; li++) 
     {
       if (level[li]) 
-        level[li]->start = 0;
+        level[li]->mStart = 0;
     }
     
     return level[0] ? level[0] : level[1] ? level[1] : level[2];
@@ -1817,7 +1817,7 @@ namespace STK
           node->alphaBetaList->mTime == net->mTime+1) {
   
           struct AlphaBeta *st;
-          int Nq       = node->hmm->mNStates;
+          int Nq       = node->mpHmm->mNStates;
           st = node->alphaBetaList->mpState;
   
           for (j = 1; j < Nq - 1; j++) {                   //for every emitting state
@@ -1900,9 +1900,9 @@ namespace STK
         {
   
           struct AlphaBeta *st;
-          int Nq       = node->hmm->mNStates;
-          FLOAT *aq    = node->hmm->        mpTransition->mpMatrixO;
-          FLOAT *aqacc = node->hmmToUpdate->mpTransition->mpMatrixO + SQR(Nq);
+          int Nq       = node->mpHmm->mNStates;
+          FLOAT *aq    = node->mpHmm->        mpTransition->mpMatrixO;
+          FLOAT *aqacc = node->mpHmmToUpdate->mpTransition->mpMatrixO + SQR(Nq);
   //        int qt_1 = (net->mNumberOfNetStates * net->mTime) + node->estate_id;
   //        int qt = qt_1 + net->mNumberOfNetStates;
   
@@ -1922,7 +1922,7 @@ namespace STK
           for (j = 1; j < Nq - 1; j++) {                   //for every emitting state
             if (st[j].alpha + st[j].beta - TP > MIN_LOG_WEGIHT) {
               FLOAT bjtO =net->mpOutPCache[hmmsAlig->mNStates * net->mTime +
-                                        node->hmm->mpState[j-1]->mID].mValue;
+                                        node->mpHmm->mpState[j-1]->mID].mValue;
               // ForwardBackward() set net->mpOutPCache to contain out prob. for all frames
   
               assert(node->alphaBetaListReverse->mTime == net->mTime);
@@ -2042,9 +2042,9 @@ namespace STK
           node->alphaBetaList->mTime == net->mTime+1) {
   
           struct AlphaBeta *st;
-          int Nq       = node->hmm->mNStates;
-          FLOAT *aq    = node->hmm->        mpTransition->mpMatrixO;
-          FLOAT *aqacc = node->hmmToUpdate->mpTransition->mpMatrixO + SQR(Nq);
+          int Nq       = node->mpHmm->mNStates;
+          FLOAT *aq    = node->mpHmm->        mpTransition->mpMatrixO;
+          FLOAT *aqacc = node->mpHmmToUpdate->mpTransition->mpMatrixO + SQR(Nq);
   //        int qt_1 = (net->mNumberOfNetStates * net->mTime) + node->estate_id;
   //        int qt = qt_1 + net->mNumberOfNetStates;
   
@@ -2073,7 +2073,7 @@ namespace STK
   #endif
   //            int qt_1   = qt - net->mNumberOfNetStates;
               FLOAT bjtO =net->mpOutPCache[hmmsAlig->mNStates * net->mTime +
-                                        node->hmm->mpState[j-1]->mID].mValue;
+                                        node->mpHmm->mpState[j-1]->mID].mValue;
               // ForwardBackward() set net->mpOutPCache to contain out prob. for all frames
   
               assert(node->alphaBetaListReverse->mTime == net->mTime);
@@ -2216,8 +2216,8 @@ namespace STK
     for (wlr = net->mpLast->exitToken->wlr; wlr != NULL; wlr = wlr->mpNext) 
     {
       Node *node   = wlr->mpNode;
-      int Nq       = node->hmmToUpdate->mNStates;
-      FLOAT *aqacc = node->hmmToUpdate->mpTransition->mpMatrixO + SQR(Nq);
+      int Nq       = node->mpHmmToUpdate->mNStates;
+      FLOAT *aqacc = node->mpHmmToUpdate->mpTransition->mpMatrixO + SQR(Nq);
       int currstate = wlr->mStateIdx+1;
       int nextstate = (wlr->mpNext && node == wlr->mpNext->mpNode)
                       ? wlr->mpNext->mStateIdx+1 : Nq-1;
@@ -2356,8 +2356,8 @@ namespace STK
              FLOAT *obs, FLOAT *obs2) 
   {
     int i, j, k, m;
-    State *state  = node->hmm->        mpState[state_idx];
-    State *state2 = node->hmmToUpdate->mpState[state_idx];
+    State *state  = node->mpHmm->        mpState[state_idx];
+    State *state2 = node->mpHmmToUpdate->mpState[state_idx];
     FLOAT bjtO    = LOG_0;
     int nmixtures;
   
@@ -2547,20 +2547,20 @@ namespace STK
         for (k=0; k < net->nnodes; k++) {
           Node *node = &net->mpNodes[k];
           if (node->mType & NT_Model) {
-            for (j = 0; j < node->hmm->mNStates - 2; j++, state_counter++) {
-              FLOAT tmpf = net->OutputProbability(node->hmm->mpState[j],
+            for (j = 0; j < node->mpHmm->mNStates - 2; j++, state_counter++) {
+              FLOAT tmpf = net->OutputProbability(node->mpHmm->mpState[j],
                                         obsMx + hmms->mInputVectorSize * i, net);
               switch (getMahalDist) {
                 case 0:
                   break;
                 case 1:
-                tmpf = log((tmpf / -0.5) - node->hmm->mpState[j]->mpMixture[0].mpEstimates->mGConst) * -0.5;
+                tmpf = log((tmpf / -0.5) - node->mpHmm->mpState[j]->mpMixture[0].mpEstimates->mGConst) * -0.5;
                 break;
                 case 2:
-                tmpf = log((tmpf / -0.5) - node->hmm->mpState[j]->mpMixture[0].mpEstimates->mGConst) * -1;
+                tmpf = log((tmpf / -0.5) - node->mpHmm->mpState[j]->mpMixture[0].mpEstimates->mGConst) * -1;
                 break;
                 case 3:
-                tmpf += node->hmm->mpState[j]->mpMixture[0].mpEstimates->mGConst * 0.5;
+                tmpf += node->mpHmm->mpState[j]->mpMixture[0].mpEstimates->mGConst * 0.5;
   //               tmpf /= hmms->mInputVectorSize;
                 break;
               }
@@ -2625,7 +2625,7 @@ namespace STK
       for (k=0; k < net->nnodes; k++) {
         Node *node = &net->mpNodes[k];
         if (node->mType & NT_Model) {
-          for (j = 0; j < node->hmm->mNStates - 2; j++, state_counter++) {
+          for (j = 0; j < node->mpHmm->mNStates - 2; j++, state_counter++) {
             int idx = (net->mNumberOfNetStates * i) + node->estate_id + j + 1;
             FLOAT occp = beta[idx] + alfa[idx] - totalLike;
             occupProb[(i-1) * nEmitingStates + state_counter] = occp < LOG_MIN ?
@@ -2665,7 +2665,7 @@ namespace STK
       if (!(node->mType & NT_Model)) 
         continue;
   
-      for (i = 0; i < node->hmm->mNStates-1; i++) 
+      for (i = 0; i < node->mpHmm->mNStates-1; i++) 
       {
         if (node->tokens[i].IsActive()) 
         {
@@ -2729,9 +2729,9 @@ namespace STK
       int numOfTokens = 1;
       if (node->mType & NT_Model) 
       {
-        numOfTokens = node->hmm->mNStates;
-        node->hmmToUpdate->mpMacro->mOccurances++;
-        if (node->hmm->mpTransition->mpMatrixO[numOfTokens - 1] > LOG_MIN) {
+        numOfTokens = node->mpHmm->mNStates;
+        node->mpHmmToUpdate->mpMacro->mOccurances++;
+        if (node->mpHmm->mpTransition->mpMatrixO[numOfTokens - 1] > LOG_MIN) {
           node->mType |= NT_Tee;
         }
       } 
@@ -2753,7 +2753,7 @@ namespace STK
       node->estate_id = mNumberOfNetStates;
       
       if (node->mType & NT_Model) {
-        int nstates = node->hmm->mNStates;
+        int nstates = node->mpHmm->mNStates;
   
         if (maxStatesInModel < nstates) maxStatesInModel = nstates;
         assert(nstates >= 2); // two non-emiting states
@@ -2860,23 +2860,23 @@ namespace STK
       if ((tmp = (Label *) malloc(sizeof(Label))) == NULL)
         Error("Insufficient memory");
   
-      tmp->score = wlr->mLike;
-      tmp->stop  = wlr->mTime;
-      tmp->id    = wlr->mStateIdx;
+      tmp->mScore = wlr->mLike;
+      tmp->mStop  = wlr->mTime;
+      tmp->mId    = wlr->mStateIdx;
   
       if (wlr->mpNode->mType & NT_Model) 
       {
         li = wlr->mStateIdx >= 0 ? 0 : 1;
-        tmp->data = wlr->mpNode->hmm;
-        tmp->mpName = wlr->mpNode->hmm->mpMacro->mpName;
-        tmp->nextLevel = level[li+1] ? level[li+1] : level[2];
+        tmp->mpData = wlr->mpNode->mpHmm;
+        tmp->mpName = wlr->mpNode->mpHmm->mpMacro->mpName;
+        tmp->mpNextLevel = level[li+1] ? level[li+1] : level[2];
       } 
-      else //if (wlr->mpNode->pronun->outSymbol) 
+      else //if (wlr->mpNode->mpPronun->outSymbol) 
       {
         li = 2;
-        tmp->data = wlr->mpNode->pronun->word;
-        tmp->mpName = wlr->mpNode->pronun->outSymbol;
-        tmp->nextLevel = NULL;
+        tmp->mpData = wlr->mpNode->mpPronun->word;
+        tmp->mpName = wlr->mpNode->mpPronun->outSymbol;
+        tmp->mpNextLevel = NULL;
       } 
       //else 
       //{
@@ -2888,28 +2888,28 @@ namespace STK
       {
   
     // if previous label mis its label on lower level, just make it
-  /*      if (li > 0 && (!level[li-1] || level[li-1]->nextLevel != level[li])) {
+  /*      if (li > 0 && (!level[li-1] || level[li-1]->mpNextLevel != level[li])) {
           Label *tmp2;
           if ((tmp2 = (Label *) malloc(sizeof(Label))) == NULL) {
             Error("Insufficient memory");
           }
-          tmp2->nextLevel = level[li];
+          tmp2->mpNextLevel = level[li];
           tmp2->mpName  = level[li]->mpName;
-          tmp2->score = level[li]->score;
-          tmp2->stop  = level[li]->stop;
-          tmp2->id    = level[li]->id;
+          tmp2->mScore = level[li]->mScore;
+          tmp2->mStop  = level[li]->stop;
+          tmp2->mId    = level[li]->mId;
   
           if (level[li-1]) {
-            level[li-1]->score -= tmp2->score;
-            level[li-1]->start  = tmp2->stop;
+            level[li-1]->mScore -= tmp2->mScore;
+            level[li-1]->mStart  = tmp2->mStop;
           }
   
           tmp2->mpNext  = level[li-1];
           level[li-1] = tmp2;
         }*/
   
-        level[li]->score -= tmp->score;
-        level[li]->start = tmp->stop;
+        level[li]->mScore -= tmp->mScore;
+        level[li]->mStart = tmp->mStop;
       }
   
       tmp->mpNext = level[li];
@@ -2919,7 +2919,7 @@ namespace STK
     for (li = 0; li < 3; li++) 
     {
       if (level[li]) 
-        level[li]->start = 0;
+        level[li]->mStart = 0;
     }
     
     return level[0] ? level[0] : level[1] ? level[1] : level[2];

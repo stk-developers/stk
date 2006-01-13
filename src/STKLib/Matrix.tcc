@@ -160,11 +160,11 @@ namespace STK
       void * data;
 
       // first allocate the memory
-      // this->data = new char[t.M_size];
+      // this->mpData = new char[t.M_size];
       // allocate the memory and set the right dimensions and parameters
       if (!posix_memalign(& data, 16, t.mMSize))
       {
-        this->data  = static_cast<_ElemT *> (data);
+        this->mpData  = static_cast<_ElemT *> (data);
 
         // copy the memory block
         memcpy(this->mpData, t.mpData, t.mMSize);
@@ -374,7 +374,7 @@ namespace STK
         void * data;
 
         // first allocate the memory
-        // this->data = new char[t.M_size];
+        // this->mpData = new char[t.M_size];
         // allocate the memory and set the right dimensions and parameters
         if (!posix_memalign(& data, 16, t.mMSize))
         {
