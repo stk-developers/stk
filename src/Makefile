@@ -83,56 +83,55 @@ test2 : test2.cc STKLib/common.o STKLib/Error.o STKLib/filmatch.o STKLib/Buffer.
 
 SERest.o: STKLib/fileio.h STKLib/common.h STKLib/Error.h STKLib/common.h
 SERest.o: STKLib/Models.h STKLib/Matrix.h STKLib/Matrix.tcc
-SERest.o: STKLib/stkstream.h STKLib/stkstream.tcc STKLib/viterbi.h
-SERest.o: STKLib/Models.h STKLib/labels.h STKLib/dict.h STKLib/net.h
-SERest.o: STKLib/labels.h STKLib/stkstream.h STKLib/MmfIO.h
-SExpand.o: STKLib/net.h STKLib/Models.h STKLib/labels.h STKLib/common.h
-SExpand.o: STKLib/Error.h STKLib/dict.h STKLib/labels.h STKLib/common.h
-SFeaCat.o: STKLib/fileio.h STKLib/common.h STKLib/Error.h STKLib/common.h
-SFeaCat.o: STKLib/Models.h STKLib/Matrix.h STKLib/Matrix.tcc
-SFeaCat.o: STKLib/stkstream.h STKLib/stkstream.tcc STKLib/viterbi.h
-SFeaCat.o: STKLib/Models.h STKLib/labels.h STKLib/dict.h STKLib/net.h
+SERest.o: STKLib/stkstream.h STKLib/stkstream.tcc STKLib/labels.h
+SERest.o: STKLib/stkstream.h
+SExpand.o: STKLib/labels.h STKLib/common.h STKLib/Error.h STKLib/common.h
 SFea2OutP.o: STKLib/fileio.h STKLib/common.h STKLib/Error.h STKLib/common.h
 SFea2OutP.o: STKLib/Models.h STKLib/Matrix.h STKLib/Matrix.tcc
-SFea2OutP.o: STKLib/stkstream.h STKLib/stkstream.tcc STKLib/viterbi.h
-SFea2OutP.o: STKLib/Models.h STKLib/labels.h STKLib/dict.h STKLib/net.h
-SLRatio.o: STKLib/viterbi.h STKLib/Models.h STKLib/labels.h STKLib/common.h
-SLRatio.o: STKLib/Error.h STKLib/dict.h STKLib/net.h STKLib/Models.h
-SLRatio.o: STKLib/Matrix.h STKLib/Matrix.tcc STKLib/stkstream.h
-SLRatio.o: STKLib/stkstream.tcc STKLib/fileio.h STKLib/labels.h
-SLRatio.o: STKLib/common.h
-SResults.o: STKLib/labels.h STKLib/common.h
-SRover.o: STKLib/labels.h STKLib/common.h
-SVite.o: STKLib/viterbi.h STKLib/Models.h STKLib/labels.h STKLib/common.h
-SVite.o: STKLib/Error.h STKLib/dict.h STKLib/net.h STKLib/Models.h
-SVite.o: STKLib/Matrix.h STKLib/Matrix.tcc STKLib/stkstream.h
-SVite.o: STKLib/stkstream.tcc STKLib/fileio.h STKLib/labels.h STKLib/common.h
+SFea2OutP.o: STKLib/stkstream.h STKLib/stkstream.tcc
+SFeaCat.o: STKLib/fileio.h STKLib/common.h STKLib/Error.h STKLib/common.h
+SFeaCat.o: STKLib/Models.h STKLib/Matrix.h STKLib/Matrix.tcc
+SFeaCat.o: STKLib/stkstream.h STKLib/stkstream.tcc
+SLRatio.o: STKLib/Models.h STKLib/Matrix.h STKLib/Error.h STKLib/Matrix.tcc
+SLRatio.o: STKLib/common.h STKLib/stkstream.h STKLib/stkstream.tcc
+SLRatio.o: STKLib/fileio.h STKLib/labels.h STKLib/common.h
+SResults.o: STKLib/labels.h STKLib/common.h STKLib/Error.h STKLib/common.h
+SRover.o: STKLib/labels.h STKLib/common.h STKLib/Error.h STKLib/common.h
+SVite.o: STKLib/Models.h STKLib/Matrix.h STKLib/Error.h STKLib/Matrix.tcc
+SVite.o: STKLib/common.h STKLib/stkstream.h STKLib/stkstream.tcc
+SVite.o: STKLib/fileio.h STKLib/labels.h STKLib/common.h
 SNet.o: STKLib/fileio.h STKLib/common.h STKLib/Error.h STKLib/common.h
 SNet.o: STKLib/Models.h STKLib/Matrix.h STKLib/Matrix.tcc STKLib/stkstream.h
-SNet.o: STKLib/stkstream.tcc STKLib/viterbi.h STKLib/Models.h STKLib/labels.h
-SNet.o: STKLib/dict.h STKLib/net.h
-test.o: STKLib/stkstream.h
-test2.o: STKLib/Matrix.h STKLib/Error.h STKLib/Matrix.tcc STKLib/common.h
-test2.o: STKLib/String.h STKLib/Buffer.h STKLib/stkstream.h
+SNet.o: STKLib/stkstream.tcc
 STKLib/common.o: STKLib/common.h STKLib/Error.h STKLib/filmatch.h
-STKLib/dict.o: STKLib/dict.h STKLib/Models.h STKLib/common.h STKLib/Error.h
+STKLib/dict.o: STKLib/dict.h STKLib/Models.h STKLib/Matrix.h STKLib/Error.h
+STKLib/dict.o: STKLib/Matrix.tcc STKLib/common.h STKLib/stkstream.h
+STKLib/dict.o: STKLib/stkstream.tcc
 STKLib/fileio.o: STKLib/fileio.h STKLib/common.h STKLib/Error.h
 STKLib/fileio.o: STKLib/stkstream.h STKLib/stkstream.tcc
 STKLib/filmatch.o: STKLib/filmatch.h STKLib/common.h STKLib/Error.h
 STKLib/getopt.o: STKLib/getopt.h
 STKLib/imagesc.o: STKLib/imagesc.h
-STKLib/labels.o: STKLib/viterbi.h STKLib/Models.h STKLib/labels.h
-STKLib/labels.o: STKLib/common.h STKLib/Error.h STKLib/dict.h STKLib/net.h
-STKLib/net.o: STKLib/Models.h STKLib/labels.h STKLib/common.h STKLib/Error.h
-STKLib/net.o: STKLib/dict.h STKLib/net.h
-STKLib/viterbi.o: STKLib/viterbi.h STKLib/Models.h STKLib/labels.h
-STKLib/viterbi.o: STKLib/common.h STKLib/Error.h STKLib/dict.h STKLib/net.h
+STKLib/labels.o: STKLib/Viterbi.h STKLib/Models.h STKLib/Matrix.h
+STKLib/labels.o: STKLib/Error.h STKLib/Matrix.tcc STKLib/common.h
+STKLib/labels.o: STKLib/stkstream.h STKLib/stkstream.tcc STKLib/labels.h
+STKLib/labels.o: STKLib/dict.h STKLib/Net.h
 STKLib/Buffer.o: STKLib/Buffer.h
 STKLib/Error.o: STKLib/Error.h
 STKLib/labelreader.o: STKLib/labelreader.h STKLib/stkstream.h STKLib/common.h
 STKLib/labelreader.o: STKLib/Error.h STKLib/stkstream.tcc
 STKLib/Matrix.o: STKLib/Matrix.h STKLib/Error.h STKLib/Matrix.tcc
 STKLib/Matrix.o: STKLib/common.h
-STKLib/MmfIO.o: STKLib/MmfIO.h STKLib/Models.h STKLib/Error.h
-STKLib/Models.o: STKLib/Models.h STKLib/stkstream.h STKLib/common.h
-STKLib/Models.o: STKLib/Error.h STKLib/stkstream.tcc
+STKLib/Models.o: STKLib/Models.h STKLib/Matrix.h STKLib/Error.h
+STKLib/Models.o: STKLib/Matrix.tcc STKLib/common.h STKLib/stkstream.h
+STKLib/Models.o: STKLib/stkstream.tcc
+STKLib/Models_IO.o: STKLib/Models.h STKLib/Matrix.h STKLib/Error.h
+STKLib/Models_IO.o: STKLib/Matrix.tcc STKLib/common.h STKLib/stkstream.h
+STKLib/Models_IO.o: STKLib/stkstream.tcc
+STKLib/Net.o: STKLib/Models.h STKLib/Matrix.h STKLib/Error.h
+STKLib/Net.o: STKLib/Matrix.tcc STKLib/common.h STKLib/stkstream.h
+STKLib/Net.o: STKLib/stkstream.tcc STKLib/labels.h STKLib/dict.h STKLib/Net.h
+STKLib/Viterbi.o: STKLib/Viterbi.h STKLib/Models.h STKLib/Matrix.h
+STKLib/Viterbi.o: STKLib/Error.h STKLib/Matrix.tcc STKLib/common.h
+STKLib/Viterbi.o: STKLib/stkstream.h STKLib/stkstream.tcc STKLib/labels.h
+STKLib/Viterbi.o: STKLib/dict.h STKLib/Net.h

@@ -461,11 +461,18 @@ namespace STK
       }
   //dnet(first, 1, node);
   
+// For current node 'node', check for each possible pair of its successors 
+// ('inode' and 'jnode') whether the pair may be merged to single node.
       for (i = 0; i < node->mNLinks-1; i++) {
         for (j = i+1; j < node->mNLinks; j++) {
           Node *inode = node->mpLinks[i].mpNode;
           Node *jnode = node->mpLinks[j].mpNode;
+
+// Final node may be never merged.
+        if (inode->nlinks == 0 || jnode->nlinks == 0) continue;
   
+// Two nodes ('inode' and 'jnode') may be mergeg if they are of the same type, name, ...
+// with the same predecessors and with the same weights on the links from predecesors.
           if ((inode->mType & ~NT_True) != (jnode->mType & ~NT_True)
           || ( inode->mType & NT_Phone && inode->mpName   != jnode->mpName)
           || ( inode->mType & NT  && inode->mpPronun != jnode->mpPronun)
@@ -482,6 +489,9 @@ namespace STK
                           ||  inode->mStop  != jnode->mStop)) {
             continue;
           }
+
+//Weights on the links from predecesors does not have to be exactely the same, but the must not
+//differ more than by SIGNIFICANT_PROB_DIFFERENCE
           for (l=0; l < inode->mNBackLinks; l++) {
             if (inode->mpBackLinks[l].mpNode != jnode->mpBackLinks[l].mpNode) break;
             FLOAT ldiff =  inode->mpBackLinks[l].mLike - jnode->mpBackLinks[l].mLike;
@@ -2643,10 +2653,10 @@ namespace STK
     struct my_hsearch_data *nonCDphHash,
     struct my_hsearch_data *triphHash)
   {
-    if (expOptions.no_word_expansion &&  expOptions.CD_phone_expansion
-    && expOptions.no_optimization   && !out_net_fmt.no_LM_likes
-    &&!out_net_fmt.no_times         && !out_net_fmt.no_word_nodes &&
-      !out_net_fmt.no_model_nodes   && !out_net_fmt.no_pronun_vars) return;
+    if (expOptions.no_word_expansion && !expOptions.CD_phone_expansion
+    && expOptions.no_optimization    && !out_net_fmt.no_LM_likes
+    &&!out_net_fmt.no_times          && !out_net_fmt.no_word_nodes &&
+      !out_net_fmt.no_model_nodes    && !out_net_fmt.no_pronun_vars) return;
     SelfLinksToNullNodes(node);
     if (!expOptions.no_word_expansion) {
       if (!expOptions.no_optimization) {

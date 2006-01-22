@@ -15,7 +15,7 @@
 #include "STKLib/fileio.h"
 #include "STKLib/common.h"
 #include "STKLib/Models.h"
-#include "STKLib/viterbi.h"
+#include "STKLib/Viterbi.h"
 #include "STKLib/labels.h"
 #include "STKLib/stkstream.h"
 

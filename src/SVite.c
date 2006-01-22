@@ -229,7 +229,8 @@ int main(int argc, char *argv[])
   expOptions.strict_timing
                = GetParamBool(&cfgHash,SNAME":EXACTTIMEMERGE",  FALSE);
   expOptions.no_optimization
-               =!GetParamBool(&cfgHash,SNAME":MINIMIZENET",     FALSE);
+               =!GetParamBool(&cfgHash,SNAME":MINIMIZENET",     expOptions.CD_phone_expansion
+                                                                ? TRUE : FALSE);
   expOptions.remove_words_nodes
                = GetParamBool(&cfgHash,SNAME":REMEXPWRDNODES",  FALSE);
   in_lbl_fmt.TIMES_OFF =
@@ -240,10 +241,10 @@ int main(int argc, char *argv[])
                  GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0));
   baum_welch   = GetParamBool(&cfgHash,SNAME":EVALUATION",      FALSE);
   swap_features=!GetParamBool(&cfgHash,SNAME":NATURALREADORDER",isBigEndian());
-  gpFilterWldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
+  gpFilterWldcrd= GetParamStr(&cfgHash,SNAME":HFILTERWILDCARD", "$");
   script_filter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",   NULL);
   parm_filter  = GetParamStr(&cfgHash, SNAME":HPARMFILTER",     NULL);
-  gpHListFilter = GetParamStr(&cfgHash, SNAME":HMMLISTFILTER",   NULL);
+  gpHListFilter = GetParamStr(&cfgHash,SNAME":HMMLISTFILTER",   NULL);
   MMF_filter   = GetParamStr(&cfgHash, SNAME":HMMDEFFILTER",    NULL);
   label_filter = GetParamStr(&cfgHash, SNAME":HLABELFILTER",    NULL);
   net_filter   = GetParamStr(&cfgHash, SNAME":HNETFILTER",      NULL);

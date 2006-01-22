@@ -1517,11 +1517,12 @@ namespace STK
           } 
           else 
           {
-            vec[i] = 1 / (vac[i] / *nrm - SQR(mac[i] / *nrm));
+            vec[i] = 1 / HIGHER_OF(0.0, vac[i] / *nrm - SQR(mac[i] / *nrm)); 
+                      // HIGHER_OF is to avoid negative variances
           }
           
           if (pModelSet->mpVarFloor && 
-              pModelSet->mpVarFloor->mVectorSize == mVectorSize) 
+              pModelSet->mpVarFloor->mVectorSize == mVectorSize) // !!! Need for transformation dependent varFloors
           {
             vec[i] = LOWER_OF(vec[i], pModelSet->mpVarFloor->mpVectorO[i]);
           }
@@ -1556,17 +1557,23 @@ namespace STK
               FLOAT aux = 0;
               for (t = 0; t <= c; t++) 
               {
-                aux += cov[c * (c+1)/2 + t]    * xform->mpMatrixO[in_size * r + t];
+                aux += cov[c * (c+1)/2 + t] * xform->mpMatrixO[in_size * r + t];
               }
   
               for (; t < in_size; t++) 
               {
-                aux += cov[t * (t+1)/2 + c]    * xform->mpMatrixO[in_size * r + t];
+                aux += cov[t * (t+1)/2 + c] * xform->mpMatrixO[in_size * r + t];
               }
               
-              mpVectorO[pos + r] += aux * xform->mpMatrixO[in_size * r + c];
+              mpVectorO[pos + r] += aux     * xform->mpMatrixO[in_size * r + c];
             }
-            mpVectorO[pos + r] = 1 / mpVectorO[pos + r];
+            mpVectorO[pos + r] = 1 / HIGHER_OF(0.0, mpVectorO[pos + r]);
+
+            if (pModelSet->mpVarFloor && 
+                pModelSet->mpVarFloor->mVectorSize == mVectorSize) // !!! Need for transformation dependent varFloors
+            {
+                 mpVectorO[pos + r] = LOWER_OF(mpVectorO[pos + r], pModelSet->mpVarFloor->mpVectorO[i]);
+            }
           }
           pos += xform->mOutSize;
         }
