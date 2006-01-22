@@ -12,7 +12,7 @@
 
 #define VERSION "0.4 "__TIME__" "__DATE__
 
-#include "STKLib/viterbi.h"
+#include "STKLib/Viterbi.h"
 #include "STKLib/Models.h"
 #include "STKLib/fileio.h"
 #include "STKLib/labels.h"
@@ -110,7 +110,7 @@ char *optionStr =
 
 int main(int argc, char *argv[]) 
 {
-  HTK_Header                    header;
+  HtkHeader                    header;
   ModelSet                      hset;
   Network                       net;
   FILE *                        sfp;
@@ -126,16 +126,16 @@ int main(int argc, char *argv[])
   const char *                  cchrptr;
   int                           nfeature_files = 0;
   
-  struct my_hsearch_data        nonCDphHash;
-  struct my_hsearch_data        phoneHash;
-  struct my_hsearch_data        dictHash;
-  struct my_hsearch_data        cfgHash;
+  MyHSearchData        nonCDphHash;
+  MyHSearchData        phoneHash;
+  MyHSearchData        dictHash;
+  MyHSearchData        cfgHash;
   
   FileListElem *                feature_files = NULL;
   FileListElem *                file_name = NULL;
   FileListElem **               last_file = &feature_files;
   
-  int                           alignment = (Alignment) WORD_ALIGNMENT;
+  int                           alignment = (AlignmentType) WORD_ALIGNMENT;
 
   double                        word_penalty;
   double                        model_penalty;
@@ -222,16 +222,16 @@ int main(int argc, char *argv[])
                                 &cmn_path, &cmn_file, &cmn_mask,
                                 &cvn_path, &cvn_file, &cvn_mask, &cvg_file,
                                 SNAME":", 0);
-  expOptions.CD_phone_expansion =
+  expOptions.mCDPhoneExpansion =
                  GetParamBool(&cfgHash,SNAME":ALLOWXWRDEXP",    FALSE);
-  expOptions.respect_pronun_var
+  expOptions.mRespectPronunVar
                = GetParamBool(&cfgHash,SNAME":RESPECTPRONVARS", FALSE);
-  expOptions.strict_timing
+  expOptions.mStrictTiming
                = GetParamBool(&cfgHash,SNAME":EXACTTIMEMERGE",  FALSE);
-  expOptions.no_optimization
-               =!GetParamBool(&cfgHash,SNAME":MINIMIZENET",     expOptions.CD_phone_expansion
+  expOptions.mNoOptimization
+               =!GetParamBool(&cfgHash,SNAME":MINIMIZENET",     expOptions.mCDPhoneExpansion
                                                                 ? TRUE : FALSE);
-  expOptions.remove_words_nodes
+  expOptions.mRemoveWordsNodes
                = GetParamBool(&cfgHash,SNAME":REMEXPWRDNODES",  FALSE);
   in_lbl_fmt.TIMES_OFF =
                 !GetParamBool(&cfgHash,SNAME":TIMEPRUNING",    FALSE);
@@ -293,28 +293,28 @@ int main(int argc, char *argv[])
   }
   cchrptr      = GetParamStr(&cfgHash, SNAME":NETFORMATING",  "");
   if (*cchrptr) {
-    out_net_fmt.no_LM_likes    = 1;
-    out_net_fmt.no_times       = 1;
-    out_net_fmt.no_pronun_vars = 1;
-    out_net_fmt.no_acc_likes   = 1;
+    out_net_fmt.mNoLMLikes    = 1;
+    out_net_fmt.mNoTimes       = 1;
+    out_net_fmt.mNoPronunVars = 1;
+    out_net_fmt.mNoAccLikes   = 1;
   }
   while (*cchrptr) {
     switch (*cchrptr++) {
-      case 'R': out_net_fmt.base62_labels  = 1; // reticent
-                out_net_fmt.lin_node_seqs  = 1;
-                out_net_fmt.no_defaults    = 1; break;
-      case 'V': out_net_fmt.arc_defs_with_J= 1;
-                out_net_fmt.all_field_names= 1; break;
-      case 'J': out_net_fmt.arc_defs_to_end= 1; break;
-      case 'W': out_net_fmt.no_word_nodes  = 1; break;
-      case 'M': out_net_fmt.no_model_nodes = 1; break;
-      case 'X': out_net_fmt.strip_triphones= 1; break;
-      case 't': out_net_fmt.no_times       = 0; break;
-      case 's': out_net_fmt.start_times    = 1; break;
-      case 'v': out_net_fmt.no_pronun_vars = 0; break;
-      case 'a': out_net_fmt.no_acc_likes   = 0; break;
-      case 'l': out_net_fmt.no_LM_likes    = 0; break;
-      case 'p': out_net_fmt.aprox_accuracy = 1; break;
+      case 'R': out_net_fmt.mBase62Labels  = 1; // reticent
+                out_net_fmt.mLinNodeSeqs  = 1;
+                out_net_fmt.mNoDefaults    = 1; break;
+      case 'V': out_net_fmt.mArcDefsWithJ= 1;
+                out_net_fmt.mAllFieldNames= 1; break;
+      case 'J': out_net_fmt.mArcDefsToEnd= 1; break;
+      case 'W': out_net_fmt.mNoWordNodes  = 1; break;
+      case 'M': out_net_fmt.mNoModelNodes = 1; break;
+      case 'X': out_net_fmt.mStripTriphones= 1; break;
+      case 't': out_net_fmt.mNoTimes       = 0; break;
+      case 's': out_net_fmt.mStartTimes    = 1; break;
+      case 'v': out_net_fmt.mNoPronunVars = 0; break;
+      case 'a': out_net_fmt.mNoAccLikes   = 0; break;
+      case 'l': out_net_fmt.mNoLMLikes    = 0; break;
+      case 'p': out_net_fmt.mAproxAccuracy = 1; break;
       default:
         Warning("Unknown net formating flag '%c' ignored (JMRVWXalpstv)", *cchrptr);
     }
@@ -364,13 +364,13 @@ int main(int argc, char *argv[])
   {
     ReadDictionary(dictionary, &dictHash, &phoneHash);
     notInDictAction  = WORD_NOT_IN_DIC_WARN;
-    if (expOptions.respect_pronun_var) {
+    if (expOptions.mRespectPronunVar) {
       notInDictAction |= PRON_NOT_IN_DIC_ERROR;
     }
   }
   
-  if (dictHash.nentries == 0) 
-    expOptions.no_word_expansion = 1;
+  if (dictHash.mNEntries == 0) 
+    expOptions.mNoWordExpansion = 1;
 
   transc_filter = transc_filter != NULL   ? transc_filter :
                   in_transc_fmt == TF_STK ? net_filter    : label_filter;
@@ -397,10 +397,11 @@ int main(int argc, char *argv[])
 
     Node *node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash,
                                 notInDictAction, in_lbl_fmt,
-                                header.sampPeriod, network_file, NULL);
+                                header.mSamplePeriod, network_file, NULL);
     NetworkExpansionsAndOptimizations(node, expOptions, in_net_fmt, &dictHash,
                                       &nonCDphHash, &phoneHash);
-    InitNetwork(&net, node, &hset, NULL);
+    //InitNetwork(&net, node, &hset, NULL);
+    net.Init(node, &hset, NULL);
     fclose(ilfp);
   }
   lfp = OpenOutputMLF(out_MLF);
@@ -409,27 +410,27 @@ int main(int argc, char *argv[])
 
     if (trace_flag & 1) {
       TraceLog("Processing file %d/%d '%s'", ++fcnt,
-                 nfeature_files,file_name->physical);
+                 nfeature_files,file_name->mpPhysical);
     }
     
     if (cmn_mask) process_mask(file_name->logical, cmn_mask, cmn_file);
     if (cvn_mask) process_mask(file_name->logical, cvn_mask, cvn_file);
     
-    obsMx = ReadHTKFeatures(file_name->physical, swap_features,
+    obsMx = ReadHTKFeatures(file_name->mpPhysical, swap_features,
                             startFrmExt, endFrmExt, targetKind,
                             derivOrder, derivWinLengths, &header,
                             cmn_path, cvn_path, cvg_file, &rhfbuff);
 
 /*  lfp = fopen("xxx.fea", "w");
-    header.sampKind = 9;
+    header.mSampleKind = 9;
     WriteHTKHeader(lfp, header, 1);
-    WriteHTKFeature(lfp, obsMx, header.nSamples * header.sampSize / sizeof(float), 1);
+    WriteHTKFeature(lfp, obsMx, header.mNSamples * header.mSampleSize / sizeof(float), 1);
     fclose(lfp);
     exit(0); */
 
-    if (hset.mInputVectorSize != static_cast<int>(header.sampSize / sizeof(float))) {
+    if (hset.mInputVectorSize != static_cast<int>(header.mSampleSize / sizeof(float))) {
       Error("Vector size [%d] in '%s' is incompatible with HMM set [%d]",
-            header.sampSize/sizeof(float), file_name->physical, hset.mInputVectorSize);
+            header.mSampleSize/sizeof(float), file_name->mpPhysical, hset.mInputVectorSize);
     }
     
     if (!network_file) 
@@ -444,61 +445,66 @@ int main(int argc, char *argv[])
       if (in_transc_fmt == TF_HTK) {
         labels = ReadLabels(ilfp, dictionary ? &dictHash : &phoneHash,
                                   dictionary ? UL_ERROR : UL_INSERT, in_lbl_fmt,
-                                  header.sampPeriod, label_file, in_MLF, NULL);
-        node = MakeNetworkFromLabels(labels, dictionary ? NT : NT_Phone);
+                                  header.mSamplePeriod, label_file, in_MLF, NULL);
+        node = MakeNetworkFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
         ReleaseLabels(labels);
       } else if (in_transc_fmt == TF_STK) {
         node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash, notInDictAction,
-                              in_lbl_fmt, header.sampPeriod, label_file, in_MLF);
+                              in_lbl_fmt, header.mSamplePeriod, label_file, in_MLF);
       } else Error("Too bad. What did you do ?!?");
 
       NetworkExpansionsAndOptimizations(node, expOptions, in_net_fmt, &dictHash,
                                         &nonCDphHash, &phoneHash);
-      InitNetwork(&net, node, &hset, NULL);
+      net.Init(node, &hset, NULL);
 
 
       CloseInputLabelFile(ilfp, in_MLF);
     }
 
-    net.wPenalty     = word_penalty;
-    net.mPenalty     = model_penalty;
-    net.lmScale      = grammar_scale;
-    net.pronScale    = pronun_scale;
-    net.tranScale    = transp_scale;
-    net.outpScale    = outprb_scale;
-    net.ocpScale     = occprb_scale;
-    net.alignment    = alignment;
-    net.pruningThresh = state_pruning > 0.0 ? state_pruning : -LOG_0;
+    net.mWPenalty     = word_penalty;
+    net.mMPenalty     = model_penalty;
+    net.mLmScale      = grammar_scale;
+    net.mPronScale    = pronun_scale;
+    net.mTranScale    = transp_scale;
+    net.mOutpScale    = outprb_scale;
+    net.mOcpScale     = occprb_scale;
+    net.mAlignment     = alignment;
+    net.mPruningThresh = state_pruning > 0.0 ? state_pruning : -LOG_0;
 
-    if (alignment & STATE_ALIGNMENT && out_lbl_fmt.MODEL_OFF) net.alignment &= ~MODEL_ALIGNMENT;
-    if (alignment & MODEL_ALIGNMENT && out_lbl_fmt.WORDS_OFF) net.alignment &= ~WORD_ALIGNMENT;
-    if (alignment & STATE_ALIGNMENT && out_lbl_fmt.FRAME_SCR) net.alignment |=  FRAME_ALIGNMENT;
+    if (alignment & STATE_ALIGNMENT && out_lbl_fmt.MODEL_OFF) net.mAlignment &= ~MODEL_ALIGNMENT;
+    if (alignment & MODEL_ALIGNMENT && out_lbl_fmt.WORDS_OFF) net.mAlignment &= ~WORD_ALIGNMENT;
+    if (alignment & STATE_ALIGNMENT && out_lbl_fmt.FRAME_SCR) net.mAlignment |=  FRAME_ALIGNMENT;
 
-    for (;;) {
-      ViterbiInit(&net);
+    for (;;) 
+    {
+      //ViterbiInit(&net);
+      net.ViterbiInit();
       net.PassTokenInNetwork = baum_welch ? &PassTokenSum : &PassTokenMax;
       net.PassTokenInModel   = baum_welch ? &PassTokenSum : &PassTokenMax;
 
-      for (i = 0; i < header.nSamples; i++) {
-        ViterbiStep(&net, obsMx + i * hset.mInputVectorSize);
+      for (i = 0; i < header.mNSamples; i++) {
+        //ViterbiStep(&net, obsMx + i * hset.mInputVectorSize);
+        net.ViterbiStep(obsMx + i * hset.mInputVectorSize);
       }
-      like = ViterbiDone(&net, &labels);
+      
+      //like = ViterbiDone(&net, &labels);
+      like = net.ViterbiDone(&labels);
 
       if (labels) {
         break;
       }
-      if (net.pruningThresh <= LOG_MIN ||
+      if (net.mPruningThresh <= LOG_MIN ||
          stprn_step <= 0.0 ||
-         (net.pruningThresh += stprn_step) > stprn_limit ) {
+         (net.mPruningThresh += stprn_step) > stprn_limit ) {
         Warning("No tokens survived");
         break;
       }
-      Warning("No tokens survived, trying pruning threshold: %.2f", net.pruningThresh);
+      Warning("No tokens survived, trying pruning threshold: %.2f", net.mPruningThresh);
     }
     if (trace_flag & 1 && labels) {
       Label *label;
-      int nFrames = header.nSamples - hset.mTotalDelay;
-      for (label = labels; label->nextLevel != NULL; label = label->nextLevel);
+      int nFrames = header.mNSamples - hset.mTotalDelay;
+      for (label = labels; label->mpNextLevel != NULL; label = label->mpNextLevel);
       for (; label != NULL; label = label->mpNext) {
         fprintf(stdout, "%s ", label->mpName);
       }
@@ -509,23 +515,23 @@ int main(int argc, char *argv[])
     lfp = OpenOutputLabelFile(label_file, out_lbl_dir, out_lbl_ext, lfp, out_MLF);
 
     if (out_transc_fmt == TF_HTK) {
-      WriteLabels(lfp, labels, out_lbl_fmt, header.sampPeriod, label_file, out_MLF);
+      WriteLabels(lfp, labels, out_lbl_fmt, header.mSamplePeriod, label_file, out_MLF);
     } else {
       Node *node = MakeNetworkFromLabels(labels,
                                          alignment & (MODEL_ALIGNMENT|STATE_ALIGNMENT)
-                                         ? NT_Model : NT);
-      WriteSTKNetwork(lfp, node, out_net_fmt, header.sampPeriod, label_file, out_MLF);
+                                         ? NT_MODEL : NT_WORD);
+      WriteSTKNetwork(lfp, node, out_net_fmt, header.mSamplePeriod, label_file, out_MLF);
       FreeNetwork(node);
     }
     CloseOutputLabelFile(lfp, out_MLF);
     ReleaseLabels(labels);
 
     if (!network_file) {
-      ReleaseNetwork(&net);
+      net.Release();
     }
   }
   if (network_file) {
-    ReleaseNetwork(&net);
+    net.Release();
   }
   
   //ReleaseHMMSet(&hset);
@@ -536,8 +542,8 @@ int main(int argc, char *argv[])
   my_hdestroy_r(&nonCDphHash, 0);
   FreeDictionary(&dictHash);
   
-  for (unsigned int i = 0; i < cfgHash.nentries; i++) 
-    free(cfgHash.entry[i]->data);
+  for (unsigned int i = 0; i < cfgHash.mNEntries; i++) 
+    free(cfgHash.mpEntry[i]->data);
   
   my_hdestroy_r(&cfgHash, 1);
 

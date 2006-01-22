@@ -12,7 +12,7 @@
 
 #define VERSION "0.6 "__TIME__" "__DATE__
 
-#include "STKLib/viterbi.h"
+#include "STKLib/Viterbi.h"
 #include "STKLib/Models.h"
 #include "STKLib/fileio.h"
 #include "STKLib/labels.h"
@@ -47,16 +47,16 @@ LRTrace *MakeLRTraceTable(Network *net, int *nWords, Token **filler_end)
 
   *nWords = 0;
 
-  for (node=net->first; node != NULL; node = node->mpNext) {
-    if (node->mType == (NT | NT_Sticky) && node->pronun == NULL) break;
+  for (node=net->mpFirst; node != NULL; node = node->mpNext) {
+    if (node->mType == (NT_WORD | NT_STICKY) && node->mpPronun == NULL) break;
   }
   if (node == NULL) {
     Error("Network contains no null node with flag=F (reference model end)");
   }
-  *filler_end = node->exitToken;
+  *filler_end = node->mpExitToken;
 
-  for (node=net->first; node != NULL; node = node->mpNext) {
-    if (node->mType == (NT | NT_Sticky) && node->pronun != NULL) ++*nWords;
+  for (node=net->mpFirst; node != NULL; node = node->mpNext) {
+    if (node->mType == (NT_WORD | NT_STICKY) && node->mpPronun != NULL) ++*nWords;
   }
   if (*nWords == 0) {
     Error("Network contains no word nodes with flag=K, (keyword model end)");
@@ -64,8 +64,8 @@ LRTrace *MakeLRTraceTable(Network *net, int *nWords, Token **filler_end)
   if ((lrt = (LRTrace *) malloc(*nWords * sizeof(LRTrace))) == NULL) {
     Error("Insufficient memory");
   }
-  for (i = 0, node=net->first; node != NULL; node = node->mpNext) {
-    if (node->mType == (NT | NT_Sticky) && node->pronun != NULL) {
+  for (i = 0, node=net->mpFirst; node != NULL; node = node->mpNext) {
+    if (node->mType == (NT_WORD | NT_STICKY) && node->mpPronun != NULL) {
       lrt[i].wordEnd = node;
       i++;
     }
@@ -79,11 +79,11 @@ void PutCandidateToLabels(LRTrace *lrt, FLOAT scoreThreshold, FILE *lfp,
 {
   if (lrt->candidateEndTime != 0
      && (scoreThreshold < LOG_MIN || lrt->candidateLR > scoreThreshold)) {
-     Label label = init_label;
-     label.start = lrt->candidateStartTime;
-     label.stop  = lrt->candidateEndTime;
-     label.mpName  = lrt->wordEnd->pronun->word->mpName;
-     label.score = lrt->candidateLR;
+     Label label  = init_label;
+     label.mStart = lrt->candidateStartTime;
+     label.mStop  = lrt->candidateEndTime;
+     label.mpName = lrt->wordEnd->mpPronun->word->mpName;
+     label.mScore = lrt->candidateLR;
 
      WriteLabels(lfp, &label, out_lbl_fmt, sampPeriod, label_file, out_MLF);
   }
@@ -205,7 +205,7 @@ char *optionStr =
 
 
 int main(int argc, char *argv[]) {
-  HTK_Header header;
+  HtkHeader header;
   ModelSet hset;
   Network net;
   FILE *sfp, *lfp = NULL, *ilfp = NULL;
@@ -214,14 +214,14 @@ int main(int argc, char *argv[]) {
   char line[1024];
   char label_file[1024];
   const char *cchrptr;
-  struct my_hsearch_data nonCDphHash, phoneHash, dictHash, cfgHash;
+  MyHSearchData nonCDphHash, phoneHash, dictHash, cfgHash;
 
   FileListElem *feature_files = NULL;
   int nfeature_files = 0;
   FileListElem *file_name = NULL;
   FileListElem **last_file = &feature_files;
 
-  Alignment alignment = WORD_ALIGNMENT;
+  AlignmentType alignment = WORD_ALIGNMENT;
 
   double score_thresh;
   double word_penalty;
@@ -302,15 +302,15 @@ int main(int argc, char *argv[]) {
                                 &cmn_path, &cmn_file, &cmn_mask,
                                 &cvn_path, &cvn_file, &cvn_mask, &cvg_file,
                                 SNAME":", 0);
-  expOptions.CD_phone_expansion =
+  expOptions.mCDPhoneExpansion =
                  GetParamBool(&cfgHash,SNAME":ALLOWXWRDEXP",    FALSE);
-  expOptions.respect_pronun_var
+  expOptions.mRespectPronunVar
                = GetParamBool(&cfgHash,SNAME":RESPECTPRONVARS", FALSE);
-  expOptions.strict_timing
+  expOptions.mStrictTiming
                = GetParamBool(&cfgHash,SNAME":EXACTTIMEMERGE",  FALSE);
-  expOptions.no_optimization
+  expOptions.mNoOptimization
                =!GetParamBool(&cfgHash,SNAME":MINIMIZENET",     FALSE);
-  expOptions.remove_words_nodes
+  expOptions.mRemoveWordsNodes
                = GetParamBool(&cfgHash,SNAME":REMEXPWRDNODES",  FALSE);
   in_lbl_fmt.TIMES_OFF =
                 !GetParamBool(&cfgHash,SNAME":TIMEPRUNING",    FALSE);
@@ -400,11 +400,11 @@ int main(int argc, char *argv[]) {
   if (dictionary != NULL) {
     ReadDictionary(dictionary, &dictHash, &phoneHash);
     notInDictAction  = WORD_NOT_IN_DIC_WARN;
-    if (expOptions.respect_pronun_var) {
+    if (expOptions.mRespectPronunVar) {
       notInDictAction |= (int) PRON_NOT_IN_DIC_ERROR;
     }
   }
-  if (dictHash.nentries == 0) expOptions.no_word_expansion = 1;
+  if (dictHash.mNEntries == 0) expOptions.mNoWordExpansion = 1;
 
   if (!network_file) {
     ilfp = OpenInputMLF(in_MLF);
@@ -414,10 +414,11 @@ int main(int argc, char *argv[]) {
 
     Node *node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash,
                                 notInDictAction, in_lbl_fmt,
-                                header.sampPeriod, network_file, NULL);
+                                header.mSamplePeriod, network_file, NULL);
     NetworkExpansionsAndOptimizations(node, expOptions, in_net_fmt, &dictHash,
                                       &nonCDphHash, &phoneHash);
-    InitNetwork(&net, node, &hset, NULL);
+    //InitNetwork(&net, node, &hset, NULL);
+    net.Init(node, &hset, NULL);
     fclose(ilfp);
     lrt = MakeLRTraceTable(&net, &nWords, &filler_end);
   }
@@ -427,18 +428,18 @@ int main(int argc, char *argv[]) {
 
     if (trace_flag & 1) {
       TraceLog("Processing file %d/%d '%s'", ++fcnt,
-                 nfeature_files,file_name->physical);
+                 nfeature_files,file_name->mpPhysical);
     }
     if (cmn_mask) process_mask(file_name->logical, cmn_mask, cmn_file);
     if (cvn_mask) process_mask(file_name->logical, cvn_mask, cvn_file);
-    obsMx = ReadHTKFeatures(file_name->physical, swap_features,
+    obsMx = ReadHTKFeatures(file_name->mpPhysical, swap_features,
                             startFrmExt, endFrmExt, targetKind,
                             derivOrder, derivWinLengths, &header,
                             cmn_path, cvn_path, cvg_file, &rhfbuff);
 
-    if (hset.mInputVectorSize != header.sampSize / sizeof(float)) {
+    if (hset.mInputVectorSize != header.mSampleSize / sizeof(float)) {
       Error("Vector size [%d] in '%s' is incompatible with HMM set [%d]",
-            header.sampSize/sizeof(float), file_name->physical, hset.mInputVectorSize);
+            header.mSampleSize/sizeof(float), file_name->mpPhysical, hset.mInputVectorSize);
     }
     if (!network_file) {
       Node *node = NULL;
@@ -448,24 +449,25 @@ int main(int argc, char *argv[]) {
                               ilfp, in_MLF);
 
       node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash, notInDictAction,
-                            in_lbl_fmt, header.sampPeriod, label_file, in_MLF);
+                            in_lbl_fmt, header.mSamplePeriod, label_file, in_MLF);
 
       NetworkExpansionsAndOptimizations(node, expOptions, in_net_fmt, &dictHash,
                                         &nonCDphHash, &phoneHash);
 
-      InitNetwork(&net, node, &hset, NULL);
+      //InitNetwork(&net, node, &hset, NULL);
+      net.Init(node, &hset, NULL);
       CloseInputLabelFile(ilfp, in_MLF);
       lrt = MakeLRTraceTable(&net, &nWords, &filler_end);
     }
-    net.wPenalty     = word_penalty;
-    net.mPenalty     = model_penalty;
-    net.lmScale      = grammar_scale;
-    net.pronScale    = pronun_scale;
-    net.tranScale    = transp_scale;
-    net.outpScale    = outprb_scale;
-    net.ocpScale     = occprb_scale;
-    net.alignment    = alignment;
-    net.pruningThresh = state_pruning > 0.0 ? state_pruning : -LOG_0;
+    net.mWPenalty     = word_penalty;
+    net.mMPenalty     = model_penalty;
+    net.mLmScale      = grammar_scale;
+    net.mPronScale    = pronun_scale;
+    net.mTranScale    = transp_scale;
+    net.mOutpScale    = outprb_scale;
+    net.mOcpScale     = occprb_scale;
+    net.mAlignment     = alignment;
+    net.mPruningThresh = state_pruning > 0.0 ? state_pruning : -LOG_0;
 
     strcpy(label_file, file_name->logical);
     lfp = OpenOutputLabelFile(label_file,out_lbl_dir,out_lbl_ext,lfp,out_MLF);
@@ -476,41 +478,50 @@ int main(int argc, char *argv[]) {
       lrt[i].candidateStartTime = 0;
       lrt[i].candidateEndTime = 0;
     }
-    ViterbiInit(&net);
+    //ViterbiInit(&net);
+    net.ViterbiInit();
     net.PassTokenInNetwork = fulleval ? &PassTokenSum : &PassTokenMax;
     net.PassTokenInModel   = fulleval ? &PassTokenSum : &PassTokenMax;
 
     KillToken(filler_end);
-    for (j = 0; j < nWords; j++) KillToken(lrt[j].wordEnd->exitToken);
+    
+    for (j = 0; j < nWords; j++) 
+      KillToken(lrt[j].wordEnd->mpExitToken);
 
-    if (trace_flag & 2) {
+    if (trace_flag & 2) 
+    {
       printf("Node# %13s", "Filler");
       for (j = 0; j < nWords; j++) {
-        printf(" %13s", lrt[j].wordEnd->pronun->word->mpName);
+        printf(" %13s", lrt[j].wordEnd->mpPronun->word->mpName);
       }
       puts("");
     }
-    for (i = 0; i < header.nSamples; i++) {
-      ViterbiStep(&net, obsMx + i * hset.mInputVectorSize);
+    for (i = 0; i < header.mNSamples; i++) {
+      //ViterbiStep(&net, obsMx + i * hset.mInputVectorSize);
+      net.ViterbiStep(obsMx + i * hset.mInputVectorSize);
 
       if (trace_flag & 2) {
-        printf("      %13e", filler_end->like);
+        printf("      %13e", filler_end->mLike);
         for (j = 0; j < nWords; j++) {
-          printf(" %13e", lrt[j].wordEnd->exitToken->like);
+          printf(" %13e", lrt[j].wordEnd->mpExitToken->mLike);
         }
         puts("");
       }
-      for (j = 0; j < nWords; j++) {
-        long long wordStartTime;
-        float lhRatio;
-        Token *word_end = lrt[j].wordEnd->exitToken;
+      
+      for (j = 0; j < nWords; j++) 
+      {
+        long long   wordStartTime;
+        float       lhRatio;
+        Token *     word_end = lrt[j].wordEnd->mpExitToken;
 
-        if (!IS_ACTIVE(*word_end) || !IS_ACTIVE(*filler_end)) {
+        if (!word_end->IsActive() || !filler_end->IsActive()) 
+        {
           lrt[j].lastLR = -FLT_MAX;
           KillToken(word_end);
           continue;
         }
-        lhRatio = word_end->like - filler_end->like;
+        
+        lhRatio = word_end->mLike - filler_end->mLike;
 
         if (lrt[j].lastLR > lhRatio) { // LR is not growing, cannot be max.
           lrt[j].lastLR = lhRatio;
@@ -518,8 +529,8 @@ int main(int argc, char *argv[]) {
           continue;
         }
         lrt[j].lastLR = lhRatio;
-        wordStartTime = (long long) (word_end->wlr && word_end->wlr->mpNext
-                        ? word_end->wlr->mpNext->mTime : 0);
+        wordStartTime = (long long) (word_end->mpWlr && word_end->mpWlr->mpNext
+                        ? word_end->mpWlr->mpNext->mTime : 0);
 
         KillToken(word_end);
         if (lrt[j].candidateLR > lhRatio && lrt[j].candidateEndTime > wordStartTime) {
@@ -527,7 +538,7 @@ int main(int argc, char *argv[]) {
         }
         if (lrt[j].candidateEndTime <= wordStartTime) {
           PutCandidateToLabels(&lrt[j], score_thresh, lfp, label_file,
-                               out_MLF, out_lbl_fmt, header.sampPeriod);
+                               out_MLF, out_lbl_fmt, header.mSamplePeriod);
         }
         lrt[j].candidateStartTime = wordStartTime;
         lrt[j].candidateEndTime = (long long) net.mTime;
@@ -537,23 +548,25 @@ int main(int argc, char *argv[]) {
     }
     for (j = 0; j < nWords; j++) {
       PutCandidateToLabels(&lrt[j], score_thresh, lfp, label_file,
-                           out_MLF, out_lbl_fmt, header.sampPeriod);
+                           out_MLF, out_lbl_fmt, header.mSamplePeriod);
     }
-    ViterbiDone(&net, NULL);
+    //ViterbiDone(&net, NULL);
+    net.ViterbiDone(NULL);
+    
     free(obsMx);
     CloseOutputLabelFile(lfp, out_MLF);
 
     if (trace_flag & 1) {
-      TraceLog("[%d frames]", header.nSamples - hset.mTotalDelay);
+      TraceLog("[%d frames]", header.mNSamples - hset.mTotalDelay);
     }
     if (!network_file) {
-      ReleaseNetwork(&net);
+      net.Release();
       free(lrt);
     }
   }
   
   if (network_file) {
-    ReleaseNetwork(&net);
+    net.Release();
     free(lrt);
   }
   

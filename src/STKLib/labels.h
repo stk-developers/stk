@@ -79,7 +79,7 @@ void WriteLabels(
 
 void CloseOutputLabelFile(FILE *lfp, const char *out_MLF);
 
-struct my_hsearch_data readLabelList(char *labelListFileName);
+MyHSearchData readLabelList(char *labelListFileName);
 
 void ReleaseLabels(Label *labels);
 
@@ -102,7 +102,7 @@ struct LabelStats {
 
 Label *ReadLabels(
   FILE *lfp,
-  struct my_hsearch_data *label_hash,
+  MyHSearchData *label_hash,
   enum UnknownLabelsAction unknownLabels,
   LabelFormat labelFormat,
   long sampPeriod,

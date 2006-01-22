@@ -10,7 +10,7 @@
  *                                                                         *
  ***************************************************************************/
 #define VERSION "0.2 "__TIME__" "__DATE__
-#include "STKLib/net.h"
+#include "STKLib/Net.h"
 #include "STKLib/labels.h"
 #include "STKLib/common.h"
 
@@ -98,8 +98,8 @@ int main(int argc, char *argv[]) {
   Label *labels;
   char line[1024];
   char label_file[1024];
-  struct my_hsearch_data phoneHash, dictHash = {0};
-  struct my_hsearch_data triphHash, nonCDphHash, cfgHash ;
+  MyHSearchData phoneHash, dictHash = {0};
+  MyHSearchData triphHash, nonCDphHash, cfgHash ;
 
   FileListElem *feature_files=NULL;
   int nfeature_files = 0;
@@ -149,15 +149,15 @@ int main(int argc, char *argv[]) {
     last_file = AddFileElem(last_file, argv[i]);
     nfeature_files++;
   }
-  expOptions.CD_phone_expansion =
+  expOptions.mCDPhoneExpansion =
                  GetParamBool(&cfgHash,SNAME":ALLOWXWRDEXP",    FALSE);
-  expOptions.respect_pronun_var
+  expOptions.mRespectPronunVar
                = GetParamBool(&cfgHash,SNAME":RESPECTPRONVARS", FALSE);
-  expOptions.strict_timing
+  expOptions.mStrictTiming
                = GetParamBool(&cfgHash,SNAME":EXACTTIMEMERGE",  FALSE);
-  expOptions.no_optimization
+  expOptions.mNoOptimization
                =!GetParamBool(&cfgHash,SNAME":MINIMIZENET",     TRUE);
-  expOptions.remove_words_nodes
+  expOptions.mRemoveWordsNodes
                = GetParamBool(&cfgHash,SNAME":REMEXPWRDNODES",  FALSE);
   in_lbl_fmt.left_extent  = -100 * (long long) (0.5 + 1e5 *
                  GetParamFlt(&cfgHash, SNAME":STARTTIMESHIFT",  0.0));
@@ -185,28 +185,28 @@ int main(int argc, char *argv[]) {
 
   cchrptr      = GetParamStr(&cfgHash, SNAME":NETFORMATING",  "");
   if (*cchrptr) {
-    out_net_fmt.no_LM_likes    = 1;
-    out_net_fmt.no_times       = 1;
-    out_net_fmt.no_pronun_vars = 1;
-    out_net_fmt.no_acc_likes   = 1;
+    out_net_fmt.mNoLMLikes    = 1;
+    out_net_fmt.mNoTimes       = 1;
+    out_net_fmt.mNoPronunVars = 1;
+    out_net_fmt.mNoAccLikes   = 1;
   }
   while (*cchrptr) {
     switch (*cchrptr++) {
-      case 'R': out_net_fmt.base62_labels  = 1; // reticent
-                out_net_fmt.lin_node_seqs  = 1;
-                out_net_fmt.no_defaults    = 1; break;
-      case 'V': out_net_fmt.arc_defs_with_J= 1;
-                out_net_fmt.all_field_names= 1; break;
-      case 'J': out_net_fmt.arc_defs_to_end= 1; break;
-      case 'W': out_net_fmt.no_word_nodes  = 1; break;
-      case 'M': out_net_fmt.no_model_nodes = 1; break;
-      case 'X': out_net_fmt.strip_triphones= 1; break;
-      case 't': out_net_fmt.no_times       = 0; break;
-      case 's': out_net_fmt.start_times    = 1; break;
-      case 'v': out_net_fmt.no_pronun_vars = 0; break;
-      case 'a': out_net_fmt.no_acc_likes   = 0; break;
-      case 'l': out_net_fmt.no_LM_likes    = 0; break;
-      case 'p': out_net_fmt.aprox_accuracy = 1; break;
+      case 'R': out_net_fmt.mBase62Labels  = 1; // reticent
+                out_net_fmt.mLinNodeSeqs  = 1;
+                out_net_fmt.mNoDefaults    = 1; break;
+      case 'V': out_net_fmt.mArcDefsWithJ= 1;
+                out_net_fmt.mAllFieldNames= 1; break;
+      case 'J': out_net_fmt.mArcDefsToEnd= 1; break;
+      case 'W': out_net_fmt.mNoWordNodes  = 1; break;
+      case 'M': out_net_fmt.mNoModelNodes = 1; break;
+      case 'X': out_net_fmt.mStripTriphones= 1; break;
+      case 't': out_net_fmt.mNoTimes       = 0; break;
+      case 's': out_net_fmt.mStartTimes    = 1; break;
+      case 'v': out_net_fmt.mNoPronunVars = 0; break;
+      case 'a': out_net_fmt.mNoAccLikes   = 0; break;
+      case 'l': out_net_fmt.mNoLMLikes    = 0; break;
+      case 'p': out_net_fmt.mAproxAccuracy = 1; break;
       default:
         Warning("Unknown net formating flag '%c' ignored (JMRVWXalpstv)", *cchrptr);
     }
@@ -258,17 +258,17 @@ int main(int argc, char *argv[]) {
   if (dictionary != NULL) {
     ReadDictionary(dictionary, &dictHash, &phoneHash);
     notInDictAction  = WORD_NOT_IN_DIC_WARN;
-    if (expOptions.respect_pronun_var) {
+    if (expOptions.mRespectPronunVar) {
       notInDictAction |= (int) PRON_NOT_IN_DIC_ERROR;
     }
   }
-  if (dictHash.nentries == 0) expOptions.no_word_expansion = 1;
+  if (dictHash.mNEntries == 0) expOptions.mNoWordExpansion = 1;
 
   transc_filter = transc_filter != NULL ? transc_filter :
                   in_transc_fmt == TF_STK      ? net_filter    :
                                           label_filter;
 
-  in_lbl_fmt.TIMES_OFF = out_net_fmt.no_times;
+  in_lbl_fmt.TIMES_OFF = out_net_fmt.mNoTimes;
 
   in_MLF_fp  = OpenInputMLF(in_MLF_fn);
   out_MLF_fp = OpenOutputMLF(out_MLF_fn);
@@ -306,7 +306,7 @@ int main(int argc, char *argv[]) {
         labels = ReadLabels(in_MLF_fp, dictionary ? &dictHash : &phoneHash,
                                        dictionary ? UL_ERROR : UL_INSERT, in_lbl_fmt,
                                        /*sampleRate*/ 1, label_file, in_MLF_fn, NULL);
-        node = MakeNetworkFromLabels(labels, dictionary ? NT : NT_Phone);
+        node = MakeNetworkFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
         ReleaseLabels(labels);
       } else if (in_transc_fmt == TF_STK || in_transc_fmt == TF_MNF) {
         node = ReadSTKNetwork(in_MLF_fp, &dictHash, &phoneHash, notInDictAction,
@@ -320,7 +320,7 @@ int main(int argc, char *argv[]) {
       NetworkExpansionsAndOptimizations(node, expOptions, out_net_fmt, &dictHash,
                                         &nonCDphHash, &triphHash);
 
-      if (out_net_fmt.aprox_accuracy)
+      if (out_net_fmt.mAproxAccuracy)
         ComputeAproximatePhoneAccuracy(node, 0);
 
       out_MLF_fp = OpenOutputLabelFile(label_file, out_lbl_dir, out_lbl_ext,
@@ -354,8 +354,8 @@ int main(int argc, char *argv[]) {
     FILE *fp = fopen(cd_list_file, "wt");
     if (fp == NULL) Error("Cannot open output file: '%s'", cd_list_file);
 
-    for (i = 0; i < triphHash.nentries; i++) {
-      if (fprintf(fp, "%s\n", (char *) triphHash.entry[i]->key) < 0) {
+    for (i = 0; i < triphHash.mNEntries; i++) {
+      if (fprintf(fp, "%s\n", (char *) triphHash.mpEntry[i]->key) < 0) {
         Error("Cannot write to file: '%s'", cd_list_file);
       }
     }
@@ -365,8 +365,8 @@ int main(int argc, char *argv[]) {
   my_hdestroy_r(&nonCDphHash, 0);
   FreeDictionary(&dictHash);
   
-  for (i = 0; i < cfgHash.nentries; i++) 
-    free(cfgHash.entry[i]->data);
+  for (i = 0; i < cfgHash.mNEntries; i++) 
+    free(cfgHash.mpEntry[i]->data);
   
   my_hdestroy_r(&cfgHash, 1);
   return 0;

@@ -19,7 +19,7 @@
 #include "STKLib/fileio.h"
 #include "STKLib/common.h"
 #include "STKLib/Models.h"
-#include "STKLib/viterbi.h"
+#include "STKLib/Viterbi.h"
 #include "STKLib/labels.h"
 #ifndef WIN32
 #include <unistd.h>
@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
   int    i;
   FLOAT totLogLike      = 0;
   int   totFrames       = 0;
-//  struct my_hsearch_data labelHash;
+//  MyHSearchData labelHash;
 
   typedef struct _StrListElem StrListElem;
   struct _StrListElem {

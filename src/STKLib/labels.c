@@ -182,12 +182,12 @@ void CloseOutputLabelFile(FILE *lfp, const char *out_MLF)
   }
 }
 
-struct my_hsearch_data readLabelList(char *labelListFileName)
+MyHSearchData readLabelList(char *labelListFileName)
 {
   char line[1024];
   FILE *fp;
   int nlabels=0;
-  struct my_hsearch_data hash = {0};
+  MyHSearchData hash = {0};
 
   if ((fp = fopen(labelListFileName, "rt")) == NULL) {
       Error("Cannot open file: '%s'", labelListFileName);
@@ -390,7 +390,7 @@ FILE *OpenInputLabelFile(
 
 Label *ReadLabels(
   FILE *lfp,
-  struct my_hsearch_data *label_hash,
+  MyHSearchData *label_hash,
   enum UnknownLabelsAction unknownLabels,
   LabelFormat labelFormat,
   long sampPeriod,

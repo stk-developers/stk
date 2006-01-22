@@ -19,7 +19,7 @@
 #include "STKLib/fileio.h"
 #include "STKLib/common.h"
 #include "STKLib/Models.h"
-#include "STKLib/viterbi.h"
+#include "STKLib/Viterbi.h"
 
 using namespace STK;
 
@@ -50,7 +50,7 @@ void usage(char *progname)
 }
 
 int main(int argc, char *argv[]) {
-  HTK_Header header;
+  HtkHeader header;
   ModelSet hset;
   FILE *sfp, *ofp = NULL;
   FLOAT  *obsMx;
@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
   typedef struct _StrListElem StrListElem;
   struct _StrListElem {
     StrListElem *next;
-    char *physical;
+    char *mpPhysical;
     char logical[1];
   };
 
@@ -115,7 +115,7 @@ int main(int argc, char *argv[]) {
                 for (; *chrptr; chrptr++) if (*chrptr == '\\') *chrptr = '/';
                 chrptr = strchr((*last)->logical, '=');
                 if (chrptr) *chrptr = '\0';
-                (*last)->physical = chrptr ? chrptr+1: (*last)->logical;
+                (*last)->mpPhysical = chrptr ? chrptr+1: (*last)->logical;
                 last = &(*last)->next;
                 *last = NULL;
                 nfeature_files++;
@@ -133,7 +133,7 @@ int main(int argc, char *argv[]) {
                   for (; *chrptr; chrptr++) if (*chrptr == '\\') *chrptr = '/';
                   chrptr = strchr((*last)->logical, '=');
                   if (chrptr) *chrptr = '\0';
-                  (*last)->physical = chrptr ? chrptr+1: (*last)->logical;
+                  (*last)->mpPhysical = chrptr ? chrptr+1: (*last)->logical;
                   last = &(*last)->next;
                   nfeature_files++;
                 }
@@ -187,13 +187,13 @@ int main(int argc, char *argv[]) {
   }
 
   for (file_name = feature_files; file_name; file_name = file_name->mpNext) {
-    obsMx = ReadHTKFeatures(file_name->physical, swap_features,
+    obsMx = ReadHTKFeatures(file_name->mpPhysical, swap_features,
                             startFrmExt, endFrmExt, targetKind,
                             derivOrder, derivWinLengths, &header);
 
-    if (hset.mInputVectorSize != header.sampSize / sizeof(float)) {
+    if (hset.mInputVectorSize != header.mSampleSize / sizeof(float)) {
       Error("Vector size [%d] in '%s' is incompatible with HMM set [%d]",
-            header.sampSize/sizeof(float), file_name->physical, hset.mInputVectorSize);
+            header.mSampleSize/sizeof(float), file_name->mpPhysical, hset.mInputVectorSize);
     }
 
     MakeFileName(outFile, file_name->logical, out_dir, out_ext);
@@ -202,8 +202,8 @@ int main(int argc, char *argv[]) {
       Error("Cannot open output probability file: '%s'", outFile);
     }
 
-    header.sampKind = 9;
-    header.sampSize = hset.mNStates * sizeof(float);
+    header.mSampleKind = 9;
+    header.mSampleSize = hset.mNStates * sizeof(float);
 
     if (WriteHTKHeader(ofp, header, 1)) {
       Error("Cannot write to output probability file: '%s'", outFile);
@@ -212,16 +212,16 @@ int main(int argc, char *argv[]) {
     time = -hset.mTotalDelay;
     ResetXFormInstances(&hset);
 
-    for (i = 0; i < header.nSamples; i++) {
+    for (i = 0; i < header.mNSamples; i++) {
       UpdateStacks(&hset, obsMx + i * hset.mInputVectorSize, ++time, FORWARD);
       if (time <= 0) continue;
 
-      for (m = 0; m < hset.mHmmHash.nentries; m++) {
-        macro = (Macro *) hset.mHmmHash.entry[m]->data;
+      for (m = 0; m < hset.mHmmHash.mNEntries; m++) {
+        macro = (Macro *) hset.mHmmHash.mpEntry[m]->data;
         if (macro->mpData->mpMacro != macro) continue;
 
-        for (j = 0; j < ((Hmm *) macro->data)->mNStates-2; j++) {
-          State *state = ((Hmm *) macro->data)->state[j];
+        for (j = 0; j < ((Hmm *) macro->mpData)->mNStates-2; j++) {
+          State *state = ((Hmm *) macro->mpData)->state[j];
           if (!state->mpMacro) { // take only non-shared states
             opp[state->mID] =
               DiagCGaussianMixtureDensity(state, obsMx + i * hset.mInputVectorSize, NULL);
@@ -229,12 +229,12 @@ int main(int argc, char *argv[]) {
         }
       }
 
-      for (m = 0; m < hset.mStateHash.nentries; m++) {
+      for (m = 0; m < hset.mStateHash.mNEntries; m++) {
         State * state;
-        macro = (Macro *) hset.mStateHash.entry[m]->data;
+        macro = (Macro *) hset.mStateHash.mpEntry[m]->data;
         if (macro->mpData->mpMacro != macro) continue;
 
-        state = (State *) macro->data;
+        state = (State *) macro->mpData;
         opp[state->mID] =
           DiagCGaussianMixtureDensity(state, obsMx + i * hset.mInputVectorSize, NULL);
       }

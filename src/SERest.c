@@ -19,8 +19,6 @@
 #include "STKLib/labels.h"
 #include "STKLib/stkstream.h"
 
-#include "STKLib/MmfIO.h"
-
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -112,8 +110,8 @@ int main(int argc, char *argv[]) {
   FLOAT *             obsMx;
   FLOAT *             obsMx_alig;
   FLOAT               sentWeight;
-  HTK_Header          header;
-  HTK_Header          header_alig;
+  HtkHeader          header;
+  HtkHeader          header_alig;
   Label *             labels;
   
   int                 i;
@@ -123,11 +121,11 @@ int main(int argc, char *argv[]) {
   char                label_file[1024];
   char *              chrptr;
   
-//  struct my_hsearch_data labelHash;
-  struct my_hsearch_data nonCDphHash;
-  struct my_hsearch_data phoneHash;
-  struct my_hsearch_data dictHash;
-  struct my_hsearch_data cfgHash;
+//  MyHSearchData labelHash;
+  MyHSearchData nonCDphHash;
+  MyHSearchData phoneHash;
+  MyHSearchData dictHash;
+  MyHSearchData cfgHash;
 
   FLOAT               totLogLike      = 0;
   FLOAT               totLogPosterior = 0;
@@ -221,7 +219,7 @@ int main(int argc, char *argv[]) {
   enum Update_Type {UT_ML=0, UT_MMI, UT_MPE} update_type;
   enum Update_Mode {UM_UPDATE=1, UM_DUMP=2, UM_BOTH=UM_UPDATE|UM_DUMP} update_mode;
   enum TranscriptionFormat {TF_HTK, TF_STK, TF_ERR} in_transc_fmt;
-  int notInDictAction = (NotInDictAction) WORD_NOT_IN_DIC_UNSET;
+  int notInDictAction = (NotInDictActionType) WORD_NOT_IN_DIC_UNSET;
   RHFBuffer rhfbuff                  = {0};
   RHFBuffer rhfbuff_alig             = {0};
   ExpansionOptions expOptions        = {0};
@@ -271,15 +269,15 @@ int main(int argc, char *argv[]) {
   xfStatsBin   = GetParamBool(&cfgHash,SNAME":XFORMSTATSBINARY",FALSE);
   xformList    = GetParamStr(&cfgHash, SNAME":XFORMLIST",       NULL);
   viterbiTrain = GetParamBool(&cfgHash,SNAME":VITERBITRAIN",    FALSE);
-  expOptions.CD_phone_expansion =
+  expOptions.mCDPhoneExpansion =
                  GetParamBool(&cfgHash,SNAME":ALLOWXWRDEXP",    FALSE);
-  expOptions.respect_pronun_var
+  expOptions.mRespectPronunVar
                = GetParamBool(&cfgHash,SNAME":RESPECTPRONVARS", FALSE);
-  expOptions.strict_timing
+  expOptions.mStrictTiming
                = GetParamBool(&cfgHash,SNAME":EXACTTIMEMERGE",  FALSE);
-  expOptions.no_optimization
+  expOptions.mNoOptimization
                =!GetParamBool(&cfgHash,SNAME":MINIMIZENET",     FALSE);
-  expOptions.remove_words_nodes
+  expOptions.mRemoveWordsNodes
                = GetParamBool(&cfgHash,SNAME":REMEXPWRDNODES",  FALSE);
   in_lbl_fmt.TIMES_OFF =
                 !GetParamBool(&cfgHash,SNAME":TIMEPRUNING",    FALSE);
@@ -433,9 +431,6 @@ int main(int argc, char *argv[]) {
   if ((nfeature_files & 1) && update_type != UT_ML && parallel_mode == 0)
     Error("%s update requires even number (two sets) of accumulator files", ut_str);
     
-  
-try
-{ 
   if (src_hmm_list) 
     hset.ReadHMMList(src_hmm_list, src_hmm_dir ? src_hmm_dir : "", src_hmm_ext ? src_hmm_ext : "");
     
@@ -448,13 +443,13 @@ try
   {
     ReadDictionary(dictionary, &dictHash, &phoneHash);
     notInDictAction  = WORD_NOT_IN_DIC_WARN;
-    if (expOptions.respect_pronun_var) {
+    
+    if (expOptions.mRespectPronunVar)
       notInDictAction |= PRON_NOT_IN_DIC_ERROR;
-    }
   }
   
-  if (dictHash.nentries == 0) 
-    expOptions.no_word_expansion = 1;
+  if (dictHash.mNEntries == 0) 
+    expOptions.mNoWordExpansion = 1;
 
   transc_filter = transc_filter != NULL    ? transc_filter :
                   in_transc_fmt == TF_STK  ? net_filter    :
@@ -474,12 +469,29 @@ try
     if (ilfp  == NULL) 
       Error("Cannot open network file: %s", network_file);
 
-    Node *node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash, 
-                                notInDictAction, in_lbl_fmt,
-                                header.sampPeriod, network_file, NULL);
-    NetworkExpansionsAndOptimizations(node, expOptions, in_net_fmt, &dictHash,
-                                      &nonCDphHash, &phoneHash);
-    InitNetwork(&net, node, hset_alig, &hset);
+    Node *node = ReadSTKNetwork(
+        ilfp, 
+        &dictHash, 
+        &phoneHash, 
+        notInDictAction, 
+        in_lbl_fmt,
+        header.mSamplePeriod, 
+        network_file, 
+        NULL);
+                                
+    NetworkExpansionsAndOptimizations(
+        node, 
+        expOptions, 
+        in_net_fmt, 
+        &dictHash,
+        &nonCDphHash, 
+        &phoneHash);
+                                      
+    net.Init(
+        node, 
+        hset_alig, 
+        &hset);
+    
     fclose(ilfp);
     min_examples = 0;
   } 
@@ -489,10 +501,8 @@ try
   }
 
   hset.mMmiUpdate           = update_type;
-
-  //ResetAccumsForHMMSet(&hset);
   hset.ResetAccums();
-
+  
   hset.MMI_E               = E_constant;
   hset.MMI_h               = h_constant;
   hset.MMI_tauI            = I_smoothing;
@@ -511,6 +521,7 @@ try
             "Means and variances will not be updated");
     hset.mUpdateMask &= ~(UM_MEAN | UM_VARIANCE);
   }
+  
   for (file_name = feature_files;
       file_name != NULL;
       file_name = one_pass_reest || (parallel_mode == 0 && update_type != UT_ML)
@@ -536,8 +547,8 @@ try
       FLOAT P, P2;
       long S;
 
-      //ReadAccums(file_name->physical, 1.0, &hset, &S, &P, UT_ML);
-      hset.ReadAccums(file_name->physical, 1.0, &S, &P, UT_ML);
+      //ReadAccums(file_name->mpPhysical, 1.0, &hset, &S, &P, UT_ML);
+      hset.ReadAccums(file_name->mpPhysical, 1.0, &S, &P, UT_ML);
       totFrames  += S;
       totLogLike += P;
 
@@ -547,18 +558,20 @@ try
 
       if (update_type != UT_ML) {
         // Second set of accums is for compeating models
-        //ReadAccums(file_name->mpNext->physical, 1.0, &hset, &S, &P2, update_type);
-        hset.ReadAccums(file_name->mpNext->physical, 1.0, &S, &P2, update_type);
+        //ReadAccums(file_name->mpNext->mpPhysical, 1.0, &hset, &S, &P2, update_type);
+        hset.ReadAccums(file_name->mpNext->mpPhysical, 1.0, &S, &P2, update_type);
         totLogPosterior += update_type == UT_MPE ? P2 : P - P2;
 
         if (trace_flag & 1) {
           TraceLog("[%d frames] %f", S, P2/S);
         }
       }
-    } else {
-      int nFrames;
-      char *phys_fn = (one_pass_reest ? file_name->mpNext : file_name)->physical;
-      char *lgcl_fn = (one_pass_reest ? file_name->mpNext : file_name)->logical;
+    } 
+    else 
+    {
+      int     nFrames;
+      char *  phys_fn = (one_pass_reest ? file_name->mpNext : file_name)->mpPhysical;
+      char *  lgcl_fn = (one_pass_reest ? file_name->mpNext : file_name)->logical;
 
       // read sentence weight definition if any ( physical_file.fea[s,e]{weight} )
       if ((chrptr = strrchr(phys_fn, '{')) != NULL &&
@@ -570,22 +583,36 @@ try
       {
         sentWeight = 1.0;
       }
-      if (cmn_mask) process_mask(lgcl_fn, cmn_mask, cmn_file);
-      if (cvn_mask) process_mask(lgcl_fn, cvn_mask, cvn_file);
-      obsMx = ReadHTKFeatures(phys_fn, swap_features,
-                              startFrmExt, endFrmExt, targetKind,
-                              derivOrder, derivWinLengths, &header,
-                              cmn_path, cvn_path, cvg_file, &rhfbuff);
+      
+      if (cmn_mask) 
+        process_mask(lgcl_fn, cmn_mask, cmn_file);
+      if (cvn_mask) 
+        process_mask(lgcl_fn, cvn_mask, cvn_file);
+        
+      obsMx = ReadHTKFeatures(
+          phys_fn, 
+          swap_features,
+          startFrmExt, 
+          endFrmExt, 
+          targetKind,
+          derivOrder, 
+          derivWinLengths, 
+          &header,
+          cmn_path, 
+          cvn_path, 
+          cvg_file, 
+          &rhfbuff);
                               
       // we won't use rhfbuff anymore so we free some of its allocated
       // structure members
-      free(rhfbuff.last_file_name);
+      free(rhfbuff.mpLastFileName);
 
-      if (hset.mInputVectorSize != header.sampSize / sizeof(float)) {
+      if (hset.mInputVectorSize != header.mSampleSize / sizeof(float)) {
         Error("Vector size [%d] in '%s' is incompatible with source HMM set [%d]",
-              header.sampSize/sizeof(float), phys_fn, hset.mInputVectorSize);
+              header.mSampleSize/sizeof(float), phys_fn, hset.mInputVectorSize);
       }
-      nFrames = header.nSamples - hset.mTotalDelay;
+      
+      nFrames = header.mNSamples - hset.mTotalDelay;
 
 //      for (i = 0; i < nFrames; i++) {
 //        int j;
@@ -595,61 +622,103 @@ try
 //        puts("");
 //      }
 
-      if (one_pass_reest) {
-        if (cmn_mask_alig) process_mask(file_name->logical, cmn_mask_alig, cmn_file_alig);
-        if (cvn_mask_alig) process_mask(file_name->logical, cvn_mask_alig, cvn_file_alig);
-        obsMx_alig = ReadHTKFeatures(file_name->physical, swap_features_alig,
-                                     startFrmExt_alig, endFrmExt_alig, targetKind_alig,
-                                     derivOrder_alig, derivWinLengths_alig, &header_alig,
-                                     cmn_path_alig, cvn_path_alig, cvg_file_alig, &rhfbuff_alig);
+      if (one_pass_reest) 
+      {
+        if (cmn_mask_alig) 
+          process_mask(file_name->logical, cmn_mask_alig, cmn_file_alig);
+          
+        if (cvn_mask_alig) 
+          process_mask(file_name->logical, cvn_mask_alig, cvn_file_alig);
+        
+        obsMx_alig = ReadHTKFeatures(
+            file_name->mpPhysical, 
+            swap_features_alig,
+            startFrmExt_alig, 
+            endFrmExt_alig, 
+            targetKind_alig,
+            derivOrder_alig, 
+            derivWinLengths_alig, 
+            &header_alig,
+            cmn_path_alig, 
+            cvn_path_alig, 
+            cvg_file_alig, 
+            &rhfbuff_alig);
+        
         // we won't use rhfbuff anymore so we free some of its allocated
         // structure members
-        free(rhfbuff_alig.last_file_name);
+        free(rhfbuff_alig.mpLastFileName);
 
-        if (hset_alig->mInputVectorSize != header_alig.sampSize/sizeof(float)) {
+        if (hset_alig->mInputVectorSize != header_alig.mSampleSize/sizeof(float)) {
           Error("Vector size [%d] in '%s' is incompatible with alignment HMM set [%d]",
-                header_alig.sampSize/sizeof(float), file_name->physical, hset_alig->mInputVectorSize);
+                header_alig.mSampleSize/sizeof(float), file_name->mpPhysical, hset_alig->mInputVectorSize);
         }
-        if (nFrames != header_alig.nSamples - hset_alig->mTotalDelay) {
-          if (hset_alig->mTotalDelay != hset.mTotalDelay) {
+        
+        if (nFrames != header_alig.mNSamples - hset_alig->mTotalDelay) 
+        {
+          if (hset_alig->mTotalDelay != hset.mTotalDelay) 
+          {
             printf("HPARM1 frames: %d+%ld+%d, alignment model delay: %d\n"
                    "HPARM2 frames: %d+%ld+%d, source model delay: %d\n",
-                   startFrmExt_alig, header_alig.nSamples-startFrmExt_alig-endFrmExt_alig,
+                   startFrmExt_alig, header_alig.mNSamples-startFrmExt_alig-endFrmExt_alig,
                    endFrmExt_alig, hset_alig->mTotalDelay,
-                   startFrmExt, header.nSamples-startFrmExt-endFrmExt,
+                   startFrmExt, header.mNSamples-startFrmExt-endFrmExt,
                    endFrmExt, hset.mTotalDelay);
           }
+          
           Error("Mismatch in number of frames in single pass re-estimation "
                 "feature file pair: '%s' <-> '%s'%s",
-                file_name->mpNext->physical, file_name->physical,
+                file_name->mpNext->mpPhysical, file_name->mpPhysical,
                 hset_alig->mTotalDelay != hset.mTotalDelay ?
                 ". Consider different delays of alignment/source HMM set!":"");
         }
-      } else {
+      } 
+      else 
+      {
         header_alig = header;
         obsMx_alig  = obsMx;
       }
       
-      if (!network_file) {
+      if (!network_file) 
+      {
         Node *node = NULL;
         strcpy(label_file, file_name->logical);
-        ilfp = OpenInputLabelFile(label_file, src_lbl_dir,
-                                  src_lbl_ext ? src_lbl_ext :
-                                  in_transc_fmt == TF_STK ? "net" : "lab",
-                                  ilfp, src_mlf);
+        
+        ilfp = OpenInputLabelFile(
+            label_file, 
+            src_lbl_dir,
+            src_lbl_ext ? src_lbl_ext : in_transc_fmt == TF_STK ? "net" : "lab",
+            ilfp, 
+            src_mlf);
 
         if (in_transc_fmt == TF_HTK) 
         {
-          labels = ReadLabels(ilfp, dictionary ? &dictHash : &phoneHash,
-                                    dictionary ? UL_ERROR : UL_INSERT, in_lbl_fmt,
-                                    header.sampPeriod, label_file, src_mlf, NULL);
-          node = MakeNetworkFromLabels(labels, dictionary ? NT : NT_Phone);
+          labels = ReadLabels(
+              ilfp, 
+              dictionary ? &dictHash : &phoneHash,
+              dictionary ? UL_ERROR : UL_INSERT, 
+              in_lbl_fmt,
+              header.mSamplePeriod, 
+              label_file, 
+              src_mlf, 
+              NULL);
+              
+          node = MakeNetworkFromLabels(
+              labels, 
+              dictionary ? NT_WORD : NT_PHONE);
+              
           ReleaseLabels(labels);
         } 
         else if (in_transc_fmt == TF_STK) 
         {
-          node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash, notInDictAction, in_lbl_fmt,
-                              header.sampPeriod, label_file, src_mlf);
+          node = ReadSTKNetwork(
+              ilfp, 
+              &dictHash, 
+              &phoneHash, 
+              notInDictAction, 
+              in_lbl_fmt,
+              header.mSamplePeriod, 
+              label_file, 
+              src_mlf);
         } 
         else 
         {
@@ -658,68 +727,82 @@ try
 
         NetworkExpansionsAndOptimizations(node, expOptions, in_net_fmt, &dictHash,
                                           &nonCDphHash, &phoneHash);
-        InitNetwork(&net, node, hset_alig, &hset);
+        net.Init(node, hset_alig, &hset);
         CloseInputLabelFile(ilfp, src_mlf);
       }
-      net.wPenalty     = word_penalty;
-      net.mPenalty     = model_penalty;
-      net.lmScale      = grammar_scale;
-      net.pronScale    = pronun_scale;
-      net.tranScale    = transp_scale;
-      net.outpScale    = outprb_scale;
-      net.ocpScale     = occprb_scale;
-      net.pruningThresh= state_pruning > 0.0 ? state_pruning : -LOG_0;
-      net.accumType    = accum_type;
+      
+      net.mWPenalty     = word_penalty;
+      net.mMPenalty     = model_penalty;
+      net.mLmScale      = grammar_scale;
+      net.mPronScale    = pronun_scale;
+      net.mTranScale    = transp_scale;
+      net.mOutpScale    = outprb_scale;
+      net.mOcpScale     = occprb_scale;
+      net.mPruningThresh= state_pruning > 0.0 ? state_pruning : -LOG_0;
+      net.mAccumType    = accum_type;
       
       double prn_step  = stprn_step;
       double prn_limit = stprn_limit;
 
-      if (GetParamBool(&cfgHash, SNAME":NFRAMEOUTPNORM", FALSE)) {
-        net.outpScale = outprb_scale / nFrames;
-        net.pruningThresh /= nFrames;
+      if (GetParamBool(&cfgHash, SNAME":NFRAMEOUTPNORM", FALSE)) 
+      {
+        net.mOutpScale = outprb_scale / nFrames;
+        net.mPruningThresh /= nFrames;
         prn_step          /= nFrames;
         prn_limit         /= nFrames;
       }
 
       FLOAT P;
-      for (;;) {
-        if (nFrames < 1) {
+      for (;;) 
+      {
+        if (nFrames < 1) 
+        {
           Warning("Number of frames smaller than model delay, skipping file %s",
-                  file_name->physical);
+                  file_name->mpPhysical);
           P = LOG_MIN;
           break;
         }
+        
         if (accum_type == AT_MCE) {
-          P = MCEReest(&net, obsMx_alig, obsMx, nFrames, sentWeight, sig_slope);
-        } else {
+          P = net.MCEReest(obsMx_alig, obsMx, nFrames, sentWeight, sig_slope);
+        } 
+        else 
+        {
           P = !viterbiTrain
-            ? BaumWelchReest(&net, obsMx_alig, obsMx, nFrames, sentWeight)
-            : ViterbiReest(  &net, obsMx_alig, obsMx, nFrames, sentWeight);
+            ? net.BaumWelchReest(obsMx_alig, obsMx, nFrames, sentWeight)
+            : net.ViterbiReest  (obsMx_alig, obsMx, nFrames, sentWeight);
         }
-        if (P > LOG_MIN) break;
+        
+        if (P > LOG_MIN) 
+          break;
 
-        if (net.pruningThresh <= LOG_MIN ||
+        if (net.mPruningThresh <= LOG_MIN ||
           prn_step <= 0.0 ||
-          (net.pruningThresh += prn_step) > prn_limit) {          
+          (net.mPruningThresh += prn_step) > prn_limit) 
+        {
           Warning("Overpruning or bad data, skipping file %s",
-                  file_name->physical);
+                  file_name->mpPhysical);
           break;
         }
 
         Warning("Overpruning or bad data in file %s, "
                 "trying pruning threshold: %.2f",
-                file_name->physical, net.pruningThresh);
+                file_name->mpPhysical, net.mPruningThresh);
       }
-      if (P > LOG_MIN) {
-       totFrames  += nFrames;
-       totLogLike += P;
-        if (trace_flag & 1) {
+      
+      if (P > LOG_MIN) 
+      {
+        totFrames  += nFrames;
+        totLogLike += P;
+        if (trace_flag & 1) 
           TraceLog("[%d frames] %f", nFrames, P/nFrames);
-        }
       }
+      
       free(obsMx);
-      if (one_pass_reest) free(obsMx_alig);
-      if (!network_file)  ReleaseNetwork(&net);
+      if (one_pass_reest) 
+        free(obsMx_alig);
+      if (!network_file)  
+        net.Release();
     }
   }
   
@@ -727,10 +810,9 @@ try
   {
     TraceLog("Total number of frames: %d\nTotal log likelihood: %e",
               totFrames, totLogLike);
+    
     if (parallel_mode == 0 && update_type != UT_ML) 
-    {
       TraceLog("Total log posterior: %e", totLogPosterior);
-    }
   }
   
   if (stat_file) 
@@ -763,8 +845,10 @@ try
 
       hset.mpVarFloor = new Variance((tmpvar ? tmpvar->mVectorSize : hset.mInputVectorSize), false);
       
-      for (i = 0; i < hset.mpVarFloor->mVectorSize; i++) {
-        if (macro) {
+      for (i = 0; i < hset.mpVarFloor->mVectorSize; i++) 
+      {
+        if (macro) 
+        {
           hset.mpVarFloor->mpVectorO[i] =
             tmpvar && ((float) min_variance <= 0.0 ||
                         tmpvar->mpVectorO[i] < 1/min_variance)
@@ -776,9 +860,9 @@ try
     // Required by WriteXFormStatsAndRunCommands and UpdateHMMSetFromAccums
     hset.Scan(MTM_MEAN|MTM_VARIANCE, NULL, NormalizeStatsForXForm, 0);
 
-    if (hset.mUpdateMask & UM_XFSTATS) {
+    if (hset.mUpdateMask & UM_XFSTATS) 
       hset.WriteXFormStatsAndRunCommands(trg_hmm_dir, xfStatsBin);
-    }
+    
     if (hset.mUpdateMask != UM_XFSTATS) 
     {
       if (hset.mUpdateMask & UM_XFORM) 
@@ -804,13 +888,13 @@ try
   my_hdestroy_r(&nonCDphHash, 0);
   FreeDictionary(&dictHash);
   
-  for (i = 0; i < cfgHash.nentries; i++) 
-    free(cfgHash.entry[i]->data);
+  for (i = 0; i < cfgHash.mNEntries; i++) 
+    free(cfgHash.mpEntry[i]->data);
     
   my_hdestroy_r(&cfgHash, 1);
 
   if (network_file) 
-    ReleaseNetwork(&net);
+    net.Release();
   
   delete hset.mpVarFloor;
   free(derivWinLengths);
@@ -825,11 +909,6 @@ try
     feature_files = feature_files->mpNext;
     free(file_name);
   }
-}
-catch(...)
-{
-  cerr << "xxx" << endl;
-}
     
   return 0;
 }

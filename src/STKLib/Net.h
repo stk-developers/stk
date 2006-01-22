@@ -20,36 +20,59 @@
 
 namespace STK
 {
+  // Class list (overview)
+  //
   class Node;
   class Link;
   class Token;
   class FWBWR;
   
   
+  // Enums
+  //
   enum NodeType 
   {
-    NT_Undef  = 0x00,
-    NT        = 0x01,
-    NT_Model  = 0x02,
-    NT_Phone  = 0x04,
-    NT_Subnet = 0x08,
-    NT_Tee    = 0x10,
-    NT_Sticky = 0x20,
-    NT_True   = 0x40
+    NT_UNDEF  = 0x00,
+    NT_WORD   = 0x01,
+    NT_MODEL  = 0x02,
+    NT_PHONE  = 0x04,
+    NT_SUBNET = 0x08,
+    NT_TEE    = 0x10,
+    NT_STICKY = 0x20,
+    NT_TRUE   = 0x40
   };
   
+  enum NotInDictActionType
+  {
+    WORD_NOT_IN_DIC_UNSET = 0,
+    WORD_NOT_IN_DIC_ERROR = 1,
+    WORD_NOT_IN_DIC_WARN  = 2,
+    PRON_NOT_IN_DIC_ERROR = 4
+  };
+    
   
+  // Class declarations
+  //
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Network link representation class
+   */
   class Link 
   {
   public:
-    Node *      mpNode;
-    FLOAT       mLike;
-  };
+    Node *        mpNode;
+    FLOAT         mLike;
+  }; // Link
   
   
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Network node representation class
+   */
   class Node
   {
   public:
+    int           x;
     char *        mpName;
     Hmm  *        mpHmm;
     Hmm  *        mpHmmToUpdate;
@@ -67,90 +90,92 @@ namespace STK
     //time range when model can be active - apply only for model type
     long long     mStart;
     long long     mStop;
-    FLOAT         phoneAccuracy;
+    FLOAT         mPhoneAccuracy;
   
-  #ifndef EXPANDNET_ONLY
-    Token *       tokens;
-    Token *       exitToken;
+#   ifndef EXPANDNET_ONLY
+    Token *       mpTokens;
+    Token *       mpExitToken;
   
     //id of first emiting state - apply only for model type
-    int           estate_id;
+    int           mEmittingStateId;
   
-    FWBWR *       alphaBetaList;
-    FWBWR *       alphaBetaListReverse;
+    FWBWR *       mpAlphaBetaList;
+    FWBWR *       mpAlphaBetaListReverse;
   
-    Node  *       nextActiveModel;
-    Node  *       prevActiveModel;
+    Node  *       mpNextActiveModel;
+    Node  *       mpPrevActiveModel;
   
-    Node  *       nextActiveNode;
-    Node  *       prevActiveNode;
+    Node  *       mpNextActiveNode;
+    Node  *       mpPrevActiveNode;
     
-    int           isActive;
-    int           isActiveNode;
-  #ifndef NDEBUG
-    int           aux2;
-  #endif
-  #endif
-  };
+    int           mIsActive;
+    int           mIsActiveNode;
+#   ifndef NDEBUG
+    int           mAux2;
+#   endif
+#   endif
+  }; // class Node
   
-  //typedef struct _STKNetworkOutputFormat STKNetworkOutputFormat;
   
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief STK network specific output format options
+   */
   class STKNetworkOutputFormat 
   {
   public:
-    unsigned no_LM_likes    : 1;
-    unsigned no_times       : 1;
-    unsigned start_times    : 1;
-    unsigned no_word_nodes  : 1;
-    unsigned no_model_nodes : 1;
-    unsigned no_pronun_vars : 1;
-    unsigned no_defaults    : 1;
-    unsigned all_field_names: 1;
-    unsigned arc_defs_to_end: 1;
-    unsigned arc_defs_with_J: 1;
-    unsigned base62_labels  : 1;
-    unsigned aprox_accuracy : 1;
+    unsigned mNoLMLikes      : 1 ;
+    unsigned mNoTimes        : 1 ;
+    unsigned mStartTimes     : 1 ;
+    unsigned mNoWordNodes    : 1 ;
+    unsigned mNoModelNodes   : 1 ;
+    unsigned mNoPronunVars   : 1 ;
+    unsigned mNoDefaults     : 1 ;
+    unsigned mAllFieldNames  : 1 ;
+    unsigned mArcDefsToEnd   : 1 ;
+    unsigned mArcDefsWithJ   : 1 ;
+    unsigned mBase62Labels   : 1 ;
+    unsigned mAproxAccuracy  : 1 ;
   
     //Have no effect yet
-    unsigned no_acc_likes   : 1;
-    unsigned strip_triphones: 1;
-    unsigned lin_node_seqs  : 1;
+    unsigned mNoAccLikes     : 1 ;
+    unsigned mStripTriphones : 1 ;
+    unsigned mLinNodeSeqs    : 1 ;
   };
   
-  enum NotInDictAction 
-  {
-    WORD_NOT_IN_DIC_UNSET = 0,
-    WORD_NOT_IN_DIC_ERROR = 1,
-    WORD_NOT_IN_DIC_WARN  = 2,
-    PRON_NOT_IN_DIC_ERROR = 4
-  };
   
-  //typedef struct _ExpansionOptions ExpansionOptions;
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Network expansion options definitions
+   */
   class ExpansionOptions 
   {
   public:
-    unsigned no_optimization    : 1;
-    unsigned no_word_expansion  : 1;
-    unsigned respect_pronun_var : 1;
-    unsigned remove_words_nodes : 1;
-    unsigned CD_phone_expansion : 1;
-    unsigned strict_timing      : 1;
-    unsigned trace_flag;
+    unsigned mNoOptimization    : 1;
+    unsigned mNoWordExpansion   : 1;
+    unsigned mRespectPronunVar  : 1;
+    unsigned mRemoveWordsNodes  : 1;
+    unsigned mCDPhoneExpansion  : 1;
+    unsigned mStrictTiming      : 1;
+    unsigned mTraceFlag;
   };
   
+  
+  // GLOBAL FUNCTIONS
+  //
   
   Node *MakeNetworkFromLabels(Label *labels, enum NodeType node_type);
   
   void ExpandWordNetworkByDictionary(
     Node *first,
-    struct my_hsearch_data *dict,
+    MyHSearchData *dict,
     int keep_word_nodes,
     int multiple_pronun);
   
   void ExpandMonophoneNetworkToTriphones(
     Node *first,
-    struct my_hsearch_data *nonCDphones,
-    struct my_hsearch_data *CDphones);
+    MyHSearchData *nonCDphones,
+    MyHSearchData *CDphones);
   
   void LatticeLocalOptimization(
     Node *first,
@@ -181,8 +206,8 @@ namespace STK
   
   Node *ReadSTKNetwork(
     FILE *lfp,
-    struct my_hsearch_data *word_hash,
-    struct my_hsearch_data *phone_hash,
+    MyHSearchData *word_hash,
+    MyHSearchData *phone_hash,
     int notInDict,
     LabelFormat labelFormat,
     long sampPeriod,
@@ -191,8 +216,8 @@ namespace STK
   
   Node *ReadSTKNetworkInOldFormat(
     FILE *lfp,
-    struct my_hsearch_data *word_hash,
-    struct my_hsearch_data *phone_hash,
+    MyHSearchData *word_hash,
+    MyHSearchData *phone_hash,
     LabelFormat labelFormat,
     long sampPeriod,
     const char *file_name,
@@ -200,8 +225,8 @@ namespace STK
   
   Node *ReadHTKLattice(
     FILE *lfp,
-    struct my_hsearch_data *word_hash,
-    struct my_hsearch_data *phone_hash,
+    MyHSearchData *word_hash,
+    MyHSearchData *phone_hash,
     LabelFormat labelFormat,
     long sampPeriod,
     const char *file_name);
@@ -217,9 +242,9 @@ namespace STK
     Node *node,
     ExpansionOptions expOptions,
     STKNetworkOutputFormat out_net_fmt,
-    struct my_hsearch_data *dictHash,
-    struct my_hsearch_data *nonCDphHash,
-    struct my_hsearch_data *triphHash);
+    MyHSearchData *dictHash,
+    MyHSearchData *nonCDphHash,
+    MyHSearchData *triphHash);
 
 }; // namespace STK
 

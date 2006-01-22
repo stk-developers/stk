@@ -101,13 +101,15 @@ using namespace STK;
     TRUE  = 1
   } BOOL;
   
-  typedef enum 
+  
+  enum PropagDirectionType
   {
     FORWARD,
     BACKWARD
-  } PropagDirectionType;
+  };
   
-  struct my_hsearch_data 
+  
+  struct MyHSearchData 
   {
     ENTRY **            mpEntry;
     size_t              mNEntries;
@@ -118,7 +120,7 @@ using namespace STK;
   };
   
   
-  struct readline_data 
+  struct ReadlineData 
   {
     char *              buffer;
     int                 size;
@@ -146,18 +148,18 @@ using namespace STK;
   //void _Error_(const char *func, const char *file, int line, char *msg, ...);
   //void _Warning_(const char *func, const char *file, int line, char *msg, ...);
   //void TraceLog(char *msg, ...);
-  int ReadParmKind(const char *str, BOOL checkBrackets);
-  int ParmKind2Str(int parmKind, char *outstr);
-  void MakeFileName(char *outFileName, const char* inFileName,
+  int     ReadParmKind(const char *str, bool checkBrackets);
+  int     ParmKind2Str(int parmKind, char *outstr);
+  void    MakeFileName(char *outFileName, const char* inFileName,
                     const char *out_dir, const char *out_ext);
   
-  char *strtoupper(char *str);
-  int qsstrcmp(const void *a, const void *b);
-  int qsptrcmp(const void *a, const void *b);
+  char *  strtoupper(char *str);
+  int     qsstrcmp(const void *a, const void *b);
+  int     qsptrcmp(const void *a, const void *b);
   
-  void InitLogMath(void);
-  double LogAdd(double x, double y);
-  double LogSub(double x, double y);
+  void    InitLogMath(void);
+  double  LogAdd(double x, double y);
+  double  LogSub(double x, double y);
   
   
   
@@ -175,10 +177,10 @@ using namespace STK;
   void softmax_vec(FLOAT *in, FLOAT *out, int size);
   
   int my_hcreate_r(size_t nel,
-                  struct my_hsearch_data *tab);
+                  MyHSearchData *tab);
   int my_hsearch_r(ENTRY item, ACTION action, ENTRY **ret,
-                  struct my_hsearch_data *tab);
-  void my_hdestroy_r (struct my_hsearch_data *tab, int freeKeys);
+                  MyHSearchData *tab);
+  void my_hdestroy_r (MyHSearchData *tab, int freeKeys);
   
   FILE *my_fopen(
     const char *file_name,
@@ -190,45 +192,45 @@ using namespace STK;
   int fprintHTKstr(FILE *fp, const char *str);
   int getHTKstr(char *str, char **endPtrOrErrMsg);
   char *expandFilterCommand(const char *command, const char *filename);
-  char *readline(FILE *fp, struct readline_data *data);
+  char *readline(FILE *fp, struct ReadlineData *data);
   
   void InsertConfigParam(
-    struct my_hsearch_data *config_hash,
+    MyHSearchData *config_hash,
     const char *param_name,
     const char *value,
     int optionChar);
   
-  void ReadConfig(const char *file_name, struct my_hsearch_data *config_hash);
-  void PrintConfig(struct my_hsearch_data *config_hash);
-  void CheckCommandLineParamUse(struct my_hsearch_data *config_hash);
+  void ReadConfig(const char *file_name, MyHSearchData *config_hash);
+  void PrintConfig(MyHSearchData *config_hash);
+  void CheckCommandLineParamUse(MyHSearchData *config_hash);
   
   const char *GetParamStr(
-    struct my_hsearch_data *config_hash,
+    MyHSearchData *config_hash,
     const char *param_name,
     const char *default_value);
   
   long GetParamInt(
-    struct my_hsearch_data *config_hash,
+    MyHSearchData *config_hash,
     const char *param_name,
     long default_value);
   
   FLOAT GetParamFlt(
-    struct my_hsearch_data *config_hash,
+    MyHSearchData *config_hash,
     const char *param_name,
     FLOAT default_value);
   
   bool GetParamBool(
-    struct my_hsearch_data *config_hash,
+    MyHSearchData *config_hash,
     const char *param_name,
     bool default_value);
   
   int GetParamEnum(
-    struct my_hsearch_data *config_hash,
+    MyHSearchData *config_hash,
     const char *param_name,
     int default_value, ...);
   
   int GetDerivParams(
-    struct my_hsearch_data *config_hash,
+    MyHSearchData *config_hash,
     int *derivOrder,
     int **derivWinLens,
     int *startFrmExt,
@@ -248,7 +250,7 @@ using namespace STK;
     char *argv[],
     const char *optionMapping,
     const char *toolName,
-    struct my_hsearch_data *cfgHash);
+    MyHSearchData *cfgHash);
   
   FileListElem **AddFileElem(FileListElem **last, char *fileElem);
   

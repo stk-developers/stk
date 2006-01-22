@@ -22,17 +22,23 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include <stdexcept>
+#include <iostream>
+
 #include <string>
 
 
 //namespace STK
 //{
-// :WARNING: default HTK compatibility is set to false
   
+  const char *    gpFilterWldcrd;
+  // :WARNING: default HTK compatibility is set to false
   bool            gHtkCompatible = false;
+  FLOAT           gMinLogDiff;
+  
   //const char *    gpFilterWldcrd =    "$";
     
-  static char *parmKindNames[] = 
+  static char *   gpParmKindNames[] = 
   {
     "WAVEFORM",
     "LPC",
@@ -50,19 +56,23 @@
   };
   
   
-  int ReadParmKind(const char *str, BOOL checkBrackets)
+  //***************************************************************************
+  //***************************************************************************
+  int 
+  ReadParmKind(const char *str, bool checkBrackets)
   {
     unsigned int  i;
     int           parmKind =0;
     int           slen     = strlen(str);
   
-    if (checkBrackets) {
-      if (str[0] != '<' || str[slen-1] != '>') {
-        return -1;
-      }
+    if (checkBrackets) 
+    {
+      if (str[0] != '<' || str[slen-1] != '>')  return -1;
       str++; slen -= 2;
     }
-    for (; slen >= 0 && str[slen-2] == '_'; slen -= 2) {
+    
+    for (; slen >= 0 && str[slen-2] == '_'; slen -= 2) 
+    {
       parmKind |= str[slen-1] == 'E' ? PARAMKIND_E :
                   str[slen-1] == 'N' ? PARAMKIND_N :
                   str[slen-1] == 'D' ? PARAMKIND_D :
@@ -76,16 +86,20 @@
   
       if (parmKind == -1) return -1;
     }
-    for (i = 0; i < sizeof(parmKindNames) / sizeof(char*); i++) {
-      if (!strncmp(str, parmKindNames[i], slen)) {
+    
+    for (i = 0; i < sizeof(gpParmKindNames) / sizeof(char*); i++) 
+    {
+      if (!strncmp(str, gpParmKindNames[i], slen))
         return parmKind | i;
-      }
     }
     return -1;
   }
   
-  void MakeFileName(char *outFileName, const char* inFileName,
-                    const char *out_dir, const char *out_ext)
+  //***************************************************************************
+  //***************************************************************************
+  void 
+  MakeFileName(char * pOutFileName, const char* inFileName,
+               const char *out_dir, const char *out_ext)
   {
     const char *base_name, *bname_end = NULL, *chrptr;
   
@@ -93,36 +107,48 @@
   
     base_name = strrchr(inFileName, '/');
     base_name = base_name != NULL ? base_name + 1 : inFileName;
+    
     if (out_ext) bname_end = strrchr(base_name, '.');
     if (!bname_end) bname_end = base_name + strlen(base_name);
   
   
-    if ((chrptr = strstr(inFileName, "/./")) != NULL) {
+    if ((chrptr = strstr(inFileName, "/./")) != NULL) 
+    {
       // what is in path after /./ serve as base name
       base_name = chrptr + 3;
-    }/* else if (*inFileName != '/') {
+    }
+    /* else if (*inFileName != '/') 
+    {
       // if inFileName isn't absolut path, don't forget directory structure
       base_name = inFileName;
     }*/
   
-    *outFileName = '\0';
-    if (out_dir) {
-      if (*out_dir) {
-        strcat(outFileName, out_dir);
-        strcat(outFileName, "/");
+    *pOutFileName = '\0';
+    if (out_dir) 
+    {
+      if (*out_dir) 
+      {
+        strcat(pOutFileName, out_dir);
+        strcat(pOutFileName, "/");
       }
-      strncat(outFileName, base_name, bname_end-base_name);
-    } else {
-      strncat(outFileName, inFileName, bname_end-inFileName);
+      strncat(pOutFileName, base_name, bname_end-base_name);
+    } 
+    else 
+    {
+      strncat(pOutFileName, inFileName, bname_end-inFileName);
     }
   
-    if (out_ext && *out_ext) {
-      strcat(outFileName, ".");
-      strcat(outFileName, out_ext);
+    if (out_ext && *out_ext) 
+    {
+      strcat(pOutFileName, ".");
+      strcat(pOutFileName, out_ext);
     }
   }
   
-  char *strtoupper(char *str)
+  //***************************************************************************
+  //***************************************************************************
+  char *
+  strtoupper(char *str)
   {
     char *chptr;
     for (chptr = str; *chptr; chptr++) {
@@ -131,25 +157,34 @@
     return str;
   }
   
-  int qsstrcmp(const void *a, const void *b)
+  //***************************************************************************
+  //***************************************************************************
+  int 
+  qsstrcmp(const void *a, const void *b)
   {
     return strcmp(*(char **)a, *(char **)b);
   }
   
-  int qsptrcmp(const void *a, const void *b)
+  //***************************************************************************
+  //***************************************************************************
+  int 
+  qsptrcmp(const void *a, const void *b)
   {
     return *(char **)a - *(char **)b;
   }
   
-  
-  FLOAT minLogDiff;
-  
-  void InitLogMath()
+  //***************************************************************************
+  //***************************************************************************
+  void 
+  InitLogMath()
   {
-    minLogDiff = log(DBL_EPSILON);
+    gMinLogDiff = log(DBL_EPSILON);
   }
   
-  double LogAdd(double x, double y)
+  //***************************************************************************
+  //***************************************************************************
+  double 
+  LogAdd(double x, double y)
   {
     double diff;
   
@@ -164,14 +199,17 @@
       return LOG_0;
     }
   
-    if (diff < minLogDiff) {
+    if (diff < gMinLogDiff) {
         return  x;
     }
   
     return x + log(1.0 + exp(diff));
   }
   
-  double LogSub(double x, double y)
+  //***************************************************************************
+  //***************************************************************************
+  double 
+  LogSub(double x, double y)
   {
     FLOAT diff = y - x;
     assert(diff <= 0.0);
@@ -180,14 +218,17 @@
       return LOG_0;
     }
   
-    if (diff < minLogDiff) {
+    if (diff < gMinLogDiff) {
         return  x;
     }
   
     return x + log(1.0 - exp(diff));
   }
   
-  FloatInLog FIL_Add(FloatInLog a, FloatInLog b)
+  //***************************************************************************
+  //***************************************************************************
+  FloatInLog 
+  FIL_Add(FloatInLog a, FloatInLog b)
   {
     FloatInLog ret;
     if (a.negative == b.negative) {
@@ -203,13 +244,19 @@
     return ret;
   }
   
-  FloatInLog FIL_Sub(FloatInLog a, FloatInLog b)
+  //***************************************************************************
+  //***************************************************************************
+  FloatInLog 
+  FIL_Sub(FloatInLog a, FloatInLog b)
   {
     b.negative = ~b.negative;
     return FIL_Add(a, b);
   }
   
-  FloatInLog FIL_Mul(FloatInLog a, FloatInLog b)
+  //***************************************************************************
+  //***************************************************************************
+  FloatInLog 
+  FIL_Mul(FloatInLog a, FloatInLog b)
   {
     FloatInLog ret;
     ret.negative = a.negative ^ b.negative;
@@ -217,51 +264,66 @@
     return ret;
   }
   
-  FloatInLog FIL_Div(FloatInLog a, FloatInLog b)
+  //***************************************************************************
+  //***************************************************************************
+  FloatInLog 
+  FIL_Div(FloatInLog a, FloatInLog b)
   {
     b.logvalue = -b.logvalue;
     return FIL_Mul(a, b);
   }
   
-  void sigmoid_vec(FLOAT *in, FLOAT *out, int size)
+  //***************************************************************************
+  //***************************************************************************
+  void 
+  sigmoid_vec(FLOAT * pIn, FLOAT * pOut, int size)
   {
-    while (size--) *out++ = 1.0/(1.0 + _EXP(-*in++));
+    while (size--) *pOut++ = 1.0/(1.0 + _EXP(-*pIn++));
   }
   
-  void exp_vec(FLOAT *in, FLOAT *out, int size)
+  //***************************************************************************
+  //***************************************************************************
+  void 
+  exp_vec(FLOAT *pIn, FLOAT *pOut, int size)
   {
-    while (size--) *out++ = _EXP(*in++);
+    while (size--) *pOut++ = _EXP(*pIn++);
   }
   
-  void log_vec(FLOAT *in, FLOAT *out, int size)
+  //***************************************************************************
+  //***************************************************************************
+  void 
+  log_vec(FLOAT *pIn, FLOAT *pOut, int size)
   {
-    while (size--) *out++ = _LOG(*in++);
+    while (size--) *pOut++ = _LOG(*pIn++);
   }
   
-  void sqrt_vec(FLOAT *in, FLOAT *out, int size)
+  //***************************************************************************
+  //***************************************************************************
+  void sqrt_vec(FLOAT *pIn, FLOAT *pOut, int size)
   {
-    while (size--) *out++ = _SQRT(*in++);
+    while (size--) *pOut++ = _SQRT(*pIn++);
   }
   
-  
-  void softmax_vec(FLOAT *in, FLOAT *out, int size)
+  //***************************************************************************
+  //***************************************************************************
+  void softmax_vec(FLOAT *pIn, FLOAT *pOut, int size)
   {
     int i;
     FLOAT sum = 0.0;
-    for (i = 0; i < size; i++) sum += out[i] = _EXP(in[i]);
+    for (i = 0; i < size; i++) sum += pOut[i] = _EXP(pIn[i]);
     sum = 1.0 / sum;
-    for (i = 0; i < size; i++) out[i] *= sum;
+    for (i = 0; i < size; i++) pOut[i] *= sum;
   }
   
+  //***************************************************************************
+  //***************************************************************************
   int ParmKind2Str(int parmKind, char * pOutString) 
   {
     // :KLUDGE: Absolutely no idea what this is...
-    if ((parmKind & 0x003F) >= sizeof(parmKindNames)/sizeof(parmKindNames[0])) 
-    {
+    if ((parmKind & 0x003F) >= sizeof(gpParmKindNames)/sizeof(gpParmKindNames[0])) 
       return 0;
-    }
   
-    strcpy(pOutString, parmKindNames[parmKind & 0x003F]);
+    strcpy(pOutString, gpParmKindNames[parmKind & 0x003F]);
   
     if (parmKind & PARAMKIND_E) strcat(pOutString, "_E");
     if (parmKind & PARAMKIND_N) strcat(pOutString, "_N");
@@ -273,6 +335,7 @@
     if (parmKind & PARAMKIND_0) strcat(pOutString, "_0");
     if (parmKind & PARAMKIND_V) strcat(pOutString, "_V");
     if (parmKind & PARAMKIND_T) strcat(pOutString, "_T");
+    
     return 1;
   }
   
@@ -308,52 +371,68 @@
   }
   */
   
+  //***************************************************************************
+  //***************************************************************************
   bool isBigEndian()
   {
     int a = 1;
     return (bool) ((char *) &a)[0] != 1;
   }
   
-  int my_hcreate_r(size_t nel, struct my_hsearch_data *tab)
+  //***************************************************************************
+  //***************************************************************************
+  int my_hcreate_r(size_t nel, MyHSearchData *tab)
   { 
     memset(&tab->mTab, 0, sizeof(tab->mTab));
-    if ((tab->mpEntry = (ENTRY **) malloc(sizeof(ENTRY *)*nel)) == NULL) return 0;
-    if (!hcreate_r(nel, &tab->mTab)) {
+    
+    if ((tab->mpEntry = (ENTRY **) malloc(sizeof(ENTRY *)*nel)) == NULL) 
+      return 0;
+    
+    if (!hcreate_r(nel, &tab->mTab)) 
+    {
       free(tab->mpEntry);
       return 0;
     }
+    
     tab->mNEntries = 0;
     tab->mTabSize  = nel;
+    
     return 1;
   }
   
+  //***************************************************************************
+  //***************************************************************************
   int my_hsearch_r(ENTRY item, ACTION action, ENTRY **ret,
-                  struct my_hsearch_data *tab)
+                  MyHSearchData *tab)
   {
     unsigned int i;
     int          cc;
   
-  
-    if (action == ENTER && tab->mNEntries == tab->mTabSize) {
+    if (action == ENTER && tab->mNEntries == tab->mTabSize) 
+    {
       struct hsearch_data newtab;
       ENTRY **epp;
   
       epp = (ENTRY **) realloc(tab->mpEntry, sizeof(ENTRY *) * tab->mTabSize * 2);
-      if (epp == NULL) {
+      if (epp == NULL) 
+      {
         *ret = NULL;
         return 0;
       }
   
       tab->mpEntry = epp;
       memset(&newtab, 0, sizeof(newtab));
-      if (!hcreate_r(tab->mTabSize * 2, &newtab)) {
+      
+      if (!hcreate_r(tab->mTabSize * 2, &newtab)) 
+      {
         *ret = NULL;
         return 0;
       }
   
       tab->mTabSize *= 2;
   
-      for (i = 0; i < tab->mNEntries; i++) {
+      for (i = 0; i < tab->mNEntries; i++) 
+      {
         cc = hsearch_r(*tab->mpEntry[i], ENTER, ret, &newtab); assert(cc);
         tab->mpEntry[i] = *ret;
       }
@@ -365,14 +444,15 @@
     cc = hsearch_r(item, action, ret, &tab->mTab);
     assert(action == FIND || cc);
   
-    if (action == ENTER && (*ret)->data == item.data) {
+    if (action == ENTER && (*ret)->data == item.data)
       tab->mpEntry[tab->mNEntries++] = *ret;
-    }
-  
+      
     return 1;
   }
   
-  void my_hdestroy_r(struct my_hsearch_data *tab, int freeKeys)
+  //***************************************************************************
+  //***************************************************************************
+  void my_hdestroy_r(MyHSearchData *tab, int freeKeys)
   {
     unsigned int i;
     if (freeKeys) 
@@ -386,10 +466,8 @@
     free(tab->mpEntry);
   }
   
-  #include <stdlib.h>
-  #include <stdio.h>
-  
-  
+  //***************************************************************************
+  //***************************************************************************
   int fprintHTKstr(FILE *fp, const char *str)
   {
     return fprintf(fp, str    == NULL ? "!NULL"   :
@@ -398,6 +476,8 @@
                                         "%s", str);
   }
   
+  //***************************************************************************
+  //***************************************************************************
   int getHTKstr(char *str, char **endPtrOrErrMsg)
   {
     char termChar = '\0';
@@ -452,8 +532,9 @@
     return 0;
   }
   
-  const char *gpFilterWldcrd;
   
+  //***************************************************************************
+  //***************************************************************************
   char *expandFilterCommand(const char *command, const char *filename)
   {
     char *out, *outend;
@@ -482,7 +563,9 @@
   
   #define LINEBUFF_INIT_SIZE 1024
   #define LINEBUFF_INCR_SIZE 1024
-  char *readline(FILE *fp, struct readline_data *data)
+  //***************************************************************************
+  //***************************************************************************
+  char *readline(FILE *fp, struct ReadlineData *data)
   {
     char *chrptr;
     int   len;
@@ -532,9 +615,11 @@
   "HADAPT","HAUDIO","HFB",   "HLABEL","HMAP", "HMEM",  "HMODEL","HNET",  "HPARM",
   "HREC",  "HSHELL","HTRAIN","HWAVE", "LCMAP","LGBASE","LMODEL","LPCALC","LWMAP"};
   
+  //***************************************************************************
+  //***************************************************************************
   void InsertConfigParam(
-    struct my_hsearch_data *config_hash,
-    const char *param_name,
+    MyHSearchData *pConfigHash,
+    const char *pParamName,
     const char *value,
     int optionChar) {
     ENTRY e, *ep;
@@ -542,10 +627,10 @@
     char *bmod, *emod;
   
   
-    e.key = (char*) malloc(strlen(param_name)+1);
-    for (i=0; *param_name; param_name++) {
-      if (*param_name != '-' && *param_name != '_') {
-        e.key[i++] = toupper(*param_name);
+    e.key = (char*) malloc(strlen(pParamName)+1);
+    for (i=0; *pParamName; pParamName++) {
+      if (*pParamName != '-' && *pParamName != '_') {
+        e.key[i++] = toupper(*pParamName);
       }
     }
     e.key[i] = '\0';
@@ -569,7 +654,7 @@
       e.key[0] = 'S';
     }
   
-    my_hsearch_r(e, FIND, &ep, config_hash);
+    my_hsearch_r(e, FIND, &ep, pConfigHash);
   
     if ((e.data = malloc(strlen(value) + 3)) == NULL) Error("Insufficient memory");
     strcpy(((char *) e.data) + 2, value);
@@ -580,7 +665,7 @@
   
   
     if (ep == NULL) {
-      if (e.key == NULL || !my_hsearch_r(e, ENTER, &ep, config_hash)) {
+      if (e.key == NULL || !my_hsearch_r(e, ENTER, &ep, pConfigHash)) {
         Error("Insufficient memory");
       }
     } else {
@@ -590,10 +675,12 @@
     }
   }
   
-  void ReadConfig(const char *file_name, struct my_hsearch_data *config_hash)
+  //***************************************************************************
+  //***************************************************************************
+  void ReadConfig(const char *file_name, MyHSearchData *pConfigHash)
   {
     char *parptr, *endptr, *chptr, *line;
-    struct readline_data rld = {0};
+    struct ReadlineData rld = {0};
     int line_no = 0;
     FILE *fp;
   
@@ -629,7 +716,7 @@
       if (*endptr) Error("Extra characters at the end of line (%s:%d, char %d)",
                         file_name, line_no, endptr-line+1);
   
-      InsertConfigParam(config_hash, parptr, chptr, 'C');
+      InsertConfigParam(pConfigHash, parptr, chptr, 'C');
     }
   
     if (ferror(fp)) {
@@ -638,32 +725,35 @@
     fclose(fp);
   }
   
-  void CheckCommandLineParamUse(struct my_hsearch_data *config_hash)
+  //***************************************************************************
+  //***************************************************************************
+  void CheckCommandLineParamUse(MyHSearchData * pConfigHash)
   {
     unsigned int i;
   
-    for (i = 0; i < config_hash->mNEntries; i++) {
-      char *value = (char *) config_hash->mpEntry[i]->data;
+    for (i = 0; i < pConfigHash->mNEntries; i++) {
+      char *value = (char *) pConfigHash->mpEntry[i]->data;
       if (value[0] != ' ' && value[1] != 'C') {
-        assert(strchr(config_hash->mpEntry[i]->key, ':'));
+        assert(strchr(pConfigHash->mpEntry[i]->key, ':'));
         Error("Unexpected command line parameter %s",
-              strchr(config_hash->mpEntry[i]->key, ':') + 1);
+              strchr(pConfigHash->mpEntry[i]->key, ':') + 1);
       }
     }
   }
   
-  
-  void PrintConfig(struct my_hsearch_data *config_hash)
+  //***************************************************************************
+  //***************************************************************************
+  void PrintConfig(MyHSearchData * pConfigHash)
   {
     unsigned int i;
     char         *par;
     char         *key;
     char         *val;
   
-    printf("\nConfiguration Parameters[%d]\n", config_hash->mNEntries);
-    for (i = 0; i < config_hash->mNEntries; i++) {
-      key = (char *) config_hash->mpEntry[i]->key;
-      val = (char *) config_hash->mpEntry[i]->data;
+    printf("\nConfiguration Parameters[%d]\n", pConfigHash->mNEntries);
+    for (i = 0; i < pConfigHash->mNEntries; i++) {
+      key = (char *) pConfigHash->mpEntry[i]->key;
+      val = (char *) pConfigHash->mpEntry[i]->data;
       par = strrchr(key, ':');
       if (par) par++; else par = key;
       printf("%c %-15.*s %-20s = %-30s # -%c\n",
@@ -672,32 +762,39 @@
     putchar('\n');
   }
   
+  //***************************************************************************
+  //***************************************************************************
   ENTRY *GetParam(
-    struct my_hsearch_data *config_hash,
-    const char *param_name)
+    MyHSearchData *pConfigHash,
+    const char *pParamName)
   {
     ENTRY e, *ep;
   
-    e.key = (char *) (param_name - 1);
+    e.key = (char *) (pParamName - 1);
     do {
       e.key++;
-      my_hsearch_r(e, FIND, &ep, config_hash);
+      my_hsearch_r(e, FIND, &ep, pConfigHash);
     } while (ep == NULL && (e.key = strchr(e.key, ':')) != NULL);
     if (ep != NULL) *(char *) ep->data = ' '; //Mark param as read
     return ep;
   }
   
-  
-  const char *GetParamStr(
-    struct my_hsearch_data *config_hash,
-    const char *param_name,
-    const char *default_value)
+  //***************************************************************************
+  //***************************************************************************
+  const char * 
+  GetParamStr(
+    MyHSearchData * pConfigHash,
+    const char *    pParamName,
+    const char *    default_value)
   {
-    ENTRY *ep = GetParam(config_hash, param_name);
+    ENTRY *ep = GetParam(pConfigHash, pParamName);
     return ep != NULL ? 2 + (char *) ep->data : default_value;
   }
   
-  static char *OptOrParStr(ENTRY *ep)
+  //***************************************************************************
+  //***************************************************************************
+  static char *
+  OptOrParStr(ENTRY *ep)
   {
     static char str[128];
     int optionChar = ((char *) ep->data)[1];
@@ -711,13 +808,16 @@
     return str;
   }
   
-  long GetParamInt(
-    struct my_hsearch_data *config_hash,
-    const char *param_name,
+  //***************************************************************************
+  //***************************************************************************
+  long 
+  GetParamInt(
+    MyHSearchData *pConfigHash,
+    const char *pParamName,
     long default_value)
   {
     char *chrptr;
-    ENTRY *ep = GetParam(config_hash, param_name);
+    ENTRY *ep = GetParam(pConfigHash, pParamName);
     if (ep == NULL) return default_value;
   
     const char *val = 2 + (char *) ep->data;
@@ -728,13 +828,16 @@
     return default_value;
   }
   
-  FLOAT GetParamFlt(
-    struct my_hsearch_data *config_hash,
-    const char *param_name,
-    FLOAT default_value)
+  //***************************************************************************
+  //***************************************************************************
+  FLOAT 
+  GetParamFlt(
+    MyHSearchData *   pConfigHash,
+    const char *      pParamName,
+    FLOAT             default_value)
   {
     char *chrptr;
-    ENTRY *ep = GetParam(config_hash, param_name);
+    ENTRY *ep = GetParam(pConfigHash, pParamName);
     if (ep == NULL) return default_value;
   
     const char *val = 2 + (char *) ep->data;
@@ -745,12 +848,15 @@
     return default_value;
   }
   
-  bool GetParamBool(
-    struct my_hsearch_data *config_hash,
-    const char *param_name,
-    bool default_value)
+  //***************************************************************************
+  //***************************************************************************
+  bool 
+  GetParamBool(
+    MyHSearchData * pConfigHash,
+    const char *    pParamName,
+    bool            default_value)
   {
-    ENTRY *ep = GetParam(config_hash, param_name);
+    ENTRY *ep = GetParam(pConfigHash, pParamName);
     if (ep == NULL) return default_value;
   
     const char *val = 2 + (char *) ep->data;
@@ -761,13 +867,17 @@
     return false;
   }
   
+  //***************************************************************************
+  //***************************************************************************
   // '...' are pairs: string and corresponding integer value , terminated by NULL
-  int GetParamEnum(
-    struct my_hsearch_data *config_hash,
-    const char *param_name,
-    int default_value, ...)
+  int 
+  GetParamEnum(
+    MyHSearchData * pConfigHash,
+    const char *    pParamName,
+    int             default_value, 
+    ...)  
   {
-    ENTRY *ep = GetParam(config_hash, param_name);
+    ENTRY *ep = GetParam(pConfigHash, pParamName);
     if (ep == NULL) return default_value;
   
     const char *val = 2 + (char *) ep->data;
@@ -800,41 +910,48 @@
     return 0;
   }
   
-  int GetDerivParams(
-    struct my_hsearch_data *config_hash,
-    int *derivOrder,
-    int **derivWinLens,
-    int *startFrmExt,
-    int *endFrmExt,
-    char **CMNPath,
-    char **CMNFile,
-    const char **CMNMask,
-    char **CVNPath,
-    char **CVNFile,
-    const char **CVNMask,
-    const char **CVGFile,
-    const char *toolName,
-    int pseudoModeule)
+  //***************************************************************************
+  //***************************************************************************
+  int 
+  GetDerivParams(
+    MyHSearchData * pConfigHash,
+    int *           derivOrder,
+    int **          derivWinLens,
+    int *           startFrmExt,
+    int *           endFrmExt,
+    char **         CMNPath,
+    char **         CMNFile,
+    const char **   CMNMask,
+    char **         CVNPath,
+    char **         CVNFile,
+    const char **   CVNMask,
+    const char **   CVGFile,
+    const char *    pToolName,
+    int             pseudoModeule)
   {
-    const char *str;
-    int targetKind;
-    char *chrptr, paramName[32];
-    const char *CMNDir, *CVNDir;
-    strcpy(paramName, toolName);
+    const char *  str;
+    int           targetKind;
+    char *        chrptr;
+    char          paramName[32];
+    const char *  CMNDir;
+    const char *  CVNDir;
+    
+    strcpy(paramName, pToolName);
     strcat(paramName, pseudoModeule == 1 ? "SPARM1:" :
                       pseudoModeule == 2 ? "SPARM2:" : "");
+                      
     chrptr = paramName + strlen(paramName);
   
     strcpy(chrptr, "STARTFRMEXT");
-    *startFrmExt = GetParamInt(config_hash, paramName, 0);
+    *startFrmExt = GetParamInt(pConfigHash, paramName, 0);
     strcpy(chrptr, "ENDFRMEXT");
-    *endFrmExt   = GetParamInt(config_hash, paramName, 0);
+    *endFrmExt   = GetParamInt(pConfigHash, paramName, 0);
   
     *CMNPath = *CVNPath = NULL;
     strcpy(chrptr, "CMEANDIR");
-    CMNDir       = GetParamStr(config_hash, paramName, NULL);
+    CMNDir       = GetParamStr(pConfigHash, paramName, NULL);
     strcpy(chrptr, "CMEANMASK");
-    *CMNMask     = GetParamStr(config_hash, paramName, NULL);
+    *CMNMask     = GetParamStr(pConfigHash, paramName, NULL);
     if (*CMNMask != NULL) {
       *CMNPath = (char*) malloc((CMNDir ? strlen(CMNDir) : 0) + npercents(*CMNMask) + 2);
       if (*CMNPath == NULL) Error("Insufficient memory");
@@ -842,9 +959,9 @@
       *CMNFile = *CMNPath + strlen(*CMNPath);
     }
     strcpy(chrptr, "VARSCALEDIR");
-    CVNDir      = GetParamStr(config_hash, paramName, NULL);
+    CVNDir      = GetParamStr(pConfigHash, paramName, NULL);
     strcpy(chrptr, "VARSCALEMASK");
-    *CVNMask     = GetParamStr(config_hash, paramName, NULL);
+    *CVNMask     = GetParamStr(pConfigHash, paramName, NULL);
     if (*CVNMask != NULL) {
       *CVNPath = (char*) malloc((CVNDir ? strlen(CVNDir) : 0) + npercents(*CVNMask) + 2);
       if (*CVNPath == NULL) Error("Insufficient memory");
@@ -852,14 +969,14 @@
       *CVNFile = *CVNPath + strlen(*CVNPath);
     }
     strcpy(chrptr, "VARSCALEFN");
-    *CVGFile     = GetParamStr(config_hash, paramName, NULL);
+    *CVGFile     = GetParamStr(pConfigHash, paramName, NULL);
     strcpy(chrptr, "TARGETKIND");
-    str = GetParamStr(config_hash, paramName, "ANON");
+    str = GetParamStr(pConfigHash, paramName, "ANON");
     targetKind = ReadParmKind(str, FALSE);
     if (targetKind == -1) Error("Invalid TARGETKIND = '%s'", str);
   
     strcpy(chrptr, "DERIVWINDOWS");
-    if ((str = GetParamStr(config_hash, paramName, NULL)) != NULL) {
+    if ((str = GetParamStr(pConfigHash, paramName, NULL)) != NULL) {
       long lval;
       *derivOrder      = 0;
       *derivWinLens = NULL;
@@ -884,11 +1001,11 @@
       if (*derivWinLens == NULL) Error("Insufficient memory");
   
       strcpy(chrptr, "DELTAWINDOW");
-      (*derivWinLens)[0] = GetParamInt(config_hash, paramName, 2);
+      (*derivWinLens)[0] = GetParamInt(pConfigHash, paramName, 2);
       strcpy(chrptr, "ACCWINDOW");
-      (*derivWinLens)[1] = GetParamInt(config_hash, paramName, 2);
+      (*derivWinLens)[1] = GetParamInt(pConfigHash, paramName, 2);
       strcpy(chrptr, "THIRDWINDOW");
-      (*derivWinLens)[2] = GetParamInt(config_hash, paramName, 2);
+      (*derivWinLens)[2] = GetParamInt(pConfigHash, paramName, 2);
       return targetKind;
     }
     *derivWinLens = NULL;
@@ -896,10 +1013,13 @@
     return targetKind;
   }
   
-  FILE *my_fopen(
-    const char *file_name,
-    const char *type,
-    const char *filter)
+  //***************************************************************************
+  //***************************************************************************
+  FILE *
+  my_fopen(
+    const char *  file_name,
+    const char *  type,
+    const char *  filter)
   {
     FILE *fp;
   
@@ -924,7 +1044,10 @@
     return fp;
   }
   
-  int my_fclose(FILE *fp)
+  //***************************************************************************
+  //***************************************************************************
+  int 
+  my_fclose(FILE *fp)
   {
     struct stat sb;
   
@@ -943,17 +1066,20 @@
   const char *hlist_ofilter;
   const char *MMF_ofilter;
   
-  int ParseOptions(
-    int          argc,
-    char *       argv[],
-    const char *  optionMapping,
-    const char *  toolName,
-    struct my_hsearch_data * cfgHash)
+  //***************************************************************************
+  //***************************************************************************
+  int 
+  ParseOptions(
+    int             argc,
+    char *          argv[],
+    const char *    pOptionMapping,
+    const char *    pToolName,
+    MyHSearchData * cfgHash)
   {
     int          i;
     int          opt = '?';
     int          optind;
-    BOOL         option_must_follow = FALSE;
+    bool         option_must_follow = false;
     char         param[1024];
     char *       value;
     char *       optfmt;
@@ -991,9 +1117,9 @@
     for (optind = 1; optind < argc; optind++) {
       if (!strcmp(argv[optind], "--")) break;
       if (argv[optind][0] != '-' || argv[optind][1] != '-') continue;
-      bptr = (char*) malloc(strlen(toolName) + strlen(argv[optind]+2) + 2);
+      bptr = (char*) malloc(strlen(pToolName) + strlen(argv[optind]+2) + 2);
       if (bptr == NULL) Error("Insufficient memory");
-      strcat(strcat(strcpy(bptr, toolName), ":"), argv[optind]+2);
+      strcat(strcat(strcpy(bptr, pToolName), ":"), argv[optind]+2);
       value = strchr(bptr, '=');
       if (!value) Error("Character '=' expected after option '%s'", argv[optind]);
       *value++ = '\0';
@@ -1014,7 +1140,7 @@
       }
       if (opt == 'A') continue;
   
-      chptr = strstr(optionMapping, tstr);
+      chptr = strstr(pOptionMapping, tstr);
       if (chptr == NULL) Error("Invalid command line option '-%c'", opt);
   
       chptr += 3;
@@ -1032,8 +1158,8 @@
         value = chptr;
         while (*chptr && !isspace(*chptr)) chptr++;
         assert(static_cast<unsigned int>(chptr-value+1) < sizeof(param));
-        strncat(strcat(strcpy(param, toolName), ":"), value, chptr-value);
-        param[chptr-value+strlen(toolName)+1] = '\0';
+        strncat(strcat(strcpy(param, pToolName), ":"), value, chptr-value);
+        param[chptr-value+strlen(pToolName)+1] = '\0';
         switch (*optfmt) {
           case 'n': value = strchr(param, '=');
                     if (value) *value = '\0';
@@ -1052,7 +1178,7 @@
                     }
                     if (!optarg) optarg = argv[++optind];
                     if (*optfmt == 'o') {
-                      option_must_follow = (BOOL) 1;
+                      option_must_follow = (bool) 1;
                     }
                     bptr = NULL;
   
@@ -1088,7 +1214,10 @@
     return optind;
   }
   
-  FileListElem **AddFileElem(FileListElem **last, char *fileElem)
+  //***************************************************************************
+  //***************************************************************************
+  FileListElem **
+  AddFileElem(FileListElem **last, char *fileElem)
   {
     char *chrptr;
     *last = (FileListElem *) malloc(sizeof(FileListElem) + strlen(fileElem));
@@ -1103,7 +1232,10 @@
     return last;
   }
   
-  static int memcmpw(const char *nstr, const char *wstr, int len, char **substr)
+  //***************************************************************************
+  //***************************************************************************
+  static int 
+  memcmpw(const char *nstr, const char *wstr, int len, char **substr)
   {
     int i, npercents = 0;
     
@@ -1117,16 +1249,20 @@
     return 0;
   }
   
-  int npercents(const char *str)
+  //***************************************************************************
+  //***************************************************************************
+  int 
+  npercents(const char *str)
   {
     int ret = 0;
     while (*str) if (*str++ == '%') ret++;
     return ret;
   }
   
-  
-  
-  int process_mask(const char *normstr, const char *wildcard, char *substr)
+  //***************************************************************************
+  //***************************************************************************
+  int 
+  process_mask(const char *normstr, const char *wildcard, char *substr)
   {
     char *hlpptr;
     const char  *endwc = wildcard + strlen(wildcard);
@@ -1169,160 +1305,158 @@
     }
   }
   
-  #include <string>
-  #include <stdexcept>
-  #include <iostream>
   
   using std::string;
   
-    /**
-    *  @brief Returns true if rString matches rWildcard and fills substr with
-    *         corresponding %%% matched pattern
-    *  @param rString    String to be parsed
-    *  @param rWildcard  String containing wildcard pattern
-    *  @param Substr     The mathced %%% pattern is stored here
-    *
-    *  This is a C++ extension to the original process_mask function.
-    *
-    */
-    bool
-    ProcessMask(const std::string & rString,
-                const std::string & rWildcard,
-                      std::string & rSubstr)
+  /**
+  *  @brief Returns true if rString matches rWildcard and fills substr with
+  *         corresponding %%% matched pattern
+  *  @param rString    String to be parsed
+  *  @param rWildcard  String containing wildcard pattern
+  *  @param Substr     The mathced %%% pattern is stored here
+  *
+  *  This is a C++ extension to the original process_mask function.
+  *
+  */
+  bool
+  ProcessMask(const std::string & rString,
+              const std::string & rWildcard,
+                    std::string & rSubstr)
+  {
+    char *  substr;
+    int     percent_count        = 0;
+    int     ret ;
+    size_t  pos                  = 0;
+
+    // let's find how many % to allocate enough space for the return substring
+    while ((pos = rWildcard.find('%', pos)) != rWildcard.npos)
     {
-      char *  substr;
-      int     percent_count        = 0;
-      int     ret ;
-      size_t  pos                  = 0;
-  
-      // let's find how many % to allocate enough space for the return substring
-      while ((pos = rWildcard.find('%', pos)) != rWildcard.npos)
-      {
-        percent_count++;
-        pos++;
-      }
-  
-      // allocate space for the substring
-      substr = new char[percent_count + 1];
-  
-      // parse the string
-      if (ret = match(rWildcard.c_str(), rString.c_str(), substr))
-      {
-        rSubstr = substr;
-      }
-      delete[] substr;
-      return ret;
-    } // ProcessMask
-  
-  
-    //*****************************************************************************
-    void
-    ParseHTKString(const std::string & rIn, std::string & rOut)
+      percent_count++;
+      pos++;
+    }
+
+    // allocate space for the substring
+    substr = new char[percent_count + 1];
+
+    // parse the string
+    if (ret = match(rWildcard.c_str(), rString.c_str(), substr))
     {
-      int ret_val;
-  
-      // the new string will be at most as long as the original, so we allocate
-      // space
-      char * new_str = new char[rIn.size() + 1];
-      strcpy(new_str, rIn.c_str());
-  
+      rSubstr = substr;
+    }
+    delete[] substr;
+    return ret;
+  } // ProcessMask
+
+
+  //*****************************************************************************
+  //*****************************************************************************
+  void
+  ParseHTKString(const std::string & rIn, std::string & rOut)
+  {
+    int ret_val;
+
+    // the new string will be at most as long as the original, so we allocate
+    // space
+    char * new_str = new char[rIn.size() + 1];
+    strcpy(new_str, rIn.c_str());
+
       // there might be some error message returned, so we reserve at least
-      // 30 bytes
-      char * tmp_str;
-  
-      // call the function
-      if (!(ret_val = getHTKstr(new_str, &tmp_str)))
-      {
-        rOut = new_str;
-      }
-  
-      else if ((ret_val == -1) || (ret_val == -2))
-      {
-        throw std::logic_error(tmp_str);
-      }
-  
-      else
-      {
-        throw std::logic_error("Unexpected error parsing HTK string");
-      }
-  
-    }
-  
-    
-    /**
-    * @brief Builds new filename based on the parameters given
-    * @param rOutFileName reference to a string where new file name is stored
-    * @param rInFileName the base name of the new file
-    * @param rOutputDir output directory
-    * @param rOutputExt new file's extension
-    */
-    /*
-    void 
-    MakeFileName(      std::string & rOutFileName, 
-                const std::string & rInFileName,
-                const std::string & rOutputDir, 
-                const std::string & rOutputExt)
+    // 30 bytes
+    char * tmp_str;
+
+    // call the function
+    if (!(ret_val = getHTKstr(new_str, &tmp_str)))
     {
-      size_t       tmp_pos;
-      const char * base_name;
-      const char * bname_end = NULL;
-      const char * chrptr;
-    
-      std::string::const_iterator   it_base_name_begin;
-      std::string::const_iterator   it_base_name_end  = rInFileName.end() ;
-      //std::string                   
-      
-      if ((tmp_pos = rInFileName.rfind('/')) != std::string::npos)
-        it_base_name_begin = rInFileName.begin() + tmp_pos + 1;
-      else
-        it_base_name_begin = rInFileName.begin();
-        
-      //base_name = strrchr(rInFileName.c_str(), '/');
-      //base_name = base_name != NULL ? base_name + 1 : rInFileName.c_str();
-      
-      // trim the trailing extension
-      if (!rOutp
-      utExt.empty())
-      {
-        //viif ((tmp_pos = 
-      }
-      
-        bname_end = strrchr(base_name, '.');
-        
-      if (!bname_end) 
-        bname_end = base_name + strlen(base_name);
-    
-    
-      if ((chrptr = strstr(rInFileName.c_str(), "/./")) != NULL) 
-      {
-        // what is in path after /./ serve as base name
-        base_name = chrptr + 3;
-      }
-    
-      rOutFileName = "";
-      
-      if (!rOutputDir.empty()) 
-      {
-        rOutFileName = rOutputDir + "/";
-        rOutFileName.append(base_name);
-        
-        if (*out_dir) 
-        {
-          strcat(outFileName, out_dir);
-          strcat(outFileName, "/");
-        }
-        strncat(outFileName, base_name, bname_end - base_name);
-      } 
-      else 
-      {
-        strncat(outFileName, inFileName, bname_end - inFileName);
-      }
-    
-      if (!rOutputExt.empty()) 
-      {
-        rOutFileName += "." + rOutputExt;
-      }
+      rOut = new_str;
     }
-    */
+
+    else if ((ret_val == -1) || (ret_val == -2))
+    {
+      throw std::logic_error(tmp_str);
+    }
+
+    else
+    {
+      throw std::logic_error("Unexpected error parsing HTK string");
+    }
+
+  }
+
+  
+  /**
+  * @brief Builds new filename based on the parameters given
+  * @param rOutFileName reference to a string where new file name is stored
+  * @param rInFileName the base name of the new file
+  * @param rOutputDir output directory
+  * @param rOutputExt new file's extension
+  */
+  /*
+  void 
+  MakeFileName(      std::string & rOutFileName, 
+              const std::string & rInFileName,
+              const std::string & rOutputDir, 
+              const std::string & rOutputExt)
+  {
+    size_t       tmp_pos;
+    const char * base_name;
+    const char * bname_end = NULL;
+    const char * chrptr;
+  
+    std::string::const_iterator   it_base_name_begin;
+    std::string::const_iterator   it_base_name_end  = rInFileName.end() ;
+    //std::string                   
+    
+    if ((tmp_pos = rInFileName.rfind('/')) != std::string::npos)
+      it_base_name_begin = rInFileName.begin() + tmp_pos + 1;
+    else
+      it_base_name_begin = rInFileName.begin();
+      
+    //base_name = strrchr(rInFileName.c_str(), '/');
+    //base_name = base_name != NULL ? base_name + 1 : rInFileName.c_str();
+    
+    // trim the trailing extension
+    if (!rOutp
+    utExt.empty())
+    {
+      //viif ((tmp_pos = 
+    }
+    
+      bname_end = strrchr(base_name, '.');
+      
+    if (!bname_end) 
+      bname_end = base_name + strlen(base_name);
+  
+  
+    if ((chrptr = strstr(rInFileName.c_str(), "/./")) != NULL) 
+    {
+      // what is in path after /./ serve as base name
+      base_name = chrptr + 3;
+    }
+  
+    rOutFileName = "";
+    
+    if (!rOutputDir.empty()) 
+    {
+      rOutFileName = rOutputDir + "/";
+      rOutFileName.append(base_name);
+      
+      if (*out_dir) 
+      {
+        strcat(pOutFileName, out_dir);
+        strcat(pOutFileName, "/");
+      }
+      strncat(pOutFileName, base_name, bname_end - base_name);
+    } 
+    else 
+    {
+      strncat(outFileName, inFileName, bname_end - inFileName);
+    }
+  
+    if (!rOutputExt.empty()) 
+    {
+      rOutFileName += "." + rOutputExt;
+    }
+  }
+  */
 //}; //namespace STK
     

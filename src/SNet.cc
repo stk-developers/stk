@@ -19,7 +19,7 @@
 #include "STKLib/fileio.h"
 #include "STKLib/common.h"
 #include "STKLib/Models.h"
-#include "STKLib/viterbi.h"
+#include "STKLib/Viterbi.h"
 #ifndef WIN32
 #include <unistd.h>
 #else
@@ -74,16 +74,17 @@ char *optionStr =
 " -X r   SOURCETRANSCEXT";
 
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) 
+{
   HMMSet hset;
   FILE *sfp, *ofp = NULL;
   FLOAT *obsMx, *obs;
-  HTK_Header header;
+  HtkHeader header;
   int i, fcnt = 0;
   XformInstance *input = NULL;
   char line[1024];
   char outFile[1024];
-  struct my_hsearch_data phoneHash, cfgHash;
+  MyHSearchData phoneHash, cfgHash;
   int totFrames = 0;
   int vec_size, out_size, time;
   FileListElem *feature_files = NULL;
@@ -99,14 +100,14 @@ int main(int argc, char *argv[]) {
   const char *out_ext;
   const char *inputName;
   char *script;
-  int  trace_flag;
+  int  mTraceFlag;
   int  targetKind;
   int  derivOrder;
   int  *derivWinLengths;
   int startFrmExt;
   int endFrmExt;
-  BOOL swap_features;
-  BOOL swap_fea_out;
+  bool swap_features;
+  bool swap_fea_out;
 //  char *lbl_list_file   = NULL;
   char *NNet_instance_name     = NULL;
   XformInstance *NNet_instance = NULL;
@@ -152,7 +153,7 @@ int main(int argc, char *argv[]) {
   src_mlf      = GetParamStr(&cfgHash, SNAME":SOURCEMLF",       NULL);
   src_lbl_dir  = GetParamStr(&cfgHash, SNAME":SOURCETRANSCDIR", NULL);
   src_lbl_ext  = GetParamStr(&cfgHash, SNAME":SOURCETRANSCEXT", NULL);
-  trace_flag   = GetParamInt(&cfgHash, SNAME":TRACE",           0);
+  mTraceFlag   = GetParamInt(&cfgHash, SNAME":TRACE",           0);
   hmms_binary  = GetParamBool(&cfgHash,SNAME":SAVEBINARY",      FALSE);
   script =(char*)GetParamStr(&cfgHash, SNAME":SCRIPT",          NULL);
 //  src_hmm_list = GetParamStr(&cfgHash, SNAME":SOURCEHMMLIST",   NULL);
@@ -197,7 +198,7 @@ int main(int argc, char *argv[]) {
   if (NNet_instance_name != NULL) {
     Macro *macro = FindMacro(&hset.Xform_instance_hash, NNet_instance_name);
     if (macro == NULL) Error("Undefined input '%s'", NNet_instance_name);
-    NNet_instance = (XformInstance *) macro->data;
+    NNet_instance = (XformInstance *) macro->mpData;
   } else if (hset.inputXform) {
     NNet_instance = hset.inputXform;
   }
@@ -223,16 +224,16 @@ int main(int argc, char *argv[]) {
       file_name != NULL;
       file_name = out_by_labels ? file_name->mpNext : file_name->mpNext->mpNext) {
 
-    if (trace_flag & 1) {
+    if (mTraceFlag & 1) {
       if (!out_by_labels) {
         TraceLog("Processing file pair %d/%d '%s' <-> %s",  ++fcnt,
-        nfeature_files/2, file_name->physical,file_name->mpNext->logical);
+        nfeature_files/2, file_name->mpPhysical,file_name->mpNext->logical);
       } else {
         TraceLog("Processing file %d/%d '%s'", ++fcnt, nfeature_files,file_name->logical);
       }
     }
     int nFrames;
-    char *phys_fn = (!out_by_labels ? file_name->mpNext : file_name)->physical;
+    char *phys_fn = (!out_by_labels ? file_name->mpNext : file_name)->mpPhysical;
     char *lgcl_fn = (!out_by_labels ? file_name->mpNext : file_name)->logical;
 
     // read sentence weight definition if any ( physical_file.fea[s,e]{weight} )
@@ -249,36 +250,36 @@ int main(int argc, char *argv[]) {
                             derivOrder, derivWinLengths, &header,
                             cmn_path, cvn_path, cvg_file, &rhfbuff);
 
-    if (hset.in_vec_size != header.sampSize / sizeof(float)) {
+    if (hset.in_vec_size != header.mSampleSize / sizeof(float)) {
       Error("Vector size [%d] in '%s' is incompatible with source HMM set [%d]",
-            header.sampSize/sizeof(float), phys_fn, hset.in_vec_size);
+            header.mSampleSize/sizeof(float), phys_fn, hset.in_vec_size);
     }
-    nFrames = header.nSamples - NNet_input->totalDelay;
+    nFrames = header.mNSamples - NNet_input->totalDelay;
     if (!out_by_labels) { //If output examples are given by features
                          // read the second set of features ...
                          
       if (cmn_mask_out) process_mask(file_name->logical, cmn_mask_out, cmn_file_out);
       if (cvn_mask_out) process_mask(file_name->logical, cvn_mask_out, cvn_file_out);
-      obsMx_out = ReadHTKFeatures(file_name->physical, swap_features_out,
+      obsMx_out = ReadHTKFeatures(file_name->mpPhysical, swap_features_out,
                                   startFrmExt_out, endFrmExt_out, targetKind_out,
                                   derivOrder_out, derivWinLengths_out, &header_out,
                                   cmn_path_out, cvn_path_out, cvg_file_out, &rhfbuff_out);
 
-      if (NNet_instance->mOutSize != header_out.sampSize/sizeof(float)) {
+      if (NNet_instance->mOutSize != header_out.mSampleSize/sizeof(float)) {
         Error("Vector size [%d] in '%s' is incompatible with NNet output size [%d]",
-              header_out.sampSize/sizeof(float), file_name->physical,
+              header_out.mSampleSize/sizeof(float), file_name->mpPhysical,
               NNet_instance->mOutSize);
       }
-      if (nFrames != header_out.nSamples) {
+      if (nFrames != header_out.mNSamples) {
         Error("Mismatch in number of frames in input/output feature file pair: "
-              "'%s' <-> '%s'.", file_name->mpNext->physical, file_name->physical);
+              "'%s' <-> '%s'.", file_name->mpNext->mpPhysical, file_name->mpPhysical);
       }
       
     } else {            // ... otherwise, read corresponding label file
     
       strcpy(label_file, file_name->logical);
       ilfp = OpenInputLabelFile(label_file, src_lbl_dir, src_lbl_ext, ilfp, src_mlf);
-      labels = ReadLabels(ilfp, &phoneHash, UL_INSERT, in_lbl_fmt, header.sampPeriod,
+      labels = ReadLabels(ilfp, &phoneHash, UL_INSERT, in_lbl_fmt, header.mSamplePeriod,
                           label_file, src_mlf, NULL);      
       CloseInputLabelFile(lfp, src_mlf);
     }
@@ -289,7 +290,7 @@ int main(int argc, char *argv[]) {
     time = 1;
     if (NNet_input) time -= NNet_input->totalDelay;
     // Loop over all feature frames.
-    for (i = 0; i < header.nSamples; i++, time++) {
+    for (i = 0; i < header.mNSamples; i++, time++) {
       int j;
       FLOAT *obs = obsMx + i * hset.in_vec_size;
 
@@ -302,8 +303,8 @@ int main(int argc, char *argv[]) {
       if (lbl_list_file) {
         //Create NN output example vector from lables
         for (j = 0; j < NNet_instance->mOutSize; j++) obs_out[j] = 0;
-        while (lbl_ptr && lbl_ptr->stop < time) lbl_ptr = lbl_ptr->mpNext;
-        if (lbl_ptr && lbl_ptr->start <= time) obs_out[(int) lbl_ptr->data - 1] = 1;
+        while (lbl_ptr && lbl_ptr->mStop < time) lbl_ptr = lbl_ptr->mpNext;
+        if (lbl_ptr && lbl_ptr->mStart <= time) obs_out[(int) lbl_ptr->mpData - 1] = 1;
       } else {
         //Get NN output example vector from obsMx_out matrix
         obs_out = obsMx_out + (time-1) * NNet_instance->mOutSize;
@@ -431,7 +432,7 @@ int main(int argc, char *argv[]) {
   tPrint(ALL);
   tPrint(COMP);
 */
-  if (trace_flag & 2) {
+  if (mTraceFlag & 2) {
     TraceLog("Total number of frames: %d", totFrames);
   }
   NNet_instance->mpInput = NNet_input;
@@ -448,11 +449,11 @@ int main(int argc, char *argv[]) {
 
 //  my_hdestroy_r(&labelHash, 0);
   my_hdestroy_r(&phoneHash, 1);
-  for (i = 0; i < cfgHash.nentries; i++) free(cfgHash.entry[i]->data);
+  for (i = 0; i < cfgHash.mNEntries; i++) free(cfgHash.mpEntry[i]->data);
   my_hdestroy_r(&cfgHash, 1);
 
   if (network_file) {
-    ReleaseNetwork(&net);
+    net.Release();
   }
   free(hset.varFloor);
   free(derivWinLengths);

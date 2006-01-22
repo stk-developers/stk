@@ -53,10 +53,10 @@ public:
 
 void ReadDictionary(
   const char *dictFileName,
-  struct my_hsearch_data *wordHash,
-  struct my_hsearch_data *phoneHash);
+  MyHSearchData *wordHash,
+  MyHSearchData *phoneHash);
 
-void FreeDictionary(struct my_hsearch_data *wordHash);
+void FreeDictionary(MyHSearchData *wordHash);
 
 
 #endif // DICT_H

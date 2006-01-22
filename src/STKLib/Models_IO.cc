@@ -344,7 +344,7 @@ namespace STK
               const char * pInMmfDir, 
               const char * pInMmfExt)
   {
-    struct readline_data      rld = {0};
+    struct ReadlineData      rld = {0};
     char *                    lhmm;
     char *                    fhmm;
     char *                    chptr;
@@ -521,7 +521,7 @@ namespace STK
   
   
             unsigned int i;
-            struct my_hsearch_data *hash = NULL;
+            MyHSearchData *hash = NULL;
             ReplaceItemUserData ud;
             ud.mpOldData = macro->mpData;
             ud.mpNewData = data;

@@ -294,14 +294,14 @@ namespace STK
     Macro *                   mpFirstMacro;
     Macro *                   mpLastMacro;
     
-    struct my_hsearch_data    mHmmHash;
-    struct my_hsearch_data    mStateHash;
-    struct my_hsearch_data    mMixtureHash;
-    struct my_hsearch_data    mMeanHash;
-    struct my_hsearch_data    mVarianceHash;
-    struct my_hsearch_data    mTransitionHash;
-    struct my_hsearch_data    mXFormInstanceHash;
-    struct my_hsearch_data    mXFormHash;
+    MyHSearchData    mHmmHash;
+    MyHSearchData    mStateHash;
+    MyHSearchData    mMixtureHash;
+    MyHSearchData    mMeanHash;
+    MyHSearchData    mVarianceHash;
+    MyHSearchData    mTransitionHash;
+    MyHSearchData    mXFormInstanceHash;
+    MyHSearchData    mXFormHash;
     
     int                       mInputVectorSize;
     int                       mParamKind;
@@ -470,7 +470,7 @@ namespace STK
     Macro *
     pAddMacro(const char type, const std::string & rNewName);    
     
-    struct my_hsearch_data 
+    MyHSearchData 
     MakeCIPhoneHash();
     
     
@@ -1155,7 +1155,7 @@ namespace STK
   class ReadAccumUserData 
   {
   public:
-    FILE   *      fp;
+    FILE   *      mpFp;
     char   *      mpFileName;
     ModelSet *    mpModelSet;
     float         mWeight;
@@ -1165,7 +1165,7 @@ namespace STK
   class WriteAccumUserData
   {
   public:
-    FILE *        fp;
+    FILE *        mpFp;
     char *        mpFileName;
     int           mMmi;
   };
@@ -1211,8 +1211,8 @@ namespace STK
    */
   FLOAT *     XFormPass(XFormInstance *xformInstance, FLOAT *in_vec, int time, PropagDirectionType dir);
 
-  void        ReleaseMacroHash(struct my_hsearch_data *macro_hash);
-  Macro *     FindMacro(struct my_hsearch_data *macro_hash, const char *name);
+  void        ReleaseMacroHash(MyHSearchData *macro_hash);
+  Macro *     FindMacro(MyHSearchData *macro_hash, const char *name);
   
   void        PutFlt(FILE *fp, bool binary, FLOAT f);
   void        PutInt(FILE *fp, bool binary, int i);

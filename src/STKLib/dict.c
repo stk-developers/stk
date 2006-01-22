@@ -21,8 +21,8 @@ const char *dict_filter;
 
 void ReadDictionary(
     const char *dictFileName,
-    struct my_hsearch_data *wordHash,
-    struct my_hsearch_data *phoneHash)
+    MyHSearchData *wordHash,
+    MyHSearchData *phoneHash)
 {
   char line[1024];
   int line_no = 0;
@@ -121,7 +121,7 @@ void ReadDictionary(
   }
 }
 
-void FreeDictionary(struct my_hsearch_data *wordHash) {
+void FreeDictionary(MyHSearchData *wordHash) {
   size_t i;
   size_t j;
   

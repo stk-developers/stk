@@ -157,7 +157,7 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  Macro *FindMacro(struct my_hsearch_data *macro_hash, const char *name) 
+  Macro *FindMacro(MyHSearchData *macro_hash, const char *name) 
   {
     ENTRY e, *ep;
     e.key = (char *) name;
@@ -168,7 +168,7 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  void ReleaseMacroHash(struct my_hsearch_data *macro_hash) 
+  void ReleaseMacroHash(MyHSearchData *macro_hash) 
   {
     unsigned int i;
     for (i = 0; i < macro_hash->mNEntries; i++) 
@@ -730,8 +730,8 @@ namespace STK
     Macro *               macro = static_cast <MacroData *> (pData)->mpMacro;
   
     if (macro &&
-      (fprintf(ud->fp, "~%c \"%s\"", macro->mType, macro->mpName) < 0 ||
-      fwrite(&macro->mOccurances, sizeof(macro->mOccurances), 1, ud->fp) != 1)) 
+      (fprintf(ud->mpFp, "~%c \"%s\"", macro->mType, macro->mpName) < 0 ||
+      fwrite(&macro->mOccurances, sizeof(macro->mOccurances), 1, ud->mpFp) != 1)) 
     {
       Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
     }
@@ -760,8 +760,8 @@ namespace STK
   
   //    if (ud->mMmi) vector += size; // Move to MMI accums, which follows ML accums
   
-      if (fwrite(vector, sizeof(FLOAT), size, ud->fp) != size ||
-        fwrite(&nxfsa, sizeof(nxfsa),    1, ud->fp) != 1) 
+      if (fwrite(vector, sizeof(FLOAT), size, ud->mpFp) != size ||
+        fwrite(&nxfsa, sizeof(nxfsa),    1, ud->mpFp) != 1) 
       {
         Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
       }
@@ -772,10 +772,10 @@ namespace STK
         size = xfsa[i].mpXForm->mInSize;
         size = (macro_type == mt_mean) ? size : size+size*(size+1)/2;
         assert(xfsa[i].mpXForm->mpMacro != NULL);
-        if (fprintf(ud->fp, "\"%s\"", xfsa[i].mpXForm->mpMacro->mpName) < 0 ||
-          fwrite(&size,         sizeof(int),      1, ud->fp) != 1    ||
-          fwrite(xfsa[i].mpStats, sizeof(FLOAT), size, ud->fp) != size ||
-          fwrite(&xfsa[i].mNorm, sizeof(FLOAT),    1, ud->fp) != 1) 
+        if (fprintf(ud->mpFp, "\"%s\"", xfsa[i].mpXForm->mpMacro->mpName) < 0 ||
+          fwrite(&size,         sizeof(int),      1, ud->mpFp) != 1    ||
+          fwrite(xfsa[i].mpStats, sizeof(FLOAT), size, ud->mpFp) != size ||
+          fwrite(&xfsa[i].mNorm, sizeof(FLOAT),    1, ud->mpFp) != 1) 
         {
           Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
         }
@@ -791,9 +791,9 @@ namespace STK
         for (i = 0; i < state->mNumberOfMixtures; i++) 
         {
           if (fwrite(&state->mpMixture[i].mWeightAccum,
-                    sizeof(FLOAT), 1, ud->fp) != 1 ||
+                    sizeof(FLOAT), 1, ud->mpFp) != 1 ||
             fwrite(&state->mpMixture[i].mWeightAccumDen,
-                    sizeof(FLOAT), 1, ud->fp) != 1) 
+                    sizeof(FLOAT), 1, ud->mpFp) != 1) 
           {
             Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
           }
@@ -806,7 +806,7 @@ namespace STK
       size   = SQR(((Transition *) pData)->mNStates);
       vector = ((Transition *) pData)->mpMatrixO + size;
   
-      if (fwrite(vector, sizeof(FLOAT), size, ud->fp) != size) 
+      if (fwrite(vector, sizeof(FLOAT), size, ud->mpFp) != size) 
       {
         Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
       }
@@ -967,8 +967,8 @@ namespace STK
       if (ud->mMmi) 
         vector += size;
   
-      if (faddfloat(vector, size, ud->mWeight,     ud->fp) != size ||
-        fread(&nxfsa_inf, sizeof(nxfsa_inf), 1, ud->fp) != 1) 
+      if (faddfloat(vector, size, ud->mWeight,     ud->mpFp) != size ||
+        fread(&nxfsa_inf, sizeof(nxfsa_inf), 1, ud->mpFp) != 1) 
       {
         Error("Incompatible accumulator file: '%s'", ud->mpFileName);
       }
@@ -976,10 +976,10 @@ namespace STK
       if (!ud->mMmi) { // MMI estimation of XForm statistics has not been implemented yet
         for (i = 0; i < nxfsa_inf; i++) 
         {
-          if (getc(ud->fp) != '"') 
+          if (getc(ud->mpFp) != '"') 
             Error("Incompatible accumulator file: '%s'", ud->mpFileName);
   
-          for (j=0; (c=getc(ud->fp)) != EOF && c != '"' && j < sizeof(xfName)-1; j++) 
+          for (j=0; (c=getc(ud->mpFp)) != EOF && c != '"' && j < sizeof(xfName)-1; j++) 
             xfName[j] = c;
   
           xfName[j] = '\0';
@@ -989,7 +989,7 @@ namespace STK
   
           macro = FindMacro(&ud->mpModelSet->mXFormHash, xfName);
   
-          if (fread(&size_inf, sizeof(int), 1, ud->fp) != 1) 
+          if (fread(&size_inf, sizeof(int), 1, ud->mpFp) != 1) 
             Error("Incompatible accumulator file: '%s'", ud->mpFileName);
   
           if (macro != NULL) 
@@ -1005,8 +1005,8 @@ namespace STK
             
             if (j < nxfsa) 
             {
-              if (faddfloat(xfsa[j].mpStats, size, ud->mWeight, ud->fp) != size  ||
-                  faddfloat(&xfsa[j].mNorm,    1, ud->mWeight, ud->fp) != 1) 
+              if (faddfloat(xfsa[j].mpStats, size, ud->mWeight, ud->mpFp) != size  ||
+                  faddfloat(&xfsa[j].mNorm,    1, ud->mWeight, ud->mpFp) != 1) 
               {
                 Error("Invalid accumulator file: '%s'", ud->mpFileName);
               }
@@ -1022,7 +1022,7 @@ namespace STK
           { 
             FLOAT f;
             for (j = 0; j < size_inf+1; j++) 
-              fread(&f, sizeof(f), 1, ud->fp);
+              fread(&f, sizeof(f), 1, ud->mpFp);
           }
         }
       }
@@ -1032,18 +1032,18 @@ namespace STK
         FLOAT junk;
         for (i = 0; i < state->mNumberOfMixtures; i++) {
           if (ud->mMmi == 1) {
-            if (faddfloat(&state->mpMixture[i].mWeightAccumDen, 1, ud->mWeight, ud->fp) != 1 ||
-              faddfloat(&junk,                               1, ud->mWeight, ud->fp) != 1) {
+            if (faddfloat(&state->mpMixture[i].mWeightAccumDen, 1, ud->mWeight, ud->mpFp) != 1 ||
+              faddfloat(&junk,                               1, ud->mWeight, ud->mpFp) != 1) {
               Error("Incompatible accumulator file: '%s'", ud->mpFileName);
             }
           } else if (ud->mMmi == 2) {
-            if (faddfloat(&junk,                               1, ud->mWeight, ud->fp) != 1 ||
-              faddfloat(&state->mpMixture[i].mWeightAccumDen, 1, ud->mWeight, ud->fp) != 1) {
+            if (faddfloat(&junk,                               1, ud->mWeight, ud->mpFp) != 1 ||
+              faddfloat(&state->mpMixture[i].mWeightAccumDen, 1, ud->mWeight, ud->mpFp) != 1) {
               Error("Incompatible accumulator file: '%s'", ud->mpFileName);
             }
           } else {
-            if (faddfloat(&state->mpMixture[i].mWeightAccum,     1, ud->mWeight, ud->fp) != 1 ||
-              faddfloat(&state->mpMixture[i].mWeightAccumDen, 1, ud->mWeight, ud->fp) != 1) {
+            if (faddfloat(&state->mpMixture[i].mWeightAccum,     1, ud->mWeight, ud->mpFp) != 1 ||
+              faddfloat(&state->mpMixture[i].mWeightAccumDen, 1, ud->mWeight, ud->mpFp) != 1) {
               Error("Incompatible accumulator file: '%s'", ud->mpFileName);
             }
           }
@@ -1055,7 +1055,7 @@ namespace STK
       vector =     ((Transition *) pData)->mpMatrixO + size;
   
       for (i = 0; i < size; i++) {
-        if (fread(&f, sizeof(FLOAT), 1, ud->fp) != 1) {
+        if (fread(&f, sizeof(FLOAT), 1, ud->mpFp) != 1) {
         Error("Incompatible accumulator file: '%s'", ud->mpFileName);
         }
         if (!ud->mMmi) { // MMI estimation of transition probabilities has not been implemented yet
@@ -2446,7 +2446,7 @@ namespace STK
     istkstream                in;
     FILE *                    fp;
     char                      macro_name[128];
-    struct my_hsearch_data *  hash;
+    MyHSearchData *  hash;
     unsigned int              i;
     int                       t = 0;
     int                       c;
@@ -2482,10 +2482,10 @@ namespace STK
     *totLogLike *= weight;
   
     strcpy(ud.mpFileName, pFileName);
-    ud.fp      = fp;
-    ud.mpModelSet = this;
-    ud.mWeight  = weight;
-    ud.mMmi     = mmiDenominatorAccums;
+    ud.mpFp         = fp;
+    ud.mpModelSet   = this;
+    ud.mWeight      = weight;
+    ud.mMmi         = mmiDenominatorAccums;
   
     for (;;) 
     {
@@ -2594,8 +2594,8 @@ namespace STK
       Error("Cannot write accumulators to file: '%s'", file_name);
     }
   
-    ud.fp  = fp;
-    ud.mpFileName  = file_name;
+    ud.mpFp         = fp;
+    ud.mpFileName   = file_name;
   //  ud.mMmi = MMI_denominator_accums;
   
     Scan(MTM_PRESCAN | (MTM_ALL & ~(MTM_XFORM_INSTANCE|MTM_XFORM)),
@@ -2810,7 +2810,7 @@ namespace STK
   pAddMacro(const char type, const std::string & rNewName)
   {
     Macro *                  macro;
-    struct my_hsearch_data * hash;
+    MyHSearchData * hash;
     ENTRY                    e;
     ENTRY *                  ep;
   
@@ -3244,14 +3244,14 @@ namespace STK
     
   //**************************************************************************  
   //**************************************************************************  
-  struct my_hsearch_data 
+  MyHSearchData 
   ModelSet::
   MakeCIPhoneHash()
   {
     unsigned int              i;
     int                       nCIphns = 0;
-    struct my_hsearch_data    tmpHash;
-    struct my_hsearch_data    retHash;
+    MyHSearchData    tmpHash;
+    MyHSearchData    retHash;
     ENTRY                     e;
     ENTRY *                   ep;
   

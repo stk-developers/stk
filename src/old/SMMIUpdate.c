@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
   char *chrptr;
   double dval;
   long   lval;
-//  struct my_hsearch_data labelHash;
+//  MyHSearchData labelHash;
 
   FLOAT totLogLike      = 0;
   FLOAT totLogPosterior = 0;
@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
   typedef struct _StrListElem StrListElem;
   struct _StrListElem {
     StrListElem *next;
-    char *physical;
+    char *mpPhysical;
     char logical[1];
   };
 
@@ -149,7 +149,7 @@ int main(int argc, char *argv[]) {
                 for (; *chrptr; chrptr++) if (*chrptr == '\\') *chrptr = '/';
                 chrptr = strchr((*last)->logical, '=');
                 if (chrptr) *chrptr = '\0';
-                (*last)->physical = chrptr ? chrptr+1: (*last)->logical;
+                (*last)->mpPhysical = chrptr ? chrptr+1: (*last)->logical;
                 last = &(*last)->next;
                 *last = NULL;
                 nfeature_files++;
@@ -166,7 +166,7 @@ int main(int argc, char *argv[]) {
                   for (; *chrptr; chrptr++) if (*chrptr == '\\') *chrptr = '/';
                   chrptr = strchr((*last)->logical, '=');
                   if (chrptr) *chrptr = '\0';
-                  (*last)->physical = chrptr ? chrptr+1: (*last)->logical;
+                  (*last)->mpPhysical = chrptr ? chrptr+1: (*last)->logical;
                   last = &(*last)->next;
                   nfeature_files++;
                 }
@@ -317,14 +317,14 @@ int main(int argc, char *argv[]) {
   for (file_name = feature_files; file_name != NULL; file_name = file_name->mpNext->mpNext) {
     if (trace_flag & 1) {
       TraceLog("Processing file pair %d/%d '%s' <-> %s",  ++fcnt,
-              nfeature_files/2, file_name->physical,file_name->mpNext->physical);
+              nfeature_files/2, file_name->mpPhysical,file_name->mpNext->mpPhysical);
     }
 
     FLOAT P;
     long S;
 
-    //ReadAccums(file_name->physical, 1.0, &hset, &S, &P, 0);
-    hset.ReadAccums(file_name->physical, 1.0, &S, &P, 0);
+    //ReadAccums(file_name->mpPhysical, 1.0, &hset, &S, &P, 0);
+    hset.ReadAccums(file_name->mpPhysical, 1.0, &S, &P, 0);
     totFrames  += S;
     totLogLike += P;
 
@@ -334,8 +334,8 @@ int main(int argc, char *argv[]) {
 
     FLOAT mmi_P;
     // Second set of accums is for compeating models
-    //ReadAccums(file_name->mpNext->physical, 1.0, &hset, &S, &mmi_P, update_type);
-    hset.ReadAccums(file_name->mpNext->physical, 1.0, &S, &mmi_P, update_type);
+    //ReadAccums(file_name->mpNext->mpPhysical, 1.0, &hset, &S, &mmi_P, update_type);
+    hset.ReadAccums(file_name->mpNext->mpPhysical, 1.0, &S, &mmi_P, update_type);
     totLogPosterior += P - mmi_P;
 
     if (trace_flag & 1) {
@@ -354,7 +354,7 @@ int main(int argc, char *argv[]) {
   Macro *macro = FindMacro(&hset.mVarianceHash, "varFloor1");
 
     if (macro != NULL || (float) min_variance > 0.0) {
-      Variance *tmpvar = macro ? (Variance *) macro->data : NULL;
+      Variance *tmpvar = macro ? (Variance *) macro->mpData : NULL;
 //      assert(!tmpvar || hset.mInputVectorSize == tmpvar->mVectorSize);
 
       //***

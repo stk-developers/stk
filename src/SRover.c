@@ -93,7 +93,7 @@ int main(int argc, char *argv[]) {
   char *out_MLF_fn     = NULL;
   int  *lab2cand       = NULL; // label index to candidate index mapping (used for voting)
 //  char **labelList     = NULL;
-  struct my_hsearch_data labelHash = {0};
+  MyHSearchData labelHash = {0};
 //  int  nlabels;
   int i;
 
@@ -145,7 +145,7 @@ int main(int argc, char *argv[]) {
       case 'l': out_lbl_dir  = optarg; break;
       case 'y': out_lbl_ext  = optarg; break;
 
-      case 1:  if (labelHash.tabsize == 0) {
+      case 1:  if (labelHash.mTabSize == 0) {
                   labelHash = readLabelList(optarg);
                } else {
                   *last = (StrListElem *) malloc(sizeof(StrListElem)+strlen(optarg));
@@ -250,9 +250,9 @@ int main(int argc, char *argv[]) {
   MLFfps = (FILE **) malloc(sizeof(FILE *) * nMLFs);
   if (!MLFfps) Error("Insufficient memory");
 
-  lab2cand = (int *) malloc(sizeof(int) * (labelHash.nentries + 1)); //one more for !NULL
+  lab2cand = (int *) malloc(sizeof(int) * (labelHash.mNEntries + 1)); //one more for !NULL
   if (!lab2cand) Error("Insufficient memory");
-  for (i = 0; i < labelHash.nentries + 1; i++) lab2cand[i] = -1;
+  for (i = 0; i < labelHash.mNEntries + 1; i++) lab2cand[i] = -1;
 
   candidates = (struct candidate *) malloc(sizeof(struct candidate) * nMLFs);
   if (!candidates) Error("Insufficient memory");
@@ -304,28 +304,28 @@ int main(int argc, char *argv[]) {
         float  voting_score, best_voting_score;
 
         // count votes
-        for (llptr = tlptr; llptr !=NULL; llptr = llptr->nextLevel) {
+        for (llptr = tlptr; llptr !=NULL; llptr = llptr->mpNextLevel) {
 
-          candidate = lab2cand[(int) llptr->data];
+          candidate = lab2cand[(int) llptr->mpData];
 
           if (candidate == -1) { // new candidate
-            lab2cand[(int) llptr->data] = candidate = ncandidates++;
+            lab2cand[(int) llptr->mpData] = candidate = ncandidates++;
             candidates[candidate].label = llptr;
             candidates[candidate].votes = 0;
-            candidates[candidate].maxconf = llptr->score;
+            candidates[candidate].maxconf = llptr->mScore;
             candidates[candidate].confsum = 0.0;
           }
 
           candidates[candidate].votes++;
-          candidates[candidate].confsum += llptr->score;
-          if (llptr->score > candidates[candidate].maxconf) {
-            candidates[candidate].maxconf = llptr->score;
+          candidates[candidate].confsum += llptr->mScore;
+          if (llptr->mScore > candidates[candidate].maxconf) {
+            candidates[candidate].maxconf = llptr->mScore;
           }
         }
 
         // reset lab2cand[] to -1
         for (candidate=0; candidate<ncandidates; candidate++) {
-          lab2cand[(int) candidates[candidate].label->data] = -1;
+          lab2cand[(int) candidates[candidate].label->mpData] = -1;
         }
 
         //choose the best word
@@ -363,8 +363,8 @@ int main(int argc, char *argv[]) {
 
         if (best_candidate->label->mpName) {
           Label label = *best_candidate->label;
-          label.mpNext  = label.nextLevel = NULL;
-          label.score = best_voting_score;
+          label.mpNext  = label.mpNextLevel = NULL;
+          label.mScore = best_voting_score;
           WriteLabels(out_MLF_fp, &label, out_lbl_frm, 100000, label_file, out_MLF_fn);
         }
       }
