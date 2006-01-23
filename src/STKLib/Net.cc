@@ -60,8 +60,8 @@ namespace STK
       free(pNode->mpBackLinks);
       printf("%d\n", pNode->x);
       
-      if (pNode->mpName != NULL)
-        free(pNode->mpName);
+//      if (pNode->mpName != NULL)
+//        free(pNode->mpName);
         
       free(pNode);
       pNode = tnode;
@@ -585,19 +585,22 @@ namespace STK
   //***************************************************************************
   Node *ReverseNetwork(Node *pFirstNode)
   {
-    Node *node, *last = NULL;
-    for (node = pFirstNode; node != NULL; node = node->mpBackNext) {
-      Link *links  = node->mpLinks;
-      int  nlinks  = node->mNLinks;
-      node->mpLinks  = node->mpBackLinks;
-      node->mNLinks = node->mNBackLinks;
-      node->mpBackLinks  = links;
-      node->mNBackLinks = nlinks;
-      Node *next     = node->mpNext;
-      node->mpNext     = node->mpBackNext;
-      node->mpBackNext = next;
-      node->mAux      = -node->mAux;
-      last = node;
+    Node *  node;
+    Node *  last = NULL;
+    
+    for (node = pFirstNode; node != NULL; node = node->mpBackNext) 
+    {
+      Link *  links       = node->mpLinks;
+      int     nlinks      = node->mNLinks;
+      node->mpLinks       = node->mpBackLinks;
+      node->mNLinks       = node->mNBackLinks;
+      node->mpBackLinks   = links;
+      node->mNBackLinks   = nlinks;
+      Node *  next        = node->mpNext;
+      node->mpNext        = node->mpBackNext;
+      node->mpBackNext    = next;
+      node->mAux          = -node->mAux;
+      last                = node;
     }
     return last;
   }
@@ -627,31 +630,39 @@ namespace STK
   //***************************************************************************
   void LatticeLocalOptimization(Node *pFirstNode, int strictTiming, int trace_flag)
   {
-  //  Node *last, *node, *unsorted;
-  //  int topolOrd = 1;
-  
-    Node *node, *lastnode;
-    int i, j, unreachable = 0;
+    Node *    node;
+    Node *    lastnode;
+    int       i;
+    int       j;
+    int       unreachable = 0;
+    
     // For each node, sort links by pointer value to allow
     // for easy comparison whether two nodes have the same set of links
-  
-    for (node = pFirstNode; node != NULL; node = node->mpNext)  {
+    for (node = pFirstNode; node != NULL; node = node->mpNext)  
+    {
       node->mAux = 0;
       node->mpBackNext = node->mpNext;
       qsort(node->mpLinks, node->mNLinks, sizeof(Link), lnkcmp);
       qsort(node->mpBackLinks, node->mNBackLinks, sizeof(Link), lnkcmp);
     }
   
-  // Sort nodes in topological order
-  // printf("Sorting nodes...\n");
   
+    // Sort nodes in topological order
+    // printf("Sorting nodes...\n");
     pFirstNode->mAux = 1;
-    for (lastnode = node = pFirstNode; node != NULL; node = node->mpNext) {
-      for (i=0; i < node->mNLinks; i++) {
+    for (lastnode = node = pFirstNode; node != NULL; node = node->mpNext) 
+    {
+      for (i=0; i < node->mNLinks; i++) 
+      {
         Node *lnknode = node->mpLinks[i].mpNode;
-        if (lnknode->mAux == 0) {
-          for (j=0; j<lnknode->mNBackLinks && lnknode->mpBackLinks[j].mpNode->mAux==1; j++);
-          if (j == lnknode->mNBackLinks) {
+        
+        if (lnknode->mAux == 0) 
+        {
+          for (j=0; j<lnknode->mNBackLinks && lnknode->mpBackLinks[j].mpNode->mAux==1; j++)
+          {}
+          
+          if (j == lnknode->mNBackLinks) 
+          {
             lastnode->mpNext = lnknode;
             lastnode  = lnknode;
             lnknode->mAux = 1;
@@ -660,16 +671,25 @@ namespace STK
         }
       }
     }
-    if (lastnode->mNLinks != 0) {
+    
+    if (lastnode->mNLinks != 0) 
+    {
       // There is a cycle in graph so we cannot sort nodes
       // topologicaly, so sort it at least somehow. :o|
       // Anyway this optimization algorithm is not optimal for graphs with cycles.
-      for (node = pFirstNode; node != NULL; node = node->mpBackNext) node->mAux = 0;
+      for (node = pFirstNode; node != NULL; node = node->mpBackNext) 
+      {
+        node->mAux = 0;
+      }
+        
       pFirstNode->mAux = 1;
-      for (lastnode = node = pFirstNode; node != NULL; node = node->mpNext) {
-        for (i=0; i < node->mNLinks; i++) {
+      for (lastnode = node = pFirstNode; node != NULL; node = node->mpNext) 
+      {
+        for (i=0; i < node->mNLinks; i++) 
+        {
           Node *lnknode = node->mpLinks[i].mpNode;
-          if (lnknode->mAux == 0) {
+          if (lnknode->mAux == 0) 
+          {
             lastnode->mpNext = lnknode;
             lastnode  = lnknode;
             lnknode->mAux = 1;
@@ -677,9 +697,13 @@ namespace STK
           }
         }
       }
-      for (node=pFirstNode; node->mpNext->mNLinks != 0; node=node->mpNext);
+      
+      for (node=pFirstNode; node->mpNext->mNLinks != 0; node=node->mpNext)
+      {}
   
-      if (node->mpNext->mpNext) { // Final node is not at the and of chain
+      // Final node is not at the and of chain
+      if (node->mpNext->mpNext) 
+      { 
         lastnode->mpNext = node->mpNext;
         node->mpNext = node->mpNext->mpNext;
         lastnode = lastnode->mpNext;
@@ -689,8 +713,10 @@ namespace STK
   
     // !!! Unreachable nodes must be removed before sorting !!!
   
-    for (node=pFirstNode; node != NULL; node=node->mpBackNext) {
-      while (node->mpBackNext && node->mpBackNext->mAux == 0) {
+    for (node=pFirstNode; node != NULL; node=node->mpBackNext) 
+    {
+      while (node->mpBackNext && node->mpBackNext->mAux == 0) 
+      {
         Node *tnode = node->mpBackNext;
         node->mpBackNext = node->mpBackNext->mpBackNext;
         unreachable++;
@@ -700,28 +726,44 @@ namespace STK
       }
     }
   
-  //  if (unreachable) Warning("Removing %d unreachable nodes", unreachable);
-    if (unreachable) Error("Networks contains unreachable nodes");
+    //  if (unreachable) Warning("Removing %d unreachable nodes", unreachable);
+    if (unreachable) 
+      Error("Networks contains unreachable nodes");
   
     pFirstNode->mpBackNext = NULL;
-    for (node=pFirstNode; node->mpNext != NULL; node=node->mpNext) {
+    
+    for (node=pFirstNode; node->mpNext != NULL; node=node->mpNext) 
+    {
       node->mpNext->mpBackNext = node;
     }
-    for (i=1, node=pFirstNode; node != NULL; node = node->mpNext, i++) {
+    
+    for (i=1, node=pFirstNode; node != NULL; node = node->mpNext, i++) 
+    {
       node->mAux=i;
     }
-    for (;;) {
-      if (trace_flag & 2) {
-        for (i=0,node=pFirstNode; node; node=node->mpNext,i++);
+    
+    for (;;) 
+    {
+      if (trace_flag & 2) 
+      {
+        for (i=0,node=pFirstNode; node; node=node->mpNext,i++)
+        {}
+        
         TraceLog("Forward pass.... (number of nodes: %d)", i);
       }
+      
       LatticeLocalOptimization_ForwardPass(pFirstNode, strictTiming);
   
-      if (trace_flag & 2) {
-        for (i=0,node=pFirstNode; node; node=node->mpNext,i++);
+      if (trace_flag & 2) 
+      {
+        for (i=0,node=pFirstNode; node; node=node->mpNext,i++)
+        {}
+        
         TraceLog("Backward pass... (number of nodes: %d)", i);
       }
-      if (!LatticeLocalOptimization_BackwardPass(pFirstNode, strictTiming)) break;
+      
+      if (!LatticeLocalOptimization_BackwardPass(pFirstNode, strictTiming)) 
+        break;
     }
   }
   
@@ -1116,6 +1158,19 @@ namespace STK
       if (rcnlen > 0) 
         strncat(strcat(triname, "+"), rcname, rcnlen);
   
+
+{
+printf("QQQ\n");
+
+printf("nentries: %d\n", CDphones->mNEntries);
+for(int i=0; i < CDphones->mNEntries; i++) {
+  printf("%d\n", i);
+  puts(CDphones->mpEntry[i]->key);
+}
+
+printf("WWW\n");
+}
+
       e.key  = triname;
       my_hsearch_r(e, FIND, &ep, CDphones);
   

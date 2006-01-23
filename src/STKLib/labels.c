@@ -478,7 +478,9 @@ Label *ReadLabels(
       } else if (unknownLabels == UL_INSERT) {
   // ??? naco e.key=strdup(e.key) => bordel v pameti
   // current->mpData = current->mpName = e.data = e.key = strdup(e.key);
-  e.data = strdup(e.key);
+
+  e.key=strdup(e.key);
+  e.data = e.key;
   current->mpName = (char*) e.data;
   current->mpData = current->mpName;
 
