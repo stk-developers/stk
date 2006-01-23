@@ -402,8 +402,9 @@ namespace STK
     if (chptr != NULL) 
       *chptr = '\0';
   
-    if (strcmp(pFileName, "-") && pBuff->mpLastFileName &&
-        !strcmp(pBuff->mpLastFileName, pFileName)) 
+    if ((strcmp(pFileName, "-"))
+    &&  (pBuff->mpLastFileName != NULL) 
+    &&  (!strcmp(pBuff->mpLastFileName, pFileName))) 
     {
       *pHeader = pBuff->last_header;
     } 

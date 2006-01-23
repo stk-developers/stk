@@ -220,11 +220,16 @@ int main(int argc, char *argv[]) {
   enum Update_Mode {UM_UPDATE=1, UM_DUMP=2, UM_BOTH=UM_UPDATE|UM_DUMP} update_mode;
   enum TranscriptionFormat {TF_HTK, TF_STK, TF_ERR} in_transc_fmt;
   int notInDictAction = (NotInDictActionType) WORD_NOT_IN_DIC_UNSET;
-  RHFBuffer rhfbuff                  = {0};
-  RHFBuffer rhfbuff_alig             = {0};
-  ExpansionOptions expOptions        = {0};
-  STKNetworkOutputFormat in_net_fmt = {0};
-  LabelFormat in_lbl_fmt = {0};
+  
+  RHFBuffer               rhfbuff           = {0};
+  RHFBuffer               rhfbuff_alig      = {0};
+  
+  rhfbuff.mpLastFileName = NULL;
+  rhfbuff_alig.mpLastFileName = NULL;
+  
+  ExpansionOptions        expOptions        = {0};
+  STKNetworkOutputFormat  in_net_fmt        = {0};
+  LabelFormat             in_lbl_fmt        = {0};
   in_lbl_fmt.TIMES_OFF = 1;
 
   if (argc == 1) usage(argv[0]);
@@ -233,8 +238,8 @@ int main(int argc, char *argv[]) {
   hset.Init(MODEL_SET_WITH_ACCUM);
   
   if (!my_hcreate_r(100,  &dictHash)
-      || !my_hcreate_r(100,  &phoneHash)
-      || !my_hcreate_r(100,  &cfgHash)) 
+   || !my_hcreate_r(100,  &phoneHash)
+   || !my_hcreate_r(100,  &cfgHash)) 
   {
     Error("Insufficient memory");
   }
@@ -603,11 +608,8 @@ int main(int argc, char *argv[]) {
           cvg_file, 
           &rhfbuff);
                               
-      // we won't use rhfbuff anymore so we free some of its allocated
-      // structure members
-      free(rhfbuff.mpLastFileName);
-
-      if (hset.mInputVectorSize != header.mSampleSize / sizeof(float)) {
+      if (hset.mInputVectorSize != header.mSampleSize / sizeof(float)) 
+      {
         Error("Vector size [%d] in '%s' is incompatible with source HMM set [%d]",
               header.mSampleSize/sizeof(float), phys_fn, hset.mInputVectorSize);
       }
@@ -644,10 +646,6 @@ int main(int argc, char *argv[]) {
             cvg_file_alig, 
             &rhfbuff_alig);
         
-        // we won't use rhfbuff anymore so we free some of its allocated
-        // structure members
-        free(rhfbuff_alig.mpLastFileName);
-
         if (hset_alig->mInputVectorSize != header_alig.mSampleSize/sizeof(float)) {
           Error("Vector size [%d] in '%s' is incompatible with alignment HMM set [%d]",
                 header_alig.mSampleSize/sizeof(float), file_name->mpPhysical, hset_alig->mInputVectorSize);

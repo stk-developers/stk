@@ -456,8 +456,7 @@ namespace STK
       Error("Cannot open input MMF %s", pFileName);
     }
     
-    fp = input_stream.file();
-    
+    fp = input_stream.file();    
     
     for (;;) 
     {
@@ -467,7 +466,8 @@ namespace STK
         {
           Error("Cannot read input MMF", pFileName);
         }
-        fclose(fp);
+        //fclose(fp);
+        input_stream.close();
         return;
       }
   

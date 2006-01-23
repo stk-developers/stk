@@ -402,8 +402,8 @@
   
   //***************************************************************************
   //***************************************************************************
-  int my_hsearch_r(ENTRY item, ACTION action, ENTRY **ret,
-                  MyHSearchData *tab)
+  int my_hsearch_r(ENTRY item, ACTION action, ENTRY ** ret,
+                  MyHSearchData * tab)
   {
     unsigned int i;
     int          cc;

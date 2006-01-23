@@ -58,11 +58,6 @@ namespace STK
       tnode = pNode->mpNext;
       free(pNode->mpLinks);
       free(pNode->mpBackLinks);
-      printf("%d\n", pNode->x);
-      
-//      if (pNode->mpName != NULL)
-//        free(pNode->mpName);
-        
       free(pNode);
       pNode = tnode;
     }
@@ -119,7 +114,7 @@ namespace STK
       {
         case NT_WORD:  tnode->mpPronun = ((Word *) lp->mpData)->pronuns[0]; break;
         case NT_MODEL: tnode->mpHmm    =   (Hmm *) lp->mpData;              break;
-        case NT_PHONE: tnode->mpName   =  (char *) lp->mpData; tnode->x=456;    break;
+        case NT_PHONE: tnode->mpName   =  (char *) lp->mpData;              break;
         default:       Error("Fatal: Invalid node type");
       }
       
@@ -221,7 +216,6 @@ namespace STK
   
           tnode->mType       = NT_PHONE | (node->mType & NT_TRUE);
           tnode->mpName      = pronun->model[j].mpName;
-          tnode->x = 789;
           tnode->mStart      = node->mStart;
           tnode->mStop       = node->mStop;
           tnode->mPhoneAccuracy = 1.0;
@@ -1183,13 +1177,11 @@ printf("WWW\n");
           Error("Insufficient memory");
         
         node->mpName = triname;
-        node->x = 120;
       } 
       else 
       {
         free(triname);
         node->mpName = ep->key;
-        node->x = 123;
       }
     }
   }

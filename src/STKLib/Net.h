@@ -72,7 +72,6 @@ namespace STK
   class Node
   {
   public:
-    int           x;
     char *        mpName;
     Hmm  *        mpHmm;
     Hmm  *        mpHmmToUpdate;

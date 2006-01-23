@@ -52,7 +52,7 @@ namespace STK
       // and for different stream type we perform different closing
       if (stream_type == basic_stkbuf::t_file)
       {
-        //fclose(file());
+        fclose(fileptr);
       }
       else if (stream_type == basic_stkbuf::t_pipe)
       {
