@@ -101,7 +101,8 @@ char *optionStr =
 " -V n   PRINTVERSION=TRUE"
 " -X r   SOURCETRANSCEXT";
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) 
+{
   ModelSet            hset;
   ModelSet *          hset_alig = NULL;
   Network             net;
@@ -110,8 +111,8 @@ int main(int argc, char *argv[]) {
   FLOAT *             obsMx;
   FLOAT *             obsMx_alig;
   FLOAT               sentWeight;
-  HtkHeader          header;
-  HtkHeader          header_alig;
+  HtkHeader           header;
+  HtkHeader           header_alig;
   Label *             labels;
   
   int                 i;
@@ -356,8 +357,11 @@ int main(int argc, char *argv[]) {
                               "HTK", TF_HTK, "STK", TF_STK, NULL);
 
   cchrptr      = GetParamStr(&cfgHash, SNAME":UPDATE",  "");
-  while (*cchrptr) {
-    switch (*cchrptr++) {
+  
+  while (*cchrptr) 
+  {
+    switch (*cchrptr++) 
+    {
       case 't': update_mask |= UM_TRANSITION; break;
       case 'm': update_mask |= UM_MEAN;       break;
       case 'v': update_mask |= UM_VARIANCE;   break;
@@ -368,12 +372,13 @@ int main(int argc, char *argv[]) {
       default:  Error("Unknown update flag '%c' (tmvwsx)", *cchrptr);
     }
   }
-  if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", FALSE)) {
+  
+  if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", FALSE)) 
     PrintConfig(&cfgHash);
-  }
-  if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", FALSE)) {
+  
+  if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", FALSE)) 
     puts("Version: "VERSION"\n");
-  }
+  
 
   GetParamBool(&cfgHash, SNAME":NFRAMEOUTPNORM", FALSE);
 
@@ -396,9 +401,7 @@ int main(int argc, char *argv[]) {
     
   for (src_mmf=strtok(src_mmf, ","); src_mmf != NULL; src_mmf=strtok(NULL, ",")) 
   {
-    //gMmfIO.Load(hset, src_mmf, NULL);
     hset.ParseMmf(src_mmf, NULL);
-    //ReadHMMSet(src_mmf, &hset, NULL);
   }
   
   if (alg_hmm_list != NULL || alg_mmf != NULL) 
@@ -797,8 +800,10 @@ int main(int argc, char *argv[]) {
       }
       
       free(obsMx);
+      
       if (one_pass_reest) 
         free(obsMx_alig);
+        
       if (!network_file)  
         net.Release();
     }

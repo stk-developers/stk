@@ -712,8 +712,6 @@ namespace STK
       }
     }
     
-    //istr.close();
-    fclose(pBuff->mpFp);
     return fea_mx;
   }
   
