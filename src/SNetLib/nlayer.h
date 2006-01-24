@@ -2,10 +2,11 @@
 #define NLAYER_H
 
 // :TODO: Include real matrixes from STK
-typedef float* Matrix;
-typedef float* WindowMatrix;
 
 namespace SNet{
+  typedef float* Matrix;
+  typedef float* WindowMatrix;
+  
   /// One neural net layer (Consists of linear transformation, biases and non-linearity)
   class NLayer{
     private:
@@ -17,8 +18,8 @@ namespace SNet{
       Matrix* mpChangesBiases;   ///< Changes bias vector computed during forward pass
       Matrix* mpRecWeights;      ///< Pointer to weights matrixes received from clients
       Matrix* mpRecBiases;       ///< Pointer to bias vectors received from clients
-      Matrix* mpIn;           ///< Matrix of layer input vectors (first layer uses window of input cache)
-      Matrix* mpOut;          ///< Matrix of layer output vectors (last layer uses window of input cache)
+      Matrix* mpIn;              ///< Matrix of layer input vectors (first layer uses window of input cache)
+      Matrix* mpOut;             ///< Matrix of layer output vectors (last layer uses window of input cache)
       Matrix* mpError;           ///< Layer error matrix (errors before non-linearity)
     public:
 

@@ -73,7 +73,7 @@ char *optionStr =
 " -V n   PRINTVERSION=TRUE"
 " -X r   SOURCETRANSCEXT";
 
-
+/*
 int main(int argc, char *argv[]) 
 {
   HMMSet hset;
@@ -321,38 +321,7 @@ int main(int argc, char *argv[])
       if (info->actualCache < info->cacheSize)
         continue;
 
-      // Go further only if cache is full
-      /*
-      if (prog->SERVER){
-        waitForOthers(barrier, 1, -1); // *1* wait for actual caches from all clients
-
-        // Do not compute more than minimum of all computers
-  info->actualCache = min(info->actualCache, info->clientCaches, prog->numberOfClients);
-        info->frames += info->actualCache * (prog->numberOfClients+1);
-        info->actualNumberOfBunches = info->actualCache / info->bunchSize;
-        info->discarded += (info->actualCache % info->bunchSize) * (prog->numberOfClients+1);
-        waitForOthers(barrier, 2, -1); // *2* wait for actual caches for all clients
-      }
-      if (prog->CLIENT){
-        sendIntToServer(prog->mainSocket, info->actualCache);
-  info->actualCache = receiveIntFromServer(prog->mainSocket);
-      }
-      if (!prog->SERVER){
-        info->frames += info->actualCache * (prog->numberOfClients+1);
-  info->actualNumberOfBunches = info->actualCache / info->bunchSize;
-        info->discarded += (info->actualCache % info->bunchSize) * (prog->numberOfClients+1);
-      }
-      computeCache(prog, info, matrix, inCache, outCache, compCache, data, err); // learn on whole cache
-      if (prog->SERVER){
-        waitForOthers(barrier, 5, -1); //*5* end of cache computed
-      }
-
-      if (info->actualCache < info->cacheSize){ // client or server is out of data
-        info->actualCache = 0;
-        break;
-      }
-      info->actualCache = 0;
-      */
+ 
     }
 
     totFrames  += nFrames;
@@ -367,71 +336,7 @@ int main(int argc, char *argv[])
   }
   /// END - MAIN FILE LOOP
 
-  // Get actual cache size, same as in loop -^
-  /*
-  if (prog->SERVER){
-    waitForOthers(barrier, 1, -1); // *1* wait for actual caches from all clients
-    info->actualCache = min(info->actualCache, info->clientCaches, prog->numberOfClients);
-    info->frames += info->actualCache * (prog->numberOfClients+1);
-    info->actualNumberOfBunches = info->actualCache / info->bunchSize;
-    info->discarded += (info->actualCache % info->bunchSize) * (prog->numberOfClients+1);
-    waitForOthers(barrier, 2, -1); // *2* wait for actual caches for all clients
-  }
-  if (prog->CLIENT){
-    sendIntToServer(prog->mainSocket, info->actualCache);
-    info->actualCache = receiveIntFromServer(prog->mainSocket);
-  }
-  if (!prog->SERVER){
-    info->frames += info->actualCache * (prog->numberOfClients+1);
-    info->actualNumberOfBunches = info->actualCache / info->bunchSize;
-    info->discarded += (info->actualCache % info->bunchSize) * (prog->numberOfClients+1);
-  }
 
-  computeCache(prog, info, matrix, inCache, outCache, compCache, data, err);
-
-  tEnd(ALL);
-
-  info->end = 1; // last cache computed! For threads to terminate
-  if (prog->SERVER){
-    waitForOthers(barrier, 5, -1); //*5* cache is computed, wait for others
-  }
-
-  if (prog->CLIENT){
-    sendIntToServer(prog->mainSocket, info->good);
-  }
-  if (prog->SERVER){
-    waitForOthers(barrier, 6, -1); //*6* wait for all good vectors numbers sent
-    int i;
-    for (i = 0; i < prog->numberOfClients; i++){
-      info->good += info->clientGood[i];
-    }
-  }
-
-  if (!prog->CLIENT){
-    if (!prog->CV){
-      printf("Training correct: >> ");
-    }
-    else {
-      printf("CV correct:       >> ");
-    }
-    printf("%5.2f%% << (vectors %d, good %d, discarded %d)\n",
-           ((100.0*info->good)/(info->frames-info->discarded)), (info->frames-info->discarded),
-       info->good, info->discarded);
-  }
-  else{
-    printf("Client finished...\n");
-  }
-  if (!prog->CLIENT){
-    printf("     TIME: All %6.3f, Compution %6.3f, Files %6.3f",
-           timer_add[ALL], timer_add[COMP], timer_add[FILES]);
-    if (!prog->CV)
-      printf(" (wasted %5.2f%%)\n", 100.0-((100.0*(timer_add[COMP]+timer_add[FILES]))/timer_add[ALL]));
-    else
-      printf("\n");
-  }
-  tPrint(ALL);
-  tPrint(COMP);
-*/
   if (mTraceFlag & 2) {
     TraceLog("Total number of frames: %d", totFrames);
   }
@@ -468,9 +373,9 @@ int main(int argc, char *argv[])
 }
 
     
+    */
     
-    
-/*
+
 
 
 #include"SNetLib/nnet.h"
@@ -493,4 +398,4 @@ int main(int argc, char *argv[]){
 
   return 0;
 }
-*/
+
