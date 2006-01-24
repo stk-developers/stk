@@ -64,7 +64,7 @@ SExpand     : $(BASELIBS) STKLib/labels.o STKLib/dict.o $(LIBNET)
 SERestX :  SERest.o $(BASELIBS) $(LIBHMMS) STKLib/Viterbi.cc STKLib/labels.o STKLib/Net.o STKLib/dict.o STKLib/imagesc.o
 	$(CC) $(CFLAGS) $(XFLAGS) -o SERestX SERest.o STKLib/common.o STKLib/fileio.o $(LIBHMMS) STKLib/Viterbi.cc STKLib/labels.o $(LIBNET) STKLib/dict.o STKLib/imagesc.o -lm
 	
-SNet : $(BASELIBS) STKLib/fileio.o $(LIBHMMS) STKLib/Viterbi.o $(LIBNET) SNetLib/nerror.o SNetLib/nlayer.o SNetLib/nnet.o SNetLib/progobj.o SNetLib/socketobj.o 
+SNet : $(BASELIBS) STKLib/fileio.o $(LIBHMMS) STKLib/Viterbi.o $(LIBNET) SNetLib/nlayer.o SNetLib/nnet.o SNetLib/progobj.o SNetLib/socketobj.o 
 
 
 ###############################################################################
@@ -123,8 +123,7 @@ mainsock.o: SNetLib/socketobj.h STKLib/Error.h
 SNet.o: STKLib/fileio.h STKLib/common.h STKLib/Error.h STKLib/common.h
 SNet.o: STKLib/Models.h STKLib/Matrix.h STKLib/Matrix.tcc STKLib/stkstream.h
 SNet.o: STKLib/stkstream.tcc STKLib/Viterbi.h STKLib/Models.h STKLib/labels.h
-SNet.o: STKLib/dict.h STKLib/Net.h SNetLib/nnet.h SNetLib/nlayer.h
-SNet.o: SNetLib/progobj.h SNetLib/socketobj.h STKLib/Error.h
+SNet.o: STKLib/dict.h STKLib/Net.h
 STKLib/common.o: STKLib/common.h STKLib/Error.h STKLib/filmatch.h
 STKLib/dict.o: STKLib/dict.h STKLib/Models.h STKLib/common.h STKLib/Error.h
 STKLib/fileio.o: STKLib/fileio.h STKLib/common.h STKLib/Error.h

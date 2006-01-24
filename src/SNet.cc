@@ -73,7 +73,7 @@ char *optionStr =
 " -V n   PRINTVERSION=TRUE"
 " -X r   SOURCETRANSCEXT";
 
-/*
+
 int main(int argc, char *argv[]) 
 {
   HMMSet hset;
@@ -373,11 +373,11 @@ int main(int argc, char *argv[])
 }
 
     
-    */
+    
     
 
 
-
+/*
 #include"SNetLib/nnet.h"
 #include"SNetLib/progobj.h"
 
@@ -398,4 +398,4 @@ int main(int argc, char *argv[]){
 
   return 0;
 }
-
+*/
