@@ -182,7 +182,7 @@ void CloseOutputLabelFile(FILE *lfp, const char *out_MLF)
   }
 }
 
-MyHSearchData readLabelList(char *labelListFileName)
+MyHSearchData readLabelList(const char *labelListFileName)
 {
   char line[1024];
   FILE *fp;
@@ -474,15 +474,12 @@ Label *ReadLabels(
       }
 
       if (unknownLabels == UL_READ) {
-      current->mpData = current->mpName = NULL;
+        current->mpData = current->mpName = NULL;
       } else if (unknownLabels == UL_INSERT) {
-  // ??? naco e.key=strdup(e.key) => bordel v pameti
-  // current->mpData = current->mpName = e.data = e.key = strdup(e.key);
-
-  e.key=strdup(e.key);
-  e.data = e.key;
-  current->mpName = (char*) e.data;
-  current->mpData = current->mpName;
+        e.key=strdup(e.key);
+        e.data = e.key;
+        current->mpName = (char*) e.data;
+        current->mpData = current->mpName;
 
         if (e.key == NULL || !my_hsearch_r(e, ENTER, &ep, label_hash)) {
           Error("Insufficient memory");

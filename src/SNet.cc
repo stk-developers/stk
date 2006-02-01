@@ -77,14 +77,16 @@ char *optionStr =
 int main(int argc, char *argv[]) 
 {
   ModelSet hset;
-  FILE *sfp, *ofp = NULL;
-  FLOAT *obsMx, *obs;
-  HtkHeader header;
+  FILE *sfp, *ilfp;
+  FLOAT *obsMx, *obsMx_out, *obs, *obs_out = NULL;
+  HtkHeader header, header_out;
+  Label *labels;
   int i, fcnt = 0;
   XformInstance *input = NULL;
   char line[1024];
-  char outFile[1024];
-  MyHSearchData phoneHash, cfgHash;
+  char label_file[1024];
+  char *chrptr;
+  MyHSearchData labelHash, cfgHash;
   int totFrames = 0;
   int vec_size, out_size, time;
   FileListElem *feature_files = NULL;
@@ -122,28 +124,31 @@ int main(int argc, char *argv[])
         char *        cvn_file_out;
   const char *        cvn_mask_out;
   const char *        cvg_file_out;
-  
+  const char *        outlabel_map;
   int  mTraceFlag;
   int  targetKind;
+  int  targetKind_out = PARAMKIND_USER;
   int  derivOrder, derivOrder_out;
   int  *derivWinLengths, *derivWinLengths_out;
   int startFrmExt;
   int endFrmExt;
+  int startFrmExt_out = 0;
+  int endFrmExt_out   = 0;
   bool hmms_binary;
   bool swap_features;
-  bool swap_fea_out;
-//  char *lbl_list_file   = NULL;
+  bool swap_features_out;
   const char *NNet_instance_name = NULL;
   XformInstance *NNet_instance   = NULL;
   XformInstance *NNet_input      = NULL;
   LabelFormat in_lbl_fmt = {0};
+  RHFBuffer rhfbuff      = {0};
+  RHFBuffer rhfbuff_out  = {0};
 
   if (argc == 1) usage(argv[0]);
 
   hset.Init(MODEL_SET_WITH_ACCUM);
 
-  if (!my_hcreate_r(100,  &phoneHash)
-  || !my_hcreate_r(100,  &cfgHash)) {
+  if (!my_hcreate_r(100, &cfgHash)) {
     Error("Insufficient memory");
   }
   i = ParseOptions(argc, argv, optionStr, SNAME, &cfgHash);
@@ -166,6 +171,7 @@ int main(int argc, char *argv[])
   NNet_instance_name =
                  GetParamStr(&cfgHash, SNAME":SOURCEINPUT",     NULL); // pripadne rename
   swap_features=!GetParamBool(&cfgHash,SNAME":NATURALREADORDER", isBigEndian());
+  swap_features_out=swap_features;
 //  swap_fea_out =!GetParamBool(&cfgHash,SNAME":NATURALWRITEORDER",isBigEndian());
   gpFilterWldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
   script_filter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",   NULL);
@@ -192,6 +198,7 @@ int main(int argc, char *argv[])
   trg_hmm_dir  = GetParamStr(&cfgHash, SNAME":TARGETMODELDIR",  NULL);
   trg_hmm_ext  = GetParamStr(&cfgHash, SNAME":TARGETMODELEXT",  NULL);
   trg_mmf      = GetParamStr(&cfgHash, SNAME":TARGETMMF",       NULL);
+  outlabel_map = GetParamStr(&cfgHash, SNAME":OUTPUTLABELMAP",  NULL);
   
 //  in_transc_fmt= (TranscriptionFormat) GetParamEnum(&cfgHash,SNAME":SOURCETRANSCFMT",
 //                              !network_file && htk_compat ? TF_HTK : TF_STK,
@@ -224,12 +231,14 @@ int main(int argc, char *argv[])
   }
 //  if (src_hmm_list) ReadHMMList(&hset,     src_hmm_list, src_hmm_dir, src_hmm_ext);
 
+  labelHash = readLabelList(outlabel_map);
+
   if (NNet_instance_name != NULL) {
     Macro *macro = FindMacro(&hset.mXformInstanceHash, NNet_instance_name);
     if (macro == NULL) Error("Undefined input '%s'", NNet_instance_name);
     NNet_instance = (XformInstance *) macro->mpData;
-  } else if (hset.inputXform) {
-    NNet_instance = hset.inputXform;
+  } else if (hset.mpInputXform) {
+    NNet_instance = hset.mpInputXform;
   }
   
   //Store pointer to trasformation instance providing the input for NN
@@ -239,7 +248,7 @@ int main(int argc, char *argv[])
   NNet_input = NNet_instance->mpInput;
   NNet_instance->mpInput = NULL;
 
-  if (out_by_labels) {
+  if (outlabel_map) {
     //Allocate buffer, to which example of output vector will be created
     //according to labels
     obs_out = (FLOAT *)malloc(NNet_instance->mOutSize * sizeof(FLOAT));
@@ -251,10 +260,10 @@ int main(int argc, char *argv[])
     // MAIN FILE LOOP
   for (file_name = feature_files;
       file_name != NULL;
-      file_name = out_by_labels ? file_name->mpNext : file_name->mpNext->mpNext) {
+      file_name = outlabel_map ? file_name->mpNext : file_name->mpNext->mpNext) {
 
     if (mTraceFlag & 1) {
-      if (!out_by_labels) {
+      if (!outlabel_map) {
         TraceLog("Processing file pair %d/%d '%s' <-> %s",  ++fcnt,
         nfeature_files/2, file_name->mpPhysical,file_name->mpNext->logical);
       } else {
@@ -262,15 +271,15 @@ int main(int argc, char *argv[])
       }
     }
     int nFrames;
-    char *phys_fn = (!out_by_labels ? file_name->mpNext : file_name)->mpPhysical;
-    char *lgcl_fn = (!out_by_labels ? file_name->mpNext : file_name)->logical;
+    char *phys_fn = (!outlabel_map ? file_name->mpNext : file_name)->mpPhysical;
+    char *lgcl_fn = (!outlabel_map ? file_name->mpNext : file_name)->logical;
 
     // read sentence weight definition if any ( physical_file.fea[s,e]{weight} )
+    FLOAT sentWeight = 1.0; // Use this to wight feature frames;
+    
     if ((chrptr = strrchr(phys_fn, '{')) != NULL &&
       ((i=0), sscanf(chrptr, "{%f}%n", &sentWeight, &i), chrptr[i] == '\0')) {
       *chrptr = '\0';
-    } else {
-      sentWeight = 1.0;
     }
     if (cmn_mask) process_mask(lgcl_fn, cmn_mask, cmn_file);
     if (cvn_mask) process_mask(lgcl_fn, cvn_mask, cvn_file);
@@ -279,12 +288,12 @@ int main(int argc, char *argv[])
                             derivOrder, derivWinLengths, &header,
                             cmn_path, cvn_path, cvg_file, &rhfbuff);
 
-    if (hset.in_vec_size != header.mSampleSize / sizeof(float)) {
+    if (hset.mInputVectorSize != header.mSampleSize / sizeof(float)) {
       Error("Vector size [%d] in '%s' is incompatible with source HMM set [%d]",
-            header.mSampleSize/sizeof(float), phys_fn, hset.in_vec_size);
+            header.mSampleSize/sizeof(float), phys_fn, hset.mInputVectorSize);
     }
-    nFrames = header.mNSamples - NNet_input->totalDelay;
-    if (!out_by_labels) { //If output examples are given by features
+    nFrames = header.mNSamples - NNet_input->mTotalDelay;
+    if (!outlabel_map) { //If output examples are given by features
                          // read the second set of features ...
                          
       if (cmn_mask_out) process_mask(file_name->logical, cmn_mask_out, cmn_file_out);
@@ -308,28 +317,28 @@ int main(int argc, char *argv[])
     
       strcpy(label_file, file_name->logical);
       ilfp = OpenInputLabelFile(label_file, src_lbl_dir, src_lbl_ext, ilfp, src_mlf);
-      labels = ReadLabels(ilfp, &phoneHash, UL_INSERT, in_lbl_fmt, header.mSamplePeriod,
+      labels = ReadLabels(ilfp, &labelHash, UL_WARN, in_lbl_fmt, header.mSamplePeriod,
                           label_file, src_mlf, NULL);      
-      CloseInputLabelFile(lfp, src_mlf);
+      CloseInputLabelFile(ilfp, src_mlf);
     }
 
     // Initialize all transformation instances (including NN_instance)
-    ResetXformInstances(&hset);
+    hset.ResetXformInstances();
     Label  *lbl_ptr = labels;
     time = 1;
-    if (NNet_input) time -= NNet_input->totalDelay;
+    if (NNet_input) time -= NNet_input->mTotalDelay;
     // Loop over all feature frames.
     for (i = 0; i < header.mNSamples; i++, time++) {
       int j;
-      FLOAT *obs = obsMx + i * hset.in_vec_size;
+      FLOAT *obs = obsMx + i * hset.mInputVectorSize;
 
       //Get next NN input vector by propagating vector from feature file
       //through NNet_input transformation.
-      obs = XformPass(NNet_input, obs, time, FORWARD);
+      obs = NNet_input->XformPass(obs, time, FORWARD);
       //Input of NN is not yet read because of NNet_input delay
       if (time <= 0) continue;
 
-      if (lbl_list_file) {
+      if (outlabel_map) {
         //Create NN output example vector from lables
         for (j = 0; j < NNet_instance->mOutSize; j++) obs_out[j] = 0;
         while (lbl_ptr && lbl_ptr->mStop < time) lbl_ptr = lbl_ptr->mpNext;
@@ -344,7 +353,7 @@ int main(int argc, char *argv[])
     //TraceLog("[%d frames]", nFrames);
     free(obsMx);
 
-    if (!lbl_list_file) {
+    if (!outlabel_map) {
       free(obsMx_out);
     } else {
       ReleaseLabels(labels);
@@ -358,17 +367,17 @@ int main(int argc, char *argv[])
   NNet_instance->mpInput = NNet_input;
 
   //writeNN(data, info, prog, matrix, inCache, compCache);
-  WriteHMMSet(out_MMF, out_hmm_dir, out_hmm_ext, hmms_binary, &hset);
-    
+  hset.WriteMmf(trg_mmf, trg_hmm_dir, trg_hmm_ext, hmms_binary);
   hset.Release();
 
-  my_hdestroy_r(&phoneHash, 1);
+  my_hdestroy_r(&labelHash, 1);
   for (i = 0; i < cfgHash.mNEntries; i++) free(cfgHash.mpEntry[i]->data);
   my_hdestroy_r(&cfgHash, 1);
 
   free(derivWinLengths);
   free(derivWinLengths_out);
-  if (src_mlf)  fclose(ilfp);
+  if (src_mlf) fclose(ilfp);
+  if (outlabel_map) free(obs_out);
   while (feature_files) {
     file_name = feature_files;
     feature_files = feature_files->mpNext;

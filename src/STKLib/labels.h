@@ -79,7 +79,7 @@ void WriteLabels(
 
 void CloseOutputLabelFile(FILE *lfp, const char *out_MLF);
 
-MyHSearchData readLabelList(char *labelListFileName);
+MyHSearchData readLabelList(const char *labelListFileName);
 
 void ReleaseLabels(Label *labels);
 
