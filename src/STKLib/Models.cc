@@ -2773,7 +2773,7 @@ namespace STK
   //  for (macro = variance_list; macro != NULL; macro = macro->mpNext) {
       if (macro->mpData->mpMacro != macro) continue;
       
-      if (macro->mpName != "varFloor1") 
+      if (strcmp(macro->mpName, "varFloor1")) 
       {
         if (macro->mOccurances < mMinOccurances) 
         {

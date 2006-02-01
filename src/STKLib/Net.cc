@@ -1152,19 +1152,6 @@ namespace STK
       if (rcnlen > 0) 
         strncat(strcat(triname, "+"), rcname, rcnlen);
   
-
-{
-printf("QQQ\n");
-
-printf("nentries: %d\n", CDphones->mNEntries);
-for(int i=0; i < CDphones->mNEntries; i++) {
-  printf("%d\n", i);
-  puts(CDphones->mpEntry[i]->key);
-}
-
-printf("WWW\n");
-}
-
       e.key  = triname;
       my_hsearch_r(e, FIND, &ep, CDphones);
   

@@ -76,12 +76,12 @@ char *optionStr =
 
 int main(int argc, char *argv[]) 
 {
-  HMMSet hset;
+  ModelSet hset;
   FILE *sfp, *ofp = NULL;
   FLOAT *obsMx, *obs;
   HtkHeader header;
   int i, fcnt = 0;
-  XformInstance *input = NULL;
+  XFormInstance *input = NULL;
   char line[1024];
   char outFile[1024];
   MyHSearchData phoneHash, cfgHash;
@@ -96,27 +96,51 @@ int main(int argc, char *argv[])
   const char *src_hmm_dir;
   const char *src_hmm_ext;
         char *src_mmf;
+  const char *trg_hmm_dir;
+  const char *trg_hmm_ext;
+  const char *trg_mmf;
   const char *out_dir;
   const char *out_ext;
+  const char *src_lbl_dir;
+  const char *src_lbl_ext;
+  const char *src_mlf;
+
   const char *inputName;
   char *script;
+  
+        char *        cmn_path;
+        char *        cmn_file;
+  const char *        cmn_mask;
+        char *        cvn_path;
+        char *        cvn_file;
+  const char *        cvn_mask;
+  const char *        cvg_file;
+        char *        cmn_path_out;
+        char *        cmn_file_out;
+  const char *        cmn_mask_out;
+        char *        cvn_path_out;
+        char *        cvn_file_out;
+  const char *        cvn_mask_out;
+  const char *        cvg_file_out;
+  
   int  mTraceFlag;
   int  targetKind;
-  int  derivOrder;
-  int  *derivWinLengths;
+  int  derivOrder, derivOrder_out;
+  int  *derivWinLengths, *derivWinLengths_out;
   int startFrmExt;
   int endFrmExt;
+  bool hmms_binary;
   bool swap_features;
   bool swap_fea_out;
 //  char *lbl_list_file   = NULL;
-  char *NNet_instance_name     = NULL;
-  XformInstance *NNet_instance = NULL;
-  XformInstance *NNet_input    = NULL;
+  const char *NNet_instance_name = NULL;
+  XFormInstance *NNet_instance   = NULL;
+  XFormInstance *NNet_input      = NULL;
   LabelFormat in_lbl_fmt = {0};
 
   if (argc == 1) usage(argv[0]);
 
-  InitHMMSet(&hset, 1);
+  hset.Init(MODEL_SET_WITH_ACCUM);
 
   if (!my_hcreate_r(100,  &phoneHash)
   || !my_hcreate_r(100,  &cfgHash)) {
@@ -128,8 +152,13 @@ int main(int argc, char *argv[])
     last_file = AddFileElem(last_file, argv[i]);
     nfeature_files++;
   }
+  
   targetKind   = GetDerivParams(&cfgHash, &derivOrder, &derivWinLengths,
-                                &startFrmExt, &endFrmExt, SNAME":",0);
+                                &startFrmExt, &endFrmExt,
+                                &cmn_path, &cmn_file, &cmn_mask,
+                                &cvn_path, &cvn_file, &cvn_mask, &cvg_file,
+                                SNAME":",  0);
+  
   in_lbl_fmt.left_extent  = -100 * (long long) (0.5 + 1e5 *
                  GetParamFlt(&cfgHash, SNAME":STARTTIMESHIFT",  0.0));
   in_lbl_fmt.right_extent =  100 * (long long) (0.5 + 1e5 *
@@ -144,7 +173,7 @@ int main(int argc, char *argv[])
 //  gpHListFilter = GetParamStr(&cfgHash, SNAME":HMMLISTFILTER",   NULL);
   MMF_filter   = GetParamStr(&cfgHash, SNAME":HMMDEFFILTER",    NULL);
 //  parm_ofilter = GetParamStr(&cfgHash, SNAME":HPARMOFILTER",    NULL);
-  label_filter = GetParamStr(&cfgHash, SNAME":HLABELFILTER",    NULL);
+  transc_filter= GetParamStr(&cfgHash, SNAME":HLABELFILTER",    NULL);
 //  net_filter   = GetParamStr(&cfgHash, SNAME":HNETFILTER",      NULL);
 //  dict_filter  = GetParamStr(&cfgHash, SNAME":HDICTFILTER",     NULL);
   MMF_ofilter  = GetParamStr(&cfgHash, SNAME":HMMDEFOFILTER",   NULL);
@@ -191,14 +220,14 @@ int main(int argc, char *argv[])
     my_fclose(sfp);
   }
   for (src_mmf=strtok(src_mmf, ","); src_mmf != NULL; src_mmf=strtok(NULL, ",")) {
-    ReadHMMSet(src_mmf, &hset, NULL);
+    hset.ParseMmf(src_mmf, NULL);
   }
 //  if (src_hmm_list) ReadHMMList(&hset,     src_hmm_list, src_hmm_dir, src_hmm_ext);
 
   if (NNet_instance_name != NULL) {
-    Macro *macro = FindMacro(&hset.Xform_instance_hash, NNet_instance_name);
+    Macro *macro = FindMacro(&hset.mXFormInstanceHash, NNet_instance_name);
     if (macro == NULL) Error("Undefined input '%s'", NNet_instance_name);
-    NNet_instance = (XformInstance *) macro->mpData;
+    NNet_instance = (XFormInstance *) macro->mpData;
   } else if (hset.inputXform) {
     NNet_instance = hset.inputXform;
   }
@@ -285,7 +314,7 @@ int main(int argc, char *argv[])
     }
 
     // Initialize all transformation instances (including NN_instance)
-    ResetXformInstances(&hset);
+    ResetXFormInstances(&hset);
     Label  *lbl_ptr = labels;
     time = 1;
     if (NNet_input) time -= NNet_input->totalDelay;
@@ -309,19 +338,6 @@ int main(int argc, char *argv[])
         //Get NN output example vector from obsMx_out matrix
         obs_out = obsMx_out + (time-1) * NNet_instance->mOutSize;
       }
-
-      // Saving to cache
-      memcpy(giveRowPointer(inCache, info->actualCache), obs, inCache->cols*sizeof(FLOAT));
-
-      // Saving output to cache
-      memcpy(giveRowPointer(outCache, info->actualCache), obs_out, outCache->cols*sizeof(FLOAT));
-
-      info->actualCache++;
-
-      if (info->actualCache < info->cacheSize)
-        continue;
-
- 
     }
 
     totFrames  += nFrames;
@@ -336,31 +352,20 @@ int main(int argc, char *argv[])
   }
   /// END - MAIN FILE LOOP
 
-
   if (mTraceFlag & 2) {
     TraceLog("Total number of frames: %d", totFrames);
   }
   NNet_instance->mpInput = NNet_input;
 
-
   //writeNN(data, info, prog, matrix, inCache, compCache);
   WriteHMMSet(out_MMF, out_hmm_dir, out_hmm_ext, hmms_binary, &hset);
-
-
-  
-  
-  //ReleaseHMMSet(&hset);
+    
   hset.Release();
 
-//  my_hdestroy_r(&labelHash, 0);
   my_hdestroy_r(&phoneHash, 1);
   for (i = 0; i < cfgHash.mNEntries; i++) free(cfgHash.mpEntry[i]->data);
   my_hdestroy_r(&cfgHash, 1);
 
-  if (network_file) {
-    net.Release();
-  }
-  free(hset.varFloor);
   free(derivWinLengths);
   free(derivWinLengths_out);
   if (src_mlf)  fclose(ilfp);
@@ -371,31 +376,3 @@ int main(int argc, char *argv[])
   }
   return 0;
 }
-
-    
-    
-    
-
-
-/*
-#include"SNetLib/nnet.h"
-#include"SNetLib/progobj.h"
-
-using namespace SNet;
-
-// ::TODO:: >>> Ask Lukas about Trace!
-
-int main(int argc, char *argv[]){
-  ProgObj *p_prog_obj = new ProgObj;
-  
-  // read command line here
-  
-  
-  
-  
-  
-  p_prog_obj->PrintCommandLine(argc, argv);
-
-  return 0;
-}
-*/
