@@ -78,36 +78,28 @@ int main(int argc, char *argv[])
 {
   ModelSet hset;
   FILE *sfp, *ilfp;
-  FLOAT *obsMx, *obsMx_out, *obs, *obs_out;
+  FLOAT *obsMx, *obsMx_out, *obs_out;
   HtkHeader header, header_out;
   Label *labels;
   int i, fcnt = 0;
-  XformInstance *input = NULL;
   char line[1024];
   char label_file[1024];
   char *chrptr;
   MyHSearchData labelHash, cfgHash;
   int totFrames = 0;
-  int vec_size, out_size, time;
+  int time;
   FileListElem *feature_files = NULL;
   int nfeature_files = 0;
   FileListElem *file_name = NULL;
   FileListElem **last_file = &feature_files;
 
-
-  const char *src_hmm_dir;
-  const char *src_hmm_ext;
         char *src_mmf;
   const char *trg_hmm_dir;
   const char *trg_hmm_ext;
   const char *trg_mmf;
-  const char *out_dir;
-  const char *out_ext;
   const char *src_lbl_dir;
   const char *src_lbl_ext;
   const char *src_mlf;
-
-  const char *inputName;
   char *script;
   
         char *        cmn_path;
@@ -301,7 +293,7 @@ int main(int argc, char *argv[])
                             derivOrder, derivWinLengths, &header,
                             cmn_path, cvn_path, cvg_file, &rhfbuff);
 
-    if (hset.mInputVectorSize != header.mSampleSize / sizeof(float)) {
+    if ((size_t) hset.mInputVectorSize != header.mSampleSize / sizeof(float)) {
       Error("Vector size [%d] in '%s' is incompatible with source HMM set [%d]",
             header.mSampleSize/sizeof(float), phys_fn, hset.mInputVectorSize);
     }
@@ -337,7 +329,7 @@ int main(int argc, char *argv[])
     if (NNet_input) time -= NNet_input->mTotalDelay;
     // Loop over all feature frames.
     for (i = 0; i < header.mNSamples; i++, time++) {
-      int j;
+      size_t j;
       FLOAT *obs = obsMx + i * hset.mInputVectorSize;
 
       //Get next NN input vector by propagating vector from feature file
@@ -363,9 +355,9 @@ int main(int argc, char *argv[])
 //             !!!!! TO BE REWRITEN BY SOMETHING MEANINGFUL !!!!!
 //
 /////////////////////////////////////////////////////////////////////////////////
-      for(int j=0; j< NNet_input->mOutSize; j++)    printf("%5.2f ", obs[j]);
+      for(size_t j=0; j< NNet_input->mOutSize; j++)    printf("%5.2f ", obs[j]);
       printf("-> ");
-      for(int j=0; j< NNet_instance->mOutSize; j++) printf("%5.2f ", obs_out[j]);
+      for(size_t j=0; j< NNet_instance->mOutSize; j++) printf("%5.2f ", obs_out[j]);
       printf("\n");
 /////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////
@@ -392,7 +384,7 @@ int main(int argc, char *argv[])
   hset.WriteMmf(trg_mmf, trg_hmm_dir, trg_hmm_ext, hmms_binary);
   hset.Release();
 
-  for (i = 0; i < cfgHash.mNEntries; i++) free(cfgHash.mpEntry[i]->data);
+  for (size_t i = 0; i < cfgHash.mNEntries; i++) free(cfgHash.mpEntry[i]->data);
   my_hdestroy_r(&cfgHash, 1);
 
   free(derivWinLengths);
