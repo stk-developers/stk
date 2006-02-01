@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
 {
   ModelSet hset;
   FILE *sfp, *ilfp;
-  FLOAT *obsMx, *obsMx_out, *obs, *obs_out = NULL;
+  FLOAT *obsMx, *obsMx_out, *obs, *obs_out;
   HtkHeader header, header_out;
   Label *labels;
   int i, fcnt = 0;
@@ -126,14 +126,13 @@ int main(int argc, char *argv[])
   const char *        cvg_file_out;
   const char *        outlabel_map;
   int  mTraceFlag;
-  int  targetKind;
-  int  targetKind_out = PARAMKIND_USER;
+  int  targetKind, targetKind_out;;
   int  derivOrder, derivOrder_out;
   int  *derivWinLengths, *derivWinLengths_out;
   int startFrmExt;
   int endFrmExt;
-  int startFrmExt_out = 0;
-  int endFrmExt_out   = 0;
+  int startFrmExt_out;
+  int endFrmExt_out;
   bool hmms_binary;
   bool swap_features;
   bool swap_features_out;
@@ -157,12 +156,22 @@ int main(int argc, char *argv[])
     last_file = AddFileElem(last_file, argv[i]);
     nfeature_files++;
   }
+
+  outlabel_map = GetParamStr(&cfgHash, SNAME":OUTPUTLABELMAP",  NULL);
   
   targetKind   = GetDerivParams(&cfgHash, &derivOrder, &derivWinLengths,
                                 &startFrmExt, &endFrmExt,
                                 &cmn_path, &cmn_file, &cmn_mask,
                                 &cvn_path, &cvn_file, &cvn_mask, &cvg_file,
-                                SNAME":",  0);
+                                SNAME":",  !outlabel_map ? 1 : 0);
+  if(!outlabel_map)
+  {
+    targetKind_out = GetDerivParams(&cfgHash, &derivOrder_out, &derivWinLengths_out,
+                                    &startFrmExt_out, &endFrmExt_out,
+                                    &cmn_path_out, &cmn_file_out, &cmn_mask_out,
+                                    &cvn_path_out, &cvn_file_out, &cvn_mask_out,
+                                    &cvg_file_out, SNAME":",  2);
+  }
   
   in_lbl_fmt.left_extent  = -100 * (long long) (0.5 + 1e5 *
                  GetParamFlt(&cfgHash, SNAME":STARTTIMESHIFT",  0.0));
@@ -187,7 +196,7 @@ int main(int argc, char *argv[])
 //  out_ext      = GetParamStr(&cfgHash, SNAME":TARGETPARAMEXT",  NULL);
   src_mlf      = GetParamStr(&cfgHash, SNAME":SOURCEMLF",       NULL);
   src_lbl_dir  = GetParamStr(&cfgHash, SNAME":SOURCETRANSCDIR", NULL);
-  src_lbl_ext  = GetParamStr(&cfgHash, SNAME":SOURCETRANSCEXT", NULL);
+  src_lbl_ext  = GetParamStr(&cfgHash, SNAME":SOURCETRANSCEXT", "lab");
   mTraceFlag   = GetParamInt(&cfgHash, SNAME":TRACE",           0);
   hmms_binary  = GetParamBool(&cfgHash,SNAME":SAVEBINARY",      FALSE);
   script =(char*)GetParamStr(&cfgHash, SNAME":SCRIPT",          NULL);
@@ -198,7 +207,6 @@ int main(int argc, char *argv[])
   trg_hmm_dir  = GetParamStr(&cfgHash, SNAME":TARGETMODELDIR",  NULL);
   trg_hmm_ext  = GetParamStr(&cfgHash, SNAME":TARGETMODELEXT",  NULL);
   trg_mmf      = GetParamStr(&cfgHash, SNAME":TARGETMMF",       NULL);
-  outlabel_map = GetParamStr(&cfgHash, SNAME":OUTPUTLABELMAP",  NULL);
   
 //  in_transc_fmt= (TranscriptionFormat) GetParamEnum(&cfgHash,SNAME":SOURCETRANSCFMT",
 //                              !network_file && htk_compat ? TF_HTK : TF_STK,
@@ -231,8 +239,6 @@ int main(int argc, char *argv[])
   }
 //  if (src_hmm_list) ReadHMMList(&hset,     src_hmm_list, src_hmm_dir, src_hmm_ext);
 
-  labelHash = readLabelList(outlabel_map);
-
   if (NNet_instance_name != NULL) {
     Macro *macro = FindMacro(&hset.mXformInstanceHash, NNet_instance_name);
     if (macro == NULL) Error("Undefined input '%s'", NNet_instance_name);
@@ -249,6 +255,13 @@ int main(int argc, char *argv[])
   NNet_instance->mpInput = NULL;
 
   if (outlabel_map) {
+    labelHash = readLabelList(outlabel_map);
+    
+    if (NNet_instance->mOutSize != labelHash.mNEntries) {
+        Error("Number of entries [%d] in file '%s' does not match with NNet output size [%d]",
+              labelHash.mNEntries, outlabel_map, NNet_instance->mOutSize);
+      }
+    
     //Allocate buffer, to which example of output vector will be created
     //according to labels
     obs_out = (FLOAT *)malloc(NNet_instance->mOutSize * sizeof(FLOAT));
@@ -303,11 +316,6 @@ int main(int argc, char *argv[])
                                   derivOrder_out, derivWinLengths_out, &header_out,
                                   cmn_path_out, cvn_path_out, cvg_file_out, &rhfbuff_out);
 
-      if (NNet_instance->mOutSize != header_out.mSampleSize/sizeof(float)) {
-        Error("Vector size [%d] in '%s' is incompatible with NNet output size [%d]",
-              header_out.mSampleSize/sizeof(float), file_name->mpPhysical,
-              NNet_instance->mOutSize);
-      }
       if (nFrames != header_out.mNSamples) {
         Error("Mismatch in number of frames in input/output feature file pair: "
               "'%s' <-> '%s'.", file_name->mpNext->mpPhysical, file_name->mpPhysical);
@@ -347,6 +355,20 @@ int main(int argc, char *argv[])
         //Get NN output example vector from obsMx_out matrix
         obs_out = obsMx_out + (time-1) * NNet_instance->mOutSize;
       }
+
+/////////////////////////////////////////////////////////////////////////////////
+//
+//    FOR EACH FRAME OF EACH FILE PRINT INPUT TO NN AND ITS DESIRED OUTPUT
+//
+//             !!!!! TO BE REWRITEN BY SOMETHING MEANINGFUL !!!!!
+//
+/////////////////////////////////////////////////////////////////////////////////
+      for(int j=0; j< NNet_input->mOutSize; j++)    printf("%5.2f ", obs[j]);
+      printf("-> ");
+      for(int j=0; j< NNet_instance->mOutSize; j++) printf("%5.2f ", obs_out[j]);
+      printf("\n");
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
     }
 
     totFrames  += nFrames;
@@ -370,14 +392,21 @@ int main(int argc, char *argv[])
   hset.WriteMmf(trg_mmf, trg_hmm_dir, trg_hmm_ext, hmms_binary);
   hset.Release();
 
-  my_hdestroy_r(&labelHash, 1);
   for (i = 0; i < cfgHash.mNEntries; i++) free(cfgHash.mpEntry[i]->data);
   my_hdestroy_r(&cfgHash, 1);
 
   free(derivWinLengths);
-  free(derivWinLengths_out);
   if (src_mlf) fclose(ilfp);
-  if (outlabel_map) free(obs_out);
+  if (outlabel_map) 
+  {
+    my_hdestroy_r(&labelHash, 1);
+    free(obs_out);
+  } 
+  else 
+  {
+    free(derivWinLengths_out);
+  }
+  
   while (feature_files) {
     file_name = feature_files;
     feature_files = feature_files->mpNext;

@@ -464,10 +464,11 @@ Label *ReadLabels(
       if (unknownLabels == UL_ERROR) {
         Error("Unknown label '%s' in label file %s", e.key, file_name);
       }
-      if (unknownLabels == UL_WARN) {
-        Warning("Ignored unknown label '%s' in label file %s", e.key, file_name);
-      }
-      if (unknownLabels == UL_IGNORE) {
+      
+      if (unknownLabels == UL_IGNORE || unknownLabels == UL_WARN) {
+        if (unknownLabels == UL_WARN) {
+          Warning("Ignored unknown label '%s' in label file %s", e.key, file_name);
+        }
         free(current);
         current = prev;
         continue;
