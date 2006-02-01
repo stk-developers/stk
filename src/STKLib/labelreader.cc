@@ -108,7 +108,7 @@ namespace STK
         // definition was found in the list before
         // TODO
         std::cerr << "Warning... more general definition found when inserting " << rLabel << " ... ";
-        std::cerr << "file: " << dynamic_cast<istkstream *>(tmp_ls.mpStream)->name() << " ";
+        std::cerr << "file: " << dynamic_cast<IStkStream *>(tmp_ls.mpStream)->name() << " ";
         std::cerr << "label: " << MatchedPattern() ;
         std::cerr << std::endl;
       }
@@ -325,7 +325,7 @@ namespace STK
   LabelReader::
   RegisterMLF(const string & rFName)
   {
-    istkstream *   new_stream = new istkstream;
+    IStkStream *   new_stream = new IStkStream;
 
     // open the MLF
     new_stream->open(rFName);
@@ -515,8 +515,8 @@ namespace STK
   OpenLabelFile(const string & rLabel)
   {
     // we try to open the file
-    mpTempStream = new istkstream;
-    dynamic_cast<istkstream *>(mpTempStream)->open(rLabel);
+    mpTempStream = new IStkStream;
+    dynamic_cast<IStkStream *>(mpTempStream)->open(rLabel);
 
     if (!mpTempStream->good())  // on error return false and clear the object
     {
@@ -546,11 +546,11 @@ namespace STK
     string            buffer;
 
     // it is possilble, that we look for a label that is currently
-    // mpTempStream (only for istkstream)
-    if ((mpTempStream != NULL) && (typeid(mpTempStream) == typeid(istkstream)))
+    // mpTempStream (only for IStkStream)
+    if ((mpTempStream != NULL) && (typeid(mpTempStream) == typeid(IStkStream)))
     {
       // if we want to read from the same label, we only rewind
-      if (dynamic_cast<istkstream *>(mpCurStream)->name() == rLabel)
+      if (dynamic_cast<IStkStream *>(mpCurStream)->name() == rLabel)
       {
         // rewind the stream to the begining and read again
         mpCurStream->clear();

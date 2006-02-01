@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
   FLOAT *obsMx, *obs;
   HtkHeader header;
   int i, fcnt = 0;
-  XFormInstance *input = NULL;
+  XformInstance *input = NULL;
   char line[1024];
   char outFile[1024];
   MyHSearchData phoneHash, cfgHash;
@@ -134,8 +134,8 @@ int main(int argc, char *argv[])
   bool swap_fea_out;
 //  char *lbl_list_file   = NULL;
   const char *NNet_instance_name = NULL;
-  XFormInstance *NNet_instance   = NULL;
-  XFormInstance *NNet_input      = NULL;
+  XformInstance *NNet_instance   = NULL;
+  XformInstance *NNet_input      = NULL;
   LabelFormat in_lbl_fmt = {0};
 
   if (argc == 1) usage(argv[0]);
@@ -225,9 +225,9 @@ int main(int argc, char *argv[])
 //  if (src_hmm_list) ReadHMMList(&hset,     src_hmm_list, src_hmm_dir, src_hmm_ext);
 
   if (NNet_instance_name != NULL) {
-    Macro *macro = FindMacro(&hset.mXFormInstanceHash, NNet_instance_name);
+    Macro *macro = FindMacro(&hset.mXformInstanceHash, NNet_instance_name);
     if (macro == NULL) Error("Undefined input '%s'", NNet_instance_name);
-    NNet_instance = (XFormInstance *) macro->mpData;
+    NNet_instance = (XformInstance *) macro->mpData;
   } else if (hset.inputXform) {
     NNet_instance = hset.inputXform;
   }
@@ -314,7 +314,7 @@ int main(int argc, char *argv[])
     }
 
     // Initialize all transformation instances (including NN_instance)
-    ResetXFormInstances(&hset);
+    ResetXformInstances(&hset);
     Label  *lbl_ptr = labels;
     time = 1;
     if (NNet_input) time -= NNet_input->totalDelay;

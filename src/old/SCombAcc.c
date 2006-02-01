@@ -27,7 +27,7 @@
 #include "getopt.h"
 #endif
 
-void ReadXFormList(HMMSet *hmm_set, char *xformListFileName);
+void ReadXformList(HMMSet *hmm_set, char *xformListFileName);
 
 void usage(char *progname)
 {
@@ -182,10 +182,10 @@ int main(int argc, char *argv[]) {
 
 
   if (xform_list_file != NULL) {
-    ReadXFormList(&hset, xform_list_file);
+    ReadXformList(&hset, xform_list_file);
   }
 
-  hset.AllocateAccumulatorsForXFormStats();
+  hset.AllocateAccumulatorsForXformStats();
   //ResetAccumsForHMMSet(&hset);
   hset.ResetAccums();
 

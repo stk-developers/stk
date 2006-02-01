@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
   HtkHeader              header;
   int                     i;
   int                     fcnt = 0;
-  XFormInstance *         p_input = NULL;
+  XformInstance *         p_input = NULL;
   char                    p_line[1024];
   char                    p_out_file[1024];
   MyHSearchData  cfg_hash;
@@ -195,13 +195,13 @@ int main(int argc, char *argv[])
 
   if (input_name != NULL) 
   {
-    Macro *macro = FindMacro(&hset.mXFormInstanceHash, input_name);
+    Macro *macro = FindMacro(&hset.mXformInstanceHash, input_name);
     if (macro == NULL) Error("Undefined source input '%s'", input_name);
-    p_input = (XFormInstance *) macro->mpData;
+    p_input = (XformInstance *) macro->mpData;
   } 
-  else if (hset.mpInputXForm) 
+  else if (hset.mpInputXform) 
   {
-    p_input = hset.mpInputXForm;
+    p_input = hset.mpInputXform;
   }
 
   for (file_name=feature_files; file_name != NULL; file_name=file_name->mpNext) 
@@ -242,7 +242,7 @@ int main(int argc, char *argv[])
       Error("Cannot write to output feature file: '%s'", p_out_file);
     
     time = -hset.mTotalDelay;
-    hset.ResetXFormInstances();
+    hset.ResetXformInstances();
 
     for(i = 0; i < header.mNSamples + hset.mTotalDelay; i++) 
     {
@@ -251,7 +251,7 @@ int main(int argc, char *argv[])
       if (time <= 0) 
         continue;
 
-      obs = XFormPass(p_input, obs_mx + i * vec_size, time, FORWARD);
+      obs = XformPass(p_input, obs_mx + i * vec_size, time, FORWARD);
 
       if (WriteHTKFeature (ofp, obs, out_size, swap_fea_out)) 
         Error("Cannot write to output feature file: '%s'", p_out_file);      

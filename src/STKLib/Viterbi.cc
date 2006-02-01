@@ -692,7 +692,7 @@ namespace STK
       mLike += SQR(obs[j] - mix->mpMean->mpVectorO[j]) * mix->mpVariance->mpVectorO[j];
     }
   
-    mLike = -0.5 * (mix->mGConst + mLike);
+    mLike = -0.5 * (mix->GConst() + mLike);
   
     if (net) {
       net->mpMixPCache[mix->mID].mTime  = net->mTime;
@@ -725,7 +725,7 @@ namespace STK
       FLOAT glike;
       Mixture *mix = state->mpMixture[i].mpEstimates;
   
-      obs = XFormPass(mix->mpInputXForm, obs,
+      obs = XformPass(mix->mpInputXform, obs,
                       net ? net->mTime : UNDEF_TIME,
                       net ? net->mPropagDir : FORWARD);
   
@@ -751,7 +751,7 @@ namespace STK
   FLOAT 
   FromObservationAtStateId(State *state, FLOAT *obs, Network *net)
   {
-    obs = XFormPass(net->mpModelSet->mpInputXForm, obs,
+    obs = XformPass(net->mpModelSet->mpInputXform, obs,
                     net ? net->mTime : UNDEF_TIME,
                     net ? net->mPropagDir : FORWARD);
     assert(obs != NULL);
@@ -797,18 +797,18 @@ namespace STK
   //***************************************************************************
   //***************************************************************************
   void 
-  UpdateXFormStatCache(XFormStatCache * xfsc,
-                       XForm *          topXForm, //to locate positions in input vector
+  UpdateXformStatCache(XformStatCache * xfsc,
+                       Xform *          topXform, //to locate positions in input vector
                        FLOAT *          input) 
   {
     size_t    i;
     size_t    j;
-    size_t    size = xfsc->mpXForm->mInSize;
+    size_t    size = xfsc->mpXform->mInSize;
   
-    if (topXForm == NULL)
+    if (topXform == NULL)
       return;
   
-    if (topXForm == xfsc->mpXForm) 
+    if (topXform == xfsc->mpXform) 
     {
       if (xfsc->mNorm > 0) 
       {
@@ -834,12 +834,12 @@ namespace STK
       xfsc->mNorm++;
     } 
     
-    else if (topXForm->mXFormType == XT_COMPOSITE) 
+    else if (topXform->mXformType == XT_COMPOSITE) 
     {
-      CompositeXForm *cxf = (CompositeXForm *) topXForm;
+      CompositeXform *cxf = (CompositeXform *) topXform;
       for (i=0; i<cxf->mpLayer[0].mNBlocks; i++) 
       {
-        UpdateXFormStatCache(xfsc, cxf->mpLayer[0].mpBlock[i], input);
+        UpdateXformStatCache(xfsc, cxf->mpLayer[0].mpBlock[i], input);
         input += cxf->mpLayer[0].mpBlock[i]->mInSize;
       }
     }
@@ -849,7 +849,7 @@ namespace STK
   //***************************************************************************
   //***************************************************************************
   void 
-  UpdateXFormInstanceStatCaches(XFormInstance *xformInstance,
+  UpdateXformInstanceStatCaches(XformInstance *xformInstance,
                                 FLOAT *observation, int time)
   {
     int i, j;
@@ -859,14 +859,14 @@ namespace STK
   
     xformInstance->mStatCacheTime = time;
   
-    if (xformInstance->mNumberOfXFormStatCaches == 0) return;
+    if (xformInstance->mNumberOfXformStatCaches == 0) return;
   
     if (xformInstance->mpInput) {
-      UpdateXFormInstanceStatCaches(xformInstance->mpInput, observation, time);
+      UpdateXformInstanceStatCaches(xformInstance->mpInput, observation, time);
     }
   
-    for (i = 0; i < xformInstance->mNumberOfXFormStatCaches; i++) {
-      XFormStatCache *xfsc = &xformInstance->mpXFormStatCache[i];
+    for (i = 0; i < xformInstance->mNumberOfXformStatCaches; i++) {
+      XformStatCache *xfsc = &xformInstance->mpXformStatCache[i];
   
       if (xfsc->mpUpperLevelStats != NULL &&
         xfsc->mpUpperLevelStats->mpStats == xfsc->mpStats) { //just link to upper level?
@@ -874,11 +874,11 @@ namespace STK
         continue;
       }
   
-      obs = XFormPass(xformInstance->mpInput, observation, time, FORWARD);
+      obs = XformPass(xformInstance->mpInput, observation, time, FORWARD);
       xfsc->mNorm = 0;
-      UpdateXFormStatCache(xfsc, xformInstance->mpXForm, obs);
+      UpdateXformStatCache(xfsc, xformInstance->mpXform, obs);
       if (xfsc->mpUpperLevelStats != NULL) {
-        int size = xfsc->mpXForm->mInSize;
+        int size = xfsc->mpXform->mInSize;
         for (j = 0; j < size + size*(size+1)/2; j++) {
           xfsc->mpStats[j] += xfsc->mpUpperLevelStats->mpStats[j];
         }
@@ -929,7 +929,7 @@ namespace STK
       for (m = 0; m < n_mixtures; m++) {
         Mixture *mix = state->mpMixture[m].mpEstimates;
         FLOAT cjm    = state->mpMixture[m].mWeight;
-        FLOAT *xobs  = XFormPass(mix->mpInputXForm, obs, mTime, FORWARD);
+        FLOAT *xobs  = XformPass(mix->mpInputXform, obs, mTime, FORWARD);
         FLOAT bjmtO  = DiagCGaussianDensity(mix, xobs, this);
         bjtO  = LogAdd(bjtO, cjm + bjmtO);
       }
@@ -940,7 +940,7 @@ namespace STK
     { 
       Mixture * mix   = state->mpMixture[m].mpEstimates;
       FLOAT     cjm   = state->mpMixture[m].mWeight;
-      FLOAT *   xobs  = XFormPass(mix->mpInputXForm, obs, mTime, FORWARD);
+      FLOAT *   xobs  = XformPass(mix->mpInputXform, obs, mTime, FORWARD);
       FLOAT     bjmtO = DiagCGaussianDensity(mix, xobs, this);
       FLOAT     Lqjmt = logPriorProb - bjtO + cjm + bjmtO;
   
@@ -952,8 +952,8 @@ namespace STK
         FLOAT *   mnacc    = mix->mpMean->mpVectorO     +     vec_size;
         FLOAT *   vvacc    = mix->mpVariance->mpVectorO +     vec_size;
         FLOAT *   vmacc    = mix->mpVariance->mpVectorO + 2 * vec_size;
-        XFormInstance *ixf = mix->mpInputXForm;
-        FLOAT *   xobs     = XFormPass(ixf, obs2, mTime, FORWARD);
+        XformInstance *ixf = mix->mpInputXform;
+        FLOAT *   xobs     = XformPass(ixf, obs2, mTime, FORWARD);
   
   /*      if (mmi_den_pass) {
           mnacc += vec_size + 1;
@@ -990,24 +990,24 @@ namespace STK
         if (Lqjmt < 0)
           state2->mpMixture[m].mWeightAccumDen -= Lqjmt;
   
-        if (ixf == NULL || ixf->mNumberOfXFormStatCaches == 0) 
+        if (ixf == NULL || ixf->mNumberOfXformStatCaches == 0) 
           continue;
   
-        UpdateXFormInstanceStatCaches(ixf, obs2, mTime);
+        UpdateXformInstanceStatCaches(ixf, obs2, mTime);
   
-        for (i = 0; i < ixf->mNumberOfXFormStatCaches; i++) 
+        for (i = 0; i < ixf->mNumberOfXformStatCaches; i++) 
         {
-          XFormStatCache *xfsc = &ixf->mpXFormStatCache[i];
+          XformStatCache *xfsc = &ixf->mpXformStatCache[i];
           Variance *var  = state2->mpMixture[m].mpEstimates->mpVariance;
           Mean     *mean = state2->mpMixture[m].mpEstimates->mpMean;
   
-          for (j = 0; j < var->mNumberOfXFormStatAccums; j++) 
+          for (j = 0; j < var->mNumberOfXformStatAccums; j++) 
           {
-            XFormStatAccum *xfsa = &var->mpXFormStatAccum[j];
+            XformStatAccum *xfsa = &var->mpXformStatAccum[j];
             
-            if (xfsa->mpXForm == xfsc->mpXForm) 
+            if (xfsa->mpXform == xfsc->mpXform) 
             {
-              int size = xfsc->mpXForm->mInSize;
+              int size = xfsc->mpXform->mInSize;
               for (k = 0; k < size+size*(size+1)/2; k++) 
               {
                 xfsa->mpStats[k] += xfsc->mpStats[k] * Lqjmt;
@@ -1017,12 +1017,12 @@ namespace STK
             }
           }
   
-          for (j = 0; j < mean->mNumberOfXFormStatAccums; j++) 
+          for (j = 0; j < mean->mNumberOfXformStatAccums; j++) 
           {
-            XFormStatAccum *xfsa = &mean->mpXFormStatAccum[j];
-            if (xfsa->mpXForm == xfsc->mpXForm) 
+            XformStatAccum *xfsa = &mean->mpXformStatAccum[j];
+            if (xfsa->mpXform == xfsc->mpXform) 
             {
-              int size = xfsc->mpXForm->mInSize;
+              int size = xfsc->mpXform->mInSize;
               for (k = 0; k < size; k++) 
               {
                 xfsa->mpStats[k] += xfsc->mpStats[k] * Lqjmt;
@@ -1120,13 +1120,13 @@ namespace STK
                 case 0:
                   break;
                 case 1:
-                tmpf = log((tmpf / -0.5) - node->mpHmm->mpState[j]->mpMixture[0].mpEstimates->mGConst) * -0.5;
+                tmpf = log((tmpf / -0.5) - node->mpHmm->mpState[j]->mpMixture[0].mpEstimates->GConst()) * -0.5;
                 break;
                 case 2:
-                tmpf = log((tmpf / -0.5) - node->mpHmm->mpState[j]->mpMixture[0].mpEstimates->mGConst) * -1;
+                tmpf = log((tmpf / -0.5) - node->mpHmm->mpState[j]->mpMixture[0].mpEstimates->GConst()) * -1;
                 break;
                 case 3:
-                tmpf += node->mpHmm->mpState[j]->mpMixture[0].mpEstimates->mGConst * 0.5;
+                tmpf += node->mpHmm->mpState[j]->mpMixture[0].mpEstimates->GConst() * 0.5;
   //               tmpf /= hmms->mInputVectorSize;
                 break;
               }
@@ -2018,7 +2018,7 @@ namespace STK
     PassTokenInModel    = &PassTokenMax;
     PassTokenInNetwork  = &PassTokenMax;
     mPropagDir          = FORWARD;
-    mpModelSet->ResetXFormInstances();
+    mpModelSet->ResetXformInstances();
   
     mTime = 0; // Must not be set to -mpModelSet->mTotalDelay yet
                // otherwise token cannot enter first model node
@@ -2115,7 +2115,7 @@ namespace STK
     mCollectAlphaBeta = 1;
     mTime = -hmms->mTotalDelay;
   
-    mpModelSet->ResetXFormInstances();
+    mpModelSet->ResetXformInstances();
     for (i = 0; i < hmms->mTotalDelay; i++) {
       mTime++;
       hmms->UpdateStacks(obsMx + hmms->mInputVectorSize * i, mTime, FORWARD);
@@ -2242,7 +2242,7 @@ namespace STK
     PassTokenInNetwork  = &PassTokenSum;
   
     mSearchPaths        = SP_TRUE_ONLY;
-    mpModelSet->ResetXFormInstances();
+    mpModelSet->ResetXformInstances();
   
     mTime = 0; // Must not be set to -mpModelSet->totalDelay yet
                // otherwise token cannot enter first model node
@@ -2291,10 +2291,10 @@ namespace STK
       }
     }
   
-    p_hmms_alig->ResetXFormInstances();
+    p_hmms_alig->ResetXformInstances();
   
     if (p_hmms_alig != p_hmms_upd) {
-      p_hmms_upd->ResetXFormInstances();
+      p_hmms_upd->ResetXformInstances();
     }
   
     for (i = 0; i < p_hmms_alig->mTotalDelay; i++) {
@@ -2381,10 +2381,10 @@ namespace STK
       }
     }
   
-    p_hmms_alig->ResetXFormInstances();
+    p_hmms_alig->ResetXformInstances();
   
     if (p_hmms_alig != p_hmms_upd) {
-      p_hmms_upd->ResetXFormInstances();
+      p_hmms_upd->ResetXformInstances();
     }
   
     for (i = 0; i < p_hmms_alig->mTotalDelay; i++) {
@@ -2534,10 +2534,10 @@ namespace STK
       }
     }
   
-    p_hmms_alig->ResetXFormInstances();
+    p_hmms_alig->ResetXformInstances();
   
     if (p_hmms_alig != p_hmms_upd) 
-      p_hmms_upd->ResetXFormInstances();
+      p_hmms_upd->ResetXformInstances();
   
     for (i = 0; i < p_hmms_alig->mTotalDelay; i++) 
     {
@@ -2751,10 +2751,10 @@ namespace STK
       return LOG_0;
     }
   
-    p_hmms_alig->ResetXFormInstances();
+    p_hmms_alig->ResetXformInstances();
   
     if (p_hmms_alig != p_hmms_upd)
-      p_hmms_upd->ResetXFormInstances();
+      p_hmms_upd->ResetXformInstances();
   
     // invert order of WRLs
     wlr = mpLast->mpExitToken->mpWlr;

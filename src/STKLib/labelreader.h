@@ -300,7 +300,7 @@ namespace STK
 
     /**
      *  @brief Gives access to the input stream
-     *  @return pointer to an istkstream which is set up by this class (propper
+     *  @return pointer to an IStkStream which is set up by this class (propper
      *          position, file, etc.)
      */
     istream *

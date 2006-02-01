@@ -31,6 +31,7 @@
 #endif
 
 #include <iostream>
+#include <string>
 using namespace std;
 using namespace STK;
 
@@ -387,11 +388,13 @@ int main(int argc, char *argv[])
     CheckCommandLineParamUse(&cfgHash);
   }
 
-  for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) {
-    if ((sfp = my_fopen(script, "rt", script_filter)) == NULL) {
+  for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) 
+  {
+    if ((sfp = my_fopen(script, "rt", script_filter)) == NULL)
       Error("Cannot open script file %s", script);
-    }
-    while (fscanf(sfp, "%s", line) == 1) {
+    
+    while (fscanf(sfp, "%s", line) == 1) 
+    {
       last_file = AddFileElem(last_file, line);
       nfeature_files++;
     }
@@ -464,9 +467,9 @@ int main(int argc, char *argv[])
                                              label_filter;
 
   if (xformList != NULL) 
-    hset.ReadXFormList(xformList);
+    hset.ReadXformList(xformList);
 
-  hset.AllocateAccumulatorsForXFormStats();
+  hset.AllocateAccumulatorsForXformStats();
 
   if (network_file) 
   { // Unsupervised training
@@ -511,9 +514,10 @@ int main(int argc, char *argv[])
   hset.mMmiUpdate           = update_type;
   hset.ResetAccums();
   
-  hset.MMI_E               = E_constant;
-  hset.MMI_h               = h_constant;
-  hset.MMI_tauI            = I_smoothing;
+  hset.mMinVariance         = 1/min_variance;    ///< global minimum variance floor
+  hset.MMI_E                = E_constant;
+  hset.MMI_h                = h_constant;
+  hset.MMI_tauI             = I_smoothing;
   hset.mGaussLvl2ModelReest = alg_mixtures;
   hset.mMinOccurances       = min_examples;
   hset.mMinMixWeight        = min_mix_wght * MIN_WEGIHT;
@@ -524,8 +528,8 @@ int main(int argc, char *argv[])
   if ((hset.mUpdateMask & (UM_MEAN | UM_VARIANCE)) &&
      !hset.mAllMixuresUpdatableFromStatAccums) 
   {
-    Warning("Statistic are estimated for XForm not being "
-            "a single linear XForm on the input of a mixture. "
+    Warning("Statistic are estimated for Xform not being "
+            "a single linear Xform on the input of a mixture. "
             "Means and variances will not be updated");
     hset.mUpdateMask &= ~(UM_MEAN | UM_VARIANCE);
   }
@@ -560,19 +564,18 @@ int main(int argc, char *argv[])
       totFrames  += S;
       totLogLike += P;
 
-      if (trace_flag & 1) {
+      if (trace_flag & 1)
         TraceLog("[%d frames] %f", S, P/S);
-      }
 
-      if (update_type != UT_ML) {
+      if (update_type != UT_ML) 
+      {
         // Second set of accums is for compeating models
         //ReadAccums(file_name->mpNext->mpPhysical, 1.0, &hset, &S, &P2, update_type);
         hset.ReadAccums(file_name->mpNext->mpPhysical, 1.0, &S, &P2, update_type);
         totLogPosterior += update_type == UT_MPE ? P2 : P - P2;
 
-        if (trace_flag & 1) {
+        if (trace_flag & 1)
           TraceLog("[%d frames] %f", S, P2/S);
-        }
       }
     } 
     else 
@@ -649,7 +652,8 @@ int main(int argc, char *argv[])
             cvg_file_alig, 
             &rhfbuff_alig);
         
-        if (hset_alig->mInputVectorSize != header_alig.mSampleSize/sizeof(float)) {
+        if (hset_alig->mInputVectorSize != header_alig.mSampleSize/sizeof(float)) 
+        {
           Error("Vector size [%d] in '%s' is incompatible with alignment HMM set [%d]",
                 header_alig.mSampleSize/sizeof(float), file_name->mpPhysical, hset_alig->mInputVectorSize);
         }
@@ -764,7 +768,8 @@ int main(int argc, char *argv[])
           break;
         }
         
-        if (accum_type == AT_MCE) {
+        if (accum_type == AT_MCE) 
+        {
           P = net.MCEReest(obsMx_alig, obsMx, nFrames, sentWeight, sig_slope);
         } 
         else 
@@ -833,44 +838,82 @@ int main(int argc, char *argv[])
   
   if (parallel_mode <= 0 && update_mode & UM_UPDATE) 
   {
-    Macro *macro = FindMacro(&hset.mVarianceHash, "varFloor1");
-
-    if (macro != NULL || (float) min_variance > 0.0) 
+    Macro     *   macro;
+    Variance  *   tmp_var_floor;
+    Variance  **  vector_to_update;
+    int           in_vec_size;
+    string        suffix = "";
+    string        macro_name;
+    int           m;  
+    
+    
+    // we'll go throuch modelset and all XformInstances and assign a
+    // varfloor if defined... i=-1 indicates that we're inspecting the global
+    // varFloor
+    for (m = -1; m < hset.mXformInstanceHash.mNEntries; m++) 
     {
-      Variance *tmpvar = macro ? (Variance *) macro->mpData : NULL;
-//      assert(!tmpvar || hset.mInputVectorSize == tmpvar->mVectorSize);
-
-      //***
-      // old malloc
-      //hset.mpVarFloor = (Variance *) malloc(sizeof(Variance)+((tmpvar ? tmpvar->mVectorSize : hset.mInputVectorSize)-1)*sizeof(FLOAT));
-      //if (hset.mpVarFloor == NULL) Error("Insufficient memory");
-      //hset.mpVarFloor->mVectorSize = tmpvar ? tmpvar->mVectorSize : hset.mInputVectorSize;
-
-      hset.mpVarFloor = new Variance((tmpvar ? tmpvar->mVectorSize : hset.mInputVectorSize), false);
-      
-      for (i = 0; i < hset.mpVarFloor->mVectorSize; i++) 
+      if (m == -1)
       {
-        if (macro) 
+        suffix = "";
+        vector_to_update = (hset.mpVarFloor != NULL) ?
+          &(hset.mpVarFloor) :
+          NULL;
+      }
+      else
+      {
+        suffix = reinterpret_cast<Macro *> 
+            (hset.mXformInstanceHash.mpEntry[m]->data)->mpName;
+            
+        vector_to_update = &(
+          reinterpret_cast <XformInstance *>(
+          reinterpret_cast <Macro *>( 
+          hset.mXformInstanceHash.mpEntry[m]->data)->mpData)->mpVarFloor);        
+      }
+        
+      macro_name = "varFloor1" + suffix;
+      macro = FindMacro(&hset.mVarianceHash, macro_name.c_str());
+  
+      if (macro != NULL || (float) min_variance > 0.0) 
+      {
+        Variance *tmpvar = macro ? (Variance *) macro->mpData : NULL;
+  //      assert(!tmpvar || hset.mInputVectorSize == tmpvar->mVectorSize);
+  
+        //***
+        // old malloc
+        //hset.mpVarFloor = (Variance *) malloc(sizeof(Variance)+((tmpvar ? tmpvar->mVectorSize : hset.mInputVectorSize)-1)*sizeof(FLOAT));
+        //if (hset.mpVarFloor == NULL) Error("Insufficient memory");
+        //hset.mpVarFloor->mVectorSize = tmpvar ? tmpvar->mVectorSize : hset.mInputVectorSize;
+  
+        tmp_var_floor = new Variance(
+          tmpvar ? tmpvar->mVectorSize : hset.mInputVectorSize, 
+          false);
+        
+        for (i = 0; i < tmp_var_floor->mVectorSize; i++) 
         {
-          hset.mpVarFloor->mpVectorO[i] =
-            tmpvar && ((float) min_variance <= 0.0 ||
-                        tmpvar->mpVectorO[i] < 1/min_variance)
-            ? tmpvar->mpVectorO[i] : 1 / min_variance;
+          if (macro) 
+          {
+            tmp_var_floor->mpVectorO[i] =
+              tmpvar && ((float) min_variance <= 0.0 ||
+                          tmpvar->mpVectorO[i] < 1/min_variance)
+              ? tmpvar->mpVectorO[i] : 1 / min_variance;
+          }
         }
+        
+        *vector_to_update = tmp_var_floor;
       }
     }
     
-    // Required by WriteXFormStatsAndRunCommands and UpdateHMMSetFromAccums
-    hset.Scan(MTM_MEAN|MTM_VARIANCE, NULL, NormalizeStatsForXForm, 0);
+    // Required by WriteXformStatsAndRunCommands and UpdateHMMSetFromAccums
+    hset.Scan(MTM_MEAN|MTM_VARIANCE, NULL, NormalizeStatsForXform, 0);
 
     if (hset.mUpdateMask & UM_XFSTATS) 
-      hset.WriteXFormStatsAndRunCommands(trg_hmm_dir, xfStatsBin);
+      hset.WriteXformStatsAndRunCommands(trg_hmm_dir, xfStatsBin);
     
     if (hset.mUpdateMask != UM_XFSTATS) 
     {
       if (hset.mUpdateMask & UM_XFORM) 
       {
-        hset.ReadXFormStats(trg_hmm_dir, xfStatsBin);
+        hset.ReadXformStats(trg_hmm_dir, xfStatsBin);
       }
       //UpdateHMMSetFromAccums(trg_hmm_dir, &hset);
       hset.UpdateFromAccums(trg_hmm_dir);

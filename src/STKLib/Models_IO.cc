@@ -27,24 +27,24 @@ namespace STK
     gpKwds[KID_PoissonD   ] = "PoissonD";    gpKwds[KID_GammaD     ] = "GammaD";
     gpKwds[KID_RelD       ] = "RelD";        gpKwds[KID_GenD       ] = "GenD";
     gpKwds[KID_DiagC      ] = "DiagC";       gpKwds[KID_FullC      ] = "FullC";
-    gpKwds[KID_XFormC     ] = "XFormC";      gpKwds[KID_State      ] = "State";
+    gpKwds[KID_XformC     ] = "XformC";      gpKwds[KID_State      ] = "State";
     gpKwds[KID_TMix       ] = "TMix";        gpKwds[KID_Mixture    ] = "Mixture";
     gpKwds[KID_Stream     ] = "Stream";      gpKwds[KID_SWeights   ] = "SWeights";
     gpKwds[KID_Mean       ] = "Mean";        gpKwds[KID_Variance   ] = "Variance";
-    gpKwds[KID_InvCovar   ] = "InvCovar";    gpKwds[KID_XForm      ] = "XForm";
+    gpKwds[KID_InvCovar   ] = "InvCovar";    gpKwds[KID_Xform      ] = "Xform";
     gpKwds[KID_GConst     ] = "GConst";      gpKwds[KID_Duration   ] = "Duration";
     gpKwds[KID_InvDiagC   ] = "InvDiagC";    gpKwds[KID_TransP     ] = "TransP";
     gpKwds[KID_DProb      ] = "DProb";       gpKwds[KID_LLTC       ] = "LLTC";
-    gpKwds[KID_LLTCovar   ] = "LLTCovar";    gpKwds[KID_XFormKind  ] = "XFormKind";
-    gpKwds[KID_ParentXForm] = "ParentXForm"; gpKwds[KID_NumXForms  ] = "NumXForms";
-    gpKwds[KID_XFormSet   ] = "XFormSet";    gpKwds[KID_LinXForm   ] = "LinXForm";
+    gpKwds[KID_LLTCovar   ] = "LLTCovar";    gpKwds[KID_XformKind  ] = "XformKind";
+    gpKwds[KID_ParentXform] = "ParentXform"; gpKwds[KID_NumXforms  ] = "NumXforms";
+    gpKwds[KID_XformSet   ] = "XformSet";    gpKwds[KID_LinXform   ] = "LinXform";
     gpKwds[KID_Offset     ] = "Offset";      gpKwds[KID_Bias       ] = "Bias";
     gpKwds[KID_BlockInfo  ] = "BlockInfo";   gpKwds[KID_Block      ] = "Block";
     gpKwds[KID_BaseClass  ] = "BaseClass";   gpKwds[KID_Class      ] = "Class";
-    gpKwds[KID_XFormWgtSet] = "XFormWgtSet"; gpKwds[KID_ClassXForm ] = "ClassXForm";
+    gpKwds[KID_XformWgtSet] = "XformWgtSet"; gpKwds[KID_ClassXform ] = "ClassXform";
     gpKwds[KID_MMFIDMask  ] = "MMFIDMask";   gpKwds[KID_Parameters ] = "Parameters";
     gpKwds[KID_NumClasses ] = "NumClasses";  gpKwds[KID_AdaptKind  ] = "AdaptKind";
-    gpKwds[KID_Prequal    ] = "Prequal";     gpKwds[KID_InputXForm ] = "InputXForm";
+    gpKwds[KID_Prequal    ] = "Prequal";     gpKwds[KID_InputXform ] = "InputXform";
     gpKwds[KID_RClass     ] = "RClass";      gpKwds[KID_RegTree    ] = "RegTree";
     gpKwds[KID_Node       ] = "Node";        gpKwds[KID_TNode      ] = "TNode";
     gpKwds[KID_HMMSetID   ] = "HMMSetID";    gpKwds[KID_ParmKind   ] = "ParmKind";
@@ -55,7 +55,7 @@ namespace STK
     gpKwds[KID_NumLayers  ] = "NumLayers";   gpKwds[KID_NumBlocks  ] = "NumBlocks";
     gpKwds[KID_Layer      ] = "Layer";       gpKwds[KID_Copy       ] = "Copy";
     gpKwds[KID_Stacking   ] = "Stacking";
-    /* Numeric functions - FuncXForm*/
+    /* Numeric functions - FuncXform*/
     gpKwds[KID_Sigmoid    ] = "Sigmoid";     gpKwds[KID_Log        ] = "Log";
     gpKwds[KID_Exp        ] = "Exp";         gpKwds[KID_Sqrt       ] = "Sqrt";
     gpKwds[KID_SoftMax    ] = "SoftMax";  
@@ -261,7 +261,7 @@ namespace STK
     if (     CheckKwd(str, KID_DiagC))    return KID_DiagC;
     else if (CheckKwd(str, KID_InvDiagC)) return KID_InvDiagC;
     else if (CheckKwd(str, KID_FullC))    return KID_FullC;
-    else if (CheckKwd(str, KID_XFormC))   return KID_XFormC;
+    else if (CheckKwd(str, KID_XformC))   return KID_XformC;
     else if (CheckKwd(str, KID_LLTC))     return KID_LLTC;
     else if (CheckKwd(str, KID_PDFObsVec))return KID_PDFObsVec;
     else return KID_UNSET;
@@ -430,7 +430,7 @@ namespace STK
   ParseMmf(const char * pFileName, char * expectHMM)
   {
     //ReadHMMSet(rName.c_str(), this, expectHMM);
-    istkstream    input_stream;
+    IStkStream    input_stream;
     FILE *        fp;
     char *        keyword;
     Macro *       macro;
@@ -501,8 +501,8 @@ namespace STK
             case 'u': data =  ReadMean         (fp, macro); break;
             case 'v': data =  ReadVariance     (fp, macro); break;
             case 't': data =  ReadTransition   (fp, macro); break;
-            case 'j': data =  ReadXFormInstance(fp, macro); break;
-            case 'x': data =  ReadXForm        (fp, macro); break;
+            case 'j': data =  ReadXformInstance(fp, macro); break;
+            case 'x': data =  ReadXform        (fp, macro); break;
             default : data = NULL; break;
           }  
   
@@ -517,7 +517,7 @@ namespace STK
             // Macro is redefined. New item must be checked for compatibility with
             // the old one (vector sizes, delays, memory sizes) All references to
             // old item must be replaced and old item must be released
-            // !!! How about AllocateAccumulatorsForXFormStats() and ResetAccumsForHMMSet()
+            // !!! How about AllocateAccumulatorsForXformStats() and ResetAccumsForHMMSet()
   
   
             unsigned int i;
@@ -563,12 +563,12 @@ namespace STK
             case 'j':
               this->Scan(MTM_XFORM_INSTANCE | MTM_MIXTURE, NULL, ReplaceItem, &ud);
               ud.mpOldData->Scan(MTM_REVERSE_PASS|MTM_ALL, NULL, ReleaseItem, NULL);
-              hash = &mXFormInstanceHash;
+              hash = &mXformInstanceHash;
               break;
             case 'x':
               this->Scan(MTM_XFORM | MTM_XFORM_INSTANCE,NULL,ReplaceItem, &ud);
               ud.mpOldData->Scan(MTM_REVERSE_PASS | MTM_ALL, NULL,ReleaseItem,NULL);
-              hash = &mXFormHash;
+              hash = &mXformHash;
               break;
             }
             
@@ -744,7 +744,7 @@ namespace STK
               gpCurrentMmfName, gCurrentMmfLine);
       }
       ret->PDF_obs_coef = GetInt(fp) - 1;
-      range = mpInputXForm ? mpInputXForm->mOutSize
+      range = mpInputXform ? mpInputXform->mOutSize
                                   : mInputVectorSize;
       if (ret->PDF_obs_coef < 0 || ret->PDF_obs_coef >= range) 
       {
@@ -851,20 +851,20 @@ namespace STK
     //  Error("Insufficient memory");
     ret = new Mixture;  
   
-    if (CheckKwd(keyword, KID_InputXForm)) 
+    if (CheckKwd(keyword, KID_InputXform)) 
     {
-      ret->mpInputXForm = ReadXFormInstance(fp, NULL);
+      ret->mpInputXform = ReadXformInstance(fp, NULL);
     } 
     else 
     {
-      ret->mpInputXForm = mpInputXForm;
+      ret->mpInputXform = this->mpInputXform;
       UngetString();
     }
   
     ret->mpMean = ReadMean(fp, NULL);
     ret->mpVariance = ReadVariance(fp, NULL);
   
-    size = ret->mpInputXForm ? ret->mpInputXForm->mOutSize : mInputVectorSize;
+    size = ret->mpInputXform ? ret->mpInputXform->mOutSize : mInputVectorSize;
     
     if (size == -1) 
     {
@@ -877,7 +877,7 @@ namespace STK
   
     if ((keyword = GetString(fp, 0)) != NULL && CheckKwd(keyword, KID_GConst)) 
     {
-      ret->mGConst = GetFloat(fp);
+      ret->rGConst() = GetFloat(fp);
     } 
     else 
     {
@@ -992,31 +992,31 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  XFormInstance *
+  XformInstance *
   ModelSet::
-  ReadXFormInstance(FILE *fp, Macro *macro) 
+  ReadXformInstance(FILE *fp, Macro *macro) 
   {
-    XFormInstance * ret;
-    XFormInstance * input = NULL;
+    XformInstance * ret;
+    XformInstance * input = NULL;
     char *          keyword;
     int             out_vec_size = -1;
     int             i;
   
-  //  puts("ReadXFormInstance");
+  //  puts("ReadXformInstance");
     keyword = GetString(fp, 1);
     if (!strcmp(keyword, "~j")) 
     {
       keyword = GetString(fp, 1);
       
-      if ((macro = FindMacro(&mXFormInstanceHash, keyword)) == NULL)
+      if ((macro = FindMacro(&mXformInstanceHash, keyword)) == NULL)
         Error("Undefined reference to macro ~j %s (%s:%d)", keyword, gpCurrentMmfName, gCurrentMmfLine);
       
-      return (XFormInstance *) macro->mpData;
+      return (XformInstance *) macro->mpData;
     }
   
     if (CheckKwd(keyword, KID_Input)) 
     {
-      input = ReadXFormInstance(fp, NULL);
+      input = ReadXformInstance(fp, NULL);
       keyword = GetString(fp, 1);
     }
   
@@ -1036,10 +1036,10 @@ namespace STK
       keyword = GetString(fp, 1);
     }
   
-    if (CheckKwd(keyword, KID_LinXForm)) 
+    if (CheckKwd(keyword, KID_LinXform)) 
     {
       keyword = GetString(fp, 1);
-  //    Error("Keyword <LinXForm> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+  //    Error("Keyword <LinXform> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
     }
   
     if (!CheckKwd(keyword, KID_VecSize))
@@ -1049,35 +1049,35 @@ namespace STK
   
     //***
     // old malloc
-    // ret = (XFormInstance *) malloc(sizeof(*ret)+(out_vec_size-1)*sizeof(FLOAT));
+    // ret = (XformInstance *) malloc(sizeof(*ret)+(out_vec_size-1)*sizeof(FLOAT));
     // if (ret == NULL) Error("Insufficient memory");
     //   
     // 
     
     // create new instance
-    ret = new XFormInstance(out_vec_size);
+    ret = new XformInstance(out_vec_size);
 
     // read instance from file    
-    ret->mpXForm = ReadXForm(fp, NULL);
+    ret->mpXform = ReadXform(fp, NULL);
     
     
     if (input == NULL && mInputVectorSize == -1) {
       Error("<VecSize> has not been defined yet (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
     }
   
-    if (out_vec_size != ret->mpXForm->mOutSize /* * ret->stackSize*/) {
-      Error("XFormInstance <VecSize> must equal to XForm "
+    if (out_vec_size != ret->mpXform->mOutSize /* * ret->stackSize*/) {
+      Error("XformInstance <VecSize> must equal to Xform "
             "output size (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
     }
   
     if (input == NULL) {
-      if (ret->mpXForm->mInSize != mInputVectorSize) {
-        Error("XForm input size must equal to ~o <VecSize> (%s:%d)",
+      if (ret->mpXform->mInSize != mInputVectorSize) {
+        Error("Xform input size must equal to ~o <VecSize> (%s:%d)",
               gpCurrentMmfName, gCurrentMmfLine);
       }
     } else {
-      if (ret->mpXForm->mInSize != input->mOutSize) {
-        Error("XForm input size must equal to <Input> <VecSize> (%s:%d)",
+      if (ret->mpXform->mInSize != input->mOutSize) {
+        Error("Xform input size must equal to <Input> <VecSize> (%s:%d)",
               gpCurrentMmfName, gCurrentMmfLine);
       }
     }
@@ -1086,61 +1086,61 @@ namespace STK
     
     //***
     // old malloc
-    //if (ret->mpXForm->mMemorySize > 0 &&
-    //  ((ret->mpMemory = (char *) calloc(1, ret->mpXForm->mMemorySize)) == NULL)) {
+    //if (ret->mpXform->mMemorySize > 0 &&
+    //  ((ret->mpMemory = (char *) calloc(1, ret->mpXform->mMemorySize)) == NULL)) {
     //  Error("Insufficient memory");
     //}
-    if (ret->mpXForm->mMemorySize > 0)
-      ret->mpMemory = new char[ret->mpXForm->mMemorySize];
+    if (ret->mpXform->mMemorySize > 0)
+      ret->mpMemory = new char[ret->mpXform->mMemorySize];
   
-    ret->mpNext = mpXFormInstances;
-    mpXFormInstances = ret;
+    ret->mpNext = mpXformInstances;
+    mpXformInstances = ret;
     ret->mpInput = input;
     ret->mpMacro = macro;
-  //  puts("ReadXFormInstance exit");
+  //  puts("ReadXformInstance exit");
   
-    ret->mNumberOfXFormStatCaches = 0;
-    ret->mpXFormStatCache   = NULL;
-    ret->mTotalDelay = ret->mpXForm->mDelay + (input ? input->mTotalDelay : 0);
+    ret->mNumberOfXformStatCaches = 0;
+    ret->mpXformStatCache   = NULL;
+    ret->mTotalDelay = ret->mpXform->mDelay + (input ? input->mTotalDelay : 0);
   
     mTotalDelay = HIGHER_OF(mTotalDelay, ret->mTotalDelay);
     return ret;
-  }; //ReadXFormInstance(FILE *fp, Macro *macro) 
+  }; //ReadXformInstance(FILE *fp, Macro *macro) 
   
   
   //***************************************************************************
-  XForm *
+  Xform *
   ModelSet::
-  ReadXForm(FILE *fp, Macro *macro) 
+  ReadXform(FILE *fp, Macro *macro) 
   {
     char *keyword;
     unsigned int i;
   
-  //  puts("ReadXForm");
+  //  puts("ReadXform");
     keyword = GetString(fp, 1);
     
     if (!strcmp(keyword, "~x")) {
       keyword = GetString(fp, 1);
-      if ((macro = FindMacro(&mXFormHash, keyword)) == NULL) {
+      if ((macro = FindMacro(&mXformHash, keyword)) == NULL) {
         Error("Undefined reference to macro ~x %s (%s:%d)", keyword, gpCurrentMmfName, gCurrentMmfLine);
       }
-      return (XForm *) macro->mpData;
+      return (Xform *) macro->mpData;
     }
   
-    if (CheckKwd(keyword, KID_XForm)) {
-      return (XForm *) ReadLinearXForm(fp, macro);
+    if (CheckKwd(keyword, KID_Xform)) {
+      return (Xform *) ReadLinearXform(fp, macro);
     }
   
     if (CheckKwd(keyword, KID_Bias)) {
-      return (XForm *) ReadBiasXForm(fp, macro);
+      return (Xform *) ReadBiasXform(fp, macro);
     }
   
     if (CheckKwd(keyword, KID_Copy)) {
-      return (XForm *) ReadCopyXForm(fp, macro);
+      return (Xform *) ReadCopyXform(fp, macro);
     }
   
     if (CheckKwd(keyword, KID_Stacking)) {
-      return (XForm *) ReadStackingXForm(fp, macro);
+      return (Xform *) ReadStackingXform(fp, macro);
     }
   
     if (CheckKwd(keyword, KID_NumLayers) ||
@@ -1148,29 +1148,29 @@ namespace STK
       CheckKwd(keyword, KID_BlockInfo))
     {
       UngetString();
-      return (XForm *) ReadCompositeXForm(fp, macro);
+      return (Xform *) ReadCompositeXform(fp, macro);
     }
   
     for (i=0; i < gFuncTableSize/sizeof(*gFuncTable); i++) 
     {
       if (CheckKwd(keyword, gFuncTable[i].KID)) {
-        return (XForm *) ReadFuncXForm(fp, macro, i);
+        return (Xform *) ReadFuncXform(fp, macro, i);
       }
     }
   
-    Error("Invalid XForm definition (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+    Error("Invalid Xform definition (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
     return NULL;
-  }; //ReadXForm(FILE *fp, Macro *macro) 
+  }; //ReadXform(FILE *fp, Macro *macro) 
   
   
   //***************************************************************************
   //***************************************************************************
-  CompositeXForm *
+  CompositeXform *
   ModelSet::
-  ReadCompositeXForm(FILE *fp, Macro *macro) 
+  ReadCompositeXform(FILE *fp, Macro *macro) 
   {
-    CompositeXForm *    ret;
-    XForm **            block;
+    CompositeXform *    ret;
+    Xform **            block;
     char *              keyword;
     size_t              i;
     size_t              j;
@@ -1189,7 +1189,7 @@ namespace STK
       UngetString();
     }
   
-    //if ((ret = (CompositeXForm *) malloc(sizeof(CompositeXForm) +
+    //if ((ret = (CompositeXform *) malloc(sizeof(CompositeXform) +
     //                            (nlayers-1) * sizeof(ret->mpLayer[0]))) == NULL) {
     //  Error("Insufficient memory");
     //}
@@ -1201,8 +1201,8 @@ namespace STK
     //for (i=0; i<nlayers; i++) 
     //  ret->mpLayer[i].mpBlock = NULL;
   
-    // create new Composite XForm
-    ret = new CompositeXForm(nlayers);    
+    // create new Composite Xform
+    ret = new CompositeXform(nlayers);    
     
     // load each layer
     for (i=0; i<nlayers; i++) 
@@ -1246,7 +1246,7 @@ namespace STK
   
       //***
       // old malloc
-      //       if ((block = (XForm **)  malloc(sizeof(XForm*) * nblocks)) == NULL) 
+      //       if ((block = (Xform **)  malloc(sizeof(Xform*) * nblocks)) == NULL) 
       //         Error("Insufficient memory");
       //   
       //       ret->mpLayer[layer_id-1].mpBlock   = block;
@@ -1285,7 +1285,7 @@ namespace STK
         if (block[block_id-1] != NULL)
           Error("Redefinition of block (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
   
-        block[block_id-1] = ReadXForm(fp, NULL);
+        block[block_id-1] = ReadXform(fp, NULL);
         ret->mMemorySize += block[block_id-1]->mMemorySize;
         layer_delay = HIGHER_OF(layer_delay ,block[block_id-1]->mDelay);
       }
@@ -1335,16 +1335,16 @@ namespace STK
     
     ret->mpMacro = macro;
     return ret;
-  }; // ReadCompositeXForm(FILE *fp, Macro *macro) 
+  }; // ReadCompositeXform(FILE *fp, Macro *macro) 
   
   
   //***************************************************************************    
   //***************************************************************************
-  LinearXForm *
+  LinearXform *
   ModelSet::
-  ReadLinearXForm(FILE *fp, Macro *macro)
+  ReadLinearXform(FILE *fp, Macro *macro)
   {
-    LinearXForm *   ret;
+    LinearXform *   ret;
     int             in_size;
     int             out_size;
     int             i;
@@ -1358,11 +1358,11 @@ namespace STK
   
     //*** 
     // old malloc
-    //ret = (LinearXForm *) malloc(sizeof(LinearXForm)+(out_size*in_size-1)*sizeof(ret->mpMatrixO[0]));
+    //ret = (LinearXform *) malloc(sizeof(LinearXform)+(out_size*in_size-1)*sizeof(ret->mpMatrixO[0]));
     //if (ret == NULL) Error("Insufficient memory");
     
     // create new object
-    ret = new LinearXForm(in_size, out_size);
+    ret = new LinearXform(in_size, out_size);
     
     // fill the object with data    
     i = 0;
@@ -1380,15 +1380,15 @@ namespace STK
   
     ret->mpMacro      = macro;
     return ret;
-  }; // ReadLinearXForm(FILE *fp, Macro *macro)
+  }; // ReadLinearXform(FILE *fp, Macro *macro)
   
 
   //***************************************************************************  
-  BiasXForm *
+  BiasXform *
   ModelSet::
-  ReadBiasXForm(FILE *fp, Macro *macro)
+  ReadBiasXform(FILE *fp, Macro *macro)
   {
-    BiasXForm *   ret;
+    BiasXform *   ret;
     size_t        size;
     size_t        i;
     FLOAT         tmp;
@@ -1397,11 +1397,11 @@ namespace STK
   
     //***
     // old malloc
-    //     ret = (BiasXForm *) malloc(sizeof(BiasXForm)+(size-1)*sizeof(ret->mpVectorO[0]));
+    //     ret = (BiasXform *) malloc(sizeof(BiasXform)+(size-1)*sizeof(ret->mpVectorO[0]));
     //     if (ret == NULL) Error("Insufficient memory");
     //     
     
-    ret = new BiasXForm(size);
+    ret = new BiasXform(size);
     
     // load values
     for (i=0; i < size; i++) 
@@ -1415,37 +1415,37 @@ namespace STK
   
     ret->mpMacro      = macro;
     return ret;
-  }; // ReadBiasXForm(FILE *fp, Macro *macro)
+  }; // ReadBiasXform(FILE *fp, Macro *macro)
   
   
   //***************************************************************************
   //***************************************************************************
-  FuncXForm *
+  FuncXform *
   ModelSet::
-  ReadFuncXForm(FILE *fp, Macro *macro, int funcId)
+  ReadFuncXform(FILE *fp, Macro *macro, int funcId)
   {
-    FuncXForm * ret;
+    FuncXform * ret;
     size_t      size;
   
     //***
     // old malloc
-    //ret = (FuncXForm *) malloc(sizeof(FuncXForm));
+    //ret = (FuncXform *) malloc(sizeof(FuncXform));
     //if (ret == NULL) Error("Insufficient memory");
     
     
     size          = GetInt(fp);
-    ret           = new FuncXForm(size, funcId);
+    ret           = new FuncXform(size, funcId);
     ret->mpMacro  = macro;
     return ret;
-  }; // ReadFuncXForm(FILE *fp, Macro *macro, int funcId)
+  }; // ReadFuncXform(FILE *fp, Macro *macro, int funcId)
   
   //***************************************************************************
   //***************************************************************************
-  CopyXForm *
+  CopyXform *
   ModelSet::
-  ReadCopyXForm(FILE *fp, Macro *macro)
+  ReadCopyXform(FILE *fp, Macro *macro)
   {
-    CopyXForm *   ret;
+    CopyXform *   ret;
     int           in_size;
     int           out_size;
     int           i=0;
@@ -1459,11 +1459,11 @@ namespace STK
   
     //***
     // old malloc
-    //ret = (CopyXForm *) malloc(sizeof(CopyXForm)+(out_size-1)*sizeof(int));
+    //ret = (CopyXform *) malloc(sizeof(CopyXform)+(out_size-1)*sizeof(int));
     //if (ret == NULL) Error("Insufficient memory");
     
     // create new object
-    ret = new CopyXForm(in_size, out_size);
+    ret = new CopyXform(in_size, out_size);
   
     // fill it with data
     while (i < out_size) 
@@ -1491,15 +1491,15 @@ namespace STK
   
     ret->mpMacro      = macro;
     return ret;
-  }; //ReadCopyXForm(FILE *fp, Macro *macro)
+  }; //ReadCopyXform(FILE *fp, Macro *macro)
   
   
   //***************************************************************************
-  StackingXForm *
+  StackingXform *
   ModelSet::
-  ReadStackingXForm(FILE *fp, Macro *macro)
+  ReadStackingXform(FILE *fp, Macro *macro)
   {
-    StackingXForm *   ret;
+    StackingXform *   ret;
     size_t            stack_size;
     size_t            in_size;
   
@@ -1508,13 +1508,13 @@ namespace STK
   
     //***
     // old malloc
-    //ret = (StackingXForm *) malloc(sizeof(StackingXForm));
+    //ret = (StackingXform *) malloc(sizeof(StackingXform));
     //if (ret == NULL) Error("Insufficient memory");
-    ret = new StackingXForm(stack_size, in_size);
+    ret = new StackingXform(stack_size, in_size);
   
     ret->mpMacro      = macro;
     return ret;
-  }; //ReadStackingXForm(FILE *fp, Macro *macro)
+  }; //ReadStackingXform(FILE *fp, Macro *macro)
   
   //***************************************************************************
   int 
@@ -1595,21 +1595,21 @@ namespace STK
         ret = 1;
       } else if (CheckKwd(keyword, KID_HMMSetID)) {
         ret = 1;
-      } else if (CheckKwd(keyword, KID_InputXForm)) {
-        XFormInstance *inputXForm;
-        Macro *macro = pAddMacro(mt_XFormInstance, DEFAULT_XFORM_NAME);
+      } else if (CheckKwd(keyword, KID_InputXform)) {
+        XformInstance *inputXform;
+        Macro *macro = pAddMacro(mt_XformInstance, DEFAULT_XFORM_NAME);
         
         if (macro->mpData != NULL) 
         {
           if (gHmmsIgnoreMacroRedefinition == 0)
-            Error("Redefinition of <InputXForm> (%s:%d)",
+            Error("Redefinition of <InputXform> (%s:%d)",
                   gpCurrentMmfName, gCurrentMmfLine);
         }
         
-        inputXForm = ReadXFormInstance(fp, macro);
+        inputXform = ReadXformInstance(fp, macro);
   
         if (macro->mpData != NULL) {
-          Warning("Redefinition of <InputXForm> (%s:%d)",
+          Warning("Redefinition of <InputXform> (%s:%d)",
                   gpCurrentMmfName, gCurrentMmfLine);
   
           // Macro is redefined. New item must be checked for compatibility with
@@ -1618,29 +1618,29 @@ namespace STK
   
           ReplaceItemUserData ud;
           ud.mpOldData = macro->mpData;
-          ud.mpNewData = inputXForm;
+          ud.mpNewData = inputXform;
           ud.mType     = 'j';
   
           this         ->Scan(MTM_XFORM_INSTANCE|MTM_MIXTURE,NULL,ReplaceItem, &ud);
           ud.mpOldData ->Scan(MTM_REVERSE_PASS|MTM_ALL, NULL, ReleaseItem, NULL);
   
-          for (unsigned int i = 0; i < mXFormInstanceHash.mNEntries; i++) 
+          for (unsigned int i = 0; i < mXformInstanceHash.mNEntries; i++) 
           {
-            if (mXFormInstanceHash.mpEntry[i]->data == ud.mpOldData) 
+            if (mXformInstanceHash.mpEntry[i]->data == ud.mpOldData) 
             {
-              mXFormInstanceHash.mpEntry[i]->data = ud.mpNewData;
+              mXformInstanceHash.mpEntry[i]->data = ud.mpNewData;
             }
           }
         } 
         else 
         {
-          mpInputXForm = inputXForm;
-          macro->mpData = inputXForm;
+          mpInputXform = inputXform;
+          macro->mpData = inputXform;
         }
         
         ret = 1;
-  //    } else if (CheckKwd(keyword, KID_LinXForm)) {
-  //      linXForm = ReadXFormInstance(fp, hmm_set, NULL);
+  //    } else if (CheckKwd(keyword, KID_LinXform)) {
+  //      linXform = ReadXformInstance(fp, hmm_set, NULL);
         ret = 1;
       } else {
         UngetString();
@@ -1720,7 +1720,7 @@ namespace STK
     Macro *   macro;
     char      mmfile[1024];
     char *    lastFileName = NULL;
-    int       waitingForNonXForm = 1;
+    int       waitingForNonXform = 1;
   
     for (macro = mpFirstMacro; macro != NULL; macro = macro->nextAll) 
     {
@@ -1747,15 +1747,15 @@ namespace STK
             Error("Cannot open output MMF %s", mmfile);
         }
         
-        waitingForNonXForm = 1;
+        waitingForNonXform = 1;
         WriteGlobalOptions(fp, binary);
       }
   
-      if (macro->mpData == mpInputXForm &&
+      if (macro->mpData == mpInputXform &&
         (!strcmp(macro->mpName, DEFAULT_XFORM_NAME))) 
       {
         fputs("~o ", fp);
-        PutKwd(fp, binary, KID_InputXForm);
+        PutKwd(fp, binary, KID_InputXform);
         PutNLn(fp, binary);
       } 
       else 
@@ -1773,8 +1773,8 @@ namespace STK
       {
         switch (macro->mType) 
         {
-          case 'x': WriteXForm        (fp, binary, static_cast <XForm*>         (macro->mpData)); break;
-          case 'j': WriteXFormInstance(fp, binary, static_cast <XFormInstance*> (macro->mpData)); break;
+          case 'x': WriteXform        (fp, binary, static_cast <Xform*>         (macro->mpData)); break;
+          case 'j': WriteXformInstance(fp, binary, static_cast <XformInstance*> (macro->mpData)); break;
           case 'u': WriteMean         (fp, binary, static_cast <Mean*>          (macro->mpData)); break;
           case 'v': WriteVariance     (fp, binary, static_cast <Variance*>      (macro->mpData)); break;
           case 't': WriteTransition   (fp, binary, static_cast <Transition*>    (macro->mpData)); break;
@@ -1911,17 +1911,17 @@ namespace STK
   ModelSet::
   WriteMixture(FILE *fp, bool binary, Mixture *mixture)
   {
-    if (mixture->mpInputXForm != mpInputXForm) 
+    if (mixture->mpInputXform != mpInputXform) 
     {
-      PutKwd(fp, binary, KID_InputXForm);
-      if (mixture->mpInputXForm->mpMacro) 
+      PutKwd(fp, binary, KID_InputXform);
+      if (mixture->mpInputXform->mpMacro) 
       {
-        fprintf(fp, "~j \"%s\"", mixture->mpInputXForm->mpMacro->mpName);
+        fprintf(fp, "~j \"%s\"", mixture->mpInputXform->mpMacro->mpName);
         PutNLn(fp, binary);
       } 
       else 
       {
-        WriteXFormInstance(fp, binary, mixture->mpInputXForm);
+        WriteXformInstance(fp, binary, mixture->mpInputXform);
       }
     }
     
@@ -1946,7 +1946,7 @@ namespace STK
     }
     
     PutKwd(fp, binary, KID_GConst);
-    PutFlt(fp, binary, mixture->mGConst);
+    PutFlt(fp, binary, mixture->GConst());
     PutNLn(fp, binary);
   }
 
@@ -2021,16 +2021,16 @@ namespace STK
   //*****************************************************************************  
   void 
   ModelSet::
-  WriteXFormInstance(FILE *fp, bool binary, XFormInstance *xformInstance)
+  WriteXformInstance(FILE *fp, bool binary, XformInstance *xformInstance)
   {
     size_t            i;
     bool              isHTKCompatible = true;
     char              parmkindstr[64];
   
-    CompositeXForm *cxf = (CompositeXForm *) xformInstance->mpXForm;
+    CompositeXform *cxf = (CompositeXform *) xformInstance->mpXform;
     
     if (xformInstance->mpInput != NULL || cxf == NULL || cxf->mpMacro ||
-      cxf->mXFormType != XT_COMPOSITE || cxf->mNLayers != 1) 
+      cxf->mXformType != XT_COMPOSITE || cxf->mNLayers != 1) 
     {
       isHTKCompatible = 0;
     } 
@@ -2038,7 +2038,7 @@ namespace STK
     {
       for (i = 0; i < cxf->mpLayer[0].mNBlocks; i++) 
       {
-        if (cxf->mpLayer[0].mpBlock[i]->mXFormType != XT_LINEAR) 
+        if (cxf->mpLayer[0].mpBlock[i]->mXformType != XT_LINEAR) 
         {
           isHTKCompatible = 0;
           break;
@@ -2058,7 +2058,7 @@ namespace STK
       } 
       else 
       {
-        WriteXFormInstance(fp, binary, xformInstance->mpInput);
+        WriteXformInstance(fp, binary, xformInstance->mpInput);
       }
     }
   
@@ -2071,21 +2071,21 @@ namespace STK
         fprintf(fp, "<%s> ", parmkindstr);
       }
   
-      PutKwd(fp, binary, KID_LinXForm);
+      PutKwd(fp, binary, KID_LinXform);
     }
   
     PutKwd(fp, binary, KID_VecSize);
     PutInt(fp, binary, xformInstance->mOutSize);
     PutNLn(fp, binary);
   
-    if (xformInstance->mpXForm->mpMacro) 
+    if (xformInstance->mpXform->mpMacro) 
     {
-      fprintf(fp, "~x \"%s\"", xformInstance->mpXForm->mpMacro->mpName);
+      fprintf(fp, "~x \"%s\"", xformInstance->mpXform->mpMacro->mpName);
       PutNLn(fp, binary);
     } 
     else 
     {
-      WriteXForm(fp, binary, xformInstance->mpXForm);
+      WriteXform(fp, binary, xformInstance->mpXform);
     }
   }
 
@@ -2094,28 +2094,28 @@ namespace STK
   //*****************************************************************************  
   void 
   ModelSet::
-  WriteXForm(FILE *fp, bool binary, XForm *xform)
+  WriteXform(FILE *fp, bool binary, Xform *xform)
   {
-    XFormType type = xform->mXFormType;
+    XformType type = xform->mXformType;
     
     switch (type)
     {
-      case XT_LINEAR    : WriteLinearXForm   (fp, binary, static_cast<LinearXForm *>(xform)); break;
-      case XT_COPY      : WriteCopyXForm     (fp, binary, static_cast<CopyXForm *>(xform)); break;
-      case XT_FUNC      : WriteFuncXForm     (fp, binary, static_cast<FuncXForm *>(xform)); break;
-      case XT_BIAS      : WriteBiasXForm     (fp, binary, static_cast<BiasXForm *>(xform)); break;
-      case XT_STACKING  : WriteStackingXForm (fp, binary, static_cast<StackingXForm *>(xform)); break;
-      case XT_COMPOSITE : WriteCompositeXForm(fp, binary, static_cast<CompositeXForm *>(xform)); break;
+      case XT_LINEAR    : WriteLinearXform   (fp, binary, static_cast<LinearXform *>(xform)); break;
+      case XT_COPY      : WriteCopyXform     (fp, binary, static_cast<CopyXform *>(xform)); break;
+      case XT_FUNC      : WriteFuncXform     (fp, binary, static_cast<FuncXform *>(xform)); break;
+      case XT_BIAS      : WriteBiasXform     (fp, binary, static_cast<BiasXform *>(xform)); break;
+      case XT_STACKING  : WriteStackingXform (fp, binary, static_cast<StackingXform *>(xform)); break;
+      case XT_COMPOSITE : WriteCompositeXform(fp, binary, static_cast<CompositeXform *>(xform)); break;
       default:  break;    
     }
-  } //WriteXForm(FILE *fp, bool binary, XForm *xform)
+  } //WriteXform(FILE *fp, bool binary, Xform *xform)
 
   
   //***************************************************************************
   //*****************************************************************************  
   void 
   ModelSet::
-  WriteCompositeXForm(FILE *fp, bool binary, CompositeXForm *xform)
+  WriteCompositeXform(FILE *fp, bool binary, CompositeXform *xform)
   {
     size_t          i;
     size_t          j;
@@ -2129,7 +2129,7 @@ namespace STK
     {
       for (i = 0; i < xform->mpLayer[0].mNBlocks; i++) 
       {
-        if (xform->mpLayer[0].mpBlock[i]->mXFormType != XT_LINEAR) 
+        if (xform->mpLayer[0].mpBlock[i]->mXformType != XT_LINEAR) 
         {
           isHTKCompatible = 0;
           break;
@@ -2183,30 +2183,30 @@ namespace STK
           fprintf(fp, "~x \"%s\"", xform->mpLayer[i].mpBlock[j]->mpMacro->mpName);
           PutNLn(fp, binary);
         } else {
-          WriteXForm(fp, binary, xform->mpLayer[i].mpBlock[j]);
+          WriteXform(fp, binary, xform->mpLayer[i].mpBlock[j]);
         }
       }
     }
-  } //WriteCompositeXForm(FILE *fp, bool binary, CompositeXForm *xform)
+  } //WriteCompositeXform(FILE *fp, bool binary, CompositeXform *xform)
 
   
   //*****************************************************************************  
   //*****************************************************************************  
   void 
   ModelSet::
-  WriteFuncXForm(FILE *fp, bool binary, FuncXForm *xform)
+  WriteFuncXform(FILE *fp, bool binary, FuncXform *xform)
   {
     PutKwd(fp, binary, gFuncTable[xform->mFuncId].KID);
     PutInt(fp, binary, xform->mOutSize);
     PutNLn(fp, binary);
-  } //WriteFuncXForm(FILE *fp, bool binary, FuncXForm *xform)
+  } //WriteFuncXform(FILE *fp, bool binary, FuncXform *xform)
 
 
   //*****************************************************************************  
   //*****************************************************************************  
   void 
   ModelSet::
-  WriteBiasXForm(FILE *fp, bool binary, BiasXForm *xform)
+  WriteBiasXform(FILE *fp, bool binary, BiasXform *xform)
   {
     size_t  i;
   
@@ -2218,19 +2218,19 @@ namespace STK
       PutFlt(fp, binary, xform->mpVectorO[i]);
     }
     PutNLn(fp, binary);
-  } //WriteBiasXForm(FILE *fp, bool binary, BiasXForm *xform)
+  } //WriteBiasXform(FILE *fp, bool binary, BiasXform *xform)
 
 
   //*****************************************************************************  
   //*****************************************************************************  
   void 
   ModelSet::
-  WriteLinearXForm(FILE *fp, bool binary, LinearXForm *xform)
+  WriteLinearXform(FILE *fp, bool binary, LinearXform *xform)
   {
     size_t  i;
     size_t  j;
   
-    PutKwd(fp, binary, KID_XForm);
+    PutKwd(fp, binary, KID_Xform);
     PutInt(fp, binary, xform->mOutSize);
     PutInt(fp, binary, xform->mInSize);
     PutNLn(fp, binary);
@@ -2242,27 +2242,27 @@ namespace STK
       }
       PutNLn(fp, binary);
     }
-  } //WriteLinearXForm(FILE *fp, bool binary, LinearXForm *xform)
+  } //WriteLinearXform(FILE *fp, bool binary, LinearXform *xform)
   
 
   //*****************************************************************************  
   //*****************************************************************************  
   void 
   ModelSet::
-  WriteStackingXForm(FILE *fp, bool binary, StackingXForm *xform)
+  WriteStackingXform(FILE *fp, bool binary, StackingXform *xform)
   {
     PutKwd(fp, binary, KID_Stacking);
     PutInt(fp, binary, xform->mOutSize / xform->mInSize);
     PutInt(fp, binary, xform->mInSize);
     PutNLn(fp, binary);
-  } //WriteStackingXForm(FILE *fp, bool binary, StackingXForm *xform)
+  } //WriteStackingXform(FILE *fp, bool binary, StackingXform *xform)
   
   
   //*****************************************************************************
   //*****************************************************************************  
   void
   ModelSet::
-  WriteCopyXForm(FILE *fp, bool binary, CopyXForm *xform)
+  WriteCopyXform(FILE *fp, bool binary, CopyXform *xform)
   {
     size_t      i;
     size_t      j;
@@ -2297,7 +2297,7 @@ namespace STK
     }
     
     fputs("\n", fp);
-  } //WriteCopyXForm(FILE *fp, bool binary, CopyXForm *xform)
+  } //WriteCopyXform(FILE *fp, bool binary, CopyXform *xform)
 
   
 
@@ -2314,29 +2314,29 @@ namespace STK
   //*****************************************************************************  
   void 
   ModelSet::
-  ReadXFormList(const char * pFileName)
+  ReadXformList(const char * pFileName)
   {
     char      line[1024];
     FILE *    fp;
     size_t    nlines=0;
   
     if ((fp = fopen(pFileName, "rt")) == NULL)
-        Error("ReadXFormList: Cannot open file: '%s'", pFileName);
+        Error("ReadXformList: Cannot open file: '%s'", pFileName);
   
     while (fgets(line, sizeof(line), fp)) 
     {
       char *            xformName;
-      char *            makeXFormShellCommand = NULL;
+      char *            makeXformShellCommand = NULL;
       char              termChar = '\0';
       size_t            i = strlen(line);
       Macro *           macro;
-      MakeXFormCommand *mxfc;
+      MakeXformCommand *mxfc;
   
       nlines++;
       
       if (line[i-1] != '\n' && getc(fp) != EOF) 
       {
-        Error("ReadXFormList: Line %d is too long in file: %s",
+        Error("ReadXformList: Line %d is too long in file: %s",
               nlines, pFileName);
       }
   
@@ -2362,7 +2362,7 @@ namespace STK
       {
         if (line[i] != termChar) 
         {
-          Error("ReadXFormList: Terminanting %c expected at line %d in file %s",
+          Error("ReadXformList: Terminanting %c expected at line %d in file %s",
                 termChar, nlines, pFileName);
         }
         
@@ -2373,36 +2373,36 @@ namespace STK
       { // shell command follows
         for (; isspace(line[i]); i++) 
           line[i] = '\0';
-        makeXFormShellCommand = &line[i];
+        makeXformShellCommand = &line[i];
       }
   
-      macro = FindMacro(&mXFormHash, xformName);
+      macro = FindMacro(&mXformHash, xformName);
       
       if (macro == NULL) 
       {
-        Error("ReadXFormList: Undefined XForm '%s' at line %d in file %s",
+        Error("ReadXformList: Undefined Xform '%s' at line %d in file %s",
               xformName, nlines, pFileName);
       }
   
-      mpXFormToUpdate = (MakeXFormCommand*)
-        realloc(mpXFormToUpdate,
-                sizeof(MakeXFormCommand) * ++mNumberOfXFormsToUpdate);
+      mpXformToUpdate = (MakeXformCommand*)
+        realloc(mpXformToUpdate,
+                sizeof(MakeXformCommand) * ++mNumberOfXformsToUpdate);
   
-      if (mpXFormToUpdate == NULL) {
-        Error("ReadXFormList: Insufficient memory");
+      if (mpXformToUpdate == NULL) {
+        Error("ReadXformList: Insufficient memory");
       }
   
-      mxfc = &mpXFormToUpdate[mNumberOfXFormsToUpdate-1];
-      mxfc->mpXForm = (XForm *) macro->mpData;
+      mxfc = &mpXformToUpdate[mNumberOfXformsToUpdate-1];
+      mxfc->mpXform = (Xform *) macro->mpData;
       mxfc->mpShellCommand = NULL;
   
-      if (makeXFormShellCommand) {
-        if ((mxfc->mpShellCommand = strdup(makeXFormShellCommand)) == NULL) {
-          Error("ReadXFormList: Insufficient memory");
+      if (makeXformShellCommand) {
+        if ((mxfc->mpShellCommand = strdup(makeXformShellCommand)) == NULL) {
+          Error("ReadXformList: Insufficient memory");
         }
       }
     }
     fclose(fp);
-  }; //ReadXFormList(const std::string & rFileName);
+  }; //ReadXformList(const std::string & rFileName);
   
 }; // namespace STK

@@ -286,10 +286,10 @@ int main(int argc, char *argv[]) {
 
 
   if (xform_list_file != NULL) {
-    ReadXFormList(&hset, xform_list_file);
+    ReadXformList(&hset, xform_list_file);
   }
 
-  hset.AllocateAccumulatorsForXFormStats();
+  hset.AllocateAccumulatorsForXformStats();
 
   hset.mMmiUpdate = update_type;
 
@@ -307,8 +307,8 @@ int main(int argc, char *argv[]) {
 
   if ((hset.updateMask & (UM_MEAN | UM_VARIANCE)) &&
      !hset.mAllMixuresUpdatableFromStatAccums) {
-    Warning("Statistic are estimated for XForm not being "
-            "a single linear XForm on the input of a mixture. "
+    Warning("Statistic are estimated for Xform not being "
+            "a single linear Xform on the input of a mixture. "
             "Means and variances will not be updated");
     hset.updateMask &= ~(UM_MEAN | UM_VARIANCE);
   }
@@ -376,11 +376,11 @@ int main(int argc, char *argv[]) {
       }
     }
 
-  // Required by WriteXFormStatsAndRunCommands and UpdateHMMSetFromAccums
-  ScanHMMSet(&hset, MTM_MEAN|MTM_VARIANCE, NULL, NormalizeStatsForXForm, 0);
+  // Required by WriteXformStatsAndRunCommands and UpdateHMMSetFromAccums
+  ScanHMMSet(&hset, MTM_MEAN|MTM_VARIANCE, NULL, NormalizeStatsForXform, 0);
 
   if (hset.updateMask & UM_XFSTATS) {
-    WriteXFormStatsAndRunCommands(out_hmm_dir, stats_binary, &hset);
+    WriteXformStatsAndRunCommands(out_hmm_dir, stats_binary, &hset);
   }
 
   if (hset.updateMask != UM_XFSTATS) 

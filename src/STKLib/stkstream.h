@@ -217,7 +217,7 @@ namespace STK
    *  functions from std::istream.  To control the associated
    *  sequence, an instance of std::stkbuf is used.
   */
-  class istkstream : public stkios, public istream
+  class IStkStream : public stkios, public istream
   {
   public:
     // Constructors:
@@ -228,7 +228,7 @@ namespace STK
      *  @c &sb to the base class initializer.  Does not open any files
      *  (you haven't given it a filename to open).
      */
-    istkstream() : stkios() {};
+    IStkStream() : stkios() {};
 
     /**
      *  @brief  Create an input file stream.
@@ -242,10 +242,10 @@ namespace STK
      *  Tip:  When using std::string to hold the filename, you must use
      *  .c_str() before passing it to this constructor.
     */
-    istkstream(const string& fName, ios::openmode m=ios::out, const string & filter=""):
+    IStkStream(const string& fName, ios::openmode m=ios::out, const string & filter=""):
       stkios() {this->open(fName, ios::in, filter);}
 
-    ~istkstream() 
+    ~IStkStream() 
     {
       this->close();
     }
@@ -300,7 +300,7 @@ namespace STK
     void
     GetLine(string & rLine);
 
-  }; // class istkstream
+  }; // class IStkStream
 
 
   /**
@@ -310,7 +310,7 @@ namespace STK
    *  functions from std::ostream.  To control the associated
    *  sequence, an instance of STK::stkbuf is used.
   */
-  class ostkstream : public stkios, public ostream
+  class OStkStream : public stkios, public ostream
   {
   public:
 
@@ -322,7 +322,7 @@ namespace STK
      *  @c &sb to the base class initializer.  Does not open any files
      *  (you haven't given it a filename to open).
      */
-    ostkstream() : stkios() {};
+    OStkStream() : stkios() {};
 
     /**
      *  @brief  Create an output file stream.
@@ -336,7 +336,7 @@ namespace STK
      *  Tip:  When using std::string to hold the filename, you must use
      *  .c_str() before passing it to this constructor.
      */
-    ostkstream(const string& fName, ios::openmode m=ios::out, const string & filter=""):
+    OStkStream(const string& fName, ios::openmode m=ios::out, const string & filter=""):
       stkios(fName, m, filter) {}
 
     /**
@@ -379,7 +379,7 @@ namespace STK
     std::__c_file*
     file() {return buf.file();}
 
-  }; // class ostkstream
+  }; // class OStkStream
 }; // namespace STK
 
 # include "stkstream.tcc"

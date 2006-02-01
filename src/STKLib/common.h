@@ -127,12 +127,26 @@ using namespace STK;
   };
   
   
-  class FileListElem 
+  class FileListElem
   {
+    std::string         mLogical;     ///< Logical file name representation
+    std::string         mPhysical;    ///< Pysical file name representation
+    
   public:
+    FileListElem(const std::string & rFileName);
+    ~FileListElem() {}
+    
+    const std::string &
+    Logical() const { return mLogical; };
+
+    const std::string &
+    Physical() const { return mPhysical; };
+        
     FileListElem *      mpNext;
     char *              mpPhysical;
     char                logical[1];
+    
+    
   };
   
   

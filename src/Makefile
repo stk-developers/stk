@@ -29,8 +29,8 @@ TOOLS =     SVite \
             SResults \
             SExpand \
             SFeaCat \
-            SLRatio \
-	    SNet
+            SLRatio 
+            #SNet
 
 
 ###############################################################################

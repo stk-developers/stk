@@ -25,8 +25,7 @@
   Warning(type" %s is not updated (%s%ld example%s)", \
           name, exs == 0 ? "" : "only ", exs, exs == 1 ? "" : "s")
   
-#define DEFAULT_XFORM_NAME "defaultInputXForm"  
-
+#define DEFAULT_XFORM_NAME "defaultInputXform"
 
 
 namespace STK
@@ -43,16 +42,16 @@ namespace STK
   class Mean;
   class Variance;
   class Transition;
-  class XFormInstance;
-  class XForm;
-  class CompositeXForm;
-  class CopyXForm;
-  class LinearXForm;
-  class BiasXForm;
-  class FuncXForm;
-  class StackingXForm;
-  class XFormStatCache;
-  class XFormStatAccum;
+  class XformInstance;
+  class Xform;
+  class CompositeXform;
+  class CopyXform;
+  class LinearXform;
+  class BiasXform;
+  class FuncXform;
+  class StackingXform;
+  class XformStatCache;
+  class XformStatAccum;
 
   enum MacroType 
   {
@@ -63,8 +62,8 @@ namespace STK
     mt_variance        = 'v',
   //mt_variance        = 'i',
     mt_transition      = 't',
-    mt_XFormInstance   = 'j',
-    mt_XForm           = 'x',
+    mt_XformInstance   = 'j',
+    mt_Xform           = 'x',
   };
 
   
@@ -203,15 +202,15 @@ namespace STK
     KID_UNSET=-1,
     KID_BeginHMM,    KID_Use,        KID_EndHMM,    KID_NumMixes,  KID_NumStates,
     KID_StreamInfo,  KID_VecSize,    KID_NullD,     KID_PoissonD,  KID_GammaD,
-    KID_RelD,        KID_GenD,       KID_DiagC,     KID_FullC,     KID_XFormC,
+    KID_RelD,        KID_GenD,       KID_DiagC,     KID_FullC,     KID_XformC,
     KID_State,       KID_TMix,       KID_Mixture,   KID_Stream,    KID_SWeights,
-    KID_Mean,        KID_Variance,   KID_InvCovar,  KID_XForm,     KID_GConst,
+    KID_Mean,        KID_Variance,   KID_InvCovar,  KID_Xform,     KID_GConst,
     KID_Duration,    KID_InvDiagC,   KID_TransP,    KID_DProb,     KID_LLTC,
     KID_LLTCovar,
-    KID_XFormKind=90,KID_ParentXForm,KID_NumXForms, KID_XFormSet,  KID_LinXForm,
+    KID_XformKind=90,KID_ParentXform,KID_NumXforms, KID_XformSet,  KID_LinXform,
     KID_Offset,      KID_Bias,       KID_BlockInfo, KID_Block,     KID_BaseClass,
-    KID_Class,       KID_XFormWgtSet,KID_ClassXForm,KID_MMFIDMask, KID_Parameters,
-    KID_NumClasses,  KID_AdaptKind,  KID_Prequal,   KID_InputXForm,
+    KID_Class,       KID_XformWgtSet,KID_ClassXform,KID_MMFIDMask, KID_Parameters,
+    KID_NumClasses,  KID_AdaptKind,  KID_Prequal,   KID_InputXform,
     KID_RClass  =110,KID_RegTree,    KID_Node,      KID_TNode,
     KID_HMMSetID=119,KID_ParmKind,
   
@@ -219,17 +218,17 @@ namespace STK
     KID_FrmExt  =200,KID_PDFObsVec,  KID_ObsCoef,    KID_Input,    KID_NumLayers,
     KID_NumBlocks,   KID_Layer,      KID_Copy,       KID_Stacking,
   
-    /* Numeric functions - FuncXForm*/
+    /* Numeric functions - FuncXform*/
     KID_Sigmoid,     KID_Log,        KID_Exp,        KID_Sqrt,     KID_SoftMax,
   
     KID_MaxKwdID
   };
  
   
-  class MakeXFormCommand 
+  class MakeXformCommand 
   {
   public:
-    XForm *mpXForm;
+    Xform *mpXform;
     char  *mpShellCommand;
   };
   
@@ -262,14 +261,14 @@ namespace STK
     Mean *          ReadMean          (FILE * fp, Macro * macro);
     Variance *      ReadVariance      (FILE * fp, Macro * macro);
     Transition *    ReadTransition    (FILE * fp, Macro * macro);
-    XFormInstance * ReadXFormInstance (FILE * fp, Macro * macro);
-    XForm *         ReadXForm         (FILE * fp, Macro * macro);
-    CompositeXForm *ReadCompositeXForm(FILE * fp, Macro * macro);
-    LinearXForm *   ReadLinearXForm   (FILE * fp, Macro * macro);
-    CopyXForm *     ReadCopyXForm     (FILE * fp, Macro * macro);
-    BiasXForm *     ReadBiasXForm     (FILE * fp, Macro * macro);
-    FuncXForm *     ReadFuncXForm     (FILE * fp, Macro * macro, int funcId);
-    StackingXForm * ReadStackingXForm (FILE * fp, Macro * macro);
+    XformInstance * ReadXformInstance (FILE * fp, Macro * macro);
+    Xform *         ReadXform         (FILE * fp, Macro * macro);
+    CompositeXform *ReadCompositeXform(FILE * fp, Macro * macro);
+    LinearXform *   ReadLinearXform   (FILE * fp, Macro * macro);
+    CopyXform *     ReadCopyXform     (FILE * fp, Macro * macro);
+    BiasXform *     ReadBiasXform     (FILE * fp, Macro * macro);
+    FuncXform *     ReadFuncXform     (FILE * fp, Macro * macro, int funcId);
+    StackingXform * ReadStackingXform (FILE * fp, Macro * macro);
     int             ReadGlobalOptions (FILE * fp);
     
     void   WriteHMM          (FILE * fp, bool binary, Hmm * hmm);
@@ -278,14 +277,14 @@ namespace STK
     void   WriteMean         (FILE * fp, bool binary, Mean * mean);
     void   WriteVariance     (FILE * fp, bool binary, Variance * variance);
     void   WriteTransition   (FILE * fp, bool binary, Transition * transition);
-    void   WriteXFormInstance(FILE * fp, bool binary, XFormInstance * xformInstance);
-    void   WriteXForm        (FILE * fp, bool binary,          XForm * xform);
-    void   WriteCompositeXForm(FILE *fp, bool binary, CompositeXForm * xform);
-    void   WriteLinearXForm  (FILE * fp, bool binary,    LinearXForm * xform);
-    void   WriteCopyXForm    (FILE * fp, bool binary,      CopyXForm * xform);
-    void   WriteFuncXForm    (FILE * fp, bool binary,      FuncXForm * xform);
-    void   WriteBiasXForm    (FILE * fp, bool binary,      BiasXForm * xform);
-    void   WriteStackingXForm(FILE * fp, bool binary,  StackingXForm * xform);
+    void   WriteXformInstance(FILE * fp, bool binary, XformInstance * xformInstance);
+    void   WriteXform        (FILE * fp, bool binary,          Xform * xform);
+    void   WriteCompositeXform(FILE *fp, bool binary, CompositeXform * xform);
+    void   WriteLinearXform  (FILE * fp, bool binary,    LinearXform * xform);
+    void   WriteCopyXform    (FILE * fp, bool binary,      CopyXform * xform);
+    void   WriteFuncXform    (FILE * fp, bool binary,      FuncXform * xform);
+    void   WriteBiasXform    (FILE * fp, bool binary,      BiasXform * xform);
+    void   WriteStackingXform(FILE * fp, bool binary,  StackingXform * xform);
     void   WriteGlobalOptions(FILE * fp, bool binary);  
     /// @}
     
@@ -300,8 +299,8 @@ namespace STK
     MyHSearchData    mMeanHash;
     MyHSearchData    mVarianceHash;
     MyHSearchData    mTransitionHash;
-    MyHSearchData    mXFormInstanceHash;
-    MyHSearchData    mXFormHash;
+    MyHSearchData    mXformInstanceHash;
+    MyHSearchData    mXformHash;
     
     int                       mInputVectorSize;
     int                       mParamKind;
@@ -310,20 +309,21 @@ namespace STK
     bool                      mAllocAccums;
     int                       mTotalDelay;
     bool                      mAllMixuresUpdatableFromStatAccums;
-    bool                      mIsHTKCopatible;                       ///< Models use no extension with respecto to HTK
+    bool                      mIsHTKCopatible;         ///< Models use no extension with respecto to HTK
     
     KeywordID                 mOutPdfKind;
     KeywordID                 mDurKind;
-    XFormInstance *           mpInputXForm;
-    XFormInstance *           mpXFormInstances;
+    XformInstance *           mpInputXform;
+    XformInstance *           mpXformInstances;
     
     //Reestimation params
     int                       mUpdateMask;
     FLOAT                     mMinMixWeight;
     Variance *                mpVarFloor;
+    double                    mMinVariance;            ///< global minimum variance floor
     long                      mMinOccurances;
-    MakeXFormCommand *        mpXFormToUpdate;
-    size_t                    mNumberOfXFormsToUpdate;
+    MakeXformCommand *        mpXformToUpdate;
+    size_t                    mNumberOfXformsToUpdate;
     int                       mGaussLvl2ModelReest;
     int                       mMmiUpdate;
     FLOAT                     MMI_E;
@@ -374,7 +374,7 @@ namespace STK
      * @param rOutDir 
      * @param binary 
      */
-    WriteXFormStatsAndRunCommands(const char * pOutDir, bool binary);
+    WriteXformStatsAndRunCommands(const char * pOutDir, bool binary);
     //@}
     
     
@@ -433,15 +433,15 @@ namespace STK
     
     
     void
-    ReadXFormStats(const char * pOutDir, bool binary);
+    ReadXformStats(const char * pOutDir, bool binary);
     
     void
-    ReadXFormList(const char * pFileName);
+    ReadXformList(const char * pFileName);
     //@}
     
     
     void
-    AllocateAccumulatorsForXFormStats();
+    AllocateAccumulatorsForXformStats();
                     
     void 
     NormalizeAccums();
@@ -462,7 +462,7 @@ namespace STK
     DistributeMacroOccurances();
     
     void 
-    ResetXFormInstances();
+    ResetXformInstances();
   
     void
     UpdateStacks(FLOAT *obs, int time,  PropagDirectionType dir);
@@ -617,9 +617,13 @@ namespace STK
    */
   class Mixture : public MacroData 
   {
+  private:
+    FLOAT                     mGConst;
+    
   public:
     /// The (empty) constructor
-    Mixture() {};
+    Mixture(): mpMean(NULL), mpVariance(NULL), mpInputXform(NULL)
+    {};
     
     /// The (empty) destructor
     virtual
@@ -629,15 +633,15 @@ namespace STK
     long                      mID;
     Mean *                    mpMean;
     Variance *                mpVariance;
-    FLOAT                     mGConst;
-    XFormInstance *           mpInputXForm;
+    XformInstance *           mpInputXform;
   
     /// Returns the GConst constant
-    const FLOAT
-    GConst() const
-    {
-      return mGConst;
-    }
+    const FLOAT &
+    GConst() const { return mGConst; }
+    
+    /// Gives full access to the GConst
+    FLOAT &
+    rGConst() { return mGConst; }
     
     /// Computes the GConst constant
     void
@@ -650,6 +654,14 @@ namespace STK
      */
     UpdateFromAccums(const ModelSet * pModelSet);
     
+    /**
+     * @brief Performs variance flooring on the mixture's variance
+     * @param rModelSet parrent ModelSet containing variance floor vector
+     * @return pointer to the mixture variance object
+     */
+    Variance *
+    FloorVariance(const ModelSet * pModelSet);
+
     void
     /**
      * @brief Performs desired @c action on the HMM's data which are chosen by @mask
@@ -667,12 +679,12 @@ namespace STK
   
   /** *************************************************************************
    ** *************************************************************************
-   *  @brief XForm statistics accumulator
+   *  @brief Xform statistics accumulator
    */
-  class XFormStatAccum
+  class XformStatAccum
   {
   public:
-    XForm *                 mpXForm;
+    Xform *                 mpXform;
     FLOAT                   mNorm;
     FLOAT *                 mpStats;
   };
@@ -698,8 +710,8 @@ namespace STK
     
     
     size_t                  mVectorSize;
-    XFormStatAccum *        mpXFormStatAccum;
-    size_t                  mNumberOfXFormStatAccums;
+    XformStatAccum *        mpXformStatAccum;
+    size_t                  mNumberOfXformStatAccums;
     bool                    mUpdatableFromStatAccums;
     FLOAT *                 mpVectorO;
     
@@ -732,10 +744,10 @@ namespace STK
     ~Variance();
   
       
-  //  BOOL         diagonal;
+    //  BOOL         diagonal;
     size_t                  mVectorSize;
-    XFormStatAccum *        mpXFormStatAccum;
-    size_t                  mNumberOfXFormStatAccums;
+    XformStatAccum *        mpXformStatAccum;
+    size_t                  mNumberOfXformStatAccums;
     bool                    mUpdatableFromStatAccums;
     FLOAT *                 mpVectorO;    
     
@@ -783,13 +795,13 @@ namespace STK
 
   /** *************************************************************************
    ** *************************************************************************
-   *  @brief XForm statisctics cache
+   *  @brief Xform statisctics cache
    */
-  class XFormStatCache 
+  class XformStatCache 
   {
   public:
-    XFormStatCache *        mpUpperLevelStats;
-    XForm *                 mpXForm;
+    XformStatCache *        mpUpperLevelStats;
+    Xform *                 mpXform;
     int                     mNorm;
     FLOAT *                 mpStats;
   };
@@ -797,37 +809,39 @@ namespace STK
   
   /** *************************************************************************
    ** *************************************************************************
-   *  @brief XForm Instance 
+   *  @brief Xform Instance 
    */
-  class XFormInstance : public MacroData 
+  class XformInstance : public MacroData 
   {
   public:
     /**
      * @brief The constructor
      * @param vectorSize size of output vector
      */
-    XFormInstance(size_t vectorSize);
+    XformInstance(size_t vectorSize);
     
     /// the destructor
     virtual
-    ~XFormInstance();
+    ~XformInstance();
     
   
-    XFormInstance *       mpInput;
-    XForm *               mpXForm;
+    XformInstance *       mpInput;
+    Xform *               mpXform;
     int                   mTime;
-    XFormInstance  *      mpNext; // Chain of all instances
-    XFormStatCache *      mpXFormStatCache;
-    size_t                mNumberOfXFormStatCaches;
+    XformInstance  *      mpNext; // Chain of all instances
+    XformStatCache *      mpXformStatCache;
+    size_t                mNumberOfXformStatCaches;
     size_t                mOutSize;
     int                   mStatCacheTime;
     char *                mpMemory;
     int                   mTotalDelay;
-    
+
+    Variance *            mpVarFloor;
+        
     FLOAT *               mpOutputVector; 
     
     FLOAT *
-    XFormPass(FLOAT *in_vec, int time, PropagDirectionType dir);
+    XformPass(FLOAT *in_vec, int time, PropagDirectionType dir);
   
   
     void
@@ -845,6 +859,7 @@ namespace STK
   
   };
 
+  
   typedef enum 
   {
     XT_LINEAR,
@@ -853,25 +868,24 @@ namespace STK
     XT_FUNC,
     XT_STACKING,
     XT_COMPOSITE,
-  } XFormType;
-  
+  } XformType;
 
   
   /** *************************************************************************
    ** *************************************************************************
-   *  @brief XForm interface (abstract class) to all kinds of transforms
+   *  @brief Xform interface (abstract class) to all kinds of transforms
    */
-  class XForm : public MacroData 
+  class Xform : public MacroData 
   {
   public:
-    XFormType           mXFormType;
+    XformType           mXformType;
     size_t              mInSize;
     size_t              mOutSize;
     size_t              mMemorySize;
     int                 mDelay;
     
     /**
-     * @brief Interface to the evaluation procedure of a concrete XForm
+     * @brief Interface to the evaluation procedure of a concrete Xform
      * @param pInputVector pointer to the input vector
      * @param pOutputVector pointer to the output vector
      * @param pMemory pointer to the extra memory needed by the operation
@@ -895,64 +909,63 @@ namespace STK
           HMMSetNodeName  nodeNameBuffer,
           ScanAction      action, 
           void *          pUserData);
-  
   };
 
   
   /** *************************************************************************
    ** *************************************************************************
-   * @brief Composite XForm Layer represenation
+   * @brief Composite Xform Layer represenation
    *
-   * This class represents a layer for Composite XForm. It holds separate 
-   * blocks. See also CompositeXForm class.
+   * This class represents a layer for Composite Xform. It holds separate 
+   * blocks. See also CompositeXform class.
    */
-  class XFormLayer
+  class XformLayer
   {
   public:
     FLOAT *             mpOutputVector;
     size_t              mNBlocks;
-    XForm **            mpBlock;
+    Xform **            mpBlock;
     
     /// The (empty) constructor
-    XFormLayer();
+    XformLayer();
     
     /// The destructor
-    ~XFormLayer();
+    ~XformLayer();
     
-    XForm **
+    Xform **
     /**
      * @brief Inits (creates) the blocks
      * @param nBlocks number of blocks in the layer
-     * @return pointer to the newly created array of pointers to XForms
+     * @return pointer to the newly created array of pointers to Xforms
      */
     InitBlocks(size_t nBlocks);
-  }; // class XFormLayer
+  }; // class XformLayer
   
   
   /** *************************************************************************
    ** *************************************************************************
-   * @brief Composite XForm 
+   * @brief Composite Xform 
    * 
-   * The base composite XForm holds elementary layers of the form
+   * The base composite Xform holds elementary layers of the form
    */
-  class CompositeXForm : public XForm 
+  class CompositeXform : public Xform 
   {
   public:
     /**
      * @brief The constructor
      * @param nLayers number of layers the composite should have
      */
-    CompositeXForm(size_t nLayers);
+    CompositeXform(size_t nLayers);
     
     /// The destructor
     virtual
-    ~CompositeXForm();    
+    ~CompositeXform();    
     
     size_t              mNLayers;    
-    XFormLayer *        mpLayer;
+    XformLayer *        mpLayer;
     
     /**
-     * @brief Composite XForm evaluation 
+     * @brief Composite Xform evaluation 
      * @param pInputVector pointer to the input vector
      * @param pOutputVector pointer to the output vector
      * @param pMemory pointer to the extra memory needed by the operation
@@ -968,9 +981,9 @@ namespace STK
   
   /** *************************************************************************
    ** *************************************************************************
-   *  @brief Linear XForm representation
+   *  @brief Linear Xform representation
    */
-  class LinearXForm : public XForm 
+  class LinearXform : public Xform 
   {
   public:
     /**
@@ -978,18 +991,18 @@ namespace STK
      * @param inSize input vector size
      * @param outSize output vector size
      */
-    LinearXForm(size_t inSize, size_t outSize);
+    LinearXform(size_t inSize, size_t outSize);
     
     /// The destructor
     virtual
-    ~LinearXForm();
+    ~LinearXform();
   
     
     Matrix<FLOAT>       mMatrix;
     FLOAT *             mpMatrixO;
     
     /**
-     * @brief Linear XForm evaluation 
+     * @brief Linear Xform evaluation 
      * @param pInputVector pointer to the input vector
      * @param pOutputVector pointer to the output vector
      * @param pMemory pointer to the extra memory needed by the operation
@@ -1005,26 +1018,26 @@ namespace STK
   
   /** *************************************************************************
    ** *************************************************************************
-   *  @brief Bias XForm representation
+   *  @brief Bias Xform representation
    */
-  class BiasXForm : public XForm 
+  class BiasXform : public Xform 
   {
   public:
     /**
      * @brief The constructor
      * @param vectorSize size of
      */
-    BiasXForm(size_t vectorSize);
+    BiasXform(size_t vectorSize);
     
     virtual
-    ~BiasXForm();
+    ~BiasXform();
     
     Matrix<FLOAT>       mVector;
     FLOAT *             mpVectorO;
     
     
     /**
-     * @brief Bias XForm evaluation 
+     * @brief Bias Xform evaluation 
      * @param pInputVector pointer to the input vector
      * @param pOutputVector pointer to the output vector
      * @param pMemory pointer to the extra memory needed by the operation
@@ -1040,9 +1053,9 @@ namespace STK
   
   /** *************************************************************************
    ** *************************************************************************
-   *  @brief Function XForm representation
+   *  @brief Function Xform representation
    */
-  class FuncXForm : public XForm 
+  class FuncXform : public Xform 
   {
   public:
     /**
@@ -1050,15 +1063,15 @@ namespace STK
      * @param size parameter vector size
      * @param funcId function ID
      */
-    FuncXForm(size_t size, int funcId);
+    FuncXform(size_t size, int funcId);
     
     virtual
-    ~FuncXForm();
+    ~FuncXform();
     
     int                 mFuncId;  
   
     /**
-     * @brief Function XForm evaluation 
+     * @brief Function Xform evaluation 
      * @param pInputVector pointer to the input vector
      * @param pOutputVector pointer to the output vector
      * @param pMemory pointer to the extra memory needed by the operation
@@ -1074,9 +1087,9 @@ namespace STK
   
   /** *************************************************************************
    ** *************************************************************************
-   *  @brief Copy XForm representation
+   *  @brief Copy Xform representation
    */
-  class CopyXForm : public XForm 
+  class CopyXform : public Xform 
   {
   public:
     /**
@@ -1084,15 +1097,15 @@ namespace STK
      * @param inSize size of input vector
      * @param outSize size of output vector
      */
-    CopyXForm(size_t inSize, size_t outSize);
+    CopyXform(size_t inSize, size_t outSize);
     
     virtual
-    ~CopyXForm();
+    ~CopyXform();
     
     int *               mpIndices;  
   
     /**
-     * @brief Copy XForm evaluation 
+     * @brief Copy Xform evaluation 
      * @param pInputVector pointer to the input vector
      * @param pOutputVector pointer to the output vector
      * @param pMemory pointer to the extra memory needed by the operation
@@ -1108,9 +1121,9 @@ namespace STK
   
   /** *************************************************************************
    ** *************************************************************************
-   *  @brief Stacking XForm representation
+   *  @brief Stacking Xform representation
    */
-  class StackingXForm : public XForm 
+  class StackingXform : public Xform 
   {
   public:
     /**
@@ -1118,16 +1131,16 @@ namespace STK
      * @param stackSize size of the stack
      * @param inSize size of the input vector
      */
-    StackingXForm(size_t stackSize, size_t inSize);
+    StackingXform(size_t stackSize, size_t inSize);
     
     /// The destructor
     virtual
-    ~StackingXForm();
+    ~StackingXform();
     
     int                 mHorizStack;
   
     /**
-     * @brief Stacking XForm evaluation 
+     * @brief Stacking Xform evaluation 
      * @param pInputVector pointer to the input vector
      * @param pOutputVector pointer to the output vector
      * @param pMemory pointer to the extra memory needed by the operation
@@ -1141,7 +1154,7 @@ namespace STK
   };
   
   
-  class XFormStatsFileNames
+  class XformStatsFileNames
   {
   public:
     FILE *      mpStatsP;
@@ -1184,12 +1197,12 @@ namespace STK
     int                 mTime;
   } ;
   
-  class WriteStatsForXFormUserData 
+  class WriteStatsForXformUserData 
   {
   public:
-    LinearXForm *             mpXForm;
-    XFormStatsFileNames       mMeanFile;
-    XFormStatsFileNames       mCovFile;
+    LinearXform *             mpXform;
+    XformStatsFileNames       mMeanFile;
+    XformStatsFileNames       mCovFile;
     bool                      mBinary;
   };
   /// @}
@@ -1200,16 +1213,16 @@ namespace STK
                             
   extern bool           gHmmsIgnoreMacroRedefinition;         ///< Controls macro redefinition behavior
   extern const char *   gpHListFilter;                        ///< HMM list Filter command
-  extern FunctionTable  gFuncTable[];                         ///< FuncXForm function table
+  extern FunctionTable  gFuncTable[];                         ///< FuncXform function table
   extern size_t         gFuncTableSize;                       ///< Number of bytes when gFuncTable inicialized
   extern char *         gpKwds[KID_MaxKwdID];                 ///< MMF keyword table
                                                            
 
                   
   /**
-   * @brief Passes the vector through XFormInstance
+   * @brief Passes the vector through XformInstance
    */
-  FLOAT *     XFormPass(XFormInstance *xformInstance, FLOAT *in_vec, int time, PropagDirectionType dir);
+  FLOAT *     XformPass(XformInstance *xformInstance, FLOAT *in_vec, int time, PropagDirectionType dir);
 
   void        ReleaseMacroHash(MyHSearchData *macro_hash);
   Macro *     FindMacro(MyHSearchData *macro_hash, const char *name);
@@ -1233,17 +1246,17 @@ namespace STK
   
   /// Action procedures
   /// @{
-  void        AllocateXFormStatCachesAndAccums(int, HMMSetNodeName, MacroData * pData, void *);
+  void        AllocateXformStatCachesAndAccums(int, HMMSetNodeName, MacroData * pData, void *);
   void        GlobalStats(int macro_type, HMMSetNodeName, MacroData * pData, void *userData);
   void        NormalizeAccum(int macro_type, HMMSetNodeName, MacroData * pData, void *userData);
-  void        NormalizeStatsForXForm(int macro_type, HMMSetNodeName, MacroData * pData, void *userData);
+  void        NormalizeStatsForXform(int macro_type, HMMSetNodeName, MacroData * pData, void *userData);
   void        ReadAccum  (int macro_type, HMMSetNodeName, MacroData * pData, void *userData);
-  void        ReadStatsForXForm(int macro_type, HMMSetNodeName, void *data, void *userData);
+  void        ReadStatsForXform(int macro_type, HMMSetNodeName, void *data, void *userData);
   void        ReleaseItem(int macro_type, HMMSetNodeName, MacroData * pData, void *userData);
   void        ReplaceItem(int macro_type, HMMSetNodeName, MacroData * pData, void *userData);
   void        ResetAccum (int macro_type, HMMSetNodeName, MacroData * pData, void *userData);
   void        WriteAccum (int macro_type, HMMSetNodeName, MacroData * pData, void *userData);
-  void        WriteStatsForXForm(int macro_type, HMMSetNodeName, MacroData * pData, void *userData);
+  void        WriteStatsForXform(int macro_type, HMMSetNodeName, MacroData * pData, void *userData);
   /// @}  
   
 }; //namespace STK

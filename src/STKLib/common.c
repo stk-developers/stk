@@ -433,7 +433,8 @@
   
       for (i = 0; i < tab->mNEntries; i++) 
       {
-        cc = hsearch_r(*tab->mpEntry[i], ENTER, ret, &newtab); assert(cc);
+        cc = hsearch_r(*tab->mpEntry[i], ENTER, ret, &newtab); 
+        assert(cc);
         tab->mpEntry[i] = *ret;
       }
   
@@ -1231,6 +1232,34 @@
     *last = NULL;
     return last;
   }
+  
+  //***************************************************************************
+  //***************************************************************************
+  FileListElem::
+  FileListElem(const std::string & rFileName)
+  {
+    std::size_t  pos;
+    
+    mLogical = rFileName;
+    
+    // some slash-backslash replacement hack
+    for (int i = 0; i < mLogical.size(); i++)
+      if (mLogical[i] == '\\') 
+        mLogical[i] = '/';
+        
+    // look for "=" symbol and if found, split it
+    if ((pos = mLogical.find('=')) != std::string::npos)
+    {
+      // copy all from mLogical[pos+1] till the end to mPhysical
+      mPhysical.assign(mLogical.begin() + pos + 1, mLogical.end());
+      // erase all from pos + 1 till the end from mLogical
+      mLogical.erase(pos + 1);
+    }
+    else
+    {
+      mPhysical = mLogical;
+    }    
+  }    
   
   //***************************************************************************
   //***************************************************************************

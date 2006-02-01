@@ -383,7 +383,7 @@ namespace STK
     int                   comp;
     int                   coef_size;
     char *                chptr;
-    //istkstream            istr;
+    //IStkStream            istr;
   
     // remove final spaces from file name
     for (i = strlen(pFileName) - 1; i >= 0 && isspace(pFileName[i]); i--)

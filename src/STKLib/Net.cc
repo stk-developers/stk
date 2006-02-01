@@ -354,67 +354,76 @@ namespace STK
     Node *node, *tnode;
     int node_removed = 0;
     FLOAT tlike;
-    for (node = pFirstNode; node != NULL; node = node->mpNext) {
-      for (i = 0; i < node->mNLinks; i++) {
+    for (node = pFirstNode; node != NULL; node = node->mpNext) 
+    {
+      for (i = 0; i < node->mNLinks; i++) 
+      {
       //for (tnode = inode; tnode != NULL; tnode = (tnode == inode ? jnode : NULL)) {
+      
         tnode = node->mpLinks[i].mpNode;
-        if (tnode->mNLinks == 0) continue;
+        
+        if (tnode->mNLinks == 0) 
+          continue;
   
         // Weight pushing
         tlike = tnode->mpBackLinks[0].mLike;
-        for (l=1; l <  tnode->mNBackLinks; l++) {
+        
+        for (l=1; l <  tnode->mNBackLinks; l++) 
           tlike = HIGHER_OF(tlike, tnode->mpBackLinks[l].mLike);
-        }
-        for (l=0; l < tnode->mNBackLinks; l++) {
+        
+        for (l=0; l < tnode->mNBackLinks; l++) 
+        {
           Node *backnode = tnode->mpBackLinks[l].mpNode;
           tnode->mpBackLinks[l].mLike -= tlike;
-          for (k=0; k<backnode->mNLinks && backnode->mpLinks[k].mpNode!=tnode; k++);
+          
+          for (k=0; k<backnode->mNLinks && backnode->mpLinks[k].mpNode!=tnode; k++)
+          {}
+          
           assert(k < backnode->mNLinks);
           backnode->mpLinks[k].mLike -= tlike;
       #ifndef NDEBUG
-          for (k++; k<backnode->mNLinks && backnode->mpLinks[k].mpNode!=tnode; k++);
+          for (k++; k<backnode->mNLinks && backnode->mpLinks[k].mpNode!=tnode; k++)
+          {}
       #endif
           assert(k == backnode->mNLinks);
         }
-        for (l=0; l < tnode->mNLinks; l++) {
+        
+        for (l=0; l < tnode->mNLinks; l++) 
+        {
           Node *forwnode = tnode->mpLinks[l].mpNode;
           tnode->mpLinks[l].mLike += tlike;
-          for (k=0; k<forwnode->mNBackLinks && forwnode->mpBackLinks[k].mpNode!=tnode;k++);
+          
+          for (k=0; k<forwnode->mNBackLinks && forwnode->mpBackLinks[k].mpNode!=tnode;k++)
+          {}
+          
           assert(k < forwnode->mNBackLinks);
           forwnode->mpBackLinks[k].mLike += tlike;
       #ifndef NDEBUG
-          for (k++; k<forwnode->mNBackLinks && forwnode->mpBackLinks[k].mpNode!=tnode;k++);
+          for (k++; k<forwnode->mNBackLinks && forwnode->mpBackLinks[k].mpNode!=tnode;k++)
+          {}
       #endif
           assert(k == forwnode->mNBackLinks);
         }
       }
   //dnet(pFirstNode, 1, node);
   
-// For current node 'node', check for each possible pair of its successors 
-// ('inode' and 'jnode') whether the pair may be merged to single node.
-      for (i = 0; i < node->mNLinks-1; i++) {
-        for (j = i+1; j < node->mNLinks; j++) {
+      // For current node 'node', check for each possible pair of its successors
+      // ('inode' and 'jnode') whether the pair may be merged to single node.
+      for (i = 0; i < node->mNLinks-1; i++) 
+      {
+        for (j = i+1; j < node->mNLinks; j++) 
+        {
           Node *inode = node->mpLinks[i].mpNode;
           Node *jnode = node->mpLinks[j].mpNode;
 
-// Final node may be never merged.
-        if (inode->mNLinks == 0 || jnode->mNLinks == 0) 
-          continue;
+          // Final node may be never merged.
+          if (inode->mNLinks == 0 || jnode->mNLinks == 0) 
+            continue;
 
-/*          
-<<<<<<< .mine
-          if ((inode->mType & ~NT_TRUE) != (jnode->mType & ~NT_TRUE)
-          || ( inode->mType & NT_PHONE && inode->mpName   != jnode->mpName)
-          || ( inode->mType & NT_WORD  && inode->mpPronun != jnode->mpPronun)
-=======
-          if ((inode->mType & ~NT_True) != (jnode->mType & ~NT_True)
-          || ( inode->mType & NT_Phone && inode->mpName   != jnode->mpName)
-          || ( inode->mType & NT  && inode->mpPronun != jnode->mpPronun)
->>>>>>> .r44
-*/
 
-// Two nodes ('inode' and 'jnode') may be mergeg if they are of the same type, name, ...
-// with the same predecessors and with the same weights on the links from predecesors.
+          // Two nodes ('inode' and 'jnode') may be mergeg if they are of the 
+          // same type, name, ... with the same predecessors and with the same
+          // weights on the links from predecesors.
           if ((inode->mType & ~NT_TRUE) != (jnode->mType & ~NT_TRUE)
           || ( inode->mType & NT_PHONE && inode->mpName   != jnode->mpName)
           || ( inode->mType & NT_WORD  && inode->mpPronun != jnode->mpPronun)
@@ -427,7 +436,7 @@ namespace STK
   //             inode->mpPronun->prob       != jnode->mpPronun->prob)
           || (inode->mNBackLinks != jnode->mNBackLinks)) 
           {
-          continue;
+            continue;
           }
           
           if (strictTiming && (inode->mStart != jnode->mStart
@@ -518,6 +527,7 @@ namespace STK
               l++;
             }
           }
+          
           l = inode->mNLinks;
           inode->mNLinks += jnode->mNLinks-rep;
           inode->mpLinks = (Link *) realloc(inode->mpLinks,
@@ -529,9 +539,7 @@ namespace STK
           for (k = 0; k < jnode->mNLinks; k++) 
           {
             if (jnode->mpLinks[k].mpNode != NULL) 
-            {
               inode->mpLinks[l++] = jnode->mpLinks[k];
-            }
           }
           
           qsort(inode->mpLinks, inode->mNLinks, sizeof(Link), lnkcmp);
