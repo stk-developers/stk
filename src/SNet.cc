@@ -59,7 +59,7 @@ void usage(char *progname)
   exit(-1);
 }
 
-#define SNAME "SFEACAT"
+#define SNAME "SNET"
 char *optionStr =
 " -o r   TARGETMODELEXT"
 " -B n   SAVEBINARY=TRUE"
@@ -134,6 +134,10 @@ int main(int argc, char *argv[])
   LabelFormat in_lbl_fmt = {0};
   RHFBuffer rhfbuff      = {0};
   RHFBuffer rhfbuff_out  = {0};
+  
+  bool cross_validation = false;
+  int cache_size = 0;
+  int bunch_size = 0;
 
   if (argc == 1) usage(argv[0]);
 
@@ -199,6 +203,10 @@ int main(int argc, char *argv[])
   trg_hmm_dir  = GetParamStr(&cfgHash, SNAME":TARGETMODELDIR",  NULL);
   trg_hmm_ext  = GetParamStr(&cfgHash, SNAME":TARGETMODELEXT",  NULL);
   trg_mmf      = GetParamStr(&cfgHash, SNAME":TARGETMMF",       NULL);
+  
+  cross_validation  = GetParamBool(&cfgHash,SNAME":CROSSVALIDATION",      FALSE);
+  cache_size   = GetParamInt(&cfgHash, SNAME":CACHESIZE",           12000);
+  bunch_size   = GetParamInt(&cfgHash, SNAME":BUNCHSIZE",           1000);
   
 //  in_transc_fmt= (TranscriptionFormat) GetParamEnum(&cfgHash,SNAME":SOURCETRANSCFMT",
 //                              !network_file && htk_compat ? TF_HTK : TF_STK,
