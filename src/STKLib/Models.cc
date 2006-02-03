@@ -36,8 +36,7 @@ namespace STK
     {softmax_vec, KID_SoftMax}
   };
   
-  size_t gFuncTableSize = sizeof(*gFuncTable);
-
+  size_t gFuncTableSize = sizeof(gFuncTable)/sizeof(*gFuncTable);
   
   //***************************************************************************
   //***************************************************************************

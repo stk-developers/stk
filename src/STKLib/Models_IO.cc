@@ -58,7 +58,7 @@ namespace STK
     /* Numeric functions - FuncXform*/
     gpKwds[KID_Sigmoid    ] = "Sigmoid";     gpKwds[KID_Log        ] = "Log";
     gpKwds[KID_Exp        ] = "Exp";         gpKwds[KID_Sqrt       ] = "Sqrt";
-    gpKwds[KID_SoftMax    ] = "SoftMax";  
+    gpKwds[KID_SoftMax    ] = "SoftMax";
   }
   
   
@@ -1151,7 +1151,7 @@ namespace STK
       return (Xform *) ReadCompositeXform(fp, macro);
     }
   
-    for (i=0; i < gFuncTableSize/sizeof(*gFuncTable); i++) 
+    for (i=0; i < gFuncTableSize; i++) 
     {
       if (CheckKwd(keyword, gFuncTable[i].KID)) {
         return (Xform *) ReadFuncXform(fp, macro, i);

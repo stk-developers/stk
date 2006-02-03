@@ -204,7 +204,7 @@ int main(int argc, char *argv[])
   trg_hmm_ext  = GetParamStr(&cfgHash, SNAME":TARGETMODELEXT",  NULL);
   trg_mmf      = GetParamStr(&cfgHash, SNAME":TARGETMMF",       NULL);
   
-  cross_validation  = GetParamBool(&cfgHash,SNAME":CROSSVALIDATION",      FALSE);
+  cross_validation  = GetParamBool(&cfgHash,SNAME":CROSSVALIDATION",FALSE);
   cache_size   = GetParamInt(&cfgHash, SNAME":CACHESIZE",           12000);
   bunch_size   = GetParamInt(&cfgHash, SNAME":BUNCHSIZE",           1000);
   
