@@ -26,8 +26,10 @@
 #include "getopt.h"
 #endif
 
-using namespace STK;
+#include "SNetLib/progobj.h"
 
+using namespace STK;
+using namespace SNet;
 
 void usage(char *progname)
 {
@@ -269,6 +271,11 @@ int main(int argc, char *argv[])
   }
   
   ilfp = OpenInputMLF(src_mlf);
+
+     
+  
+  /// INITIALIZE SNET
+  ProgObj *progObj = new ProgObj(NNet_instance, cache_size, bunch_size, cross_validation); 
   
     // MAIN FILE LOOP
   for (file_name = feature_files;
@@ -356,19 +363,20 @@ int main(int argc, char *argv[])
         obs_out = obsMx_out + (time-1) * NNet_instance->mOutSize;
       }
 
-/////////////////////////////////////////////////////////////////////////////////
-//
+//*****************************************************************************
 //    FOR EACH FRAME OF EACH FILE PRINT INPUT TO NN AND ITS DESIRED OUTPUT
-//
 //             !!!!! TO BE REWRITEN BY SOMETHING MEANINGFUL !!!!!
-//
-/////////////////////////////////////////////////////////////////////////////////
-      for(size_t j=0; j< NNet_input->mOutSize; j++)    printf("%5.2f ", obs[j]);
-      printf("-> ");
-      for(size_t j=0; j< NNet_instance->mOutSize; j++) printf("%5.2f ", obs_out[j]);
-      printf("\n");
-/////////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////////
+//*****************************************************************************
+      progObj->NewVector(obs, obs_out, NNet_input->mOutSize, NNet_instance->mOutSize, 
+                         ((i+1) == header.mNSamples && (outlabel_map ? file_name->mpNext : file_name->mpNext->mpNext) == NULL));
+      //for(size_t j=0; j< NNet_input->mOutSize; j++)    printf("%5.2f ", obs[j]);
+      //printf("-> ");
+      //for(size_t j=0; j< NNet_instance->mOutSize; j++) printf("%5.2f ", obs_out[j]);
+      //printf("\n");
+      //if((i+1) == header.mNSamples && (outlabel_map ? file_name->mpNext : file_name->mpNext->mpNext) == NULL)
+      //  printf("THELASTONE");
+//*****************************************************************************
+//*****************************************************************************
     }
 
     totFrames  += nFrames;

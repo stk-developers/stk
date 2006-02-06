@@ -64,7 +64,7 @@ namespace STK
       //@{
       /// these atributes store the real matrix size as it is stored in memory
       /// including memalignment
-      size_t  mainMRows;       ///< Number of rows
+      size_t  mMRows;       ///< Number of rows
       size_t  mMCols;       ///< Number of columns
       size_t  mMRealCols;   ///< true number of columns for the internal matrix.
                             ///< This number may differ from M_cols as memory
@@ -267,7 +267,8 @@ namespace STK
       {
         mpOrigData = Matrix<_ElemT>::mpData;
       }
-
+      
+      
       /// The destructor
       ~WindowMatrix<_ElemT>()
       {

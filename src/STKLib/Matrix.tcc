@@ -129,7 +129,7 @@ namespace STK
       this->mpData        = static_cast<_ElemT *> (data);
 
       this->mStorageType = st;
-      this->mainMRows      = rows;
+      this->mMRows      = rows;
       this->mMCols      = cols;
       this->mMRealCols  = real_cols;
       this->mMSkip      = skip;

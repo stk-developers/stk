@@ -64,7 +64,7 @@ SExpand     : $(BASELIBS) STKLib/labels.o STKLib/dict.o $(LIBNET)
 SERestX :  SERest.o $(BASELIBS) $(LIBHMMS) STKLib/Viterbi.cc STKLib/labels.o STKLib/Net.o STKLib/dict.o STKLib/imagesc.o
 	$(CC) $(CFLAGS) $(XFLAGS) -o SERestX SERest.o STKLib/common.o STKLib/fileio.o $(LIBHMMS) STKLib/Viterbi.cc STKLib/labels.o $(LIBNET) STKLib/dict.o STKLib/imagesc.o -lm
 	
-SNet : $(BASELIBS) STKLib/fileio.o $(LIBHMMS) STKLib/Viterbi.o $(LIBNET)  STKLib/labels.o SNetLib/nlayer.o SNetLib/nnet.o SNetLib/progobj.o SNetLib/socketobj.o 
+SNet : $(BASELIBS) STKLib/fileio.o $(LIBHMMS) STKLib/Viterbi.o $(LIBNET) STKLib/labels.o STKLib/Matrix.o SNetLib/nlayer.o SNetLib/nnet.o SNetLib/progobj.o SNetLib/socketobj.o 
 
 
 ###############################################################################

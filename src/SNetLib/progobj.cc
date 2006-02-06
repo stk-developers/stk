@@ -1,36 +1,32 @@
 #include"progobj.h"
+   
+SNet::ProgObj::ProgObj(XformInstance *NNet_instance, int cache_size, int bunch_size, bool cross_validation){
+  mServer = 0;
+  mClient = 0;
+  mPort = 2020;
+  mIp = "IP not set";
+  mNoClients = 0;
+  mpThreads = NULL; 
+  mpMainSocket = NULL;
+  mpClientSocket = NULL;
+  
+  if(NNet_instance->mpXform->mXformType !=  XT_COMPOSITE)
+    Error("NN has to be CompositeXform");
+  
+  CompositeXform* nn = static_cast<CompositeXform*>(NNet_instance->mpXform);
 
-using namespace SNet;
-using std::cerr;
-      
-ProgObj::ProgObj():
-  mServer(0),
-  mClient(0),
-  mCrossValidation(0),
-  mPort(2020),
-  mIp("IP not set"),
-  mNoClients(0),
-  mpThreads(NULL), 
-  mVersion("2.0.0"),
-  mHelp( 
-    "There should be \n"
-    "a very long help. \n"
-  ), 
-  mpMainSocket(NULL),
-  mpclientSocket(NULL)
-{}
+  mpNNet = new NNet(nn, cache_size, bunch_size, cross_validation);      
+}
 
-void ProgObj::PrintCommandLine(int argc, char *argv[]){
-  for (int i = 0; i<argc; i++){
-    cerr << argv[i] << " ";
+SNet::ProgObj::~ProgObj(){
+  delete mpNNet;
+}
+
+void SNet::ProgObj::NewVector(FLOAT *inVector, FLOAT *outVector, int inSize, int outSize, bool last){
+  mpNNet->AddToCache(inVector, outVector, inSize, outSize);
+  if(last || mpNNet->CacheFull()){
+    mpNNet->RandomizeCache();
+    mpNNet->ComputeCache();
   }
-  cerr << "\n";
 }
 
-void ProgObj::PrintVersion(){
-  cerr << "Program version " << mVersion << "\n";
-}
-
-void ProgObj::PrintHelp(){
-  cerr << mHelp;
-}
