@@ -10,7 +10,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#define VERSION "0.7 "__TIME__" "__DATE__
+#define VERSION "2.0.0"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -275,7 +275,7 @@ int main(int argc, char *argv[])
      
   
   /// INITIALIZE SNET
-  ProgObj *progObj = new ProgObj(NNet_instance, cache_size, bunch_size, cross_validation); 
+  ProgObj *progObj = new ProgObj(NNet_instance, cache_size, bunch_size, cross_validation, VERSION); 
   
     // MAIN FILE LOOP
   for (file_name = feature_files;
@@ -367,6 +367,7 @@ int main(int argc, char *argv[])
 //    FOR EACH FRAME OF EACH FILE PRINT INPUT TO NN AND ITS DESIRED OUTPUT
 //             !!!!! TO BE REWRITEN BY SOMETHING MEANINGFUL !!!!!
 //*****************************************************************************
+      /// New vector
       progObj->NewVector(obs, obs_out, NNet_input->mOutSize, NNet_instance->mOutSize, 
                          ((i+1) == header.mNSamples && (outlabel_map ? file_name->mpNext : file_name->mpNext->mpNext) == NULL));
       //for(size_t j=0; j< NNet_input->mOutSize; j++)    printf("%5.2f ", obs[j]);
@@ -389,15 +390,19 @@ int main(int argc, char *argv[])
       ReleaseLabels(labels);
     }
   }
-  /// END - MAIN FILE LOOP
-
+  // END - MAIN FILE LOOP
+   
+  /// DELETE SNET
+  delete progObj;  
+  
   if (mTraceFlag & 2) {
     TraceLog("Total number of frames: %d", totFrames);
   }
   NNet_instance->mpInput = NNet_input;
 
   //writeNN(data, info, prog, matrix, inCache, compCache);
-  hset.WriteMmf(trg_mmf, trg_hmm_dir, trg_hmm_ext, hmms_binary);
+  if(!cross_validation)  
+    hset.WriteMmf(trg_mmf, trg_hmm_dir, trg_hmm_ext, hmms_binary);
   hset.Release();
 
   for (size_t i = 0; i < cfgHash.mNEntries; i++) free(cfgHash.mpEntry[i]->data);

@@ -482,19 +482,19 @@ namespace STK
       _ElemT  * data    = rM.mpData;
 
       // go through all rows
-      for (rcount = 0; rcount < rM.Rows(); rcount++)
+/*      for (rcount = 0; rcount < rM.Rows(); rcount++)
       {
         // go through all columns
         for (ccount = 0; ccount < rM.Cols(); ccount++)
         {
-          rOut << static_cast<_ElemT>(/*(*data)*/ rM(rcount, ccount)) << " ";
-          /*data ++;*/
+          rOut << static_cast<_ElemT>( rM(rcount, ccount)) << " ";
+
         }
 
         //data += rM.mMSkip;
 
         rOut << std::endl;
-      }
+      }*/
       return rOut;
     }
 

@@ -24,7 +24,14 @@ namespace SNet{
       Matrix<FLOAT>* mpError;           ///< Layer error matrix (errors before non-linearity)
     public:
       NLayer(Matrix<FLOAT>* weights, Matrix<FLOAT>* biases, int outFunc);
-
+      void In(Matrix<FLOAT>* in){mpIn = in;};
+      void Out(Matrix<FLOAT>* out){mpOut = out;};
+      Matrix<FLOAT>* Out(){return mpOut;};
+      Matrix<FLOAT>* Weights(){return mpWeights;};
+      
+      void BunchBias();
+      void BunchLinear();
+      void BunchNonLinear();
   };
 } // namespace
 
