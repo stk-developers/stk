@@ -17,7 +17,10 @@
 #include <stdio.h>
 #include <float.h>
 #include <math.h>
-//#define __USE_GNU
+
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #include <limits.h>
 #include <search.h>
 #include <string>
