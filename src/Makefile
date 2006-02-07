@@ -5,8 +5,9 @@ CXXFLAGS = $(CFLAGS)
 
 ###############################################################################
 # linker options
-LDLIBS = -lm -latlas -lpthread
-#LDFLAGS = -a -g -pg
+LDLIBS = -lm -latlas -lpthread 
+LDFLAGS = -L. 
+#LDFLAGS = -a -g -L. -pg
 
 ###############################################################################
 # -DEXPANDNET_ONLY
@@ -83,7 +84,7 @@ clean:
 ###############################################################################
 # runs makedepend to automatically define header files dependencies
 depend:
-	-makedepend -Y *.c *.cc STKLib/*.c STKLib/*.cc SNetLib/*.c SNetLib/*.cc
+	-makedepend -Y *.c *.C *.cc STKLib/*.C STKLib/*.cc SNetLib/*.C SNetLib/*.cc
 
 
 ###############################################################################
