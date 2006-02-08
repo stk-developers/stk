@@ -27,7 +27,7 @@ namespace SNet{
       Matrix<FLOAT>* mpError;           ///< Neural net global output error
       NLayer** mpLayers;                ///< Pointer to neural net layers
       
-      int FindMaxInVector(FLOAT *vector, int size);
+      //int FindMaxInVector(FLOAT *vector, int size);
     public:
       NNet(CompositeXform* nn, int cache_size, int bunch_size, bool cross_validation);
       ~NNet();

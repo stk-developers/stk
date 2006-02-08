@@ -28,6 +28,7 @@ namespace SNet{
       void Out(Matrix<FLOAT>* out){mpOut = out;};
       Matrix<FLOAT>* Out(){return mpOut;};
       Matrix<FLOAT>* Weights(){return mpWeights;};
+      Matrix<FLOAT>* Biases(){return mpBiases;};
       
       void BunchBias();
       void BunchLinear();

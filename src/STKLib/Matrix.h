@@ -256,14 +256,14 @@ namespace STK
                             const size_t c,
                             const StorageType st = STORAGE_REGULAR):                            
         Matrix<_ElemT>(r, c, st), // create the base class
-        mTRowOff(0), mTColOff(0),          // set the offset
-        mOrigTRows    (Matrix<_ElemT>::mTRows),   // copy the original values
-        mOrigTCols    (Matrix<_ElemT>::mTCols),
         mOrigMRows    (Matrix<_ElemT>::mMRows),
         mOrigMCols    (Matrix<_ElemT>::mMCols),
+        mOrigTRows    (Matrix<_ElemT>::mTRows),   // copy the original values
+        mOrigTCols    (Matrix<_ElemT>::mTCols),
         mOrigMRealCols(Matrix<_ElemT>::mMRealCols),
         mOrigMSize    (Matrix<_ElemT>::mMSize),
-        mOrigMSkip    (Matrix<_ElemT>::mMSkip)
+        mOrigMSkip    (Matrix<_ElemT>::mMSkip),
+        mTRowOff(0), mTColOff(0)          // set the offset
       {
         mpOrigData = Matrix<_ElemT>::mpData;
       }

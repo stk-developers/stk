@@ -23,7 +23,7 @@ namespace STK
     {
       for(size_t row = 0; row < this->Rows(); row++)
       {
-        sigmoid_vec(this->Row(row), this->Row(row), this->Cols());
+        fast_sigmoid_vec(this->Row(row), this->Row(row), this->Cols());
       }
       return *this;
     }
@@ -39,6 +39,9 @@ namespace STK
       assert(a.Cols() == b.Rows());
       assert(this->Rows() == a.Rows());
       assert(this->Cols() == b.Cols());
+      assert((int)a() % 16 == 0);
+      assert((int)b() % 16 == 0);
+      assert((int)this->mpData % 16 == 0);
       if(b.Storage() == STORAGE_TRANSPOSED){
         cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, a.Rows(), b.Cols(), b.Rows(),
                     1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
@@ -59,7 +62,7 @@ namespace STK
     FastRowSoftmax()
     {
       for(size_t row = 0; row < this->Rows(); row++){
-        softmax_vec(this->Row(row), this->Row(row), this->Cols());
+        fast_softmax_vec(this->Row(row), this->Row(row), this->Cols());
       }
       return *this;
     }

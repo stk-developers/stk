@@ -14,6 +14,8 @@
 #define COMMON_H
 
 #include "Error.h"
+#include "Math.h"
+
 #include <stdio.h>
 #include <float.h>
 #include <math.h>
@@ -21,6 +23,7 @@
 #include <limits.h>
 #include <search.h>
 #include <string>
+
 
 
 
@@ -189,6 +192,9 @@ using namespace STK;
   void log_vec(FLOAT *in, FLOAT *out, int size);
   void sqrt_vec(FLOAT *in, FLOAT *out, int size);
   void softmax_vec(FLOAT *in, FLOAT *out, int size);
+  
+  void fast_softmax_vec(float *in, float *out, int size);
+  void fast_sigmoid_vec(float *in, float *out, int size);
   
   int my_hcreate_r(size_t nel,
                   MyHSearchData *tab);

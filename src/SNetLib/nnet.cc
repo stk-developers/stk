@@ -1,5 +1,5 @@
 #include"nnet.h"
-
+/*
 int SNet::NNet::FindMaxInVector(FLOAT *vector, int size){
   FLOAT *p = vector+1;
   FLOAT max = vector[0];
@@ -12,7 +12,7 @@ int SNet::NNet::FindMaxInVector(FLOAT *vector, int size){
   }
   return max_pos;
 }
-
+*/
 SNet::NNet::NNet(CompositeXform* nn, int cache_size, int bunch_size, bool cross_validation){
   if(nn->mNLayers % 3 != 0)
     Error("NN has to have 3 Xform layers for one NN layer");
@@ -81,7 +81,7 @@ void SNet::NNet::RandomizeCache(){
 void SNet::NNet::ComputeCache(){
   std::cout << "Computing cache #" << mNCache << " with " << mActualCache << " vectors ... " << std::flush;
   mActualNOfBunch = mActualCache / mBunchSize;
-  mDiscarded += mActualCache % mCacheSize;
+  mDiscarded += mActualCache % mBunchSize;
   for(int i=0; i < mActualNOfBunch; i++){
     mpInCache->SetSize(i*mBunchSize, mBunchSize);
     mpOutCache->SetSize(i*mBunchSize, mBunchSize);
@@ -89,6 +89,8 @@ void SNet::NNet::ComputeCache(){
     GetAccuracy();
     mVectors += mBunchSize;
   }
+  mpInCache->Reset();
+  mpOutCache->Reset();
   mActualCache = 0;
   mNCache++;
   std::cout << "DONE! \n" << std::flush;
@@ -103,10 +105,22 @@ void SNet::NNet::ComputeBunch(){
 }
 
 void SNet::NNet::GetAccuracy(){
+  assert(mpCompCachePart->Rows() == mpOutCache->Rows());
+  assert(mpCompCachePart->Cols() == mpOutCache->Cols());
   for(unsigned r=0; r < mpCompCachePart->Rows(); r++){
-    if(FindMaxInVector(mpCompCachePart->Row(r), mpCompCachePart->Rows()) == FindMaxInVector(mpInCache->Row(r), mpInCache->Rows())){
-      mGood++;
+    FLOAT* a1 = mpCompCachePart->Row(r);
+    FLOAT* a2 = mpOutCache->Row(r);
+    int maxPos1 = 0;
+    int maxPos2 = 0;
+    for(int i = 1; i < mpCompCachePart->Cols(); i++){
+      if(a1[i] > a1[maxPos1]){
+        maxPos1 = i;
+      }
+      if(a2[i] > a2[maxPos2]){
+        maxPos2 = i;
+      }
     }
+    if(maxPos1 == maxPos2) mGood++;
   }
 }
 

@@ -1,6 +1,6 @@
 ###############################################################################
 # compiler options
-CFLAGS = -I/usr/X11R6/include -Wall -g -DDOUBLEPRECISION=0  
+CFLAGS = -I/usr/X11R6/include -Wall -g -DDOUBLEPRECISION=0
 CXXFLAGS = $(CFLAGS)
 
 ###############################################################################
