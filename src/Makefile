@@ -16,10 +16,10 @@ XFLAGS = -DMOTIF -L/usr/X11R6/lib -lXm -lXt -lX11 -lXpm
 
 ###############################################################################
 # compiler binary
-CC  = g++
-CXX = g++
-
-XXX = `ls`
+CROSS_COMPILE ?= 
+  
+CC  := $(CROSS_COMPILE)g++
+CXX := $(CROSS_COMPILE)g++
 
 ###############################################################################
 # tools summary (for make all)
@@ -48,7 +48,7 @@ BASELIBS =  STKLib/common.o \
 ###############################################################################
 # implicit "make all" rule             
 all  : $(TOOLS)
-	-echo "Done :-)"
+	echo "Done :-)"
 
 ###############################################################################
 # tools-specific rules
@@ -62,7 +62,7 @@ SResults    : $(BASELIBS) STKLib/labels.o
 SExpand     : $(BASELIBS) STKLib/labels.o STKLib/dict.o $(LIBNET)
 
 SERestX :  SERest.o $(BASELIBS) $(LIBHMMS) STKLib/Viterbi.cc STKLib/labels.o STKLib/Net.o STKLib/dict.o STKLib/imagesc.o
-	$(CC) $(CFLAGS) $(XFLAGS) -o SERestX SERest.o STKLib/common.o STKLib/fileio.o $(LIBHMMS) STKLib/Viterbi.cc STKLib/labels.o $(LIBNET) STKLib/dict.o STKLib/imagesc.o -lm
+	$(CXX) $(CFLAGS) $(XFLAGS) -lm -o $@ $< 
 	
 SNet : $(BASELIBS) STKLib/fileio.o $(LIBHMMS) STKLib/Viterbi.o $(LIBNET) STKLib/labels.o STKLib/Matrix.o SNetLib/nlayer.o SNetLib/nnet.o SNetLib/progobj.o SNetLib/socketobj.o SNetLib/timers.o
 
@@ -75,8 +75,9 @@ SNet : $(BASELIBS) STKLib/fileio.o $(LIBHMMS) STKLib/Viterbi.o $(LIBNET) STKLib/
 ###############################################################################
 # cleans the binaries  
 clean:
-	-rm -f *.o STKLib/*.o SNetLib/*.o SVite SFea2OutP SRover SERest SLRatio SResults SExpand SCombAcc SMMIUpdate SNet
-  
+	rm -f *.o STKLib/*.o SNetLib/*.o 
+	rm -f $(TOOLS)
+	rm -f *~
 
 
 ###############################################################################
