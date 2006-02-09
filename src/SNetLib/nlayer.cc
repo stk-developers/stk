@@ -14,7 +14,7 @@ void SNet::NLayer::BunchBias(){
 }
       
 void SNet::NLayer::BunchLinear(){
-  mpOut->AddMatMult(*mpIn, *mpWeights);
+  mpOut->AddMMMul(*mpIn, *mpWeights);
 }
       
 void SNet::NLayer::BunchNonLinear(){

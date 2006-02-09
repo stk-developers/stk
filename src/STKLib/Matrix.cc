@@ -34,14 +34,12 @@ namespace STK
   template<>
     Matrix<float> &
     Matrix<float>::
-    AddMatMult(Matrix<float> & a, Matrix<float> & b)
+    AddMMMul(Matrix<float> & a, Matrix<float> & b)
     { 
       assert(a.Cols() == b.Rows());
       assert(this->Rows() == a.Rows());
       assert(this->Cols() == b.Cols());
-      assert((int)a() % 16 == 0);
-      assert((int)b() % 16 == 0);
-      assert((int)this->mpData % 16 == 0);
+      assert(a.mStorageType == STORAGE_REGULAR);
       if(b.Storage() == STORAGE_TRANSPOSED){
         cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, a.Rows(), b.Cols(), b.Rows(),
                     1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);

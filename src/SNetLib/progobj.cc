@@ -1,6 +1,7 @@
 #include"progobj.h"
    
-SNet::ProgObj::ProgObj(XformInstance *NNet_instance, int cache_size, int bunch_size, bool cross_validation, std::string version){
+SNet::ProgObj::ProgObj(XformInstance *NNet_instance, int cache_size, int bunch_size, bool cross_validation, 
+                       std::string version, float learning_rate){
   mServer = 0;
   mClient = 0;
   mPort = 2020;
@@ -15,7 +16,7 @@ SNet::ProgObj::ProgObj(XformInstance *NNet_instance, int cache_size, int bunch_s
   
   CompositeXform* nn = static_cast<CompositeXform*>(NNet_instance->mpXform);
 
-  mpNNet = new NNet(nn, cache_size, bunch_size, cross_validation);
+  mpNNet = new NNet(nn, cache_size, bunch_size, cross_validation, learning_rate);
   std::cout << "===== SNET v" << version << " " << (cross_validation ? "CROSS-VALIDATION" : "TRAINING") << " STARTED ===== \n";  
 }
 

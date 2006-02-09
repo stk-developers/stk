@@ -138,8 +138,9 @@ int main(int argc, char *argv[])
   RHFBuffer rhfbuff_out  = {0};
   
   bool cross_validation = false;
-  int cache_size = 0;
-  int bunch_size = 0;
+  int cache_size;
+  int bunch_size;
+  float learning_rate;
 
   if (argc == 1) usage(argv[0]);
 
@@ -206,9 +207,10 @@ int main(int argc, char *argv[])
   trg_hmm_ext  = GetParamStr(&cfgHash, SNAME":TARGETMODELEXT",  NULL);
   trg_mmf      = GetParamStr(&cfgHash, SNAME":TARGETMMF",       NULL);
   
-  cross_validation  = GetParamBool(&cfgHash,SNAME":CROSSVALIDATION",FALSE);
-  cache_size   = GetParamInt(&cfgHash, SNAME":CACHESIZE",           12000);
-  bunch_size   = GetParamInt(&cfgHash, SNAME":BUNCHSIZE",           1000);
+  cross_validation  = GetParamBool(&cfgHash,SNAME":CROSSVALIDATION", FALSE);
+  cache_size   = GetParamInt(&cfgHash, SNAME":CACHESIZE",            12000);
+  bunch_size   = GetParamInt(&cfgHash, SNAME":BUNCHSIZE",            1000);
+  learning_rate   = GetParamFlt(&cfgHash, SNAME":LEARNINGRATE",      0.008);
   
 //  in_transc_fmt= (TranscriptionFormat) GetParamEnum(&cfgHash,SNAME":SOURCETRANSCFMT",
 //                              !network_file && htk_compat ? TF_HTK : TF_STK,
@@ -275,7 +277,7 @@ int main(int argc, char *argv[])
      
   
   /// INITIALIZE SNET
-  ProgObj *progObj = new ProgObj(NNet_instance, cache_size, bunch_size, cross_validation, VERSION); 
+  ProgObj *progObj = new ProgObj(NNet_instance, cache_size, bunch_size, cross_validation, VERSION, learning_rate); 
   
     // MAIN FILE LOOP
   for (file_name = feature_files;

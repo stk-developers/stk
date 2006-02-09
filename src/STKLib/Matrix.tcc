@@ -131,23 +131,6 @@ namespace STK
 
 
 //******************************************************************************
-  template<typename _ElemT>
-  Matrix<_ElemT> &
-  Matrix<_ElemT>::
-  operator += (const Matrix<_ElemT> & a)
-  {
-#ifdef CHECKSIZE
-    // the sizes must match, else throw an exception
-    if (a.mMSize != this->mMSize)
-      throw std::logic_error("Sizes of matrices must be identical");
-#endif
-
-    // return a reference to this
-    return *this;
-  }
-
-
-//******************************************************************************
   // The destructor
   template<typename _ElemT>
   Matrix<_ElemT>::
@@ -184,7 +167,7 @@ namespace STK
   template<typename _ElemT>
   Matrix<_ElemT> &
   Matrix<_ElemT>::
-  AddMatMult(ThisType & a, ThisType & b)
+  AddMMMul(ThisType & a, ThisType & b)
   { 
     if(!(a.Cols() == b.Rows() && this->Rows() == a.Rows() &&  this->Cols() == b.Cols()))
       STK::Error("Matrix multiply: bad matrix sizes (%d %d)*(%d %d) -> (%d %d)", a.Rows(), a.Cols(), b.Rows(), b.Cols(), this->Rows(), this->Cols());
@@ -206,7 +189,41 @@ namespace STK
     return *this;
   }; // AddMatMult(const ThisType & a, const ThisType & b)
   
-
+//******************************************************************************
+  template<typename _ElemT>
+  Matrix<_ElemT> &
+  Matrix<_ElemT>::
+  AddMCMul(ThisType & a, _ElemT c) { 
+    assert(this->Cols() == a.Cols());
+    assert(this->Rows() == a.Rows());
+      
+    for(int row = 0; row < this->Rows(); row++){
+      for(int col = 0; col < this->Cols(); col++){
+        (*this)(row, col) += a(row, col) * c;
+      }
+    }
+    return *this;
+  };
+  
+  //******************************************************************************
+  template<typename _ElemT>
+  Matrix<_ElemT> &
+  Matrix<_ElemT>::
+  RepMMSub(ThisType & a, ThisType & b)
+  { 
+    assert(this->Cols() == a.Cols());
+    assert(this->Rows() == a.Rows());
+    assert(this->Cols() == b.Cols());
+    assert(this->Rows() == b.Rows());      
+    
+    for(int row = 0; row < this->Rows(); row++){
+      for(int col = 0; col < this->Cols(); col++){
+        (*this)(row, col) = a(row, col) - b(row, col);
+      }
+    }
+    return *this;
+  }; 
+  
 //******************************************************************************
 /*
   template<>

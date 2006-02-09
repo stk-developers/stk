@@ -1,11 +1,11 @@
 ###############################################################################
 # compiler options
-CFLAGS = -I/usr/X11R6/include -Wall -g -DDOUBLEPRECISION=0
+CFLAGS = -I/usr/X11R6/include -Wall -g -DDOUBLEPRECISION=0 -O2
 CXXFLAGS = $(CFLAGS)
 
 ###############################################################################
 # linker options
-LDLIBS = -lm -latlas -lpthread
+LDLIBS = -lm -latlas -lpthread -O2
 #LDFLAGS = -a -g -pg
 
 ###############################################################################

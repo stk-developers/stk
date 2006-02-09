@@ -13,7 +13,7 @@ int SNet::NNet::FindMaxInVector(FLOAT *vector, int size){
   return max_pos;
 }
 */
-SNet::NNet::NNet(CompositeXform* nn, int cache_size, int bunch_size, bool cross_validation){
+SNet::NNet::NNet(CompositeXform* nn, int cache_size, int bunch_size, bool cross_validation, float learning_rate){
   if(nn->mNLayers % 3 != 0)
     Error("NN has to have 3 Xform layers for one NN layer");
 
@@ -33,6 +33,7 @@ SNet::NNet::NNet(CompositeXform* nn, int cache_size, int bunch_size, bool cross_
   mBunchSize = bunch_size;
   mCacheSize = cache_size;
   mCrossValidation = cross_validation;
+  mLearnRate = learning_rate;
   int in_cols =  (static_cast<LinearXform*>(nn->mpLayer[0].mpBlock[0]))->mMatrix.Rows();
   int out_cols = (static_cast<LinearXform*>(nn->mpLayer[3*(mNLayers-1)].mpBlock[0]))->mMatrix.Cols();
   mpInCache =  new WindowMatrix<FLOAT>(cache_size, in_cols);
@@ -44,11 +45,13 @@ SNet::NNet::NNet(CompositeXform* nn, int cache_size, int bunch_size, bool cross_
   mNCache = 0;
   
   mpCompCachePart = new Matrix<FLOAT>(bunch_size, mpLayers[mNLayers-1]->Weights()->Cols());
+  mpError = new Matrix<FLOAT>(bunch_size, mpLayers[mNLayers-1]->Weights()->Cols());
   
   /// Connect layers
   for(int i=0; i<mNLayers; i++){
-    mpLayers[i]->In((i == 0)           ? mpInCache  : mpLayers[i-1]->Out());
-    mpLayers[i]->Out((i == mNLayers-1) ? mpCompCachePart : new Matrix<FLOAT>(bunch_size, mpLayers[i]->Weights()->Cols()));
+    mpLayers[i]->In((i == 0)             ? mpInCache  : mpLayers[i-1]->Out());
+    mpLayers[i]->Out((i == mNLayers-1)   ? mpCompCachePart : new Matrix<FLOAT>(bunch_size, mpLayers[i]->Weights()->Cols()));
+    mpLayers[i]->Err((i == mNLayers-1)   ? mpError : new Matrix<FLOAT>(bunch_size, mpLayers[i]->Weights()->Cols()));
   } 
   
   mpTimers = new Timers(1, 0);
@@ -58,14 +61,17 @@ SNet::NNet::NNet(CompositeXform* nn, int cache_size, int bunch_size, bool cross_
 
 SNet::NNet::~NNet(){
   for(int i=0; i<mNLayers; i++){
-    if(i != mNLayers-1)
+    if(i != mNLayers-1){
       delete mpLayers[i]->Out();
+      delete mpLayers[i]->Err();
+    }
     delete mpLayers[i];
   }
   delete[] mpLayers;
   delete mpInCache;
   delete mpOutCache;
   delete mpCompCachePart;
+  delete mpError;
 }
 
 void SNet::NNet::AddToCache(FLOAT *inVector, FLOAT *outVector, int inSize, int outSize){
@@ -87,6 +93,12 @@ void SNet::NNet::ComputeCache(){
     mpOutCache->SetSize(i*mBunchSize, mBunchSize);
     ComputeBunch();
     GetAccuracy();
+    if(!mCrossValidation){
+      ComputeGlobalError();
+      ComputeUpdates();
+      ChangeWeights();
+    }
+      
     mVectors += mBunchSize;
   }
   mpInCache->Reset();
@@ -121,6 +133,23 @@ void SNet::NNet::GetAccuracy(){
       }
     }
     if(maxPos1 == maxPos2) mGood++;
+  }
+}
+
+
+void SNet::NNet::ComputeGlobalError(){
+//  mpError.RepMatSub(mpCompCachePart, mpOutCache);
+}
+
+void SNet::NNet::ComputeUpdates(){
+  for(int i=0; i < mNLayers; i++){
+   // mpLayers[i]->ComputeUpdates();
+  }
+}
+
+void SNet::NNet::ChangeWeights(){
+  for(int i=0; i < mNLayers; i++){
+   // mpLayers[i]->ChangeWeights();
   }
 }
 

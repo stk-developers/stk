@@ -29,15 +29,19 @@ namespace SNet{
       
       //int FindMaxInVector(FLOAT *vector, int size);
     public:
-      NNet(CompositeXform* nn, int cache_size, int bunch_size, bool cross_validation);
+      NNet(CompositeXform* nn, int cache_size, int bunch_size, bool cross_validation, float learning_rate);
       ~NNet();
       void AddToCache(FLOAT *inVector, FLOAT *outVector, int inSize, int outSize);
-      bool CacheFull() {return (mActualCache == mCacheSize);};
-      bool CrossValidation(){return mCrossValidation;};
+      bool CacheFull() const {return (mActualCache == mCacheSize);};
+      bool CrossValidation() const {return mCrossValidation;};
       void RandomizeCache();
       void ComputeCache();
       void ComputeBunch();
       void GetAccuracy();
+      
+      void ComputeGlobalError();
+      void ComputeUpdates();
+      void ChangeWeights();
       
       void PrintInfo();
   };
