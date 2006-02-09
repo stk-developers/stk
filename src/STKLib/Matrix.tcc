@@ -189,6 +189,18 @@ namespace STK
     return *this;
   }; // AddMatMult(const ThisType & a, const ThisType & b)
   
+  //******************************************************************************
+  template<typename _ElemT>
+  Matrix<_ElemT> &
+  Matrix<_ElemT>::
+  RepMMTMul(ThisType & a, ThisType & b)
+  { 
+
+      STK::Error("Just only BLAS for float..."); 
+    
+    return *this;
+  }; // AddMatMult(const ThisType & a, const ThisType & b)
+  
 //******************************************************************************
   template<typename _ElemT>
   Matrix<_ElemT> &
@@ -197,8 +209,8 @@ namespace STK
     assert(this->Cols() == a.Cols());
     assert(this->Rows() == a.Rows());
       
-    for(int row = 0; row < this->Rows(); row++){
-      for(int col = 0; col < this->Cols(); col++){
+    for(unsigned row = 0; row < this->Rows(); row++){
+      for(unsigned col = 0; col < this->Cols(); col++){
         (*this)(row, col) += a(row, col) * c;
       }
     }
@@ -216,8 +228,8 @@ namespace STK
     assert(this->Cols() == b.Cols());
     assert(this->Rows() == b.Rows());      
     
-    for(int row = 0; row < this->Rows(); row++){
-      for(int col = 0; col < this->Cols(); col++){
+    for(unsigned row = 0; row < this->Rows(); row++){
+      for(unsigned col = 0; col < this->Cols(); col++){
         (*this)(row, col) = a(row, col) - b(row, col);
       }
     }

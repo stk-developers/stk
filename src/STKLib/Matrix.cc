@@ -54,6 +54,27 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
+  
+    template<>
+    Matrix<float> &
+    Matrix<float>::
+    RepMMTMul(Matrix<float> & a, Matrix<float> & b)
+    { 
+      assert(a.Rows() == this->Rows());
+      assert(b.Rows() == this->Cols());
+      assert(a.Cols() == b.Cols());
+      assert(b.mStorageType == STORAGE_TRANSPOSED);
+      memset(this->mpData, this->mMSize, 0);
+      
+      cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, this->Rows(), this->Cols(), b.Rows(),
+                  1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
+      
+      return *this;
+    }; // AddMatMult(const ThisType & a, const ThisType & b)
+
+  
+  //***************************************************************************
+  //***************************************************************************
   template<>
     Matrix<float> &
     Matrix<float>::

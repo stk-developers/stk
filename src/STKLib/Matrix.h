@@ -146,6 +146,9 @@ namespace STK
       ThisType &
       RepMMSub(ThisType & a, ThisType & b);
       
+      ThisType &
+      RepMMTMul(ThisType & a, ThisType & b);
+      
       /**
        *  @brief Performs fast sigmoid on row vectors
        *         result to this (elem by elem)

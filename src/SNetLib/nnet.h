@@ -16,7 +16,7 @@ namespace SNet{
       int mVectors;               ///< Number of training frames used for training so far
       int mGood;                 ///< Number of training frames which are classified as in example
       int mDiscarded;             ///< Number of training frames discarded and not used
-      int mLearnRate;            ///< Neural net training rate
+      float mLearnRate;            ///< Neural net training rate
       bool mCrossValidation;     ///< Only compute cross-validation
       int mNCache;
       Timers *mpTimers;      

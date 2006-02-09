@@ -22,21 +22,29 @@ namespace SNet{
       Matrix<FLOAT>* mpIn;              ///< Matrix of layer input vectors (first layer uses window of input cache)
       Matrix<FLOAT>* mpOut;             ///< Matrix of layer output vectors (last layer uses window of input cache)
       Matrix<FLOAT>* mpErr;           ///< Layer error matrix (errors before non-linearity)
+      Matrix<FLOAT>* mpPreviousErr;           
+      
     public:
       NLayer(Matrix<FLOAT>* weights, Matrix<FLOAT>* biases, int outFunc);
       
       void In(Matrix<FLOAT>* in)   {mpIn = in;};
       void Out(Matrix<FLOAT>* out) {mpOut = out;};
       void Err(Matrix<FLOAT>* error) {mpErr = error;};
+      void PreviousErr(Matrix<FLOAT>* perror) {mpPreviousErr = perror;};
       
       Matrix<FLOAT>* Out()     const {return mpOut;};
       Matrix<FLOAT>* Err()     const {return mpErr;};
+      Matrix<FLOAT>* PreviousErr()     const {return mpPreviousErr;};
       Matrix<FLOAT>* Weights() const {return mpWeights;};
       Matrix<FLOAT>* Biases()  const {return mpBiases;};
       
       void BunchBias();
       void BunchLinear();
       void BunchNonLinear();
+      void ChangeLayerWeights(FLOAT learnRate);
+      void ErrorPropagation();
+      void DerivateError();
+      void ComputeLayerUpdates();
   };
 } // namespace
 

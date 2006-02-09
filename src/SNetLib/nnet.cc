@@ -52,6 +52,7 @@ SNet::NNet::NNet(CompositeXform* nn, int cache_size, int bunch_size, bool cross_
     mpLayers[i]->In((i == 0)             ? mpInCache  : mpLayers[i-1]->Out());
     mpLayers[i]->Out((i == mNLayers-1)   ? mpCompCachePart : new Matrix<FLOAT>(bunch_size, mpLayers[i]->Weights()->Cols()));
     mpLayers[i]->Err((i == mNLayers-1)   ? mpError : new Matrix<FLOAT>(bunch_size, mpLayers[i]->Weights()->Cols()));
+    mpLayers[i]->PreviousErr((i == 0)    ? NULL : mpLayers[i-1]->Err());
   } 
   
   mpTimers = new Timers(1, 0);
@@ -124,7 +125,7 @@ void SNet::NNet::GetAccuracy(){
     FLOAT* a2 = mpOutCache->Row(r);
     int maxPos1 = 0;
     int maxPos2 = 0;
-    for(int i = 1; i < mpCompCachePart->Cols(); i++){
+    for(unsigned i = 1; i < mpCompCachePart->Cols(); i++){
       if(a1[i] > a1[maxPos1]){
         maxPos1 = i;
       }
@@ -138,18 +139,21 @@ void SNet::NNet::GetAccuracy(){
 
 
 void SNet::NNet::ComputeGlobalError(){
-//  mpError.RepMatSub(mpCompCachePart, mpOutCache);
+  mpError->RepMMSub(*mpCompCachePart, *mpOutCache);
 }
 
 void SNet::NNet::ComputeUpdates(){
-  for(int i=0; i < mNLayers; i++){
-   // mpLayers[i]->ComputeUpdates();
+  for(int i=mNLayers-1; i >= 0; i--){
+    mpLayers[i]->ErrorPropagation();
+  }
+  for(int i=mNLayers-1; i >= 0; i--){
+    mpLayers[i]->ComputeLayerUpdates();
   }
 }
 
 void SNet::NNet::ChangeWeights(){
   for(int i=0; i < mNLayers; i++){
-   // mpLayers[i]->ChangeWeights();
+    mpLayers[i]->ChangeLayerWeights(mLearnRate);
   }
 }
 
