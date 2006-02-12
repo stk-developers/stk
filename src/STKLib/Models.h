@@ -304,7 +304,7 @@ namespace STK
     
     int                       mInputVectorSize;
     int                       mParamKind;
-    long                      mNMixtures;
+    size_t                    mNMixtures;
     size_t                    mNStates;
     bool                      mAllocAccums;
     int                       mTotalDelay;

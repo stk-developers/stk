@@ -1,12 +1,12 @@
 ###############################################################################
 # compiler options
-CFLAGS = -Wall -g -DDOUBLEPRECISION=0 -D_REENTRANT -I/usr/local/include -I/usr/include
+CFLAGS = -Wall -Wformat -g -DDOUBLEPRECISION=0 -D_REENTRANT -I/usr/local/include -I/usr/include
 CXXFLAGS = $(CFLAGS)
 
 ###############################################################################
 # linker options
 LDLIBS = -lm -latlas -lpthread 
-LDFLAGS = -L. 
+#LDFLAGS = -L. 
 #LDFLAGS = -a -g -L. -pg
 
 ###############################################################################
@@ -30,9 +30,7 @@ TOOLS =     SVite \
             SResults \
             SExpand \
             SFeaCat \
-            SLRatio \
-            SNet
-
+            SLRatio
 
 ###############################################################################
 # library-specific modules

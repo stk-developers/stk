@@ -614,7 +614,7 @@ int main(int argc, char *argv[])
           cvg_file, 
           &rhfbuff);
                               
-      if (hset.mInputVectorSize != header.mSampleSize / sizeof(float)) 
+      if (hset.mInputVectorSize != static_cast<int>(header.mSampleSize / sizeof(float))) 
       {
         Error("Vector size [%d] in '%s' is incompatible with source HMM set [%d]",
               header.mSampleSize/sizeof(float), phys_fn, hset.mInputVectorSize);
@@ -652,10 +652,11 @@ int main(int argc, char *argv[])
             cvg_file_alig, 
             &rhfbuff_alig);
         
-        if (hset_alig->mInputVectorSize != header_alig.mSampleSize/sizeof(float)) 
+        if (hset_alig->mInputVectorSize != static_cast<int>(header_alig.mSampleSize / sizeof(float))) 
         {
           Error("Vector size [%d] in '%s' is incompatible with alignment HMM set [%d]",
-                header_alig.mSampleSize/sizeof(float), file_name->mpPhysical, hset_alig->mInputVectorSize);
+                header_alig.mSampleSize/sizeof(float),
+                file_name->mpPhysical, hset_alig->mInputVectorSize);
         }
         
         if (nFrames != header_alig.mNSamples - hset_alig->mTotalDelay) 
@@ -841,7 +842,6 @@ int main(int argc, char *argv[])
     Macro     *   macro;
     Variance  *   tmp_var_floor;
     Variance  **  vector_to_update;
-    int           in_vec_size;
     string        suffix = "";
     string        macro_name;
     int           m;  
@@ -850,14 +850,13 @@ int main(int argc, char *argv[])
     // we'll go throuch modelset and all XformInstances and assign a
     // varfloor if defined... i=-1 indicates that we're inspecting the global
     // varFloor
-    for (m = -1; m < hset.mXformInstanceHash.mNEntries; m++) 
+    for (m = -1; m < static_cast<int>(hset.mXformInstanceHash.mNEntries); m++) 
     {
       if (m == -1)
       {
         suffix = "";
-        vector_to_update = (hset.mpVarFloor != NULL) ?
-          &(hset.mpVarFloor) :
-          NULL;
+        vector_to_update = (hset.mpVarFloor != NULL)
+                           ? &(hset.mpVarFloor) : NULL;
       }
       else
       {
@@ -888,7 +887,7 @@ int main(int argc, char *argv[])
           tmpvar ? tmpvar->mVectorSize : hset.mInputVectorSize, 
           false);
         
-        for (i = 0; i < tmp_var_floor->mVectorSize; i++) 
+        for (size_t i = 0; i < tmp_var_floor->mVectorSize; i++) 
         {
           if (macro) 
           {
@@ -934,7 +933,7 @@ int main(int argc, char *argv[])
   my_hdestroy_r(&nonCDphHash, 0);
   FreeDictionary(&dictHash);
   
-  for (i = 0; i < cfgHash.mNEntries; i++) 
+  for (size_t i = 0; i < cfgHash.mNEntries; i++) 
     free(cfgHash.mpEntry[i]->data);
     
   my_hdestroy_r(&cfgHash, 1);

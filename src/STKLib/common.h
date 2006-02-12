@@ -9,7 +9,7 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
-
+  
 #ifndef COMMON_H
 #define COMMON_H
 
@@ -24,8 +24,6 @@
 #include <limits.h>
 #include <search.h>
 #include <string>
-
-
 
 #ifndef M_PI
 #define M_PI 3.1415926535897932384626433832795
@@ -66,6 +64,7 @@
 #define _LOG  logf
 #define _SQRT sqrtf
 #endif
+
 
 //#define BOOL  int
 //#define TRUE  1
@@ -166,7 +165,7 @@ using namespace STK;
   //void _Warning_(const char *func, const char *file, int line, char *msg, ...);
   //void TraceLog(char *msg, ...);
   int     ReadParmKind(const char *str, bool checkBrackets);
-  int     ParmKind2Str(int parmKind, char *outstr);
+  int     ParmKind2Str(unsigned parmKind, char *outstr);
   void    MakeFileName(char *outFileName, const char* inFileName,
                     const char *out_dir, const char *out_ext);
   

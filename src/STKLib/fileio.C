@@ -92,7 +92,7 @@ namespace STK
       for (i = 0; i < feaLen; i++) 
         swap4(pOut[i]);
   #else
-    float f;
+    FLOAT_32 f;
   
     for (i = 0; i < feaLen; i++) 
     {
@@ -174,7 +174,7 @@ namespace STK
       for (i = 0; i < feaLen; i++) 
         swap4(pIn[i]);
   #else
-    float f;
+    FLOAT_32 f;
   
     for (i = 0; i < feaLen; i++) 
     {

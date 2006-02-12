@@ -36,7 +36,7 @@ void ReadDictionary(
   }
   while (fgets(line, sizeof(line), fp)) {
     ENTRY e, *ep;
-
+    
     line_no++;
     if (strlen(line) == sizeof(line)-1) {
       Error("Line is too long (%s:%d)", dictFileName, line_no);
@@ -56,7 +56,7 @@ void ReadDictionary(
       if (e.key == NULL || word  == NULL) Error("Insufficient memory");
       word->mpName = e.key;
       word->npronuns = 0;
-      word->pronuns   = NULL;
+      word->pronuns  = NULL;
       e.data = word;
 
       if (!my_hsearch_r(e, ENTER, &ep, wordHash)) {
@@ -128,7 +128,7 @@ void FreeDictionary(MyHSearchData *wordHash) {
   for (i = 0; i < wordHash->mNEntries; i++) 
   {
     Word *word = (Word *) wordHash->mpEntry[i]->data;
-    for (j = 0; j < word->npronuns; j++) {
+    for (j = 0; j < static_cast<size_t>(word->npronuns); j++) {
       free(word->pronuns[j]);
     }
     free(word->pronuns);

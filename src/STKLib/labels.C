@@ -27,7 +27,7 @@ const char *transc_ofilter = NULL;
 int IsMLF(FILE *MLFfp)
 {
   char        line[] = "#!MLF!#";
-  size_t      i;
+  int         i; // can be negaive -> cannot be size_t
   int         c;
   
   while (isspace(c = getc(MLFfp)))
@@ -35,11 +35,11 @@ int IsMLF(FILE *MLFfp)
 
   for (i=0; (c == line[i] ||
            (c == 'N' && i == 3) // !!!To be removed, #!MNF!# will be no more supported
-           ) && i < sizeof(line)-1; i++) {
+           ) && i < static_cast<int>(sizeof(line)-1); i++) {
     c = getc(MLFfp);
   }
 
-  if (i < sizeof(line)-1) {
+  if (i < static_cast<int>(sizeof(line)-1)) {
    ungetc(c, MLFfp);
    while (--i >= 0) ungetc(line[i], MLFfp);
    return 0;
@@ -186,7 +186,7 @@ MyHSearchData readLabelList(const char *labelListFileName)
 {
   char line[1024];
   FILE *fp;
-  int nlabels=0;
+  size_t nlabels=0;
   MyHSearchData hash = {0};
 
   if ((fp = fopen(labelListFileName, "rt")) == NULL) {
@@ -207,7 +207,7 @@ MyHSearchData readLabelList(const char *labelListFileName)
     if (ep != NULL)  continue;
 
     e.key  = strdup(line);
-    e.data = (void *) ++nlabels;
+    e.data = reinterpret_cast<void *>(++nlabels);
 
     if (e.key == NULL || !my_hsearch_r(e, ENTER, &ep, &hash)) {
       Error("Insufficient memory");

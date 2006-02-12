@@ -1139,7 +1139,7 @@ namespace STK
       {
         if (!mpState[i]->mpMacro) 
         {
-          if (n > 0 ) snprintf(chptr, n, ".state[%d]", i+2);            
+          if (n > 0 ) snprintf(chptr, n, ".state[%d]", (int) i+2);
           mpState[i]->Scan(mask, nodeName, action, pUserData);
         }
       }
@@ -1184,7 +1184,7 @@ namespace STK
   Mixture::
   FloorVariance(const ModelSet * pModelSet)
   {
-    size_t  pos = 0;                            // position in the memory area
+//    size_t  pos = 0;                            // position in the memory area
     size_t  i;                                  // element index
     FLOAT   g_floor = pModelSet->mMinVariance;
     FLOAT * f_floor = NULL;                     // flooring vector
@@ -1481,7 +1481,7 @@ namespace STK
   Mean::
   UpdateFromAccums(const ModelSet * pModelSet)
   {
-    int      i;
+    size_t   i;
     FLOAT *  vec  = mpVectorO;
     FLOAT *  acc  = mpVectorO + 1 * mVectorSize;
     FLOAT    nrm  = mpVectorO  [2 * mVectorSize];
@@ -1497,9 +1497,9 @@ namespace STK
       } 
       else 
       { // Updating from xform statistics
-        int r;
-        int c;
-        int pos = 0;
+        size_t r;
+        size_t c;
+        size_t pos = 0;
         
         if (!mUpdatableFromStatAccums) 
           return;
@@ -1508,7 +1508,7 @@ namespace STK
         for (i=0; i < mNumberOfXformStatAccums; i++) 
         {
           LinearXform * xform   = (LinearXform *) mpXformStatAccum[i].mpXform;
-          int           in_size = xform->mInSize;
+          size_t        in_size = xform->mInSize;
           FLOAT *       mnv     = mpXformStatAccum[i].mpStats;
   
           assert(xform->mXformType == XT_LINEAR);
@@ -1778,7 +1778,7 @@ namespace STK
           for (j=0; j < pHmm->mNStates && pHmm->mpState[j] != this; j++)
             ;
           Warning("No occupation of '%s[%d]', state is not updated",
-                  pHmm->mpMacro->mpName, j + 1);
+                  pHmm->mpMacro->mpName, (int) j + 1);
         }
         return;
       }
@@ -1796,13 +1796,13 @@ namespace STK
               for (j=0; j < pHmm->mNStates && pHmm->mpState[j] != this; j++)
                 ; // find the state number
               Warning("Discarding mixture %d of Hmm %s state %d because of too low mixture weight",
-                      i, pHmm->mpMacro->mpName, j + 1);
+                      (int) i, pHmm->mpMacro->mpName, (int) j + 1);
             } 
             else 
             {
               assert(mpMacro);
               Warning("Discarding mixture %d of state %s because of too low mixture weight",
-                      i, mpMacro->mpName);
+                      (int) i, mpMacro->mpName);
             }
             accum_sum -= mpMixture[i].mWeightAccum;
   
@@ -1865,7 +1865,7 @@ namespace STK
       {
         if (!mpMixture[i].mpEstimates->mpMacro) 
         {
-          if (n > 0 ) snprintf(chptr, n, ".mix[%d]", i+1);
+          if (n > 0 ) snprintf(chptr, n, ".mix[%d]", (int) i+1);
           mpMixture[i].mpEstimates->Scan(mask, nodeName,
                       action, pUserData);
         }
@@ -2022,7 +2022,7 @@ namespace STK
           if (!cxf->mpLayer[i].mpBlock[j]->mpMacro) 
           {
             if (n > 0) 
-              snprintf(chptr, n, ".part[%d,%d]", i+1, j+1);
+              snprintf(chptr, n, ".part[%d,%d]", (int) i+1, (int) j+1);
             cxf->mpLayer[i].mpBlock[j]->Scan(mask, nodeName, action, pUserData);
           }
         }
@@ -3190,10 +3190,10 @@ namespace STK
         {
           Error("Cannot read input file '%s'", userData.mMeanFile.mpStatsN);
         }        
-        else if (header.stats_type != STATS_MEAN
-              || header.size       != userData.mpXform->mInSize
-              || header.precision  != (sizeof(FLOAT) == sizeof(float)
-                                      ? PRECISION_FLOAT : PRECISION_DOUBLE)) 
+        else if (header.stats_type                != STATS_MEAN
+             || static_cast<size_t>(header.size)  != userData.mpXform->mInSize
+             || header.precision                  != (sizeof(FLOAT) == sizeof(FLOAT_32)
+                                                     ? PRECISION_FLOAT : PRECISION_DOUBLE))
         {
           Error("Invalid header in file '%s'", userData.mMeanFile.mpStatsN);
         }
@@ -3219,10 +3219,11 @@ namespace STK
         if (!isBigEndian()) swap2(header.size);
         if (ferror(userData.mCovFile.mpStatsP)) {
           Error("Cannot read input file '%s'", userData.mCovFile.mpStatsN);
-        } else if (header.stats_type != STATS_COV_LOW_TRI
-              || header.size       != userData.mpXform->mInSize
-              || header.precision  != (sizeof(FLOAT) == sizeof(float)
-                                      ? PRECISION_FLOAT : PRECISION_DOUBLE)) {
+        } else if (header.stats_type               != STATS_COV_LOW_TRI
+               || static_cast<size_t>(header.size) != userData.mpXform->mInSize
+               || header.precision                 != (sizeof(FLOAT) == sizeof(float)
+                                                     ? PRECISION_FLOAT : PRECISION_DOUBLE))
+        {
           Error("Invalid header in file '%s'", userData.mCovFile.mpStatsN);
         }
       }
@@ -3288,7 +3289,7 @@ namespace STK
         
       Hmm *hmm = (Hmm *) macro->mpData;
   
-      fprintf(fp, "%4d%*c\"%s\" %4ld ", ++i,
+      fprintf(fp, "%4d%*c\"%s\" %4ld ", (int) ++i,
                   HIGHER_OF(0,13 - strlen(macro->mpName)), ' ',
                   macro->mpName, macro->mOccurances);
   
@@ -3411,9 +3412,9 @@ namespace STK
       if (tmpHash.mpEntry[i]->data != NULL) 
       {
         Hmm *hmm  = (Hmm *) tmpHash.mpEntry[i]->data;
-        int isTee = hmm->mpTransition->mpMatrixO[hmm->mNStates - 1] > LOG_MIN;
+        size_t isTee = hmm->mpTransition->mpMatrixO[hmm->mNStates - 1] > LOG_MIN;
         e.key  = tmpHash.mpEntry[i]->key;
-        e.data = (void *) isTee;
+        e.data = reinterpret_cast<void *>(isTee);
         
         if (!my_hsearch_r(e, ENTER, &ep, &retHash)) 
           Error("Insufficient memory");

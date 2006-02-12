@@ -804,7 +804,7 @@ namespace STK
         {
           e.key = node->mpName;
           my_hsearch_r(e, FIND, &ep, nonCDphones);
-          if (ep == NULL || !(int) ep->data) 
+          if (ep == NULL || !reinterpret_cast<size_t>(ep->data))
             continue; // Node is not a Tee model
         }
         
@@ -927,7 +927,7 @@ namespace STK
       assert(node->mType & NT_PHONE);
       e.key = node->mpName;
       my_hsearch_r(e, FIND, &ep, nonCDphones);
-      if (ep != NULL && (int) ep->data) continue; // Node is a Tee model
+      if (ep != NULL && reinterpret_cast<size_t>(ep->data)) continue; // Node is a Tee model
   
       assert(prev != NULL); //Otherwise first node is not Null node
   
@@ -1103,7 +1103,7 @@ namespace STK
           
           e.key  = lc->mpName;
           my_hsearch_r(e, FIND, &ep, nonCDphones);
-          if (ep == NULL || !(int) ep->data) break; // Node represents Tee model
+          if (ep == NULL || !reinterpret_cast<size_t>(ep->data)) break; // Node represents Tee model
         }
         
         for (rc = node;;) 
@@ -1116,7 +1116,7 @@ namespace STK
           
           e.key  = rc->mpName;
           my_hsearch_r(e, FIND, &ep, nonCDphones);
-          if (ep == NULL || !(int) ep->data) break; // Node represents Tee model
+          if (ep == NULL || !reinterpret_cast<size_t>(ep->data)) break; // Node represents Tee model
         }
       }
       
