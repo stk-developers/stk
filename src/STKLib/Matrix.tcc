@@ -20,62 +20,6 @@ extern "C"{
   #include <cblas.h>
 }
 
-
-static union
-{
-  double d;
-  struct
-  {
-    int j;
-    int i;
-  } n;
-} qn_d2i;
-
-#define QN_EXP_A (1048576/M_LN2)
-#define QN_EXP_C 60801
-//#define EXP2(y) (qn_d2i.n.j = (int) (QN_EXP_A*(y)) + (1072693248 - QN_EXP_C), qn_d2i.d)
-#define FAST_EXP(y) (qn_d2i.n.i = (int) (QN_EXP_A*(y)) + (1072693248 - QN_EXP_C), qn_d2i.d)
-
-/*
-void sigmoid_vec(float *in, float *out, int size)
-{
-  while(size--) *out++ = 1.0/(1.0 + FAST_EXP(-*in++));
-}
-*/
-/*
-float i_max_double(float *a, int len) 
-{
-  int i;
-  float max;
-  max = a[0];
-  for (i=1; i<len; i++) {
-    if (a[i] > max) {
-      max = a[i];
-    }
-  }
-  return max;
-}
-
-
-/*
-void softmax_vec(float *in, float *out, int size)
-{
-  int i;
-  float maxa,sum;
-  // first find the max
-  maxa = i_max_double (in, size);
-  // normalize, exp and get the sum
-  sum = 0.0;
-  for (i=0; i<size; i++) {
-    out[i] = FAST_EXP(in[i] - maxa);
-    sum += out[i];
-  }
-  // now normalize bu the sum
-  for (i=0; i<size; i++) {
-    out[i] /= sum;
-  }
-}
-*/
 namespace STK
 {
 //******************************************************************************
@@ -187,23 +131,6 @@ namespace STK
 
 
 //******************************************************************************
-  template<typename _ElemT>
-  Matrix<_ElemT> &
-  Matrix<_ElemT>::
-  operator += (const Matrix<_ElemT> & a)
-  {
-#ifdef CHECKSIZE
-    // the sizes must match, else throw an exception
-    if (a.mMSize != this->mMSize)
-      throw std::logic_error("Sizes of matrices must be identical");
-#endif
-
-    // return a reference to this
-    return *this;
-  }
-
-
-//******************************************************************************
   // The destructor
   template<typename _ElemT>
   Matrix<_ElemT>::
@@ -240,7 +167,7 @@ namespace STK
   template<typename _ElemT>
   Matrix<_ElemT> &
   Matrix<_ElemT>::
-  AddMatMult(ThisType & a, ThisType & b)
+  AddMMMul(ThisType & a, ThisType & b)
   { 
     if(!(a.Cols() == b.Rows() && this->Rows() == a.Rows() &&  this->Cols() == b.Cols()))
       STK::Error("Matrix multiply: bad matrix sizes (%d %d)*(%d %d) -> (%d %d)", a.Rows(), a.Cols(), b.Rows(), b.Cols(), this->Rows(), this->Cols());
@@ -262,7 +189,53 @@ namespace STK
     return *this;
   }; // AddMatMult(const ThisType & a, const ThisType & b)
   
+  //******************************************************************************
+  template<typename _ElemT>
+  Matrix<_ElemT> &
+  Matrix<_ElemT>::
+  RepMMTMul(ThisType & a, ThisType & b)
+  { 
 
+      STK::Error("Just only BLAS for float..."); 
+    
+    return *this;
+  }; // AddMatMult(const ThisType & a, const ThisType & b)
+  
+//******************************************************************************
+  template<typename _ElemT>
+  Matrix<_ElemT> &
+  Matrix<_ElemT>::
+  AddMCMul(ThisType & a, _ElemT c) { 
+    assert(this->Cols() == a.Cols());
+    assert(this->Rows() == a.Rows());
+      
+    for(unsigned row = 0; row < this->Rows(); row++){
+      for(unsigned col = 0; col < this->Cols(); col++){
+        (*this)(row, col) += a(row, col) * c;
+      }
+    }
+    return *this;
+  };
+  
+  //******************************************************************************
+  template<typename _ElemT>
+  Matrix<_ElemT> &
+  Matrix<_ElemT>::
+  RepMMSub(ThisType & a, ThisType & b)
+  { 
+    assert(this->Cols() == a.Cols());
+    assert(this->Rows() == a.Rows());
+    assert(this->Cols() == b.Cols());
+    assert(this->Rows() == b.Rows());      
+    
+    for(unsigned row = 0; row < this->Rows(); row++){
+      for(unsigned col = 0; col < this->Cols(); col++){
+        (*this)(row, col) = a(row, col) - b(row, col);
+      }
+    }
+    return *this;
+  }; 
+  
 //******************************************************************************
 /*
   template<>

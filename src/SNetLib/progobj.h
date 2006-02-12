@@ -23,7 +23,7 @@ namespace SNet{
       
       NNet *mpNNet;
     public:
-      ProgObj(XformInstance *NNet_instance, int cache_size, int bunch_size, bool cross_validation, std::string version);
+      ProgObj(XformInstance *NNet_instance, int cache_size, int bunch_size, bool cross_validation, std::string version, float learning_rate);
       ~ProgObj();
       void NewVector(FLOAT *inVector, FLOAT *outVector, int inSize, int outSize, bool last);
   };

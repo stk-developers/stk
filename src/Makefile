@@ -1,12 +1,12 @@
 ###############################################################################
 # compiler options
-CFLAGS = -Wall -Wformat -g -DDOUBLEPRECISION=0 -D_REENTRANT -I/usr/local/include -I/usr/include
+CFLAGS = -Wall -g -DDOUBLEPRECISION=0 
+#-D_REENTRANT -I/usr/local/include -I/usr/include
 CXXFLAGS = $(CFLAGS)
 
 ###############################################################################
 # linker options
 LDLIBS = -lm -latlas -lpthread 
-#LDFLAGS = -L. 
 #LDFLAGS = -a -g -L. -pg
 
 ###############################################################################
@@ -17,7 +17,7 @@ XFLAGS = -DMOTIF -L/usr/X11R6/lib -I/usr/X11R6/include -lXm -lXt -lX11 -lXpm
 
 ###############################################################################
 # compiler binary
-CROSS_COMPILE ?= x86_64-linux-
+#CROSS_COMPILE ?= x86_64-linux-
 
 CC  := $(CROSS_COMPILE)g++
 CXX := $(CROSS_COMPILE)g++

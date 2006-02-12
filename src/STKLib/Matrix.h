@@ -134,19 +134,20 @@ namespace STK
 
 
       /**
-       *  @brief Adds values of matrix a to this element by element
-       *  @param a Matrix to be added to this
-       *  @return Reference to this
-       */
-      ThisType &
-      operator += (const ThisType & a);
-
-      /**
        *  @brief Performs vector multiplication on a and b and and adds the
        *         result to this (elem by elem)
        */
       ThisType &
-      AddMatMult(ThisType & a, ThisType & b);
+      AddMMMul(ThisType & a, ThisType & b);
+      
+      ThisType &
+      AddMCMul(ThisType & a, _ElemT c);
+      
+      ThisType &
+      RepMMSub(ThisType & a, ThisType & b);
+      
+      ThisType &
+      RepMMTMul(ThisType & a, ThisType & b);
       
       /**
        *  @brief Performs fast sigmoid on row vectors
@@ -256,14 +257,14 @@ namespace STK
                             const size_t c,
                             const StorageType st = STORAGE_REGULAR):                            
         Matrix<_ElemT>(r, c, st), // create the base class
-        mTRowOff(0), mTColOff(0),          // set the offset
-        mOrigTRows    (Matrix<_ElemT>::mTRows),   // copy the original values
-        mOrigTCols    (Matrix<_ElemT>::mTCols),
         mOrigMRows    (Matrix<_ElemT>::mMRows),
         mOrigMCols    (Matrix<_ElemT>::mMCols),
+        mOrigTRows    (Matrix<_ElemT>::mTRows),   // copy the original values
+        mOrigTCols    (Matrix<_ElemT>::mTCols),
         mOrigMRealCols(Matrix<_ElemT>::mMRealCols),
         mOrigMSize    (Matrix<_ElemT>::mMSize),
-        mOrigMSkip    (Matrix<_ElemT>::mMSkip)
+        mOrigMSkip    (Matrix<_ElemT>::mMSkip),
+        mTRowOff(0), mTColOff(0)          // set the offset
       {
         mpOrigData = Matrix<_ElemT>::mpData;
       }
@@ -325,6 +326,7 @@ namespace STK
  * The following section contains specialized template definitions
  * whose implementation is in Matrix.cc
  */
+ 
 namespace STK
 {
   template<>
@@ -335,7 +337,7 @@ namespace STK
   template<>
     Matrix<float> &
     Matrix<float>::
-    AddMatMult(Matrix<float> & a, Matrix<float> & b);
+    AddMMMul(Matrix<float> & a, Matrix<float> & b);
     
   template<>
     Matrix<float> &

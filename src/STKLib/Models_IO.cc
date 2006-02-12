@@ -1366,8 +1366,8 @@ namespace STK
     FLOAT           tmp;
   
     // read the parameters
-    out_size = GetInt(fp);
-    in_size = GetInt(fp);
+    out_size = GetInt(fp);  // Rows in Xform matrix
+    in_size = GetInt(fp);   // Cols in Xform matrix
   
     //*** 
     // old malloc
@@ -1379,9 +1379,9 @@ namespace STK
     
     // fill the object with data    
     i = 0;
-    for (r=0; r < in_size; r++)
+    for (c=0; c < out_size; c++)
     {
-      for (c = 0; c < out_size; c++)
+      for (r = 0; r < in_size; r++)
       {
         tmp = GetFloat(fp);
         ret->mMatrix(r, c) = tmp;
@@ -1420,7 +1420,7 @@ namespace STK
     for (i=0; i < size; i++) 
     {
       tmp = GetFloat(fp);
-      ret->mVector(0, i);
+      ret->mVector(0, i) = tmp;
       
       //:TODO: Get rid of the obsolete thing
       ret->mpVectorO[i] = tmp;      

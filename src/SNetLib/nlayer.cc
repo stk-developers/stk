@@ -14,7 +14,7 @@ void SNet::NLayer::BunchBias(){
 }
       
 void SNet::NLayer::BunchLinear(){
-  mpOut->AddMatMult(*mpIn, *mpWeights);
+  mpOut->AddMMMul(*mpIn, *mpWeights);
 }
       
 void SNet::NLayer::BunchNonLinear(){
@@ -28,3 +28,38 @@ void SNet::NLayer::BunchNonLinear(){
     Error("This out function is not implemented. Only Sigmoid and SoftMax supported so far.");
   }
 }
+
+void SNet::NLayer::ChangeLayerWeights(FLOAT learnRate){
+  mpWeights->AddMCMul(*mpChangesWeights, (FLOAT)-1.0*learnRate);
+  mpBiases->AddMCMul(*mpChangesBiases, (FLOAT)-1.0*learnRate);
+}
+
+void SNet::NLayer::ErrorPropagation(){
+  DerivateError();
+  if(mpPreviousErr != NULL){
+    mpPreviousErr->RepMMTMul(*mpOut, *mpWeights);
+  }
+}
+
+void SNet::NLayer::DerivateError(){
+  if(mOutFunc == KID_SoftMax){
+    // nothing
+  }
+  else if(mOutFunc == KID_Sigmoid){
+    for(unsigned row = 0; row < mpErr->Rows(); row++){
+      for(unsigned col = 0; col < mpErr->Cols(); col++){
+        (*mpErr)(row, col) = (1 - (*mpOut)(row, col)) * (*mpOut)(row, col) * (*mpErr)(row, col);
+      }
+    }
+  }
+}
+
+void SNet::NLayer::ComputeLayerUpdates(){
+  mpChangesWeights->RepMTMMul();
+  // !!! rowsum a DNESKA DOM
+  
+}
+
+
+
+
