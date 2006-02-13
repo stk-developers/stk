@@ -86,10 +86,10 @@
 #endif
 
 
-#define UINT_16 unsigned short
-#define UINT_32 unsigned long
-#define INT_16 short
-#define INT_32 long
+#define UINT_16  unsigned short
+#define UINT_32  unsigned
+#define INT_16   short
+#define INT_32   int
 #define FLOAT_32 float
 
 using namespace STK;

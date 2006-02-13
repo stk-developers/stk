@@ -1169,7 +1169,7 @@ namespace STK
   {
   public:
     FILE   *      mpFp;
-    char   *      mpFileName;
+    const char*   mpFileName;
     ModelSet *    mpModelSet;
     float         mWeight;
     int           mMmi;

@@ -23,7 +23,7 @@ namespace STK
     {
       for(size_t row = 0; row < this->Rows(); row++)
       {
-        fast_sigmoid_vec(this->Row(row), this->Row(row), this->Cols());
+//        fast_sigmoid_vec(this->Row(row), this->Row(row), this->Cols());
       }
       return *this;
     }
@@ -81,7 +81,7 @@ namespace STK
     FastRowSoftmax()
     {
       for(size_t row = 0; row < this->Rows(); row++){
-        fast_softmax_vec(this->Row(row), this->Row(row), this->Cols());
+//        fast_softmax_vec(this->Row(row), this->Row(row), this->Cols());
       }
       return *this;
     }

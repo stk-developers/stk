@@ -971,8 +971,8 @@ namespace STK
       if (ud->mMmi) 
         vector += size;
   
-      if (faddfloat(vector, size, ud->mWeight,     ud->mpFp) != size ||
-        fread(&nxfsa_inf, sizeof(nxfsa_inf), 1, ud->mpFp) != 1) 
+      if (faddfloat(vector, size, ud->mWeight,    ud->mpFp) != size ||
+          fread(&nxfsa_inf, sizeof(nxfsa_inf), 1, ud->mpFp) != 1) 
       {
         Error("Incompatible accumulator file: '%s'", ud->mpFileName);
       }
@@ -1184,37 +1184,37 @@ namespace STK
   Mixture::
   FloorVariance(const ModelSet * pModelSet)
   {
-//    size_t  pos = 0;                            // position in the memory area
-    size_t  i;                                  // element index
-    FLOAT   g_floor = pModelSet->mMinVariance;
-    FLOAT * f_floor = NULL;                     // flooring vector
+    size_t   i;                                   // element index
+    FLOAT    g_floor = pModelSet->mMinVariance;   // global varfloor
+    Variance *f_floor = NULL;                     // flooring vector
     
-    f_floor = (mpInputXform != NULL) ?          // we prefer to floor with
-      mpInputXform->mpVarFloor->mpVectorO :     // xform flooring vector
-      (pModelSet->mpVarFloor != NULL) ?         // but model set is OK too
-        pModelSet->mpVarFloor->mpVectorO :
-        NULL ;     
+    
+    f_floor = (mpInputXform != NULL) ? mpInputXform->mpVarFloor 
+                                     : pModelSet->mpVarFloor;
     
     // none of the above needs to be set, so 
     if (f_floor != NULL)
     {
+      assert(f_floor->mVectorSize == mpVariance->mVectorSize);
+      
       // go through each element and update
       for (i = 0; i < mpVariance->mVectorSize; i++)
       {
-        mpVariance->mpVectorO[i] = 
-          LOWER_OF(mpVariance->mpVectorO[i], HIGHER_OF(f_floor[i], g_floor));
-      } // for (i = 0; i < rVariance.mVectorSize; i++)
+        mpVariance->mpVectorO[i] = LOWER_OF(mpVariance->mpVectorO[i],
+                                            f_floor->mpVectorO[i]);
+      }
     }
     
     // we still may have global varfloor constant set
-    else if (g_floor > 0.0)
+    if (g_floor > 0.0)
     {
+printf("%f", g_floor);
       // go through each element and update
+      g_floor =  1.0 / g_floor;
       for (i = 0; i < mpVariance->mVectorSize; i++)
       {
-        mpVariance->mpVectorO[i] = 
-          LOWER_OF(mpVariance->mpVectorO[i], g_floor);
-      } // for (i = 0; i < rVariance.mVectorSize; i++)
+        mpVariance->mpVectorO[i] = LOWER_OF(mpVariance->mpVectorO[i], g_floor);
+      }
     }
     
     return mpVariance;
@@ -2422,7 +2422,7 @@ namespace STK
     this->mMinOccurances        = 3;
     this->mMinMixWeight         = MIN_WEGIHT;
     this->mpVarFloor            = NULL;
-    this->mMinVariance          = 0;
+    this->mMinVariance          = 0.0;
     this->mUpdateMask           = UM_TRANSITION | UM_MEAN | UM_VARIANCE |
                                   UM_WEIGHT | UM_XFSTATS | UM_XFORM;
     this->mpXformToUpdate       = NULL;
@@ -2565,6 +2565,7 @@ namespace STK
     {
       Error("Cannot open input accumulator file: '%s'", pFileName);
     }
+    
     fp = in.file();
     
     if (fread(totFrames,  sizeof(long),  1, fp) != 1 ||
@@ -2572,13 +2573,12 @@ namespace STK
     {
       Error("Invalid accumulator file: '%s'", pFileName);
     }
-  
     //:KLUDGE:
     // Assignment of float to long...
     *totFrames  *= weight;
     *totLogLike *= weight;
   
-    strcpy(ud.mpFileName, pFileName);
+    ud.mpFileName   = pFileName;
     ud.mpFp         = fp;
     ud.mpModelSet   = this;
     ud.mWeight      = weight;
@@ -2612,7 +2612,7 @@ namespace STK
       {
         if ((c = getc(fp)) == EOF) break;
         
-        if (c != '~'       || !strchr("hsmuvt", t = getc(fp)) ||
+        if (c != '~'      || !strchr("hsmuvt", t = getc(fp)) ||
           getc(fp) != ' ' || getc(fp) != '"') 
         {
           Error("Incomatible accumulator file: '%s'", pFileName);
@@ -2646,7 +2646,6 @@ namespace STK
       }
   
       if (!mmiDenominatorAccums) macro->mOccurances += occurances;
-  
       switch (t) 
       {
         case 'h': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
@@ -2661,7 +2660,7 @@ namespace STK
     
     in.close();
     //delete [] ud.mpFileName;
-    free(ud.mpFileName);    
+    //free(ud.mpFileName);    
   }; // ReadAccums(...)
 
   
@@ -2686,7 +2685,7 @@ namespace STK
     }
   
     if (fwrite(&totFrames,  sizeof(long),  1, fp) != 1 ||
-      fwrite(&totLogLike, sizeof(FLOAT), 1, fp) != 1) 
+        fwrite(&totLogLike, sizeof(FLOAT), 1, fp) != 1) 
     {
       Error("Cannot write accumulators to file: '%s'", file_name);
     }
@@ -2796,58 +2795,7 @@ namespace STK
   {
     Macro * macro;
     size_t  i;
-  
-    for (i = 0; i < mHmmHash.mNEntries; i++) 
-    {
-      macro = (Macro *) mHmmHash.mpEntry[i]->data;
-  //  for (macro = hmm_set->hmm_list; macro != NULL; macro = macro->mpNext) {
-      if (macro->mpData->mpMacro != macro) 
-        continue;
-      
-      if (macro->mOccurances < mMinOccurances) 
-      {
-        WARN_FEW_EXAMPLES("Model", macro->mpName, macro->mOccurances);
-      } 
-      else 
-      {
-        ((Hmm *) macro->mpData)->UpdateFromAccums(this);
-      }
-    }
-  
-    for (i = 0; i < mStateHash.mNEntries; i++) 
-    {
-      macro = (Macro *) mStateHash.mpEntry[i]->data;
-  //  for (macro = hmm_set->state_list; macro != NULL; macro = macro->mpNext) {
-      if (macro->mpData->mpMacro != macro) 
-        continue;
-      
-      if (macro->mOccurances < mMinOccurances) 
-      {
-        WARN_FEW_EXAMPLES("State", macro->mpName, macro->mOccurances);
-      } 
-      else 
-      {
-        ((State *) macro->mpData)->UpdateFromAccums(this, NULL);
-      }
-    }
-  
-    for (i = 0; i < mMixtureHash.mNEntries; i++) 
-    {
-      macro = (Macro *) mMixtureHash.mpEntry[i]->data;
-  //  for (macro = mixture_list; macro != NULL; macro = macro->mpNext) {
-      if (macro->mpData->mpMacro != macro)
-        continue;
-      
-      if (macro->mOccurances < mMinOccurances) 
-      {
-        WARN_FEW_EXAMPLES("Mixture", macro->mpName, macro->mOccurances);
-      } 
-      else 
-      {
-        ((Mixture *) macro->mpData)->UpdateFromAccums(this);
-      }
-    }
-  
+    
     for (i = 0; i < mMeanHash.mNEntries; i++) 
     {
       macro = (Macro *) mMeanHash.mpEntry[i]->data;
@@ -2899,6 +2847,57 @@ namespace STK
         ((Transition *) macro->mpData)->UpdateFromAccums(this);
       }
     }               
+      
+    for (i = 0; i < mMixtureHash.mNEntries; i++) 
+    {
+      macro = (Macro *) mMixtureHash.mpEntry[i]->data;
+  //  for (macro = mixture_list; macro != NULL; macro = macro->mpNext) {
+      if (macro->mpData->mpMacro != macro)
+        continue;
+      
+      if (macro->mOccurances < mMinOccurances) 
+      {
+        WARN_FEW_EXAMPLES("Mixture", macro->mpName, macro->mOccurances);
+      } 
+      else 
+      {
+        ((Mixture *) macro->mpData)->UpdateFromAccums(this);
+      }
+    }
+  
+    for (i = 0; i < mStateHash.mNEntries; i++) 
+    {
+      macro = (Macro *) mStateHash.mpEntry[i]->data;
+  //  for (macro = hmm_set->state_list; macro != NULL; macro = macro->mpNext) {
+      if (macro->mpData->mpMacro != macro) 
+        continue;
+      
+      if (macro->mOccurances < mMinOccurances) 
+      {
+        WARN_FEW_EXAMPLES("State", macro->mpName, macro->mOccurances);
+      } 
+      else 
+      {
+        ((State *) macro->mpData)->UpdateFromAccums(this, NULL);
+      }
+    }
+  
+    for (i = 0; i < mHmmHash.mNEntries; i++) 
+    {
+      macro = (Macro *) mHmmHash.mpEntry[i]->data;
+  //  for (macro = hmm_set->hmm_list; macro != NULL; macro = macro->mpNext) {
+      if (macro->mpData->mpMacro != macro) 
+        continue;
+      
+      if (macro->mOccurances < mMinOccurances) 
+      {
+        WARN_FEW_EXAMPLES("Model", macro->mpName, macro->mOccurances);
+      } 
+      else 
+      {
+        ((Hmm *) macro->mpData)->UpdateFromAccums(this);
+      }
+    }    
   }; // UpdateHMMSetFromAccums(...)
   
   

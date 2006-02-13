@@ -1,7 +1,6 @@
 ###############################################################################
 # compiler options
-CFLAGS = -Wall -g -DDOUBLEPRECISION=0 
-#-D_REENTRANT -I/usr/local/include -I/usr/include
+CFLAGS = -Wall -g -DDOUBLEPRECISION=0 -D_REENTRANT -I/usr/local/include -I/usr/include
 CXXFLAGS = $(CFLAGS)
 
 ###############################################################################
