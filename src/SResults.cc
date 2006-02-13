@@ -248,8 +248,8 @@ int main(int argc, char *argv[]) {
     kwd_stats = (t_kwd_stats *) malloc(sizeof(t_kwd_stats) * (labelHash.mNEntries+1));
     if (kwd_tab == NULL || kwd_stats == NULL) Error("Insufficient memory");
 
-    for (i = 0; i <= labelHash.mNEntries; i++) {
-      kwd_stats[i].FA = kwd_stats[i].actual = kwd_stats[i].hits = 0;
+    for (size_t n = 0; n <= labelHash.mNEntries; n++) {
+      kwd_stats[n].FA = kwd_stats[n].actual = kwd_stats[n].hits = 0;
     }
   }
 
@@ -328,7 +328,7 @@ int main(int argc, char *argv[]) {
         Label *tlptr2;
         while (tlptr && ((tlptr->mStart+tlptr->mStop)/2) < ltab[i]->mStart) tlptr = tlptr->mpNext;
 
-        kwd_tab[nkwds].id     = (int) ltab[i]->mpData - 1;
+        kwd_tab[nkwds].id     = reinterpret_cast<size_t>(ltab[i]->mpData) - 1;
         kwd_tab[nkwds].score  = ltab[i]->mScore;
         kwd_tab[nkwds].is_hit = 0;
 
@@ -344,7 +344,7 @@ int main(int argc, char *argv[]) {
       }
 
       for (tlptr = reflabels; tlptr != NULL; tlptr=tlptr->mpNext) {
-        kwd_stats[(int) tlptr->mpData - 1].actual++;
+        kwd_stats[reinterpret_cast<size_t>(tlptr->mpData) - 1].actual++;
       }
 
       if (ref_stats.endTime > LOG_MIN) {
@@ -373,7 +373,6 @@ int main(int argc, char *argv[]) {
       100.0 * (tot-del-sub)/tot, 100.0 * (tot-del-ins-sub)/tot,
       tot-del-sub, del, sub, ins, tot);
   } else {
-    int n;
     FLOAT sufficientThreshold = LOG_0;
     
     printf("  Ref. total time: %f hours\n", totalTime  * FATimeUnit);
@@ -382,9 +381,9 @@ int main(int argc, char *argv[]) {
     int nROCbins = (int) (maxFAperHour * totalTime + 0.49999) + 1;
     float lastBinWght =   maxFAperHour * totalTime - nROCbins + 1;
     
-    for (i = 0; i <= labelHash.mNEntries; i++) {
-      kwd_stats[i].ROC = (float *) malloc(nROCbins * sizeof(float));
-      if (kwd_stats[i].ROC == NULL) Error("Insufficient memory");
+    for (size_t n = 0; n <= labelHash.mNEntries; n++) {
+      kwd_stats[n].ROC = (float *) malloc(nROCbins * sizeof(float));
+      if (kwd_stats[n].ROC == NULL) Error("Insufficient memory");
     }
 
     qsort(kwd_tab, nkwds, sizeof(kwd_tab[0]), score_cmp);
@@ -404,7 +403,7 @@ int main(int argc, char *argv[]) {
       }      
     }
         
-    for (n = 0; n < labelHash.mNEntries; n++) {
+    for (size_t n = 0; n < labelHash.mNEntries; n++) {
       t_kwd_stats *ks = &kwd_stats[n];
       for (i = ks->FA; i < nROCbins; i++) {
         ks->ROC[i] = ks->actual ? (float) ks->hits / ks->actual : 0.0;
@@ -421,7 +420,7 @@ int main(int argc, char *argv[]) {
     }
     
     // Calculate global counts
-    for (n = 0; n < labelHash.mNEntries; n++) {
+    for (size_t n = 0; n < labelHash.mNEntries; n++) {
       kwd_stats[labelHash.mNEntries].actual += kwd_stats[n].actual;
       kwd_stats[labelHash.mNEntries].hits   += kwd_stats[n].hits;
       kwd_stats[labelHash.mNEntries].FA   += kwd_stats[n].FA;
@@ -429,7 +428,7 @@ int main(int argc, char *argv[]) {
     
     for (i = 0; i < nROCbins; i++) {
       kwd_stats[labelHash.mNEntries].ROC[i] = 0.0;
-      for (n = 0; n < labelHash.mNEntries; n++) {
+      for (size_t n = 0; n < labelHash.mNEntries; n++) {
         kwd_stats[labelHash.mNEntries].ROC[i] += kwd_stats[n].ROC[i] * kwd_stats[n].actual;
       }
       kwd_stats[labelHash.mNEntries].ROC[i] /= kwd_stats[labelHash.mNEntries].actual;
@@ -453,7 +452,7 @@ int main(int argc, char *argv[]) {
       for (i = 0; i <= maxFAperHour; i++) printf(" %4d", i);
       fputs("\n", stdout);
 
-      for (n = 0; n <= labelHash.mNEntries; n++) {
+      for (size_t n = 0; n <= labelHash.mNEntries; n++) {
         t_kwd_stats *ks = &kwd_stats[n];
         printf("%13s:", n == labelHash.mNEntries ? "Overall" : labelHash.mpEntry[n]->key);
         for (i = 0; i <= maxFAperHour; i++) {
@@ -478,7 +477,7 @@ int main(int argc, char *argv[]) {
     "------------------------- Figures of Merit --------------------------"
     "\n\n      KeyWord:    #Hits     #FAs  #Actual      FOM");
 
-    for (n = 0; n <= labelHash.mNEntries; n++) {
+    for (size_t n = 0; n <= labelHash.mNEntries; n++) {
       t_kwd_stats *ks = &kwd_stats[n];
       float FOM = 0.0;
 

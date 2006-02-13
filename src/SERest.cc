@@ -514,7 +514,7 @@ int main(int argc, char *argv[])
   hset.mMmiUpdate           = update_type;
   hset.ResetAccums();
   
-  hset.mMinVariance         = 1/min_variance;    ///< global minimum variance floor
+  hset.mMinVariance         = min_variance;    ///< global minimum variance floor
   hset.MMI_E                = E_constant;
   hset.MMI_h                = h_constant;
   hset.MMI_tauI             = I_smoothing;
@@ -614,7 +614,7 @@ int main(int argc, char *argv[])
           cvg_file, 
           &rhfbuff);
                               
-      if (hset.mInputVectorSize != header.mSampleSize / sizeof(float)) 
+      if (hset.mInputVectorSize != static_cast<int>(header.mSampleSize / sizeof(float))) 
       {
         Error("Vector size [%d] in '%s' is incompatible with source HMM set [%d]",
               header.mSampleSize/sizeof(float), phys_fn, hset.mInputVectorSize);
@@ -652,21 +652,23 @@ int main(int argc, char *argv[])
             cvg_file_alig, 
             &rhfbuff_alig);
         
-        if (hset_alig->mInputVectorSize != header_alig.mSampleSize/sizeof(float)) 
+        if (hset_alig->mInputVectorSize != static_cast<int>(header_alig.mSampleSize / sizeof(float))) 
         {
           Error("Vector size [%d] in '%s' is incompatible with alignment HMM set [%d]",
-                header_alig.mSampleSize/sizeof(float), file_name->mpPhysical, hset_alig->mInputVectorSize);
+                header_alig.mSampleSize/sizeof(float),
+                file_name->mpPhysical, hset_alig->mInputVectorSize);
         }
         
         if (nFrames != header_alig.mNSamples - hset_alig->mTotalDelay) 
         {
           if (hset_alig->mTotalDelay != hset.mTotalDelay) 
           {
-            printf("HPARM1 frames: %d+%ld+%d, alignment model delay: %d\n"
-                   "HPARM2 frames: %d+%ld+%d, source model delay: %d\n",
-                   startFrmExt_alig, header_alig.mNSamples-startFrmExt_alig-endFrmExt_alig,
+            printf("HPARM1 frames: %d+%d+%d, alignment model delay: %d\n"
+                   "HPARM2 frames: %d+%d+%d, source model delay: %d\n",
+                   startFrmExt_alig,
+                   static_cast<int>(header_alig.mNSamples-startFrmExt_alig-endFrmExt_alig),
                    endFrmExt_alig, hset_alig->mTotalDelay,
-                   startFrmExt, header.mNSamples-startFrmExt-endFrmExt,
+                   startFrmExt, static_cast<int>(header.mNSamples-startFrmExt-endFrmExt),
                    endFrmExt, hset.mTotalDelay);
           }
           
@@ -813,7 +815,7 @@ int main(int argc, char *argv[])
         net.Release();
     }
   }
-  
+
   if (trace_flag & 2) 
   {
     TraceLog("Total number of frames: %d\nTotal log likelihood: %e",
@@ -839,67 +841,42 @@ int main(int argc, char *argv[])
   if (parallel_mode <= 0 && update_mode & UM_UPDATE) 
   {
     Macro     *   macro;
-    Variance  *   tmp_var_floor;
     Variance  **  vector_to_update;
-    int           in_vec_size;
+    size_t        tmp_var_floor_size;
     string        suffix = "";
     string        macro_name;
-    int           m;  
+    int           m;
     
     
     // we'll go throuch modelset and all XformInstances and assign a
     // varfloor if defined... i=-1 indicates that we're inspecting the global
     // varFloor
-    for (m = -1; m < hset.mXformInstanceHash.mNEntries; m++) 
+    for (m = -1; m < static_cast<int>(hset.mXformInstanceHash.mNEntries); m++) 
     {
       if (m == -1)
       {
         suffix = "";
-        vector_to_update = (hset.mpVarFloor != NULL) ?
-          &(hset.mpVarFloor) :
-          NULL;
+        tmp_var_floor_size = hset.mInputVectorSize;
+        vector_to_update = &(hset.mpVarFloor);
       }
       else
       {
-        suffix = reinterpret_cast<Macro *> 
-            (hset.mXformInstanceHash.mpEntry[m]->data)->mpName;
-            
-        vector_to_update = &(
-          reinterpret_cast <XformInstance *>(
-          reinterpret_cast <Macro *>( 
-          hset.mXformInstanceHash.mpEntry[m]->data)->mpData)->mpVarFloor);        
+        macro  = reinterpret_cast<Macro *>(hset.mXformInstanceHash.mpEntry[m]->data);
+        suffix = macro->mpName;
+        XformInstance *xfi =  reinterpret_cast <XformInstance *>(macro->mpData);
+        tmp_var_floor_size =  xfi->mOutSize;  
+        vector_to_update   = &xfi->mpVarFloor;
       }
         
       macro_name = "varFloor1" + suffix;
       macro = FindMacro(&hset.mVarianceHash, macro_name.c_str());
-  
-      if (macro != NULL || (float) min_variance > 0.0) 
-      {
-        Variance *tmpvar = macro ? (Variance *) macro->mpData : NULL;
-  //      assert(!tmpvar || hset.mInputVectorSize == tmpvar->mVectorSize);
-  
-        //***
-        // old malloc
-        //hset.mpVarFloor = (Variance *) malloc(sizeof(Variance)+((tmpvar ? tmpvar->mVectorSize : hset.mInputVectorSize)-1)*sizeof(FLOAT));
-        //if (hset.mpVarFloor == NULL) Error("Insufficient memory");
-        //hset.mpVarFloor->mVectorSize = tmpvar ? tmpvar->mVectorSize : hset.mInputVectorSize;
-  
-        tmp_var_floor = new Variance(
-          tmpvar ? tmpvar->mVectorSize : hset.mInputVectorSize, 
-          false);
+      if(macro) {
+        *vector_to_update = (Variance *) macro->mpData;
         
-        for (i = 0; i < tmp_var_floor->mVectorSize; i++) 
+        if((*vector_to_update)->mVectorSize != tmp_var_floor_size) 
         {
-          if (macro) 
-          {
-            tmp_var_floor->mpVectorO[i] =
-              tmpvar && ((float) min_variance <= 0.0 ||
-                          tmpvar->mpVectorO[i] < 1/min_variance)
-              ? tmpvar->mpVectorO[i] : 1 / min_variance;
-          }
+          Error("Ivalid size of variance floor vector '%s'", macro_name.c_str());
         }
-        
-        *vector_to_update = tmp_var_floor;
       }
     }
     
@@ -934,7 +911,7 @@ int main(int argc, char *argv[])
   my_hdestroy_r(&nonCDphHash, 0);
   FreeDictionary(&dictHash);
   
-  for (i = 0; i < cfgHash.mNEntries; i++) 
+  for (size_t i = 0; i < cfgHash.mNEntries; i++) 
     free(cfgHash.mpEntry[i]->data);
     
   my_hdestroy_r(&cfgHash, 1);
@@ -942,7 +919,7 @@ int main(int argc, char *argv[])
   if (network_file) 
     net.Release();
   
-  delete hset.mpVarFloor;
+//  delete hset.mpVarFloor;
   free(derivWinLengths);
   free(derivWinLengths_alig);
   

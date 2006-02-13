@@ -304,7 +304,7 @@ namespace STK
     
     int                       mInputVectorSize;
     int                       mParamKind;
-    long                      mNMixtures;
+    size_t                    mNMixtures;
     size_t                    mNStates;
     bool                      mAllocAccums;
     int                       mTotalDelay;
@@ -1169,7 +1169,7 @@ namespace STK
   {
   public:
     FILE   *      mpFp;
-    char   *      mpFileName;
+    const char*   mpFileName;
     ModelSet *    mpModelSet;
     float         mWeight;
     int           mMmi;

@@ -9,7 +9,7 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
-
+  
 #ifndef COMMON_H
 #define COMMON_H
 
@@ -19,12 +19,13 @@
 #include <stdio.h>
 #include <float.h>
 #include <math.h>
-//#define __USE_GNU
+
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #include <limits.h>
 #include <search.h>
 #include <string>
-
-
 
 
 #ifndef M_PI
@@ -67,6 +68,7 @@
 #define _SQRT sqrtf
 #endif
 
+
 //#define BOOL  int
 //#define TRUE  1
 //#define FALSE 0
@@ -84,10 +86,10 @@
 #endif
 
 
-#define UINT_16 unsigned short
-#define UINT_32 unsigned long
-#define INT_16 short
-#define INT_32 long
+#define UINT_16  unsigned short
+#define UINT_32  unsigned
+#define INT_16   short
+#define INT_32   int
 #define FLOAT_32 float
 
 using namespace STK;
@@ -166,7 +168,7 @@ using namespace STK;
   //void _Warning_(const char *func, const char *file, int line, char *msg, ...);
   //void TraceLog(char *msg, ...);
   int     ReadParmKind(const char *str, bool checkBrackets);
-  int     ParmKind2Str(int parmKind, char *outstr);
+  int     ParmKind2Str(unsigned parmKind, char *outstr);
   void    MakeFileName(char *outFileName, const char* inFileName,
                     const char *out_dir, const char *out_ext);
   

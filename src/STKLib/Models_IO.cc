@@ -108,7 +108,7 @@ namespace STK
   
       while (((ch = getc(fp)) != EOF) && 
             (ch != termChar) && 
-            ((chptr-buffer) < (sizeof(buffer)-1))) 
+            ((chptr-buffer) < static_cast<int>(sizeof(buffer)-1))) 
       {
         if (ch == '\n') {
           ++lines;
@@ -126,7 +126,11 @@ namespace STK
       gCurrentMmfLine += lines;
     } else if (ch == '<') {
       *chptr++ = '<';
-      while ((ch = getc(fp)) != EOF && !isspace(ch) && ch != '>' && chptr-buffer < sizeof(buffer)-1) {
+      while (((ch = getc(fp)) != EOF) &&
+            !isspace(ch) &&
+            (ch != '>')  &&
+	    (chptr-buffer) < static_cast<int>(sizeof(buffer)-1)) 
+      {
         *chptr++ = ch;
       }
   
@@ -148,7 +152,10 @@ namespace STK
       else           Error("Unexpected end of file %s", gpCurrentMmfName);
       }
     } else {
-      while (ch != EOF && !isspace(ch) && chptr-buffer < sizeof(buffer)-1) {
+      while ((ch != EOF) &&
+            !isspace(ch) &&
+            (chptr-buffer) < static_cast<int>(sizeof(buffer)-1)) 
+      {
         *chptr++ = ch;
         ch = getc(fp);
       }
@@ -187,15 +194,17 @@ namespace STK
   int GetInt(FILE *fp)
   {
     int   cc;
-    short ret;
+    int   ret;
   //puts("GetInt");
     
     if (gHmmReadBinary) {
-      cc = fread(&ret, sizeof(short), 1, fp);
+      INT_16 i;
+      cc = fread(&i, sizeof(INT_16), 1, fp);
+      ret = i;
       if (!isBigEndian()) swap2(ret);
     } else {
       RemoveSpaces(fp);
-      cc = fscanf(fp, "%hd", &ret);
+      cc = fscanf(fp, "%d", &ret);
     }
     
     if (cc != 1) {
@@ -218,7 +227,9 @@ namespace STK
   //puts("GetFloat");
     
     if (gHmmReadBinary) {
-      cc = fread(&ret, sizeof(float), 1, fp);
+      FLOAT_32 f;
+      cc = fread(&f, sizeof(FLOAT_32), 1, fp);
+      ret = f;
       if (!isBigEndian()) swap4(ret);  
     } else {
       RemoveSpaces(fp);
@@ -299,9 +310,9 @@ namespace STK
   void PutInt(FILE *fp, bool binary, int i)
   {
     if (binary) {
-      short b = i;
+      INT_16 b = i;
       if (!isBigEndian()) swap2(b);
-      fwrite(&b, sizeof(short), 1, fp);
+      fwrite(&b, sizeof(INT_16), 1, fp);
     } else {
       fprintf(fp, "%d ", i);
     }
@@ -312,9 +323,9 @@ namespace STK
   void PutFlt(FILE *fp, bool binary, FLOAT f)
   {
     if (binary) {
-      float b = f;
+      FLOAT_32 b = f;
       if (!isBigEndian()) swap4(b);
-      fwrite(&b, sizeof(float), 1, fp);
+      fwrite(&b, sizeof(FLOAT_32), 1, fp);
     } else {
       fprintf(fp, FLOAT_FMT" ", f);
     }
@@ -658,7 +669,7 @@ namespace STK
       state_id = GetInt(fp);
   
   //    printf("%d\n", state_id);
-      if (state_id < 2 || state_id >= nstates) 
+      if (state_id < 2 || state_id >= static_cast<int>(nstates)) 
         Error("State number out of the range (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
   
       if (ret->mpState[state_id-2] != NULL) 
@@ -828,7 +839,6 @@ namespace STK
   {
     Mixture * ret;
     char *    keyword;
-    int       size;
   
   //  puts("ReadMixture");
     keyword = GetString(fp, 1);
@@ -864,13 +874,15 @@ namespace STK
     ret->mpMean = ReadMean(fp, NULL);
     ret->mpVariance = ReadVariance(fp, NULL);
   
-    size = ret->mpInputXform ? ret->mpInputXform->mOutSize : mInputVectorSize;
-    
-    if (size == -1) 
+    if (!ret->mpInputXform && (mInputVectorSize == -1))
     {
       Error("<VecSize> is not defined yet (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
     } 
-    else if (ret->mpMean->mVectorSize != size || ret->mpVariance->mVectorSize != size) 
+    
+    size_t size = ret->mpInputXform ? ret->mpInputXform->mOutSize : mInputVectorSize;
+    
+    if (ret->mpMean->mVectorSize     != size || 
+        ret->mpVariance->mVectorSize != size) 
     {
       Error("Invalid mean or variance vector size (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
     }
@@ -903,7 +915,7 @@ namespace STK
     char *    keyword;
     int       vec_size;
     int       i;
-    int       accum_size = 0;
+//    int       accum_size = 0;
   
   //  puts("ReadMean");
     keyword = GetString(fp, 1);
@@ -951,7 +963,8 @@ namespace STK
   {
     Variance *ret;
     char *keyword;
-    int vec_size, i, accum_size = 0;
+    int vec_size, i;
+    //int accum_size = 0;
   
   //  puts("ReadVariance");
     keyword = GetString(fp, 1);
@@ -981,7 +994,7 @@ namespace STK
     
     ret = new Variance(vec_size, mAllocAccums);
   
-    for (i=0; i<vec_size; i++) {
+    for (i=0; i < vec_size; i++) {
       ret->mpVectorO[i] = 1.0 / GetFloat(fp);
     }
   
@@ -999,7 +1012,7 @@ namespace STK
     XformInstance * ret;
     XformInstance * input = NULL;
     char *          keyword;
-    int             out_vec_size = -1;
+    int             out_vec_size;
     int             i;
   
   //  puts("ReadXformInstance");
@@ -1065,13 +1078,13 @@ namespace STK
       Error("<VecSize> has not been defined yet (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
     }
   
-    if (out_vec_size != ret->mpXform->mOutSize /* * ret->stackSize*/) {
+    if (static_cast<size_t>(out_vec_size) != ret->mpXform->mOutSize) {
       Error("XformInstance <VecSize> must equal to Xform "
             "output size (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
     }
   
     if (input == NULL) {
-      if (ret->mpXform->mInSize != mInputVectorSize) {
+      if (ret->mpXform->mInSize != static_cast<size_t>(mInputVectorSize)) {
         Error("Xform input size must equal to ~o <VecSize> (%s:%d)",
               gpCurrentMmfName, gCurrentMmfLine);
       }
@@ -1222,7 +1235,7 @@ namespace STK
         keyword = GetString(fp, 1);
       }
   
-      if (layer_id < 1 || layer_id > nlayers)
+      if (layer_id < 1 || static_cast<size_t>(layer_id) > nlayers)
         Error("Layer number out of the range (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
       
       if (ret->mpLayer[layer_id-1].mpBlock != NULL)
@@ -1279,7 +1292,7 @@ namespace STK
           block_id = GetInt(fp);
         }
   
-        if (block_id < 1 || block_id > nblocks)
+        if (block_id < 1 || static_cast<size_t>(block_id) > nblocks)
           Error("Block number out of the range (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
   
         if (block[block_id-1] != NULL)
@@ -1315,7 +1328,7 @@ namespace STK
         if (prev_out_size < layer_in_size) 
         {
           Error("Output size of mpLayer %d (%d) is smaller then input size of mpLayer %d (%d) (%s:%d)",
-              i, prev_out_size, i+1, layer_in_size, gpCurrentMmfName, gCurrentMmfLine);
+                (int) i, (int) prev_out_size, (int) i+1, (int) layer_in_size, gpCurrentMmfName, gCurrentMmfLine);
         }
   
         //***
@@ -1800,15 +1813,21 @@ namespace STK
     PutKwd(fp, binary, KID_VecSize);
     PutInt(fp, binary, mInputVectorSize);
   
-    if (ParmKind2Str(mParamKind, parmkindstr)) {
+    if (ParmKind2Str(mParamKind, parmkindstr))
+    {
       fprintf(fp, "<%s> ", parmkindstr);
     }
-    if (mOutPdfKind != -1) {
+    
+    if (mOutPdfKind != -1)
+    {
       PutKwd(fp, binary, mOutPdfKind);
     }
-    if (mOutPdfKind != -1) {
+    
+    if (mOutPdfKind != -1)
+    {
       PutKwd(fp, binary, mDurKind);
     }
+    
     PutNLn(fp, binary);
   }
   
@@ -2269,7 +2288,7 @@ namespace STK
     int         step = 0;
     int *       ids = xform->mpIndices;
   
-    fprintf(fp, "<Copy> %d %d\n", xform->mOutSize, xform->mInSize);
+    fprintf(fp, "<Copy> %d %d\n", (int) xform->mOutSize, (int) xform->mInSize);
   
     for (i=0; i < xform->mOutSize; i++) 
     {
@@ -2337,7 +2356,7 @@ namespace STK
       if (line[i-1] != '\n' && getc(fp) != EOF) 
       {
         Error("ReadXformList: Line %d is too long in file: %s",
-              nlines, pFileName);
+              (int) nlines, pFileName);
       }
   
       for (; i > 0 && isspace(line[i-1]); i--) 
@@ -2363,7 +2382,7 @@ namespace STK
         if (line[i] != termChar) 
         {
           Error("ReadXformList: Terminanting %c expected at line %d in file %s",
-                termChar, nlines, pFileName);
+                termChar, (int) nlines, pFileName);
         }
         
         line[i++] = '\0';
@@ -2381,7 +2400,7 @@ namespace STK
       if (macro == NULL) 
       {
         Error("ReadXformList: Undefined Xform '%s' at line %d in file %s",
-              xformName, nlines, pFileName);
+              xformName, (int) nlines, pFileName);
       }
   
       mpXformToUpdate = (MakeXformCommand*)

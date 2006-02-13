@@ -1,23 +1,23 @@
 ###############################################################################
 # compiler options
-CFLAGS = -I/usr/X11R6/include -Wall -g -DDOUBLEPRECISION=0 -O2
+CFLAGS = -Wall -g -DDOUBLEPRECISION=0 -D_REENTRANT -I/usr/local/include -I/usr/include
 CXXFLAGS = $(CFLAGS)
 
 ###############################################################################
 # linker options
-LDLIBS = -lm -latlas -lpthread -O2
-#LDFLAGS = -a -g -pg
+LDLIBS = -lm -latlas -lpthread 
+#LDFLAGS = -a -g -L. -pg
 
 ###############################################################################
 # -DEXPANDNET_ONLY
-XFLAGS = -DMOTIF -L/usr/X11R6/lib -lXm -lXt -lX11 -lXpm
+XFLAGS = -DMOTIF -L/usr/X11R6/lib -I/usr/X11R6/include -lXm -lXt -lX11 -lXpm
 
 #ICCFLAGS = -O2 -tpp6 -axiMK -xiMK -parallel
 
 ###############################################################################
 # compiler binary
-CROSS_COMPILE ?= 
-  
+#CROSS_COMPILE ?= x86_64-linux-
+
 CC  := $(CROSS_COMPILE)g++
 CXX := $(CROSS_COMPILE)g++
 
@@ -29,9 +29,7 @@ TOOLS =     SVite \
             SResults \
             SExpand \
             SFeaCat \
-            SLRatio \
-            SNet
-
+            SLRatio
 
 ###############################################################################
 # library-specific modules
@@ -62,8 +60,8 @@ SResults    : $(BASELIBS) STKLib/labels.o
 SExpand     : $(BASELIBS) STKLib/labels.o STKLib/dict.o $(LIBNET)
 
 SERestX :  SERest.o $(BASELIBS) $(LIBHMMS) STKLib/Viterbi.cc STKLib/labels.o STKLib/Net.o STKLib/dict.o STKLib/imagesc.o
-	$(CXX) $(CFLAGS) $(XFLAGS) -lm -o $@ $< 
-	
+	$(CXX) $(CFLAGS) $(XFLAGS) -o $@ $<
+
 SNet : $(BASELIBS) STKLib/fileio.o $(LIBHMMS) STKLib/Viterbi.o $(LIBNET) STKLib/labels.o STKLib/Matrix.o SNetLib/nlayer.o SNetLib/nnet.o SNetLib/progobj.o SNetLib/socketobj.o SNetLib/timers.o
 
 
@@ -78,12 +76,14 @@ clean:
 	rm -f *.o STKLib/*.o SNetLib/*.o 
 	rm -f $(TOOLS)
 	rm -f *~
+        
+  
 
 
 ###############################################################################
 # runs makedepend to automatically define header files dependencies
 depend:
-	-makedepend -Y *.c *.cc STKLib/*.c STKLib/*.cc SNetLib/*.c SNetLib/*.cc
+	-makedepend -Y *.c *.C *.cc STKLib/*.C STKLib/*.cc SNetLib/*.C SNetLib/*.cc
 
 
 ###############################################################################

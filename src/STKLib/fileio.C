@@ -92,7 +92,7 @@ namespace STK
       for (i = 0; i < feaLen; i++) 
         swap4(pOut[i]);
   #else
-    float f;
+    FLOAT_32 f;
   
     for (i = 0; i < feaLen; i++) 
     {
@@ -111,7 +111,7 @@ namespace STK
   int 
   ReadHTKHeader (FILE * pInFp, HtkHeader * pHeader, bool swap)
   {
-    if (!fread(&pHeader->mNSamples,   sizeof(INT_32),  1, pInFp)) return -1;
+    if (!fread(&pHeader->mNSamples,     sizeof(INT_32),  1, pInFp)) return -1;
     if (!fread(&pHeader->mSamplePeriod, sizeof(INT_32),  1, pInFp)) return -1;
     if (!fread(&pHeader->mSampleSize,   sizeof(INT_16),  1, pInFp)) return -1;
     if (!fread(&pHeader->mSampleKind,   sizeof(UINT_16), 1, pInFp)) return -1;
@@ -174,7 +174,7 @@ namespace STK
       for (i = 0; i < feaLen; i++) 
         swap4(pIn[i]);
   #else
-    float f;
+    FLOAT_32 f;
   
     for (i = 0; i < feaLen; i++) 
     {

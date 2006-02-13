@@ -354,7 +354,7 @@ int main(int argc, char *argv[]) {
     FILE *fp = fopen(cd_list_file, "wt");
     if (fp == NULL) Error("Cannot open output file: '%s'", cd_list_file);
 
-    for (i = 0; i < triphHash.mNEntries; i++) {
+    for (size_t i = 0; i < triphHash.mNEntries; i++) {
       if (fprintf(fp, "%s\n", (char *) triphHash.mpEntry[i]->key) < 0) {
         Error("Cannot write to file: '%s'", cd_list_file);
       }
@@ -365,7 +365,7 @@ int main(int argc, char *argv[]) {
   my_hdestroy_r(&nonCDphHash, 0);
   FreeDictionary(&dictHash);
   
-  for (i = 0; i < cfgHash.mNEntries; i++) 
+  for (size_t i = 0; i < cfgHash.mNEntries; i++) 
     free(cfgHash.mpEntry[i]->data);
   
   my_hdestroy_r(&cfgHash, 1);

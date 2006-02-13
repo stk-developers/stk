@@ -252,7 +252,7 @@ int main(int argc, char *argv[]) {
 
   lab2cand = (int *) malloc(sizeof(int) * (labelHash.mNEntries + 1)); //one more for !NULL
   if (!lab2cand) Error("Insufficient memory");
-  for (i = 0; i < labelHash.mNEntries + 1; i++) lab2cand[i] = -1;
+  for (size_t i = 0; i < labelHash.mNEntries + 1; i++) lab2cand[i] = -1;
 
   candidates = (struct candidate *) malloc(sizeof(struct candidate) * nMLFs);
   if (!candidates) Error("Insufficient memory");
@@ -306,10 +306,10 @@ int main(int argc, char *argv[]) {
         // count votes
         for (llptr = tlptr; llptr !=NULL; llptr = llptr->mpNextLevel) {
 
-          candidate = lab2cand[(int) llptr->mpData];
+          candidate = lab2cand[reinterpret_cast<size_t>(llptr->mpData)];
 
           if (candidate == -1) { // new candidate
-            lab2cand[(int) llptr->mpData] = candidate = ncandidates++;
+            lab2cand[reinterpret_cast<size_t>(llptr->mpData)] = candidate = ncandidates++;
             candidates[candidate].label = llptr;
             candidates[candidate].votes = 0;
             candidates[candidate].maxconf = llptr->mScore;
@@ -325,7 +325,7 @@ int main(int argc, char *argv[]) {
 
         // reset lab2cand[] to -1
         for (candidate=0; candidate<ncandidates; candidate++) {
-          lab2cand[(int) candidates[candidate].label->mpData] = -1;
+          lab2cand[reinterpret_cast<size_t>(candidates[candidate].label->mpData)] = -1;
         }
 
         //choose the best word

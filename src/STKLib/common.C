@@ -273,64 +273,6 @@
     return FIL_Mul(a, b);
   }
   
-    
-  //***************************************************************************
-  //***************************************************************************
-  
-  static union
-{
-  double d;
-  struct
-  {
-    int j;
-    int i;
-  } n;
-} qn_d2i;
-
-#define QN_EXP_A (1048576/M_LN2)
-#define QN_EXP_C 60801
-//#define EXP2(y) (qn_d2i.n.j = (int) (QN_EXP_A*(y)) + (1072693248 - QN_EXP_C), qn_d2i.d)
-#define FAST_EXP(y) (qn_d2i.n.i = (int) (QN_EXP_A*(y)) + (1072693248 - QN_EXP_C), qn_d2i.d)
-
-
-void fast_sigmoid_vec(float *in, float *out, int size)
-{
-  while(size--) *out++ = 1.0/(1.0 + FAST_EXP(-*in++));
-}
-
-
-float i_max_double(float *a, int len) 
-{
-  int i;
-  float max;
-  max = a[0];
-  for (i=1; i<len; i++) {
-    if (a[i] > max) {
-      max = a[i];
-    }
-  }
-  return max;
-}
-
-void fast_softmax_vec(float *in, float *out, int size)
-{
-  int i;
-  float maxa,sum;
-  // first find the max
-  maxa = i_max_double (in, size);
-  // normalize, exp and get the sum
-  sum = 0.0;
-  for (i=0; i<size; i++) {
-    out[i] = FAST_EXP(in[i] - maxa);
-    sum += out[i];
-  }
-  // now normalize bu the sum
-  for (i=0; i<size; i++) {
-    out[i] /= sum;
-  }
-}
-
-  
   //***************************************************************************
   //***************************************************************************
   void 
@@ -375,10 +317,10 @@ void fast_softmax_vec(float *in, float *out, int size)
   
   //***************************************************************************
   //***************************************************************************
-  int ParmKind2Str(int parmKind, char * pOutString) 
+  int ParmKind2Str(unsigned parmKind, char * pOutString) 
   {
     // :KLUDGE: Absolutely no idea what this is...
-    if ((parmKind & 0x003F) >= sizeof(gpParmKindNames)/sizeof(gpParmKindNames[0])) 
+      if ((parmKind & 0x003F) >= sizeof(gpParmKindNames)/sizeof(gpParmKindNames[0])) 
       return 0;
   
     strcpy(pOutString, gpParmKindNames[parmKind & 0x003F]);
@@ -809,14 +751,14 @@ void fast_softmax_vec(float *in, float *out, int size)
     char         *key;
     char         *val;
   
-    printf("\nConfiguration Parameters[%d]\n", pConfigHash->mNEntries);
+    printf("\nConfiguration Parameters[%d]\n", (int) pConfigHash->mNEntries);
     for (i = 0; i < pConfigHash->mNEntries; i++) {
       key = (char *) pConfigHash->mpEntry[i]->key;
       val = (char *) pConfigHash->mpEntry[i]->data;
       par = strrchr(key, ':');
       if (par) par++; else par = key;
       printf("%c %-15.*s %-20s = %-30s # -%c\n",
-            val[0], par-key, key, par, val+2, val[1]);
+            val[0], (int) (par-key), key, par, val+2, val[1]);
     }
     putchar('\n');
   }
@@ -1108,12 +1050,12 @@ void fast_softmax_vec(float *in, float *out, int size)
   int 
   my_fclose(FILE *fp)
   {
-    struct stat sb;
-  
+    struct stat sb = {0};
     if (fp == stdin || fp == stdout) return 0;
   
-    if (fstat(fileno(fp), &sb)) return EOF;
-  
+    if (fstat(fileno(fp), &sb)) {
+//      return EOF;
+    }
     if (S_ISFIFO(sb.st_mode)) return pclose(fp);
     else return fclose(fp);
   }
@@ -1301,7 +1243,7 @@ void fast_softmax_vec(float *in, float *out, int size)
     mLogical = rFileName;
     
     // some slash-backslash replacement hack
-    for (int i = 0; i < mLogical.size(); i++)
+    for (size_t i = 0; i < mLogical.size(); i++)
       if (mLogical[i] == '\\') 
         mLogical[i] = '/';
         

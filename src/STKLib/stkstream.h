@@ -58,7 +58,7 @@ namespace STK
       typedef typename traits_type::int_type        int_type;
       typedef typename traits_type::pos_type        pos_type;
       typedef typename traits_type::off_type        off_type;
-      typedef std::size_t                               size_t;
+      typedef std::size_t                           size_t;
 
     public:
 

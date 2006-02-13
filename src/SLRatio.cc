@@ -437,7 +437,7 @@ int main(int argc, char *argv[]) {
                             derivOrder, derivWinLengths, &header,
                             cmn_path, cvn_path, cvg_file, &rhfbuff);
 
-    if (hset.mInputVectorSize != header.mSampleSize / sizeof(float)) {
+    if (hset.mInputVectorSize != static_cast<int>(header.mSampleSize / sizeof(float))) {
       Error("Vector size [%d] in '%s' is incompatible with HMM set [%d]",
             header.mSampleSize/sizeof(float), file_name->mpPhysical, hset.mInputVectorSize);
     }

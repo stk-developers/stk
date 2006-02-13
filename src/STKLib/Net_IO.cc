@@ -409,18 +409,22 @@ namespace STK
     RemoveCommentLines(lfp);
   
     if (fscanf(lfp," %1023[^0-9]", wordOrModelName) == 1) {
-      for (i=0; i<strlen(wordOrModelName); i++) {
+      for ( i =0; i < strlen(wordOrModelName); i++) {
         wordOrModelName[i] = toupper(wordOrModelName[i]);
       }
       while (--i>=0 && (wordOrModelName[i] == '='||isspace(wordOrModelName[i]))) {
         wordOrModelName[i] = '\0';
       }
     }
+
+    int t1, t2;    
     if ((strcmp(wordOrModelName, "NUMNODES:") &&
         strcmp(wordOrModelName, "NUMBEROFNODES")) ||        //Obsolete NumerOfNodes
-      fscanf(lfp," %d NumberOfArcs=%d", &numOfNodes, &i)<1){//Obsolete NumerOfArcs
+      fscanf(lfp," %d NumberOfArcs=%d", &t1, &t2)<1){       //Obsolete NumerOfArcs
       Error("Syntax error in file %s\nKeyword NumNodes: is missing", file_name);
     }
+    numOfNodes = t1;
+    
     if ((nodes = (Node **) calloc(numOfNodes, sizeof(Node *))) == NULL) {
       Error("Insufficient memory");
     }
@@ -442,7 +446,7 @@ namespace STK
           for (j=0; j < numOfNodes; j++) 
           {
             if (nodes[j] == NULL) {
-              Error("Node %d is not defined in file %s", j, file_name);
+              Error("Node %d is not defined in file %s", (int) j, file_name);
             }
           }
           
@@ -451,7 +455,7 @@ namespace STK
                 nodeId, file_name);
       }
       
-      if (nodeId >= numOfNodes) {
+      if (static_cast<size_t>(nodeId) >= numOfNodes) {
         Error("Invalid definition of node %d in file %s.\n"
               "Node Id is bigger than number of nodes", nodeId, file_name);
       }
@@ -589,12 +593,12 @@ namespace STK
       }
       node->mNLinks = numOfLinks;
   
-      for (j=0; j < numOfLinks; j++) {
+      for (j=0; j < static_cast<size_t>(numOfLinks); j++) {
         if (fscanf(lfp, "%d ", &linkId) != 1) {
           Error("Invalid definition of node %d in file %s.\n"
                 "Link Id is expected in link list", nodeId, file_name);
         }
-        if (linkId >= numOfNodes) {
+        if (static_cast<size_t>(linkId) >= numOfNodes) {
           Error("Invalid definition of node %d in file %s.\n"
                 "Link Id is bigger than number of nodes", nodeId, file_name);
         }
@@ -647,7 +651,7 @@ namespace STK
       nodes[i]->mNBackLinks = 0;
     }
     for (i = 0; i < numOfNodes; i++) {
-      for (j=0; j < nodes[i]->mNLinks; j++) {
+      for (j=0; j < static_cast<size_t>(nodes[i]->mNLinks); j++) {
         Node *forwNode = nodes[i]->mpLinks[j].mpNode;
         forwNode->mpBackLinks[forwNode->mNBackLinks].mpNode = nodes[i];
         forwNode->mpBackLinks[forwNode->mNBackLinks].mLike = nodes[i]->mpLinks[j].mLike;
@@ -1167,7 +1171,7 @@ namespace STK
       state = LINE_START;
       while (*chptr) {
         if ((valptr = strchr(chptr, '=')) == NULL) {
-          Error("'=' expected (%s:%d)");
+          Error("'=' expected (%s:%d)", file_name, line_no);
         }
         valptr++;
   

@@ -282,7 +282,7 @@ namespace STK
               || links[i].mpNode->mType & NT_TEE)) 
         {
           printf("Active node %d listed after his non-model succesor %d\n",
-                node - mpFirst, links[i].mpNode - mpFirst);
+                (int) (node - mpFirst), (int) (links[i].mpNode - mpFirst));
   
           return 2;
         }
@@ -317,7 +317,7 @@ namespace STK
           || links[i].mpNode->mType & NT_TEE)) 
         {
           printf("Active node %d has nonactive non-model succesor %d\n",
-                node - mpFirst, links[i].mpNode - mpFirst);
+                 (int) (node - mpFirst), (int) (links[i].mpNode - mpFirst));
           return false;
         }
       }
@@ -682,7 +682,7 @@ namespace STK
   DiagCGaussianDensity(Mixture *mix, FLOAT  *obs, Network *net)
   {
     FLOAT mLike = 0.0;
-    int j;
+    size_t j;
   
     if (net && net->mpMixPCache[mix->mID].mTime == net->mTime) {
       return net->mpMixPCache[mix->mID].mValue;
@@ -852,7 +852,7 @@ namespace STK
   UpdateXformInstanceStatCaches(XformInstance *xformInstance,
                                 FLOAT *observation, int time)
   {
-    int i, j;
+    size_t i, j;
     FLOAT *obs;
   
     if (xformInstance == NULL || xformInstance->mStatCacheTime == time) return;
@@ -878,7 +878,7 @@ namespace STK
       xfsc->mNorm = 0;
       UpdateXformStatCache(xfsc, xformInstance->mpXform, obs);
       if (xfsc->mpUpperLevelStats != NULL) {
-        int size = xfsc->mpXform->mInSize;
+        size_t size = xfsc->mpXform->mInSize;
         for (j = 0; j < size + size*(size+1)/2; j++) {
           xfsc->mpStats[j] += xfsc->mpUpperLevelStats->mpStats[j];
         }
@@ -899,14 +899,14 @@ namespace STK
              FLOAT *   obs, 
              FLOAT *   obs2) 
   {
-    int           i;
-    int           j;
-    int           k;
-    int           m;
+    size_t        i;
+    size_t        j;
+    size_t        k;
+    size_t        m;
     State *       state  = pNode->mpHmm->        mpState[stateIndex];
     State *       state2 = pNode->mpHmmToUpdate->mpState[stateIndex];
     FLOAT         bjtO   = LOG_0;
-    int           n_mixtures;
+    size_t        n_mixtures;
   
     if (!mpModelSetToUpdate->mGaussLvl2ModelReest &&
          mpModelSet != mpModelSetToUpdate) 
@@ -947,7 +947,7 @@ namespace STK
       if (Lqjmt > MIN_LOG_WEGIHT) 
       {
         Mixture * mix      = state2->mpMixture[m].mpEstimates;
-        int       vec_size = mix->mpMean->mVectorSize;
+        size_t    vec_size = mix->mpMean->mVectorSize;
         FLOAT *   mnvec    = mix->mpMean->mpVectorO;
         FLOAT *   mnacc    = mix->mpMean->mpVectorO     +     vec_size;
         FLOAT *   vvacc    = mix->mpVariance->mpVectorO +     vec_size;
@@ -1007,7 +1007,7 @@ namespace STK
             
             if (xfsa->mpXform == xfsc->mpXform) 
             {
-              int size = xfsc->mpXform->mInSize;
+              size_t size = xfsc->mpXform->mInSize;
               for (k = 0; k < size+size*(size+1)/2; k++) 
               {
                 xfsa->mpStats[k] += xfsc->mpStats[k] * Lqjmt;
@@ -1022,7 +1022,7 @@ namespace STK
             XformStatAccum *xfsa = &mean->mpXformStatAccum[j];
             if (xfsa->mpXform == xfsc->mpXform) 
             {
-              int size = xfsc->mpXform->mInSize;
+              size_t size = xfsc->mpXform->mInSize;
               for (k = 0; k < size; k++) 
               {
                 xfsa->mpStats[k] += xfsc->mpStats[k] * Lqjmt;
@@ -1213,22 +1213,19 @@ namespace STK
   Network::
   TokenPropagationInit()
   {
-    int     i;
-    int     j;
+    size_t  i;
     Node *  node;
   
     InitLogMath();
   
-  //  for (i=0; i < net->nnodes; i++) {
-  //  node = &net->mpNodes[i];
     for (node = mpFirst; node != NULL; node = node->mpNext) {
-      int numOfTokens = (node->mType & NT_MODEL) ? node->mpHmm->mNStates : 1;
+      size_t numOfTokens = (node->mType & NT_MODEL) ? node->mpHmm->mNStates : 1;
   
-      for (j=0; j < numOfTokens; j++) {
-        node->mpTokens[j].mLike = LOG_0;
-        node->mpTokens[j].mpWlr = NULL;
+      for (i=0; i < numOfTokens; i++) {
+        node->mpTokens[i].mLike = LOG_0;
+        node->mpTokens[i].mpWlr = NULL;
   #ifdef bordel_staff
-        node->mpTokens[j].mpTWlr = NULL;
+        node->mpTokens[i].mpTWlr = NULL;
   #endif // bordel_staff
       }
       node->mIsActive = 0;
@@ -1246,7 +1243,7 @@ namespace STK
         mpMixPCache[i].mTime = UNDEF_TIME;
       }
     }
-  
+
     mpBestToken  = NULL;
     mWordThresh = LOG_MIN;
     mpActiveModels = NULL;
@@ -1559,7 +1556,7 @@ namespace STK
             FLOAT transP = hmm->mpTransition->mpMatrixO[from * hmm->mNStates + to];
   
   #ifdef TRACE_TOKENS
-            printf("Model %d State %d -> State %d ",  node->mAux, i, j);
+            printf("Model %d State %d -> State %d ",  node->mAux, (int) i, (int) j);
   #endif
             if (PassTokenInModel(&mpAuxTokens[i], &node->mpTokens[j],
                                     transP * mTranScale)) {
@@ -1651,7 +1648,7 @@ namespace STK
           {
             FLOAT transP = hmm->mpTransition->mpMatrixO[from * hmm->mNStates + to];
   #ifdef TRACE_TOKENS
-            printf("Model %d State %d -> Exit State ",  node->mAux, i);
+            printf("Model %d State %d -> Exit State ",  node->mAux, (int) i);
   #endif
             if (PassTokenInModel(&node->mpTokens[i],
                                     &node->mpTokens[hmm->mNStates - 1],
@@ -2097,7 +2094,7 @@ namespace STK
       Error("Insufficient memory");
     }
   
-    for (i = 0; i < nFrames * hmms->mNStates; i++) {
+    for (i = 0; i < static_cast<int>(nFrames * hmms->mNStates); i++) {
       p_out_p_cache[i].mTime  = UNDEF_TIME;
       p_out_p_cache[i].mValue = LOG_0;
     }
@@ -2720,7 +2717,7 @@ namespace STK
     if (p_out_p_cache == NULL) 
       Error("Insufficient memory");
   
-    for (t = 0; t < nFrames * p_hmms_alig->mNStates; t++) 
+    for (t = 0; t < static_cast<int>(nFrames * p_hmms_alig->mNStates); t++) 
     {
       p_out_p_cache[t].mTime  = UNDEF_TIME;
       p_out_p_cache[t].mValue = LOG_0;
