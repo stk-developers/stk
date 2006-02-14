@@ -12,6 +12,7 @@ extern "C"{
   #include <cblas.h>
 }
 
+#include "common.h"
 
 #define CHECKSIZE
 
@@ -149,6 +150,9 @@ namespace STK
       ThisType &
       RepMMTMul(ThisType & a, ThisType & b);
       
+      ThisType &
+      RepMTMMul(ThisType & a, ThisType & b);
+      
       /**
        *  @brief Performs fast sigmoid on row vectors
        *         result to this (elem by elem)
@@ -169,7 +173,9 @@ namespace STK
       ThisType &
       Transpose();
 
-
+      ThisType &
+      Clear();      
+      
       /**
        *  @brief Gives access to the matrix memory area
        *  @return pointer to the first field

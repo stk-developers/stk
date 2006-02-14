@@ -1,22 +1,22 @@
 ###############################################################################
 # compiler options
-CFLAGS = -Wall -g -DDOUBLEPRECISION=0 -D_REENTRANT -I/usr/local/include -I/usr/include
+CFLAGS = -Wall -g -DDOUBLEPRECISION=0 -D_REENTRANT -I/usr/local/include -I/usr/include -O2
 CXXFLAGS = $(CFLAGS)
 
 ###############################################################################
 # linker options
-LDLIBS = -lm -latlas -lpthread 
+LDLIBS = -lm -latlas -lpthread -O2
 #LDFLAGS = -a -g -L. -pg
 
 ###############################################################################
 # -DEXPANDNET_ONLY
-XFLAGS = -DMOTIF -L/usr/X11R6/lib -I/usr/X11R6/include -lXm -lXt -lX11 -lXpm
+XFLAGS = -DMOTIF -L/usr/X11R6/lib -I/usr/X11R6/include -lXm -lXt -lX11 -lXpm -O2
 
 #ICCFLAGS = -O2 -tpp6 -axiMK -xiMK -parallel
 
 ###############################################################################
 # compiler binary
-CROSS_COMPILE ?= x86_64-linux-
+#CROSS_COMPILE ?= x86_64-linux-
 
 CC  := $(CROSS_COMPILE)g++
 CXX := $(CROSS_COMPILE)g++

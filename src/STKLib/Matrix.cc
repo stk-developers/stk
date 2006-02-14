@@ -23,7 +23,7 @@ namespace STK
     {
       for(size_t row = 0; row < this->Rows(); row++)
       {
-//        fast_sigmoid_vec(this->Row(row), this->Row(row), this->Cols());
+        fast_sigmoid_vec(this->Row(row), this->Row(row), this->Cols());
       }
       return *this;
     }
@@ -64,14 +64,37 @@ namespace STK
       assert(b.Rows() == this->Cols());
       assert(a.Cols() == b.Cols());
       assert(b.mStorageType == STORAGE_TRANSPOSED);
-      memset(this->mpData, this->mMSize, 0);
+      Clear();
       
       cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, this->Rows(), this->Cols(), b.Rows(),
                   1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
       
       return *this;
-    }; // AddMatMult(const ThisType & a, const ThisType & b)
-
+    }; 
+    
+  //***************************************************************************
+  //***************************************************************************
+    
+    template<>
+    Matrix<float> &
+    Matrix<float>::
+    RepMTMMul(Matrix<float> & a, Matrix<float> & b)
+    { 
+      assert(a.Rows() == this->Rows());
+      assert(b.Rows() == this->Cols());
+      assert(a.Cols() == b.Cols());
+      assert(b.mStorageType == STORAGE_TRANSPOSED);
+      Clear();
+      
+      
+    /*  cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, C->rows, C->cols, B->rows,
+                1.0f, A->arr, A->realCols, B->arr, B->realCols, 1.0f, C->arr, C->realCols);
+      
+      cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, this->Rows(), this->Cols(), b.Rows(),
+                  1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);*/
+      
+      return *this;
+    }; 
   
   //***************************************************************************
   //***************************************************************************
@@ -81,7 +104,7 @@ namespace STK
     FastRowSoftmax()
     {
       for(size_t row = 0; row < this->Rows(); row++){
-//        fast_softmax_vec(this->Row(row), this->Row(row), this->Cols());
+        fast_softmax_vec(this->Row(row), this->Row(row), this->Cols());
       }
       return *this;
     }

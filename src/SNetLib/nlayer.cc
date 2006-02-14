@@ -55,9 +55,13 @@ void SNet::NLayer::DerivateError(){
 }
 
 void SNet::NLayer::ComputeLayerUpdates(){
-  mpChangesWeights->RepMTMMul();
-  // !!! rowsum a DNESKA DOM
-  
+  mpChangesWeights->RepMTMMul(*mpErr, *mpIn);
+  mpChangesBiases->Clear();
+  for(unsigned r=0; r < mpErr->Rows(); r++){
+    for(unsigned c=0; c < mpErr->Cols(); c++){
+      (*mpChangesBiases)(0, c) += (*mpErr)(r, c);
+    }
+  } 
 }
 
 

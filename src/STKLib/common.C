@@ -28,6 +28,56 @@
 #include <string>
 
 
+static union
+{
+        double d;
+        struct
+        {
+                int j,i;
+        } n;
+} qn_d2i;
+
+#define QN_EXP_A (1048576/M_LN2)
+#define QN_EXP_C 60801
+//#define EXP2(y) (qn_d2i.n.j = (int) (QN_EXP_A*(y)) + (1072693248 - QN_EXP_C), qn_d2i.d)
+#define FAST_EXP(y) (qn_d2i.n.i = (int) (QN_EXP_A*(y)) + (1072693248 - QN_EXP_C), qn_d2i.d)
+
+void fast_sigmoid_vec(FLOAT *in, FLOAT *out, int size)
+{
+  while(size--) *out++ = 1.0/(1.0 + FAST_EXP(-*in++));
+}
+
+FLOAT i_max_double (FLOAT *a, int len) {
+	int i;
+	FLOAT max;
+	max = a[0];
+	for (i=1; i<len; i++) {
+		if (a[i] > max) {
+			max = a[i];
+		}
+	}
+	return max;
+}
+
+void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
+{
+	int i;
+	FLOAT maxa,sum;
+	// first find the max
+	maxa = i_max_double (in, size);
+	// normalize, exp and get the sum
+	sum = 0.0;
+	for (i=0; i<size; i++) {
+		out[i] = FAST_EXP(in[i] - maxa);
+		sum += out[i];
+	}
+	// now normalize bu the sum
+	for (i=0; i<size; i++) {
+		out[i] /= sum;
+	}
+}
+
+
 //namespace STK
 //{
   
