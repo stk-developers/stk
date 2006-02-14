@@ -16,7 +16,7 @@ XFLAGS = -DMOTIF -L/usr/X11R6/lib -I/usr/X11R6/include -lXm -lXt -lX11 -lXpm
 
 ###############################################################################
 # compiler binary
-#CROSS_COMPILE ?= x86_64-linux-
+CROSS_COMPILE ?= x86_64-linux-
 
 CC  := $(CROSS_COMPILE)g++
 CXX := $(CROSS_COMPILE)g++

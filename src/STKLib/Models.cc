@@ -735,7 +735,7 @@ namespace STK
   
     if (macro &&
       (fprintf(ud->mpFp, "~%c \"%s\"", macro->mType, macro->mpName) < 0 ||
-      fwrite(&macro->mOccurances, sizeof(macro->mOccurances), 1, ud->mpFp) != 1)) 
+       fwrite(&macro->mOccurances, sizeof(macro->mOccurances), 1, ud->mpFp) != 1)) 
     {
       Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
     }
@@ -743,7 +743,7 @@ namespace STK
     if (macro_type == mt_mean || macro_type == mt_variance) 
     {
       XformStatAccum *    xfsa = NULL;
-      size_t              nxfsa = 0;
+      UINT_32             nxfsa = 0;
   
       if (macro_type == mt_mean) 
       {
@@ -765,7 +765,7 @@ namespace STK
   //    if (ud->mMmi) vector += size; // Move to MMI accums, which follows ML accums
   
       if (fwrite(vector, sizeof(FLOAT), size, ud->mpFp) != size ||
-        fwrite(&nxfsa, sizeof(nxfsa),    1, ud->mpFp) != 1) 
+          fwrite(&nxfsa, sizeof(nxfsa),    1, ud->mpFp) != 1) 
       {
         Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
       }
@@ -777,9 +777,9 @@ namespace STK
         size = (macro_type == mt_mean) ? size : size+size*(size+1)/2;
         assert(xfsa[i].mpXform->mpMacro != NULL);
         if (fprintf(ud->mpFp, "\"%s\"", xfsa[i].mpXform->mpMacro->mpName) < 0 ||
-          fwrite(&size,         sizeof(int),      1, ud->mpFp) != 1    ||
+          fwrite(&size,           sizeof(size),        1, ud->mpFp) != 1    ||
           fwrite(xfsa[i].mpStats, sizeof(FLOAT), size, ud->mpFp) != size ||
-          fwrite(&xfsa[i].mNorm, sizeof(FLOAT),    1, ud->mpFp) != 1) 
+          fwrite(&xfsa[i].mNorm,  sizeof(FLOAT),    1, ud->mpFp) != 1) 
         {
           Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
         }
@@ -947,8 +947,8 @@ namespace STK
     if (macro_type == mt_mean || macro_type == mt_variance) 
     {
       XformStatAccum *  xfsa = NULL;
-      size_t            size_inf;
-      size_t            nxfsa_inf;
+      UINT_32           size_inf;
+      UINT_32           nxfsa_inf;
       size_t            nxfsa = 0;
   
       if (macro_type == mt_mean) 
@@ -993,7 +993,7 @@ namespace STK
   
           macro = FindMacro(&ud->mpModelSet->mXformHash, xfName);
   
-          if (fread(&size_inf, sizeof(int), 1, ud->mpFp) != 1) 
+          if (fread(&size_inf, sizeof(size_inf), 1, ud->mpFp) != 1) 
             Error("Incompatible accumulator file: '%s'", ud->mpFileName);
   
           if (macro != NULL) 
@@ -1010,7 +1010,7 @@ namespace STK
             if (j < nxfsa) 
             {
               if (faddfloat(xfsa[j].mpStats, size, ud->mWeight, ud->mpFp) != size  ||
-                  faddfloat(&xfsa[j].mNorm,    1, ud->mWeight, ud->mpFp) != 1) 
+                  faddfloat(&xfsa[j].mNorm,     1, ud->mWeight, ud->mpFp) != 1) 
               {
                 Error("Invalid accumulator file: '%s'", ud->mpFileName);
               }
@@ -1037,17 +1037,17 @@ namespace STK
         for (i = 0; i < state->mNumberOfMixtures; i++) {
           if (ud->mMmi == 1) {
             if (faddfloat(&state->mpMixture[i].mWeightAccumDen, 1, ud->mWeight, ud->mpFp) != 1 ||
-              faddfloat(&junk,                               1, ud->mWeight, ud->mpFp) != 1) {
+                faddfloat(&junk,                                1, ud->mWeight, ud->mpFp) != 1) {
               Error("Incompatible accumulator file: '%s'", ud->mpFileName);
             }
           } else if (ud->mMmi == 2) {
-            if (faddfloat(&junk,                               1, ud->mWeight, ud->mpFp) != 1 ||
-              faddfloat(&state->mpMixture[i].mWeightAccumDen, 1, ud->mWeight, ud->mpFp) != 1) {
+            if (faddfloat(&junk,                                1, ud->mWeight, ud->mpFp) != 1 ||
+                faddfloat(&state->mpMixture[i].mWeightAccumDen, 1, ud->mWeight, ud->mpFp) != 1) {
               Error("Incompatible accumulator file: '%s'", ud->mpFileName);
             }
           } else {
             if (faddfloat(&state->mpMixture[i].mWeightAccum,     1, ud->mWeight, ud->mpFp) != 1 ||
-              faddfloat(&state->mpMixture[i].mWeightAccumDen, 1, ud->mWeight, ud->mpFp) != 1) {
+                faddfloat(&state->mpMixture[i].mWeightAccumDen,  1, ud->mWeight, ud->mpFp) != 1) {
               Error("Incompatible accumulator file: '%s'", ud->mpFileName);
             }
           }
@@ -2548,7 +2548,7 @@ printf("%f", g_floor);
     int                       t = 0;
     int                       c;
     int                       skip_accum = 0;
-    long                      occurances;
+    INT_32                    occurances;
     ReadAccumUserData         ud;
     Macro *                   macro;
     int                       mtm = MTM_PRESCAN | 
@@ -2568,15 +2568,16 @@ printf("%f", g_floor);
     
     fp = in.file();
     
-    if (fread(totFrames,  sizeof(long),  1, fp) != 1 ||
+    INT_32 i32;
+    if (fread(&i32,       sizeof(i32),  1, fp) != 1 ||
         fread(totLogLike, sizeof(FLOAT), 1, fp) != 1) 
     {
       Error("Invalid accumulator file: '%s'", pFileName);
     }
-    //:KLUDGE:
-    // Assignment of float to long...
-    *totFrames  *= weight;
-    *totLogLike *= weight;
+    *totFrames = i32;
+    
+//    *totFrames  *= weight; // Not sure whether we should report weighted quantities or not
+//    *totLogLike *= weight;
   
     ud.mpFileName   = pFileName;
     ud.mpFp         = fp;
@@ -2684,7 +2685,8 @@ printf("%f", g_floor);
       Error("Cannot open output file: '%s'", file_name);
     }
   
-    if (fwrite(&totFrames,  sizeof(long),  1, fp) != 1 ||
+    INT_32 i32 = totFrames;
+    if (fwrite(&i32,  sizeof(i32),  1, fp) != 1 ||
         fwrite(&totLogLike, sizeof(FLOAT), 1, fp) != 1) 
     {
       Error("Cannot write accumulators to file: '%s'", file_name);
