@@ -53,9 +53,16 @@ void SNet::NLayer::DerivateError(){
     // nothing
   }
   else if(mOutFunc == KID_Sigmoid){
+    FLOAT *pErr = NULL;
+    FLOAT *pOut = NULL;
     for(unsigned row = 0; row < mpErr->Rows(); row++){
+      pErr = mpErr->Row(row);
+      pOut = mpOut->Row(row);
       for(unsigned col = 0; col < mpErr->Cols(); col++){
-        (*mpErr)(row, col) = (1 - (*mpOut)(row, col)) * (*mpOut)(row, col) * (*mpErr)(row, col);
+        //(*mpErr)(row, col) = (1 - (*mpOut)(row, col)) * (*mpOut)(row, col) * (*mpErr)(row, col);
+	(*pErr) = (1 - (*pOut)) * (*pOut) * (*pErr);
+	pOut++;
+	pErr++;
       }
     }
   }
@@ -64,9 +71,16 @@ void SNet::NLayer::DerivateError(){
 void SNet::NLayer::ComputeLayerUpdates(){
   mpChangesWeights->RepMTMMul(*mpErr, *mpIn);
   mpChangesBiases->Clear();
+  FLOAT *pChangesBiases = NULL;
+  FLOAT *pErr = NULL;
   for(unsigned r=0; r < mpErr->Rows(); r++){
+    pChangesBiases = mpChangesBiases->Row(0);
+    pErr = mpErr->Row(r);
     for(unsigned c=0; c < mpErr->Cols(); c++){
-      (*mpChangesBiases)(0, c) += (*mpErr)(r, c);
+      //(*mpChangesBiases)(0, c) += (*mpErr)(r, c);
+      (*pChangesBiases) += (*pErr);
+      pChangesBiases++;
+      pErr++;
     }
   } 
 }

@@ -208,12 +208,36 @@ namespace STK
   AddMCMul(ThisType & a, _ElemT c) { 
     assert(this->Cols() == a.Cols());
     assert(this->Rows() == a.Rows());
-      
-    for(unsigned row = 0; row < this->Rows(); row++){
-      for(unsigned col = 0; col < this->Cols(); col++){
-        (*this)(row, col) += a(row, col) * c;
+    assert(this->Storage() == a.Storage());
+    _ElemT* pA = NULL;
+    _ElemT* pT = NULL;
+    
+    if(this->mStorageType == STORAGE_REGULAR){
+      for(unsigned row = 0; row < this->Rows(); row++){
+        pA = a.Row(row);
+        pT = this->Row(row);
+        for(unsigned col = 0; col < this->Cols(); col++){
+          //(*this)(row, col) += a(row, col) * c;
+	  (*pT) += (*pA) * c;
+	  pT++;
+	  pA++;
+        }
       }
     }
+    
+    if(this->mStorageType == STORAGE_TRANSPOSED){
+      for(unsigned row = 0; row < this->Cols(); row++){
+        pA = a.Row(row);
+        pT = this->Row(row);
+        for(unsigned col = 0; col < this->Rows(); col++){
+          //(*this)(row, col) += a(row, col) * c;
+	  (*pT) += (*pA) * c;
+	  pT++;
+	  pA++;
+        }
+      }
+    }
+    
     return *this;
   };
   
@@ -227,10 +251,19 @@ namespace STK
     assert(this->Rows() == a.Rows());
     assert(this->Cols() == b.Cols());
     assert(this->Rows() == b.Rows());      
-    
+    _ElemT* pA = NULL;
+    _ElemT* pB = NULL;
+    _ElemT* pT = NULL;
     for(unsigned row = 0; row < this->Rows(); row++){
+      pA = a.Row(row);
+      pB = b.Row(row);
+      pT = this->Row(row);
       for(unsigned col = 0; col < this->Cols(); col++){
-        (*this)(row, col) = a(row, col) - b(row, col);
+        //(*this)(row, col) = a(row, col) - b(row, col);
+	(*pT) = (*pA) - (*pB);
+	pT++;
+	pA++;
+	pB++;
       }
     }
     return *this;

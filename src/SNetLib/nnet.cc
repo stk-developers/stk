@@ -145,8 +145,6 @@ void SNet::NNet::ComputeGlobalError(){
 void SNet::NNet::ComputeUpdates(){
   for(int i=mNLayers-1; i >= 0; i--){
     mpLayers[i]->ErrorPropagation();
-  }
-  for(int i=mNLayers-1; i >= 0; i--){
     mpLayers[i]->ComputeLayerUpdates();
   }
 }
