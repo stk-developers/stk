@@ -66,9 +66,15 @@ namespace STK
       assert(b.mStorageType == STORAGE_TRANSPOSED);
       Clear();
       
-      cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, this->Rows(), this->Cols(), b.Rows(),
+      //cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, this->Rows(), this->Cols(), b.Rows(),
+      //            1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
+      
+      cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, a.Rows(), b.Rows(), b.Cols(),
                   1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
       
+  //cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, C->rows, C->cols, B->rows,
+    //            1.0f, A->arr, A->realCols, B->arr, B->realCols, 1.0f, C->arr, C->realCols);		  
+		  
       return *this;
     }; 
     
@@ -80,18 +86,18 @@ namespace STK
     Matrix<float>::
     RepMTMMul(Matrix<float> & a, Matrix<float> & b)
     { 
-      assert(a.Rows() == this->Rows());
+      /*assert(a.Rows() == this->Rows());
       assert(b.Rows() == this->Cols());
       assert(a.Cols() == b.Cols());
-      assert(b.mStorageType == STORAGE_TRANSPOSED);
+      */
+      assert(a.mStorageType == STORAGE_REGULAR);
+      assert(this->mStorageType == STORAGE_TRANSPOSED);
       Clear();
-      
-      
-    /*  cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, C->rows, C->cols, B->rows,
-                1.0f, A->arr, A->realCols, B->arr, B->realCols, 1.0f, C->arr, C->realCols);
-      
-      cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, this->Rows(), this->Cols(), b.Rows(),
-                  1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);*/
+            
+      //cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, this->Rows(), this->Cols(), b.Rows(),
+      //          1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
+      cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, a.Cols(), b.Cols(), b.Rows(),
+                  1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
       
       return *this;
     }; 

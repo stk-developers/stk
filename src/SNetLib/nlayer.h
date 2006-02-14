@@ -26,6 +26,7 @@ namespace SNet{
       
     public:
       NLayer(Matrix<FLOAT>* weights, Matrix<FLOAT>* biases, int outFunc);
+      ~NLayer();
       
       void In(Matrix<FLOAT>* in)   {mpIn = in;};
       void Out(Matrix<FLOAT>* out) {mpOut = out;};

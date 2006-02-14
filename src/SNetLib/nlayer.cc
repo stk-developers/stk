@@ -4,6 +4,13 @@ SNet::NLayer::NLayer(Matrix<FLOAT>* weights, Matrix<FLOAT>* biases, int outFunc)
   mpWeights = weights;
   mpBiases = biases;
   mOutFunc = gFuncTable[outFunc].KID;
+  mpChangesWeights = new Matrix<FLOAT>(mpWeights->Rows(), mpWeights->Cols(), mpWeights->Storage());
+  mpChangesBiases = new Matrix<FLOAT>(mpBiases->Rows(), mpBiases->Cols(), mpBiases->Storage());
+}
+
+SNet::NLayer::~NLayer(){
+  delete mpChangesWeights;
+  delete mpChangesBiases;
 }
 
 void SNet::NLayer::BunchBias(){
@@ -37,7 +44,7 @@ void SNet::NLayer::ChangeLayerWeights(FLOAT learnRate){
 void SNet::NLayer::ErrorPropagation(){
   DerivateError();
   if(mpPreviousErr != NULL){
-    mpPreviousErr->RepMMTMul(*mpOut, *mpWeights);
+    mpPreviousErr->RepMMTMul(*mpErr, *mpWeights);
   }
 }
 

@@ -82,7 +82,7 @@ void SNet::NNet::AddToCache(FLOAT *inVector, FLOAT *outVector, int inSize, int o
 }
 
 void SNet::NNet::RandomizeCache(){
-  Error("Randomization not implemented!");
+  Warning("Randomization not implemented!");
 }
 
 void SNet::NNet::ComputeCache(){
