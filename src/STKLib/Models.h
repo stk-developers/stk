@@ -249,7 +249,11 @@ namespace STK
   class ModelSet 
   {
   public:
-
+    /// :TODO:
+    /// This atribute is a temporary flag that tells whether to use new 
+    /// Matrix in IO operations
+    bool            mUseNewMatrix;
+    
   private:
     ModelSetIOBase  * mpIOBase;
     
@@ -819,6 +823,15 @@ namespace STK
      * @param vectorSize size of output vector
      */
     XformInstance(size_t vectorSize);
+
+    /**
+     * @brief A constructor
+     * @param pXform Xform to use in the instance
+     * @param vectorSize size of the output vector
+     * @return 
+     */
+    XformInstance(Xform * pXform, size_t vectorSize);
+        
     
     /// the destructor
     virtual

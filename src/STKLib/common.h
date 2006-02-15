@@ -323,17 +323,18 @@ using namespace STK;
   #define PARAMKIND_V   0040000 /// has VQ codebook index
   #define PARAMKIND_T   0100000 /// has triple delta coefficients
   
-  extern const char *gpFilterWldcrd;
-  extern const char *script_filter;
-  extern const char *parm_filter;
-  extern const char *MMF_filter;
-  extern const char *parm_ofilter;
-  extern const char *hlist_ofilter;
-  extern const char *MMF_ofilter;
-  
   /// Sets application HTK compatibility. If true, all functions work to
   /// be HTK compatible.
-  extern bool       gHtkCompatible;
+  extern bool           gHtkCompatible;
+  
+  extern const char *   gpFilterWldcrd;
+  extern const char *   gpHListOFilter;
+  extern const char *   gpMmfFilter;
+  extern const char *   gpMmfOFilter;
+  extern const char *   gpParmFilter;
+  extern const char *   gpParmOFilter;
+  extern const char *   gpScriptFilter;
+  
 //}; //namespace STK
 
 #endif // COMMON_H

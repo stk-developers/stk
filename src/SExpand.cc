@@ -165,7 +165,7 @@ int main(int argc, char *argv[]) {
                  GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0));
   label_filter = GetParamStr(&cfgHash, SNAME":HLABELFILTER",    NULL);
   gpFilterWldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
-  script_filter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",   NULL);
+  gpScriptFilter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",   NULL);
   net_filter   = GetParamStr(&cfgHash, SNAME":HNETFILTER",      NULL);
   dict_filter  = GetParamStr(&cfgHash, SNAME":HDICTFILTER",     NULL);
 //label_ofilter= GetParamStr(&cfgHash, SNAME":HLABELOFILTER",   NULL);
@@ -227,7 +227,7 @@ int main(int argc, char *argv[]) {
     CheckCommandLineParamUse(&cfgHash);
   }
   for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) {
-    if ((sfp = my_fopen(script, "rt", script_filter)) == NULL) {
+    if ((sfp = my_fopen(script, "rt", gpScriptFilter)) == NULL) {
       Error("Cannot open script file %s", optarg);
     }
     while (fscanf(sfp, "%s", line) == 1) {

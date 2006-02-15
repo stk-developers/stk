@@ -295,13 +295,13 @@ int main(int argc, char *argv[])
   swap_features_alig =
   swap_features=!GetParamBool(&cfgHash,SNAME":NATURALREADORDER",isBigEndian());
   gpFilterWldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
-  script_filter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",   NULL);
+  gpScriptFilter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",   NULL);
   gpHListFilter = GetParamStr(&cfgHash, SNAME":HMMLISTFILTER",   NULL);
-  MMF_filter   = GetParamStr(&cfgHash, SNAME":HMMDEFFILTER",    NULL);
+  gpMmfFilter   = GetParamStr(&cfgHash, SNAME":HMMDEFFILTER",    NULL);
   label_filter = GetParamStr(&cfgHash, SNAME":HLABELFILTER",    NULL);
   net_filter   = GetParamStr(&cfgHash, SNAME":HNETFILTER",      NULL);
   dict_filter  = GetParamStr(&cfgHash, SNAME":HDICTFILTER",     NULL);
-  MMF_ofilter  = GetParamStr(&cfgHash, SNAME":HMMDEFOFILTER",   NULL);
+  gpMmfOFilter  = GetParamStr(&cfgHash, SNAME":HMMDEFOFILTER",   NULL);
   dictionary   = GetParamStr(&cfgHash, SNAME":SOURCEDICT",      NULL);
   grammar_scale= GetParamFlt(&cfgHash, SNAME":LMSCALE",         1.0);
   outprb_scale = GetParamFlt(&cfgHash, SNAME":OUTPSCALE",       1.0);
@@ -390,7 +390,7 @@ int main(int argc, char *argv[])
 
   for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) 
   {
-    if ((sfp = my_fopen(script, "rt", script_filter)) == NULL)
+    if ((sfp = my_fopen(script, "rt", gpScriptFilter)) == NULL)
       Error("Cannot open script file %s", script);
     
     while (fscanf(sfp, "%s", line) == 1) 

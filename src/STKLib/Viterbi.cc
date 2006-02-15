@@ -106,8 +106,10 @@ namespace STK
               } 
               else 
               {
-                for (twlr = token->mpWlr; twlr->mpNext != token->mpTWlr; twlr = twlr->mpNext)
-                  ;
+                for (twlr = token->mpWlr; 
+                     twlr->mpNext != token->mpTWlr; 
+                     twlr = twlr->mpNext)
+                {}
                 token->mpTWlr = twlr;
               }
             }

@@ -37,6 +37,7 @@ namespace STK
   };
   
   size_t gFuncTableSize = sizeof(gFuncTable)/sizeof(*gFuncTable);
+  enum StatType {MEAN_STATS, COV_STATS};
   
   //***************************************************************************
   //***************************************************************************
@@ -119,11 +120,11 @@ namespace STK
       if (xformInstance->mpXform == ud->mpOldData) xformInstance->mpXform = (Xform*)         ud->mpNewData;
     }
   }
-  
     
   //***************************************************************************
   //***************************************************************************
-  bool IsXformIn1stLayer(Xform *xform, Xform *topXform)
+  bool 
+  IsXformIn1stLayer(Xform *xform, Xform *topXform)
   {
     size_t      i;
     if (topXform == NULL)  return false;
@@ -143,10 +144,10 @@ namespace STK
     return false;
   }
   
-  
   //***************************************************************************
   //***************************************************************************
-  bool Is1Layer1BlockLinearXform(Xform * pXform)
+  bool 
+  Is1Layer1BlockLinearXform(Xform * pXform)
   {
     CompositeXform *cxf = static_cast<CompositeXform *>(pXform);
     
@@ -161,7 +162,8 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  Macro *FindMacro(MyHSearchData *macro_hash, const char *name) 
+  Macro *
+  FindMacro(MyHSearchData *macro_hash, const char *name) 
   {
     ENTRY e, *ep;
     e.key = (char *) name;
@@ -172,7 +174,8 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  void ReleaseMacroHash(MyHSearchData *macro_hash) 
+  void 
+  ReleaseMacroHash(MyHSearchData *macro_hash) 
   {
     unsigned int i;
     for (i = 0; i < macro_hash->mNEntries; i++) 
@@ -189,7 +192,8 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  void ReleaseItem(int macro_type,HMMSetNodeName nodeName,MacroData * pData, void * pUserData)
+  void 
+  ReleaseItem(int macro_type,HMMSetNodeName nodeName,MacroData * pData, void * pUserData)
   {
     delete pData;
   }
@@ -197,20 +201,17 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  int qsmacrocmp(const void *a, const void *b) 
+  int 
+  qsmacrocmp(const void *a, const void *b) 
   {
     return strcmp(((Macro *)a)->mpName, ((Macro *)b)->mpName);
   }
   
-  
-  
-  
-  
-  
   //*****************************************************************************
   //*****************************************************************************
-  void ResetAccum(int macro_type, HMMSetNodeName nodeName,
-                  MacroData * pData, void *pUserData) 
+  void 
+  ResetAccum(int macro_type, HMMSetNodeName nodeName,
+             MacroData * pData, void *pUserData) 
   {
     size_t    i;
     size_t    size;
@@ -248,7 +249,12 @@ namespace STK
   
   //*****************************************************************************
   //*****************************************************************************
-  void GlobalStats(int macro_type, HMMSetNodeName nn, MacroData * pData, void * pUserData)
+  void 
+  GlobalStats(
+    int                 macro_type, 
+    HMMSetNodeName      nn, 
+    MacroData       *   pData, 
+    void            *   pUserData)
   {
     size_t        i;
     
@@ -291,32 +297,45 @@ namespace STK
   
   //*****************************************************************************
   //*****************************************************************************
-  FLOAT *XformPass(XformInstance * pXformInst, FLOAT * pInputVector, int time, PropagDirectionType dir)
+  FLOAT *
+  XformPass(
+    XformInstance   *     pXformInst, 
+    FLOAT           *     pInputVector, 
+    int                   time, 
+    PropagDirectionType   dir)
   {
-    if (pXformInst == NULL) return pInputVector;
+    if (pXformInst == NULL) 
+      return pInputVector;
   
-    if (time != UNDEF_TIME && pXformInst->mTime == time) return pXformInst->mpOutputVector;
+    if (time != UNDEF_TIME && pXformInst->mTime == time) 
+      return pXformInst->mpOutputVector;
   
     pXformInst->mTime = time;
   
+    // recursively pass previous transformations
     if (pXformInst->mpInput)
       pInputVector = XformPass(pXformInst->mpInput, pInputVector, time, dir);
   
-    pXformInst->mpXform->Evaluate(pInputVector,pXformInst->mpOutputVector,pXformInst->mpMemory,dir);
+    // evaluate this transformation
+    pXformInst->mpXform->Evaluate(
+                          pInputVector,
+                          pXformInst->mpOutputVector,
+                          pXformInst->mpMemory,dir);
   
     return pXformInst->mpOutputVector;
   }
 
     
   
-  enum StatType {MEAN_STATS, COV_STATS};
   
   //*****************************************************************************
   //*****************************************************************************
-  void AllocXformStatAccums(XformStatAccum **xformStatAccum,
-                            size_t *nxformStatAccums,
-                            XformInstance *xformInstance,
-                            enum StatType stat_type) 
+  void 
+  AllocXformStatAccums(
+    XformStatAccum **     xformStatAccum,
+    size_t         *      nxformStatAccums,
+    XformInstance  *      xformInstance,
+    enum StatType         stat_type) 
   {
     size_t    i;
     size_t    j;
@@ -364,8 +383,12 @@ namespace STK
   
   //*****************************************************************************
   //*****************************************************************************
-  void AllocateXformStatCachesAndAccums(int macro_type, HMMSetNodeName nodeName,
-                                        MacroData * pData, void * hmm_set)
+  void 
+  AllocateXformStatCachesAndAccums(
+    int                 macro_type, 
+    HMMSetNodeName      nodeName,
+    MacroData       *   pData, 
+    void            *   hmm_set)
   {
     if (macro_type == mt_XformInstance) 
     {
@@ -467,8 +490,9 @@ namespace STK
   
   //*****************************************************************************
   //*****************************************************************************
-  void NormalizeStatsForXform(int macro_type, HMMSetNodeName nodeName,
-                              MacroData * pData, void * pUserData) 
+  void 
+  NormalizeStatsForXform(int macro_type, HMMSetNodeName nodeName,
+                         MacroData * pData, void * pUserData) 
   {
     XformStatAccum *xfsa = NULL;
     int i, j, k, nxfsa = 0, size;
@@ -512,8 +536,9 @@ namespace STK
   
   //*****************************************************************************
   //*****************************************************************************
-  void WriteStatsForXform(int macro_type, HMMSetNodeName nodeName,
-                          MacroData * pData, void * pUserData) 
+  void 
+  WriteStatsForXform(int macro_type, HMMSetNodeName nodeName,
+                     MacroData * pData, void * pUserData) 
   {
     XformStatsFileNames *    file = NULL;
     XformStatAccum *              xfsa = NULL;
@@ -612,8 +637,9 @@ namespace STK
   
   //*****************************************************************************
   //*****************************************************************************
-  void ReadStatsForXform(int macro_type, HMMSetNodeName nodeName,
-                        MacroData * pData, void *pUserData) 
+  void 
+  ReadStatsForXform(int macro_type, HMMSetNodeName nodeName,
+                    MacroData * pData, void *pUserData) 
   {
     char                        buff[128];
     XformStatsFileNames *  file = NULL;
@@ -723,8 +749,9 @@ namespace STK
   
   //*****************************************************************************
   //*****************************************************************************
-  void WriteAccum(int macro_type, HMMSetNodeName nodeName,
-                  MacroData * pData, void *pUserData) 
+  void 
+  WriteAccum(int macro_type, HMMSetNodeName nodeName,
+             MacroData * pData, void *pUserData) 
   {
     size_t                i;
     size_t                size;
@@ -820,8 +847,9 @@ namespace STK
   
   //*****************************************************************************
   //*****************************************************************************
-  void NormalizeAccum(int macro_type, HMMSetNodeName nodeName,
-                    MacroData * pData, void *pUserData) 
+  void 
+  NormalizeAccum(int macro_type, HMMSetNodeName nodeName,
+                 MacroData * pData, void *pUserData) 
   {
     size_t      i;
     size_t      j;
@@ -1905,6 +1933,27 @@ printf("%f", g_floor);
   //***************************************************************************
   //***************************************************************************
   XformInstance::
+  XformInstance(Xform * pXform, size_t vectorSize)
+  {
+    mpOutputVector      = new FLOAT[vectorSize];
+    mpVarFloor          = NULL;
+    mOutSize            = vectorSize;
+    mpXformStatCache    = NULL;
+
+    mpInput             = NULL;
+    mpXform             = pXform;
+    mTime               = 0;
+    mpNext              = NULL;
+    mNumberOfXformStatCaches = 0;
+    mStatCacheTime      = 0;
+    mpMemory            = NULL;
+    mTotalDelay         = 0;
+  }
+    
+  
+  //***************************************************************************
+  //***************************************************************************
+  XformInstance::
   ~XformInstance()
   {
     if (mpXformStatCache != NULL)
@@ -2404,6 +2453,10 @@ printf("%f", g_floor);
       Error("Insufficient memory");
     }
   
+    /// :TODO: 
+    /// Get rid of this by making STK use Matrix instead of FLOAT arrays
+    mUseNewMatrix               = false;
+    
     this->mpXformInstances      = NULL;
     this->mpInputXform          = NULL;
     this->mpFirstMacro          = NULL;

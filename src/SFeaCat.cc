@@ -148,11 +148,11 @@ int main(int argc, char *argv[])
   swap_features  =!GetParamBool(&cfg_hash,SNAME":NATURALREADORDER", isBigEndian());
   swap_fea_out   =!GetParamBool(&cfg_hash,SNAME":NATURALWRITEORDER",isBigEndian());
   gpFilterWldcrd = GetParamStr(&cfg_hash, SNAME":HFILTERWILDCARD", "$");
-  script_filter  = GetParamStr(&cfg_hash, SNAME":HSCRIPTFILTER",   NULL);
-  parm_filter    = GetParamStr(&cfg_hash, SNAME":HPARMFILTER",     NULL);
+  gpScriptFilter  = GetParamStr(&cfg_hash, SNAME":HSCRIPTFILTER",   NULL);
+  gpParmFilter    = GetParamStr(&cfg_hash, SNAME":HPARMFILTER",     NULL);
   gpHListFilter  = GetParamStr(&cfg_hash, SNAME":HMMLISTFILTER",   NULL);
-  MMF_filter     = GetParamStr(&cfg_hash, SNAME":HMMDEFFILTER",    NULL);
-  parm_ofilter   = GetParamStr(&cfg_hash, SNAME":HPARMOFILTER",    NULL);
+  gpMmfFilter     = GetParamStr(&cfg_hash, SNAME":HMMDEFFILTER",    NULL);
+  gpParmOFilter   = GetParamStr(&cfg_hash, SNAME":HPARMOFILTER",    NULL);
   out_dir        = GetParamStr(&cfg_hash, SNAME":TARGETPARAMDIR",  NULL);
   out_ext        = GetParamStr(&cfg_hash, SNAME":TARGETPARAMEXT",  NULL);
   trace_flag     = GetParamInt(&cfg_hash, SNAME":TRACE",           0);
@@ -167,13 +167,13 @@ int main(int argc, char *argv[])
   
   if (GetParamBool(&cfg_hash, SNAME":PRINTVERSION", FALSE))
     puts("Version: "VERSION"\n");
-
+                                 
   if (!GetParamBool(&cfg_hash,SNAME":ACCEPTUNUSEDPARAM", FALSE))
     CheckCommandLineParamUse(&cfg_hash);
 
   for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) 
   {
-    if ((sfp = my_fopen(script, "rt", script_filter)) == NULL) 
+    if ((sfp = my_fopen(script, "rt", gpScriptFilter)) == NULL) 
       Error("Cannot open script file %s", script);
     
     while (fscanf(sfp, "%s", p_line) == 1) 

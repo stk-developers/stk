@@ -86,7 +86,13 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
   bool            gHtkCompatible = false;
   FLOAT           gMinLogDiff;
   
-  //const char *    gpFilterWldcrd =    "$";
+  const char *    gpScriptFilter;
+  const char *    gpParmFilter;
+  const char *    gpMmfFilter;
+  const char *    gpHListOFilter;
+  const char *    gpMmfOFilter;
+  const char *    gpParmOFilter;
+
     
   static char *   gpParmKindNames[] = 
   {
@@ -1110,12 +1116,6 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
     else return fclose(fp);
   }
   
-  const char *script_filter;
-  const char *parm_filter;
-  const char *MMF_filter;
-  const char *parm_ofilter;
-  const char *hlist_ofilter;
-  const char *MMF_ofilter;
   
   //***************************************************************************
   //***************************************************************************

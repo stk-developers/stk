@@ -1384,9 +1384,11 @@ namespace STK
       for (r = 0; r < in_size; r++)
       {
         tmp = GetFloat(fp);
-        ret->mMatrix(r, c) = tmp;
-        //:TODO: Get rid of this old stuff
-        ret->mpMatrixO[i] = tmp;
+        
+        if (mUseNewMatrix) ret->mMatrix(r, c) = tmp;        
+        //else               ret->mpMatrixO[i]  = tmp;  //:TODO: Get rid of this old stuff
+        
+        ret->mpMatrixO[i]  = tmp;  //:TODO: Get rid of this old stuff
         i++;
       }
     }
@@ -1420,10 +1422,11 @@ namespace STK
     for (i=0; i < size; i++) 
     {
       tmp = GetFloat(fp);
-      ret->mVector(0, i) = tmp;
       
-      //:TODO: Get rid of the obsolete thing
-      ret->mpVectorO[i] = tmp;      
+      if (mUseNewMatrix)  ret->mVector(0, i) = tmp;
+      //else                ret->mpVectorO[i]  = tmp;   //:TODO: Get rid of the obsolete thing
+      
+      ret->mpVectorO[i]  = tmp;   //:TODO: Get rid of the obsolete thing
     }
   
     ret->mpMacro      = macro;
@@ -2234,7 +2237,14 @@ namespace STK
     PutNLn(fp, binary);
     for (i=0; i < xform->mOutSize; i++) 
     {
-      PutFlt(fp, binary, xform->mpVectorO[i]);
+      if (mUseNewMatrix)
+      {
+        PutFlt(fp, binary, xform->mVector(0,i));
+      }
+      else
+      {
+        PutFlt(fp, binary, xform->mpVectorO[i]);
+      }
     }
     PutNLn(fp, binary);
   } //WriteBiasXform(FILE *fp, bool binary, BiasXform *xform)
@@ -2257,7 +2267,14 @@ namespace STK
     {
       for (j=0; j < xform->mInSize; j++) 
       {
-        PutFlt(fp, binary, xform->mpMatrixO[i * xform->mInSize + j]);
+        if (mUseNewMatrix)
+        {
+          PutFlt(fp, binary, xform->mMatrix(j, i));
+        }
+        else
+        {
+          PutFlt(fp, binary, xform->mpMatrixO[i * xform->mInSize + j]);
+        }
       }
       PutNLn(fp, binary);
     }

@@ -145,6 +145,11 @@ int main(int argc, char *argv[])
   if (argc == 1) usage(argv[0]);
 
   hset.Init(MODEL_SET_WITH_ACCUM);
+  
+  // :TODO:
+  // temporary stuff, later to be removed
+  // now look in Models.h
+  hset.mUseNewMatrix = true;
 
   if (!my_hcreate_r(100, &cfgHash)) {
     Error("Insufficient memory");
@@ -182,15 +187,15 @@ int main(int argc, char *argv[])
   swap_features_out=swap_features;
 //  swap_fea_out =!GetParamBool(&cfgHash,SNAME":NATURALWRITEORDER",isBigEndian());
   gpFilterWldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
-  script_filter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",   NULL);
-  parm_filter  = GetParamStr(&cfgHash, SNAME":HPARMFILTER",     NULL);
+  gpScriptFilter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",   NULL);
+  gpParmFilter  = GetParamStr(&cfgHash, SNAME":HPARMFILTER",     NULL);
 //  gpHListFilter = GetParamStr(&cfgHash, SNAME":HMMLISTFILTER",   NULL);
-  MMF_filter   = GetParamStr(&cfgHash, SNAME":HMMDEFFILTER",    NULL);
-//  parm_ofilter = GetParamStr(&cfgHash, SNAME":HPARMOFILTER",    NULL);
+  gpMmfFilter   = GetParamStr(&cfgHash, SNAME":HMMDEFFILTER",    NULL);
+//  gpParmOFilter = GetParamStr(&cfgHash, SNAME":HPARMOFILTER",    NULL);
   transc_filter= GetParamStr(&cfgHash, SNAME":HLABELFILTER",    NULL);
 //  net_filter   = GetParamStr(&cfgHash, SNAME":HNETFILTER",      NULL);
 //  dict_filter  = GetParamStr(&cfgHash, SNAME":HDICTFILTER",     NULL);
-  MMF_ofilter  = GetParamStr(&cfgHash, SNAME":HMMDEFOFILTER",   NULL);
+  gpMmfOFilter  = GetParamStr(&cfgHash, SNAME":HMMDEFOFILTER",   NULL);
 //  out_dir      = GetParamStr(&cfgHash, SNAME":TARGETPARAMDIR",  NULL);
 //  out_ext      = GetParamStr(&cfgHash, SNAME":TARGETPARAMEXT",  NULL);
   src_mlf      = GetParamStr(&cfgHash, SNAME":SOURCEMLF",       NULL);
@@ -229,7 +234,7 @@ int main(int argc, char *argv[])
   }
 
   for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) {
-    if ((sfp = my_fopen(script, "rt", script_filter)) == NULL) {
+    if ((sfp = my_fopen(script, "rt", gpScriptFilter)) == NULL) {
       Error("Cannot open script file %s", script);
     }
     while (fscanf(sfp, "%s", line) == 1) {
@@ -265,7 +270,7 @@ int main(int argc, char *argv[])
         Error("Number of entries [%d] in file '%s' does not match with NNet output size [%d]",
               labelHash.mNEntries, outlabel_map, NNet_instance->mOutSize);
       }
-    
+//     
     //Allocate buffer, to which example of output vector will be created
     //according to labels
     obs_out = (FLOAT *)malloc(NNet_instance->mOutSize * sizeof(FLOAT));
