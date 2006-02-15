@@ -487,10 +487,17 @@ namespace STK
     std::ostream &
     operator << (std::ostream & rOut, Matrix<_ElemT> & rM)
     {
-      rOut << "Rows: " << rM.Rows() << "\n";
+      /*rOut << "Rows: " << rM.Rows() << "\n";
       rOut << "Cols: " << rM.Cols() << "\n";
       if(rM.Storage() == STORAGE_TRANSPOSED) rOut << "Transposed \n ";
-      else rOut << "Regular \n ";
+      else rOut << "Regular \n ";*/
+      
+      /////
+      for(int i=0; i<10; i++){
+        rOut << rM.mpData[i] << " ";
+      }
+      rOut << "\n";
+      /////
       
       size_t    rcount;
       size_t    ccount;

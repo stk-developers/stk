@@ -34,6 +34,7 @@ void SNet::NLayer::BunchNonLinear(){
   else {
     Error("This out function is not implemented. Only Sigmoid and SoftMax supported so far.");
   }
+  
 }
 
 void SNet::NLayer::ChangeLayerWeights(FLOAT learnRate){
@@ -45,7 +46,9 @@ void SNet::NLayer::ErrorPropagation(){
   DerivateError();
   if(mpPreviousErr != NULL){
     mpPreviousErr->RepMMTMul(*mpErr, *mpWeights);
+    std::cout << "\n" << *mpPreviousErr;
   }
+  
 }
 
 void SNet::NLayer::DerivateError(){

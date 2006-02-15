@@ -107,6 +107,7 @@ void SNet::NNet::ComputeCache(){
   mActualCache = 0;
   mNCache++;
   std::cout << "DONE! \n" << std::flush;
+  exit(1);
 }
 
 void SNet::NNet::ComputeBunch(){
@@ -133,7 +134,9 @@ void SNet::NNet::GetAccuracy(){
         maxPos2 = i;
       }
     }
-    if(maxPos1 == maxPos2) mGood++;
+    if(maxPos1 == maxPos2) {
+      mGood++;
+    }
   }
 }
 
