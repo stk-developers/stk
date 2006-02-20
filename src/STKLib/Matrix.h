@@ -175,7 +175,7 @@ namespace STK
 
       ThisType &
       Clear();      
-      
+    
       /**
        *  @brief Gives access to the matrix memory area
        *  @return pointer to the first field
@@ -207,7 +207,7 @@ namespace STK
         ThisType & m);
 
         
-      void PrintOut();
+      void PrintOut(char *file);
 
     }; // class Matrix
 

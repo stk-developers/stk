@@ -1,5 +1,5 @@
 #include"nlayer.h"
-
+int pocitadlo = 0;
 SNet::NLayer::NLayer(Matrix<FLOAT>* weights, Matrix<FLOAT>* biases, int outFunc){
   mpWeights = weights;
   mpBiases = biases;
@@ -21,10 +21,18 @@ void SNet::NLayer::BunchBias(){
 }
       
 void SNet::NLayer::BunchLinear(){
+  
+
+  
   mpOut->AddMMMul(*mpIn, *mpWeights);
+ 
+
 }
       
 void SNet::NLayer::BunchNonLinear(){
+  
+
+  
   if(mOutFunc == KID_Sigmoid){
     mpOut->FastRowSigmoid();
   }
@@ -35,6 +43,7 @@ void SNet::NLayer::BunchNonLinear(){
     Error("This out function is not implemented. Only Sigmoid and SoftMax supported so far.");
   }
   
+
 }
 
 void SNet::NLayer::ChangeLayerWeights(FLOAT learnRate){
@@ -43,11 +52,31 @@ void SNet::NLayer::ChangeLayerWeights(FLOAT learnRate){
 }
 
 void SNet::NLayer::ErrorPropagation(){
-  DerivateError();
-  if(mpPreviousErr != NULL){
-    mpPreviousErr->RepMMTMul(*mpErr, *mpWeights);
-    std::cout << "\n" << *mpPreviousErr;
+  
+  if(mpNextErr != NULL){
+    mpErr->RepMMTMul(*mpNextErr, *mpNextWeights);
+    ///mpNextWeights->PrintOut("nextw.0");
+    ///mpNextErr->PrintOut("nexte.0");
+    ///mpErr->PrintOut("eprop.0");
   }
+
+      //  pocitadlo++;
+      //if(pocitadlo == 3){
+        //mpChangesWeights->PrintOut("w.0");
+	
+	
+	//mpIn->PrintOut("i.0");
+	
+	//exit(1);
+      //} 
+ 
+  DerivateError();
+  
+
+  
+  /*if(mpPreviousErr != NULL){
+    mpPreviousErr->RepMMTMul(*mpErr, *mpWeights);
+  }*/
   
 }
 
@@ -73,7 +102,26 @@ void SNet::NLayer::DerivateError(){
 
 void SNet::NLayer::ComputeLayerUpdates(){
   mpChangesWeights->RepMTMMul(*mpErr, *mpIn);
+  
+    
+      pocitadlo++;
+      if(pocitadlo == 3){
+        ///mpChangesWeights->PrintOut("w.0");
+	///mpErr->PrintOut("e.0");
+	///mpIn->PrintOut("i.0");
+	
+	//exit(1);
+      } 
+  
   mpChangesBiases->Clear();
+  /*std::cerr << "Prvni prvek " << &(*mpChangesBiases)(0, 0) << std::endl;
+  
+        pocitadlo++;
+      if(pocitadlo == 2){
+        mpChangesBiases->PrintOut("w.0");
+	exit(1);
+      }  */
+  
   FLOAT *pChangesBiases = NULL;
   FLOAT *pErr = NULL;
   for(unsigned r=0; r < mpErr->Rows(); r++){

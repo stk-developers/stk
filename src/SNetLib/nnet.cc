@@ -52,7 +52,11 @@ SNet::NNet::NNet(CompositeXform* nn, int cache_size, int bunch_size, bool cross_
     mpLayers[i]->In((i == 0)             ? mpInCache  : mpLayers[i-1]->Out());
     mpLayers[i]->Out((i == mNLayers-1)   ? mpCompCachePart : new Matrix<FLOAT>(bunch_size, mpLayers[i]->Weights()->Cols()));
     mpLayers[i]->Err((i == mNLayers-1)   ? mpError : new Matrix<FLOAT>(bunch_size, mpLayers[i]->Weights()->Cols()));
-    mpLayers[i]->PreviousErr((i == 0)    ? NULL : mpLayers[i-1]->Err());
+    //mpLayers[i]->PreviousErr((i == 0)    ? NULL : mpLayers[i-1]->Err());
+  }
+  for(int i=0; i<mNLayers; i++){
+    mpLayers[i]->NextErr((i == mNLayers-1)        ? NULL : mpLayers[i+1]->Err());
+    mpLayers[i]->NextWeights((i == mNLayers-1)    ? NULL : mpLayers[i+1]->Weights());
   } 
   
   mpTimers = new Timers(1, 0);
@@ -93,6 +97,7 @@ void SNet::NNet::ComputeCache(){
     mpInCache->SetSize(i*mBunchSize, mBunchSize);
     mpOutCache->SetSize(i*mBunchSize, mBunchSize);
     ComputeBunch();
+    
     GetAccuracy();
     if(!mCrossValidation){
       ComputeGlobalError();
@@ -107,7 +112,7 @@ void SNet::NNet::ComputeCache(){
   mActualCache = 0;
   mNCache++;
   std::cout << "DONE! \n" << std::flush;
-  exit(1);
+  std::cout << "good "<< mGood <<  "\n" << std::flush;
 }
 
 void SNet::NNet::ComputeBunch(){
@@ -139,15 +144,23 @@ void SNet::NNet::GetAccuracy(){
     }
   }
 }
-
+int pocitadlo1 = 0;
 
 void SNet::NNet::ComputeGlobalError(){
   mpError->RepMMSub(*mpCompCachePart, *mpOutCache);
+  
+        pocitadlo1++;
+      if(pocitadlo1 == 2){
+        ///mpError->PrintOut("g.0");
+      } 
 }
 
 void SNet::NNet::ComputeUpdates(){
   for(int i=mNLayers-1; i >= 0; i--){
     mpLayers[i]->ErrorPropagation();
+    
+  }
+  for(int i=0; i < mNLayers; i++){
     mpLayers[i]->ComputeLayerUpdates();
   }
 }

@@ -20,6 +20,9 @@ extern "C"{
   #include <cblas.h>
 }
 
+#include<fstream>
+#include<iomanip>
+
 namespace STK
 {
 //******************************************************************************
@@ -83,7 +86,7 @@ namespace STK
       this->mTCols      = c;
 
       // set all bytes to 0
-      memset(this->mpData, this->mMSize, 0);
+      memset(this->mpData, 0, this->mMSize);
     }
     else
     {
@@ -370,11 +373,29 @@ namespace STK
   Matrix<_ElemT>::
   Clear()
   {
-    memset(mpData, mMSize, 0);
+    //std::cerr << "Cosi: " << mpData <<  " "<< mMSize << std::endl;
+  
+    memset(mpData, 0, mMSize);
+    
     
     return *this;
   }
 //******************************************************************************
+template<typename _ElemT>
+     void Matrix<_ElemT>::PrintOut(char* file){
+  FILE* f = fopen(file, "w");
+  int i,j;
+  fprintf(f, "%dx%d\n", this->mMRows, this->mMCols);
+  for(i=0; i<this->mMRows; i++){
+    _ElemT *row = this->Row(i);
+    for(j=0; j<this->mMRealCols; j++){
+      fprintf(f, "%20.17f ",row[j]);
+    }
+    fprintf(f, "\n");
+  }
+  
+  fclose(f);
+     }
 
 //******************************************************************************
   // Copy constructor
