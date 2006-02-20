@@ -1349,8 +1349,6 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
   
     *substr = '\0';
   
-    printf("%s %s\n", normstr, wildcard);
-  
     if ((hlpptr = (char *) memchr(wildcard, '*', endwc-wildcard)) == NULL) {//hvezdicka neni
       return !((endwc-wildcard != endns-normstr) ||
               memcmpw(normstr, wildcard, endns-normstr, &substr));

@@ -154,7 +154,7 @@ void WriteLabels(FILE* lfp, Label *label, LabelFormat labelFormat, long smpPrd,
         fprintf(lfp, "[%d]", level->mId + 2);
       }
 
-      if (!(labelFormat.SCORE_OFF) && level->mScore != 0.0) {
+      if (!(labelFormat.SCORE_OFF) /* && level->mScore != 0.0*/) {
         // !!! only acoustic scores should be normalized !!!
         fprintf(lfp, " %g", labelFormat.SCORE_NRM
                             ? level->mScore / (level->mStop - level->mStart)

@@ -339,7 +339,7 @@ int main(int argc, char *argv[]) {
   occprb_scale = GetParamFlt(&cfgHash, SNAME":OCCUPPSCALE",     1.0);
   word_penalty = GetParamFlt(&cfgHash, SNAME":WORDPENALTY",     0.0);
   model_penalty= GetParamFlt(&cfgHash, SNAME":MODELPENALTY",    0.0);
-  score_thresh = GetParamFlt(&cfgHash, SNAME":KEYWORDTHRESHOLD",0.0);
+  score_thresh = GetParamFlt(&cfgHash, SNAME":KEYWORDTHRESHOLD",LOG_0);
   network_file = GetParamStr(&cfgHash, SNAME":RECOGNET",        NULL);
   hmm_dir      = GetParamStr(&cfgHash, SNAME":SOURCEMODELDIR",  NULL);
   hmm_ext      = GetParamStr(&cfgHash, SNAME":SOURCEMODELEXT",  NULL);

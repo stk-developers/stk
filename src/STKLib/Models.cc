@@ -1818,7 +1818,7 @@ printf("%f", g_floor);
         {
           if (mpMixture[i].mWeightAccum / accum_sum < pModelSet->mMinMixWeight) 
           {
-            if (2) 
+            if (pHmm)
             {
               size_t j;
               for (j=0; j < pHmm->mNStates && pHmm->mpState[j] != this; j++)
