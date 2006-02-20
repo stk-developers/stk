@@ -39,4 +39,3 @@ void SNet::ProgObj::NewVector(FLOAT *inVector, FLOAT *outVector, int inSize, int
     mpNNet->PrintInfo(); // print numbers of vectors
   }
 }
-

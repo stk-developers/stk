@@ -157,22 +157,21 @@ void SNet::NNet::ComputeGlobalError(){
 }
 
 void SNet::NNet::ComputeUpdates(){
-  for(int i=mNLayers-1; i >= 0; i--){
+  for(int i=mNLayers-1; i >= 0; i--){ // go from last layer - back-propagation
     mpLayers[i]->ErrorPropagation();
-  }
-  for(int i=0; i < mNLayers; i++){
-    mpLayers[i]->ComputeLayerUpdates();
+    mpLayers[i]->ComputeLayerUpdates(); // needs previous layer computed - not a problem
   }
 }
 
 void SNet::NNet::ChangeWeights(){
   for(int i=0; i < mNLayers; i++){
-    mpLayers[i]->ChangeLayerWeights(mLearnRate);
+    mpLayers[i]->ChangeLayerWeights(mLearnRate); // learning rate needed
   }
 }
 
 void SNet::NNet::PrintInfo(){
   mpTimers->End(0);
+  
   std::cout << "===== SNET FINISHED (" << mpTimers->Timer(0) << "s) ===== \n";
   if(mCrossValidation)
     std::cout << "-- CV correct: >> ";
@@ -181,5 +180,3 @@ void SNet::NNet::PrintInfo(){
   std::cout << 100.0*mGood / mVectors << "% << (Vectors " << mVectors << ", Good " << mGood << ", Discarded " << mDiscarded << ") \n";
   std::cout << "\n";
 }
-
-

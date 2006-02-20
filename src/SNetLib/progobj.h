@@ -25,8 +25,8 @@ namespace SNet{
       ProgObj(XformInstance *NNetInstance, int cacheSize,
               int bunchSize, bool crossValidation, std::string version, float learningRate); ///< Constructor
       ~ProgObj();                                                                            ///< Destructor
+      
       void NewVector(FLOAT *inVector, FLOAT *outVector, int inSize, int outSize, bool last); ///< Work with new input vector
   };
 } // namespace
-
 #endif

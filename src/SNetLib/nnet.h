@@ -30,6 +30,7 @@ namespace SNet{
       NNet(CompositeXform* nn, int cacheSize, int bunchSize, bool crossValidation, ///< Constructor
            float learningRate); 
       ~NNet();                                                                     ///< Destructor
+      
       void AddToCache(FLOAT *inVector, FLOAT *outVector, int inSize, int outSize); ///< Copy input vector to cache
       bool CacheFull() const {return (mActualCache == mCacheSize);};               ///< Test if cache full
       void RandomizeCache();                                                       ///< Randomly shuffle cache     
@@ -41,6 +42,7 @@ namespace SNet{
       void ChangeWeights();                                                        ///< Change weights
       void PrintInfo();                                                            ///< Prit informations about training/cross-validation
       
+      // Accessors
       bool CrossValidation() const {return mCrossValidation;};
   };
 } // namespace
