@@ -78,11 +78,15 @@ char *optionStr =
 
 int main(int argc, char *argv[]) 
 {
-  ModelSet hset;
-  FILE *sfp, *ilfp;
-  FLOAT *obsMx, *obsMx_out, *obs_out;
-  HtkHeader header, header_out;
-  Label *labels;
+  ModelSet        hset;
+  FILE *          sfp;
+  FILE *          ilfp;
+  FLOAT *         obsMx     = NULL;
+  FLOAT *         obsMx_out = NULL;
+  FLOAT *         obs_out   = NULL;
+  HtkHeader       header, 
+                  header_out;
+  Label *         labels    = NULL;
   int i, fcnt = 0;
   char line[1024];
   char label_file[1024];
@@ -119,8 +123,9 @@ int main(int argc, char *argv[])
   const char *        cvn_mask_out;
   const char *        cvg_file_out;
   const char *        outlabel_map;
-  int  mTraceFlag;
-  int  targetKind, targetKind_out;;
+  int                 trace_flag;
+  int                 target_kind = 0, 
+                      target_kind_out = 0;
   int  derivOrder, derivOrder_out;
   int  *derivWinLengths, *derivWinLengths_out;
   int startFrmExt;
@@ -163,14 +168,14 @@ int main(int argc, char *argv[])
 
   outlabel_map = GetParamStr(&cfgHash, SNAME":OUTPUTLABELMAP",  NULL);
   
-  targetKind   = GetDerivParams(&cfgHash, &derivOrder, &derivWinLengths,
+  target_kind   = GetDerivParams(&cfgHash, &derivOrder, &derivWinLengths,
                                 &startFrmExt, &endFrmExt,
                                 &cmn_path, &cmn_file, &cmn_mask,
                                 &cvn_path, &cvn_file, &cvn_mask, &cvg_file,
                                 SNAME":",  !outlabel_map ? 1 : 0);
   if(!outlabel_map)
   {
-    targetKind_out = GetDerivParams(&cfgHash, &derivOrder_out, &derivWinLengths_out,
+    target_kind_out = GetDerivParams(&cfgHash, &derivOrder_out, &derivWinLengths_out,
                                     &startFrmExt_out, &endFrmExt_out,
                                     &cmn_path_out, &cmn_file_out, &cmn_mask_out,
                                     &cvn_path_out, &cvn_file_out, &cvn_mask_out,
@@ -201,7 +206,7 @@ int main(int argc, char *argv[])
   src_mlf      = GetParamStr(&cfgHash, SNAME":SOURCEMLF",       NULL);
   src_lbl_dir  = GetParamStr(&cfgHash, SNAME":SOURCETRANSCDIR", NULL);
   src_lbl_ext  = GetParamStr(&cfgHash, SNAME":SOURCETRANSCEXT", "lab");
-  mTraceFlag   = GetParamInt(&cfgHash, SNAME":TRACE",           0);
+  trace_flag   = GetParamInt(&cfgHash, SNAME":TRACE",           0);
   hmms_binary  = GetParamBool(&cfgHash,SNAME":SAVEBINARY",      FALSE);
   script =(char*)GetParamStr(&cfgHash, SNAME":SCRIPT",          NULL);
 //  src_hmm_list = GetParamStr(&cfgHash, SNAME":SOURCEHMMLIST",   NULL);
@@ -287,7 +292,7 @@ int main(int argc, char *argv[])
       file_name != NULL;
       file_name = outlabel_map ? file_name->mpNext : file_name->mpNext->mpNext) {
 
-    if (mTraceFlag & 1) {
+    if (trace_flag & 1) {
       if (!outlabel_map) {
         TraceLog("Processing file pair %d/%d '%s' <-> %s",  ++fcnt,
         nfeature_files/2, file_name->mpPhysical,file_name->mpNext->logical);
@@ -309,7 +314,7 @@ int main(int argc, char *argv[])
     if (cmn_mask) process_mask(lgcl_fn, cmn_mask, cmn_file);
     if (cvn_mask) process_mask(lgcl_fn, cvn_mask, cvn_file);
     obsMx = ReadHTKFeatures(phys_fn, swap_features,
-                            startFrmExt, endFrmExt, targetKind,
+                            startFrmExt, endFrmExt, target_kind,
                             derivOrder, derivWinLengths, &header,
                             cmn_path, cvn_path, cvg_file, &rhfbuff);
 
@@ -324,7 +329,7 @@ int main(int argc, char *argv[])
       if (cmn_mask_out) process_mask(file_name->logical, cmn_mask_out, cmn_file_out);
       if (cvn_mask_out) process_mask(file_name->logical, cvn_mask_out, cvn_file_out);
       obsMx_out = ReadHTKFeatures(file_name->mpPhysical, swap_features_out,
-                                  startFrmExt_out, endFrmExt_out, targetKind_out,
+                                  startFrmExt_out, endFrmExt_out, target_kind_out,
                                   derivOrder_out, derivWinLengths_out, &header_out,
                                   cmn_path_out, cvn_path_out, cvg_file_out, &rhfbuff_out);
 
@@ -392,7 +397,7 @@ int main(int argc, char *argv[])
   /// DELETE SNET
   delete progObj;  
   
-  if (mTraceFlag & 2) {
+  if (trace_flag & 2) {
     TraceLog("Total number of frames: %d", totFrames);
   }
   NNet_instance->mpInput = NNet_input;

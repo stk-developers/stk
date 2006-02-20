@@ -214,8 +214,8 @@ namespace STK
              MacroData * pData, void *pUserData) 
   {
     size_t    i;
-    size_t    size;
-    FLOAT *   vector = NULL;
+    size_t    size    = 0;
+    FLOAT *   vector  = NULL;
   
     if (macro_type == mt_mean || macro_type == mt_variance) {
       if (macro_type == mt_mean) {
@@ -853,7 +853,7 @@ namespace STK
   {
     size_t      i;
     size_t      j;
-    size_t      size;
+    size_t      size   = 0;
     FLOAT *     vector = NULL;
   
     if (macro_type == mt_mean || macro_type == mt_variance) 
@@ -960,7 +960,7 @@ namespace STK
     unsigned int        i;
     unsigned int        j;
     int                 c;
-    unsigned int        size;
+    unsigned int        size   = 0;
     FLOAT *             vector = NULL;
     Macro *             macro;
     ReadAccumUserData * ud = (ReadAccumUserData *) pUserData;

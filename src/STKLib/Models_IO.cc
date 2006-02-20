@@ -1388,7 +1388,7 @@ namespace STK
         if (mUseNewMatrix) ret->mMatrix(r, c) = tmp;        
         //else               ret->mpMatrixO[i]  = tmp;  //:TODO: Get rid of this old stuff
         
-        ret->mpMatrixO[i]  = tmp;  //:TODO: Get rid of this old stuff
+          ret->mpMatrixO[i]  = tmp;  //:TODO: Get rid of this old stuff
         i++;
       }
     }

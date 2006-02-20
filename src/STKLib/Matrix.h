@@ -265,11 +265,11 @@ namespace STK
         Matrix<_ElemT>(r, c, st), // create the base class
         mOrigMRows    (Matrix<_ElemT>::mMRows),
         mOrigMCols    (Matrix<_ElemT>::mMCols),
-        mOrigTRows    (Matrix<_ElemT>::mTRows),   // copy the original values
-        mOrigTCols    (Matrix<_ElemT>::mTCols),
         mOrigMRealCols(Matrix<_ElemT>::mMRealCols),
         mOrigMSize    (Matrix<_ElemT>::mMSize),
         mOrigMSkip    (Matrix<_ElemT>::mMSkip),
+        mOrigTRows    (Matrix<_ElemT>::mTRows),   // copy the original values
+        mOrigTCols    (Matrix<_ElemT>::mTCols),
         mTRowOff(0), mTColOff(0)          // set the offset
       {
         mpOrigData = Matrix<_ElemT>::mpData;

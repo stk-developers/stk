@@ -1065,14 +1065,14 @@ namespace STK
     for (node = pFirstNode; node != NULL; node = node->mpNext) 
     {
       ENTRY     e;
-      ENTRY *   ep;
-      Node  *   lc;
-      Node  *   rc;
-      char  *   lcname;
-      char  *   rcname;
-      char  *   triname;
-      int       lcnlen;
-      int       rcnlen;
+      ENTRY *   ep      = NULL;
+      Node  *   lc      = NULL;
+      Node  *   rc      = NULL;
+      char  *   lcname  = NULL;
+      char  *   rcname  = NULL;
+      char  *   triname = NULL;
+      int       lcnlen  = 0;
+      int       rcnlen  = 0;
   
       if (!(node->mType & NT_PHONE)) 
         continue;
