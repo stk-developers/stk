@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
 
   hset.Init(MODEL_SET_WITH_ACCUM);
   
-  // :TODO:
+  // :TODO: Ondra
   // temporary stuff, later to be removed
   // now look in Models.h
   hset.mUseNewMatrix = true;
@@ -182,7 +182,7 @@ int main(int argc, char *argv[])
   in_lbl_fmt.right_extent =  100 * (long long) (0.5 + 1e5 *
                  GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0));
   NNet_instance_name =
-                 GetParamStr(&cfgHash, SNAME":SOURCEINPUT",     NULL); // pripadne rename
+                 GetParamStr(&cfgHash, SNAME":SOURCEINPUT",     NULL);
   swap_features=!GetParamBool(&cfgHash,SNAME":NATURALREADORDER", isBigEndian());
   swap_features_out=swap_features;
 //  swap_fea_out =!GetParamBool(&cfgHash,SNAME":NATURALWRITEORDER",isBigEndian());
@@ -270,7 +270,7 @@ int main(int argc, char *argv[])
         Error("Number of entries [%d] in file '%s' does not match with NNet output size [%d]",
               labelHash.mNEntries, outlabel_map, NNet_instance->mOutSize);
       }
-//     
+
     //Allocate buffer, to which example of output vector will be created
     //according to labels
     obs_out = (FLOAT *)malloc(NNet_instance->mOutSize * sizeof(FLOAT));
@@ -278,13 +278,11 @@ int main(int argc, char *argv[])
   }
   
   ilfp = OpenInputMLF(src_mlf);
-
-     
   
   /// INITIALIZE SNET
   ProgObj *progObj = new ProgObj(NNet_instance, cache_size, bunch_size, cross_validation, VERSION, learning_rate); 
   
-    // MAIN FILE LOOP
+  // MAIN FILE LOOP
   for (file_name = feature_files;
       file_name != NULL;
       file_name = outlabel_map ? file_name->mpNext : file_name->mpNext->mpNext) {
@@ -369,22 +367,14 @@ int main(int argc, char *argv[])
         //Get NN output example vector from obsMx_out matrix
         obs_out = obsMx_out + (time-1) * NNet_instance->mOutSize;
       }
-
-//*****************************************************************************
-//    FOR EACH FRAME OF EACH FILE PRINT INPUT TO NN AND ITS DESIRED OUTPUT
-//             !!!!! TO BE REWRITEN BY SOMETHING MEANINGFUL !!!!!
-//*****************************************************************************
-      /// New vector
+      
+///************************************************************************************************
+      /// For EACH NEW VECTOR - give it to SNet
       progObj->NewVector(obs, obs_out, NNet_input->mOutSize, NNet_instance->mOutSize, 
                          ((i+1) == header.mNSamples && (outlabel_map ? file_name->mpNext : file_name->mpNext->mpNext) == NULL));
-      //for(size_t j=0; j< NNet_input->mOutSize; j++)    printf("%5.2f ", obs[j]);
-      //printf("-> ");
-      //for(size_t j=0; j< NNet_instance->mOutSize; j++) printf("%5.2f ", obs_out[j]);
-      //printf("\n");
-      //if((i+1) == header.mNSamples && (outlabel_map ? file_name->mpNext : file_name->mpNext->mpNext) == NULL)
-      //  printf("THELASTONE");
-//*****************************************************************************
-//*****************************************************************************
+			 // this returns true, if last vector
+
+///************************************************************************************************
     }
 
     totFrames  += nFrames;
@@ -407,7 +397,6 @@ int main(int argc, char *argv[])
   }
   NNet_instance->mpInput = NNet_input;
 
-  //writeNN(data, info, prog, matrix, inCache, compCache);
   if(!cross_validation)  
     hset.WriteMmf(trg_mmf, trg_hmm_dir, trg_hmm_ext, hmms_binary);
   hset.Release();

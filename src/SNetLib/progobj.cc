@@ -1,7 +1,7 @@
 #include"progobj.h"
    
-SNet::ProgObj::ProgObj(XformInstance *NNet_instance, int cache_size, int bunch_size, bool cross_validation, 
-                       std::string version, float learning_rate){
+SNet::ProgObj::ProgObj(XformInstance *NNetInstance, int cacheSize, int bunchSize, bool crossValidation, 
+                       std::string version, float learningRate){
   mServer = 0;
   mClient = 0;
   mPort = 2020;
@@ -11,13 +11,14 @@ SNet::ProgObj::ProgObj(XformInstance *NNet_instance, int cache_size, int bunch_s
   mpMainSocket = NULL;
   mpClientSocket = NULL;
   
-  if(NNet_instance->mpXform->mXformType !=  XT_COMPOSITE)
+  if(NNetInstance->mpXform->mXformType !=  XT_COMPOSITE)
     Error("NN has to be CompositeXform");
   
-  CompositeXform* nn = static_cast<CompositeXform*>(NNet_instance->mpXform);
+  CompositeXform* nn = static_cast<CompositeXform*>(NNetInstance->mpXform);
 
-  mpNNet = new NNet(nn, cache_size, bunch_size, cross_validation, learning_rate);
-  std::cout << "===== SNET v" << version << " " << (cross_validation ? "CROSS-VALIDATION" : "TRAINING") << " STARTED ===== \n";  
+  mpNNet = new NNet(nn, cacheSize, bunchSize, crossValidation, learningRate); // create NN
+  
+  std::cout << "===== SNET v" << version << " " << (crossValidation ? "CROSS-VALIDATION" : "TRAINING") << " STARTED ===== \n";  
 }
 
 SNet::ProgObj::~ProgObj(){
@@ -25,14 +26,17 @@ SNet::ProgObj::~ProgObj(){
 }
 
 void SNet::ProgObj::NewVector(FLOAT *inVector, FLOAT *outVector, int inSize, int outSize, bool last){
-  mpNNet->AddToCache(inVector, outVector, inSize, outSize);
+  mpNNet->AddToCache(inVector, outVector, inSize, outSize); // make copy of new vector to cache
+  
+  // There is full or last cache
   if(last || mpNNet->CacheFull()){
-    if(!mpNNet->CrossValidation()) 
+    if(!mpNNet->CrossValidation()){
       mpNNet->RandomizeCache();
-    mpNNet->ComputeCache();
+    }
+    mpNNet->ComputeCache(); // compute full or partial cache
   }
   if(last){
-    mpNNet->PrintInfo();
+    mpNNet->PrintInfo(); // print numbers of vectors
   }
 }
 

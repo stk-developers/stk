@@ -1,25 +1,13 @@
 #include"nnet.h"
-/*
-int SNet::NNet::FindMaxInVector(FLOAT *vector, int size){
-  FLOAT *p = vector+1;
-  FLOAT max = vector[0];
-  int max_pos = 0;
-  for(int i=1; i<size; i++){
-    if(*p > max){
-      max = *p;
-      max_pos = i;
-    }
-  }
-  return max_pos;
-}
-*/
-SNet::NNet::NNet(CompositeXform* nn, int cache_size, int bunch_size, bool cross_validation, float learning_rate){
-  if(nn->mNLayers % 3 != 0)
-    Error("NN has to have 3 Xform layers for one NN layer");
 
-  mNLayers = nn->mNLayers / 3;
-  mpLayers = new NLayer*[mNLayers];  
-  for(int i=0; i<mNLayers; i++){
+SNet::NNet::NNet(CompositeXform* nn, int cacheSize, int bunchSize, bool crossValidation, float learningRate){
+  if(nn->mNLayers % 3 != 0) // linear / biases / non-linear
+    Error("NN has to have 3 Xform layers for one NN layer");
+  mNLayers = nn->mNLayers / 3; // true NN layers consisting of 3 STK layers
+  mpLayers = new NLayer*[mNLayers]; // create new layers 
+  
+  // Copy STK matrixes to SNet
+  for(int i=0; i<mNLayers; i++){ 
     if(nn->mpLayer[3*i].mpBlock[0]->mXformType != XT_LINEAR)
       Error("First Xform in each NN layer has to be LinearXform");
     if(nn->mpLayer[3*i+1].mpBlock[0]->mXformType != XT_BIAS)
@@ -30,41 +18,50 @@ SNet::NNet::NNet(CompositeXform* nn, int cache_size, int bunch_size, bool cross_
                              &(static_cast<BiasXform*>(nn->mpLayer[3*i+1].mpBlock[0]))->mVector,
                               (static_cast<FuncXform*>(nn->mpLayer[3*i+2].mpBlock[0]))->mFuncId);     
   }
-  mBunchSize = bunch_size;
-  mCacheSize = cache_size;
-  mCrossValidation = cross_validation;
-  mLearnRate = learning_rate;
-  int in_cols =  (static_cast<LinearXform*>(nn->mpLayer[0].mpBlock[0]))->mMatrix.Rows();
-  int out_cols = (static_cast<LinearXform*>(nn->mpLayer[3*(mNLayers-1)].mpBlock[0]))->mMatrix.Cols();
-  mpInCache =  new WindowMatrix<FLOAT>(cache_size, in_cols);
-  mpOutCache = new WindowMatrix<FLOAT>(cache_size, out_cols);
+  
+  mBunchSize = bunchSize;
+  mCacheSize = cacheSize;
+  mCrossValidation = crossValidation;
+  mLearnRate = learningRate;
   mActualCache = 0;
   mVectors = 0;
   mDiscarded = 0;
   mGood = 0;
-  mNCache = 0;
+  mNCache = 0;  
   
-  mpCompCachePart = new Matrix<FLOAT>(bunch_size, mpLayers[mNLayers-1]->Weights()->Cols());
-  mpError = new Matrix<FLOAT>(bunch_size, mpLayers[mNLayers-1]->Weights()->Cols());
+  // Create cache
+  int in_cols =  (static_cast<LinearXform*>(nn->mpLayer[0].mpBlock[0]))->mMatrix.Rows();              // get number of columns
+  int out_cols = (static_cast<LinearXform*>(nn->mpLayer[3*(mNLayers-1)].mpBlock[0]))->mMatrix.Cols(); // for cache size
+  mpInCache =  new WindowMatrix<FLOAT>(cacheSize, in_cols);
+  mpOutCache = new WindowMatrix<FLOAT>(cacheSize, out_cols);
+   
+  // Create partial cache for forwarded vectors
+  mpCompCachePart = new Matrix<FLOAT>(bunchSize, mpLayers[mNLayers-1]->Weights()->Cols());
   
-  /// Connect layers
+  // Create matrix for global NN errors
+  mpError = new Matrix<FLOAT>(bunchSize, mpLayers[mNLayers-1]->Weights()->Cols());
+  
+  // Connect layers using their inputs, outputs and errors
   for(int i=0; i<mNLayers; i++){
-    mpLayers[i]->In((i == 0)             ? mpInCache  : mpLayers[i-1]->Out());
-    mpLayers[i]->Out((i == mNLayers-1)   ? mpCompCachePart : new Matrix<FLOAT>(bunch_size, mpLayers[i]->Weights()->Cols()));
-    mpLayers[i]->Err((i == mNLayers-1)   ? mpError : new Matrix<FLOAT>(bunch_size, mpLayers[i]->Weights()->Cols()));
-    //mpLayers[i]->PreviousErr((i == 0)    ? NULL : mpLayers[i-1]->Err());
+    mpLayers[i]->In((i == 0)           ? mpInCache  : mpLayers[i-1]->Out());
+    mpLayers[i]->Out((i == mNLayers-1) ? mpCompCachePart : new Matrix<FLOAT>(bunchSize, mpLayers[i]->Weights()->Cols()));
+    mpLayers[i]->Err((i == mNLayers-1) ? mpError : new Matrix<FLOAT>(bunchSize, mpLayers[i]->Weights()->Cols()));
   }
+  
+  // Get next layer's weights and errors - for error propagation
   for(int i=0; i<mNLayers; i++){
-    mpLayers[i]->NextErr((i == mNLayers-1)        ? NULL : mpLayers[i+1]->Err());
-    mpLayers[i]->NextWeights((i == mNLayers-1)    ? NULL : mpLayers[i+1]->Weights());
+    mpLayers[i]->NextErr((i == mNLayers-1)     ? NULL : mpLayers[i+1]->Err());
+    mpLayers[i]->NextWeights((i == mNLayers-1) ? NULL : mpLayers[i+1]->Weights());
   } 
   
+  // Timers initialize
   mpTimers = new Timers(1, 0);
   mpTimers->Start(0);
 }
 
-
 SNet::NNet::~NNet(){
+  // Delete alocated matrixes - not last ones 
+  // Also delete layers
   for(int i=0; i<mNLayers; i++){
     if(i != mNLayers-1){
       delete mpLayers[i]->Out();
@@ -73,6 +70,8 @@ SNet::NNet::~NNet(){
     delete mpLayers[i];
   }
   delete[] mpLayers;
+  
+  // Delete global matrixes
   delete mpInCache;
   delete mpOutCache;
   delete mpCompCachePart;
@@ -91,28 +90,30 @@ void SNet::NNet::RandomizeCache(){
 
 void SNet::NNet::ComputeCache(){
   std::cout << "Computing cache #" << mNCache << " with " << mActualCache << " vectors ... " << std::flush;
-  mActualNOfBunch = mActualCache / mBunchSize;
-  mDiscarded += mActualCache % mBunchSize;
+  mActualNOfBunch = mActualCache / mBunchSize; // number of full bunches 
+  mDiscarded += mActualCache % mBunchSize;     // remains will be discarded
+  
+  // Compute all bunches
   for(int i=0; i < mActualNOfBunch; i++){
-    mpInCache->SetSize(i*mBunchSize, mBunchSize);
-    mpOutCache->SetSize(i*mBunchSize, mBunchSize);
-    ComputeBunch();
-    
-    GetAccuracy();
+    mpInCache->SetSize(i*mBunchSize, mBunchSize);  // set window matrix
+    mpOutCache->SetSize(i*mBunchSize, mBunchSize); //  --||--
+    ComputeBunch(); // compute this bunch using window matrixes
+    GetAccuracy(); // compute how good training or cross-validation is 
     if(!mCrossValidation){
-      ComputeGlobalError();
-      ComputeUpdates();
-      ChangeWeights();
+      ComputeGlobalError(); // compute global error - last layer
+      ComputeUpdates(); // back-propagation
+      ChangeWeights(); // update 
     }
-      
-    mVectors += mBunchSize;
+    mVectors += mBunchSize; // number of used vectors increased
   }
+  
+  // Reset - important!
   mpInCache->Reset();
   mpOutCache->Reset();
   mActualCache = 0;
+  
   mNCache++;
   std::cout << "DONE! \n" << std::flush;
-  std::cout << "good "<< mGood <<  "\n" << std::flush;
 }
 
 void SNet::NNet::ComputeBunch(){
@@ -126,11 +127,15 @@ void SNet::NNet::ComputeBunch(){
 void SNet::NNet::GetAccuracy(){
   assert(mpCompCachePart->Rows() == mpOutCache->Rows());
   assert(mpCompCachePart->Cols() == mpOutCache->Cols());
+  
+  // Looking for maxs in rows of computed and example vectors
   for(unsigned r=0; r < mpCompCachePart->Rows(); r++){
     FLOAT* a1 = mpCompCachePart->Row(r);
     FLOAT* a2 = mpOutCache->Row(r);
     int maxPos1 = 0;
     int maxPos2 = 0;
+    
+    // Look for maximum in row
     for(unsigned i = 1; i < mpCompCachePart->Cols(); i++){
       if(a1[i] > a1[maxPos1]){
         maxPos1 = i;
@@ -139,26 +144,21 @@ void SNet::NNet::GetAccuracy(){
         maxPos2 = i;
       }
     }
+    
     if(maxPos1 == maxPos2) {
       mGood++;
     }
   }
 }
-int pocitadlo1 = 0;
 
 void SNet::NNet::ComputeGlobalError(){
+  // Matrix computation -- E = C - O
   mpError->RepMMSub(*mpCompCachePart, *mpOutCache);
-  
-        pocitadlo1++;
-      if(pocitadlo1 == 2){
-        ///mpError->PrintOut("g.0");
-      } 
 }
 
 void SNet::NNet::ComputeUpdates(){
   for(int i=mNLayers-1; i >= 0; i--){
     mpLayers[i]->ErrorPropagation();
-    
   }
   for(int i=0; i < mNLayers; i++){
     mpLayers[i]->ComputeLayerUpdates();

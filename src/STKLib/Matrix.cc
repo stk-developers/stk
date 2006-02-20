@@ -71,7 +71,7 @@ namespace STK
       //cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, this->Rows(), this->Cols(), b.Rows(),
       //            1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
       
-      printf("***%d %d %d %d %d %d\n", a.Rows(), b.Rows(), b.Cols(), a.mMRealCols, b.mMRealCols, this->mMRealCols);
+      //printf("***%d %d %d %d %d %d\n", a.Rows(), b.Rows(), b.Cols(), a.mMRealCols, b.mMRealCols, this->mMRealCols);
       
       cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, a.Rows(), b.Rows(), b.Cols(),
                   1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
@@ -100,7 +100,7 @@ namespace STK
             
       //cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, this->Rows(), this->Cols(), b.Rows(),
       //          1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
-      printf("%d %d %d %d %d %d\n", a.Cols(), b.Cols(), b.Rows(), a.mMRealCols, b.mMRealCols, this->mMRealCols);
+      //printf("%d %d %d %d %d %d\n", a.Cols(), b.Cols(), b.Rows(), a.mMRealCols, b.mMRealCols, this->mMRealCols);
       cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, a.Cols(), b.Cols(), b.Rows(),
                   1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
       
