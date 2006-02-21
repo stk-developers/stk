@@ -1,8 +1,9 @@
 #ifndef NNET_H
 #define NNET_H
 
-#include"nlayer.h"
+#include "nlayer.h"
 #include "timers.h"
+#include<cstdlib>
 
 namespace SNet{
   // Main neural net class
@@ -26,6 +27,8 @@ namespace SNet{
       Matrix<FLOAT>* mpCompCachePart;   ///< Matrix of computed output vectors
       Matrix<FLOAT>* mpError;           ///< Neural net global output error
       NLayer** mpLayers;                ///< Pointer to neural net layers
+      
+      void RandomizeIndices(int *randind, int n);               ///< Makes random list 0,1,2,3...
     public:
       NNet(CompositeXform* nn, int cacheSize, int bunchSize, bool crossValidation, ///< Constructor
            float learningRate); 
@@ -44,6 +47,8 @@ namespace SNet{
       
       // Accessors
       bool CrossValidation() const {return mCrossValidation;};
+      int NLayers() const {return mNLayers;};
+      NLayer* Layers(int i) {return mpLayers[i];};
   };
 } // namespace
 #endif

@@ -1,6 +1,6 @@
 #include"socketobj.h"
 
-using namespace SNet;
+using namespace Socket;
 
 Server::Server(int port, int nOfClients){
   mNOfClients = nOfClients;

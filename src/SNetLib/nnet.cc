@@ -84,8 +84,34 @@ void SNet::NNet::AddToCache(FLOAT *inVector, FLOAT *outVector, int inSize, int o
   mActualCache++;
 }
 
-void SNet::NNet::RandomizeCache(){
-  Warning("Randomization not implemented!");
+int CmpRandRand (const void *dummy1, const void *dummy2) {
+  double a = drand48();
+  double b = drand48();
+  if (a>b) return 1;
+  else return -1;
+}
+
+void SNet::NNet::RandomizeIndices(int *randind, int n) {
+  int i;
+  for (i=0; i < n; i++)
+    randind[i] = i;
+  qsort((void*)randind, n, sizeof(int), &CmpRandRand);
+}
+
+void SNet::NNet::RandomizeCache(){  
+  int randind[mActualCache];
+  RandomizeIndices(randind, mActualCache); // make randomized list
+  
+  // Copy matrixes
+  Matrix<FLOAT> old_in = *mpInCache;
+  Matrix<FLOAT> old_out = *mpOutCache;
+
+  // Move elements
+  for(int i=0; i < mActualCache; i++){
+    // element i have to be at possition randind[i]
+    memcpy(mpInCache->Row(i), old_in.Row(randind[i]), mpInCache->Cols() * sizeof(FLOAT));
+    memcpy(mpOutCache->Row(i), old_out.Row(randind[i]), mpOutCache->Cols() * sizeof(FLOAT));
+  }
 }
 
 void SNet::NNet::ComputeCache(){
