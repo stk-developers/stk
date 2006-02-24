@@ -128,6 +128,10 @@ void SNet::NNet::ComputeCache(){
     if(!mCrossValidation){
       ComputeGlobalError(); // compute global error - last layer
       ComputeUpdates(); // back-propagation
+      if(mpUpdateElement != NULL){
+        mpClient->SendElement(mpUpdateElement);
+	std::cerr << "Element sent\n";
+      }
       ChangeWeights(); // update 
     }
     mVectors += mBunchSize; // number of used vectors increased
@@ -140,6 +144,8 @@ void SNet::NNet::ComputeCache(){
   
   mNCache++;
   std::cout << "DONE! \n" << std::flush;
+  std::cout << "GOOD " << mGood << "\n" << std::flush;
+  
 }
 
 void SNet::NNet::ComputeBunch(){
@@ -190,8 +196,37 @@ void SNet::NNet::ComputeUpdates(){
 }
 
 void SNet::NNet::ChangeWeights(){
-  for(int i=0; i < mNLayers; i++){
-    mpLayers[i]->ChangeLayerWeights(mLearnRate); // learning rate needed
+  if(mpUpdateElement == NULL){
+    for(int i=0; i < mNLayers; i++){
+      mpLayers[i]->ChangeLayerWeights(mLearnRate); // learning rate needed
+    }  
+  }
+  else {
+    barrier_wait(mpBarrier);
+    Element *element;
+    int size = 0;
+    pthread_mutex_lock(mpReceivedMutex);
+     size = mpReceivedElements->size();
+    pthread_mutex_unlock(mpReceivedMutex);
+    if(size > 0){
+      std::cerr << "Have new weights\n";
+      pthread_mutex_lock(mpReceivedMutex);
+      while(mpReceivedElements->size() > 0){
+        element = mpReceivedElements->front();
+	mpReceivedElements->pop();
+        if(mpReceivedElements->size() > 0){
+	  pthread_mutex_lock(mpFreeMutex);
+          mpFreeElements->push(element);
+	  pthread_mutex_unlock(mpFreeMutex);
+	}
+      }
+      pthread_mutex_unlock(mpReceivedMutex);
+      this->ChangeToElement(element);
+      std::cerr << "Weights changed\n";
+      pthread_mutex_lock(mpFreeMutex);
+      mpFreeElements->push(element);
+      pthread_mutex_unlock(mpFreeMutex);
+    }
   }
 }
 
@@ -205,4 +240,29 @@ void SNet::NNet::PrintInfo(){
     std::cout << "-- TR correct: >> ";
   std::cout << 100.0*mGood / mVectors << "% << (Vectors " << mVectors << ", Good " << mGood << ", Discarded " << mDiscarded << ") \n";
   std::cout << "\n";
+}
+
+void SNet::NNet::PrepareUpdateElement(){
+  mpUpdateElement = new Element(this, false);
+  mpUpdateElement->ReferenceUpdate(this);
+}
+
+void SNet::NNet::ChangeToElement(Element *element){
+  Matrix<FLOAT> *pom;
+  for(int i=0; i < mNLayers; i++){
+    pom = this->Layers(i)->Weights();
+    this->Layers(i)->Weights(element->mpWeights[i]);
+    element->mpWeights[i] = pom;
+    
+    pom = this->Layers(i)->Biases();
+    this->Layers(i)->Biases(element->mpBiases[i]);
+    element->mpBiases[i] = pom;
+  }
+}
+
+void SNet::NNet::ReferenceUpdate(Element *element){
+  for(int i=0; i < mNLayers; i++){
+    element->mpWeights[i] = this->Layers(i)->ChangesWeights();
+    element->mpBiases[i] = this->Layers(i)->ChangesBiases();
+  }
 }

@@ -102,7 +102,7 @@ namespace STK
   Matrix<_ElemT> (const ThisType & t)
   {
     // we need to be sure that the storage type is defined
-    if (t.st != STORAGE_UNDEFINED)
+    if (t.mStorageType != STORAGE_UNDEFINED)
     {
       void * data;
 

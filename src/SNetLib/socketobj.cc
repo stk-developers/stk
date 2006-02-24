@@ -86,6 +86,17 @@ void Server::Send(char *data, int n, int who){
   }
 }
 
+void Server::SendElement(SNet::Element *element, int who){
+   assert(element != NULL);
+   SendInt(element->mLast, who);
+   SendInt(element->mFrom, who);
+   SendInt(element->mNLayers, who);
+   for(int i=0; i < element->mNLayers; i++){
+     Send((char*)(*(element->mpWeights[i]))(), element->mpWeights[i]->Size(), who);
+     Send((char*)(*(element->mpBiases[i]))(), element->mpBiases[i]->Size(), who);     
+   }
+}
+
 void Server::Receive(char *data, int n, int who){
   int totalSize, size;
   char *pom = data;
@@ -102,6 +113,34 @@ void Server::Receive(char *data, int n, int who){
   if(DEBUG) printf("Received data from client %d (%d bytes)\n", who, totalSize);
 }
 
+void Server::ReceiveElement(SNet::Element *element, int who){
+   element->mLast = ReceiveInt(who);
+   element->mFrom = ReceiveInt(who);
+   element->mNLayers = ReceiveInt(who);   
+   for(int i=0; i < element->mNLayers; i++){
+     Receive((char*)(*(element->mpWeights[i]))(), element->mpWeights[i]->Size(), who);
+     Receive((char*)(*(element->mpBiases[i]))(), element->mpBiases[i]->Size(), who);     
+   }
+}
+
+void Server::SendIntBroad(int data){
+  for(int i=0; i < mNOfClients; i++){
+    SendInt(data, i);
+  }
+}
+
+void Server::SendBroad(char *data, int n){
+  for(int i=0; i < mNOfClients; i++){
+    Send(data, n, i);
+  }
+}
+
+void Server::SendElementBroad(SNet::Element *element){
+  for(int i=0; i < mNOfClients; i++){
+    element->mFrom = i;
+    SendElement(element, i);
+  }
+}
 
 Client::Client(int port, char *ip){
   int socket_num;
@@ -170,6 +209,18 @@ void Client::Send(char *data, int n){
   }
 }
 
+void Client::SendElement(SNet::Element *element){
+   assert(element != NULL);
+   SendInt(element->mLast);
+   SendInt(element->mFrom);
+   SendInt(element->mNLayers);
+   //std::cerr << "SendElement layers " << element->mNLayers << "\n";
+   for(int i=0; i < element->mNLayers; i++){
+     Send((char*)(*(element->mpWeights[i]))(), element->mpWeights[i]->Size());
+     Send((char*)(*(element->mpBiases[i]))(), element->mpBiases[i]->Size());     
+   }
+}
+
 void Client::Receive(char *data, int n){
   int totalSize, size;
   char *pom = data;
@@ -184,6 +235,17 @@ void Client::Receive(char *data, int n){
     totalSize += size;
   }
   if(DEBUG) printf("Received data from server (%d bytes)\n", totalSize);
+}
+
+void Client::ReceiveElement(SNet::Element *element){
+   assert(element != NULL);
+   element->mLast = ReceiveInt();
+   element->mFrom = ReceiveInt();
+   element->mNLayers = ReceiveInt();
+   for(int i=0; i < element->mNLayers; i++){
+     Receive((char*)(*(element->mpWeights[i]))(), element->mpWeights[i]->Size());
+     Receive((char*)(*(element->mpBiases[i]))(), element->mpBiases[i]->Size());     
+   }
 }
 /*
 int SocketObj::ReceiveInt(){

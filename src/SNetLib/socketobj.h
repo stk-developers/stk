@@ -13,6 +13,9 @@
 #include <unistd.h>
 
 #include "../STKLib/Error.h"
+#include "element.h"
+#include "barrier.h"
+
 
 #define DEBUG 0
 
@@ -45,9 +48,12 @@ namespace Socket{
       void SendInt(int data, int who);
       int ReceiveInt(int who);
       void Send(char *data, int n, int who);
+      void SendElement(SNet::Element *element, int who);
       void Receive(char *data, int n, int who);
+      void ReceiveElement(SNet::Element *element, int who);
       void SendIntBroad(int data);
       void SendBroad(char *data, int n);
+      void SendElementBroad(SNet::Element *element);
   }; 
   
   // Object for client
@@ -60,7 +66,9 @@ namespace Socket{
       void SendInt(int data);
       int ReceiveInt();
       void Send(char *data, int n);
+      void SendElement(SNet::Element *element);
       void Receive(char *data, int n);
+      void ReceiveElement(SNet::Element *element);
   }; 
   
 } // namespace

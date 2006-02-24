@@ -146,6 +146,8 @@ int main(int argc, char *argv[])
   int cache_size;
   int bunch_size;
   float learning_rate;
+  int clients;
+  char *ip;
 
   if (argc == 1) usage(argv[0]);
 
@@ -221,6 +223,10 @@ int main(int argc, char *argv[])
   cache_size   = GetParamInt(&cfgHash, SNAME":CACHESIZE",            12000);
   bunch_size   = GetParamInt(&cfgHash, SNAME":BUNCHSIZE",            1000);
   learning_rate   = GetParamFlt(&cfgHash, SNAME":LEARNINGRATE",      0.008);
+  clients   = GetParamInt(&cfgHash, SNAME":CLIENTS",            0);
+  ip = (char*)GetParamStr(&cfgHash, SNAME":JOINIP",       NULL);
+  
+  
   
 //  in_transc_fmt= (TranscriptionFormat) GetParamEnum(&cfgHash,SNAME":SOURCETRANSCFMT",
 //                              !network_file && htk_compat ? TF_HTK : TF_STK,
@@ -284,8 +290,16 @@ int main(int argc, char *argv[])
   
   ilfp = OpenInputMLF(src_mlf);
   
+///************************************************************************************************
   /// INITIALIZE SNET
-  ProgObj *progObj = new ProgObj(NNet_instance, cache_size, bunch_size, cross_validation, VERSION, learning_rate); 
+  ProgObj *prog_obj = new ProgObj(NNet_instance, cache_size, bunch_size, cross_validation, VERSION, learning_rate, clients, ip); 
+  
+  if(prog_obj->Server()){
+    prog_obj->RunServer();
+  }
+  else if(prog_obj->Client()){
+    prog_obj->RunClient();
+  }  
   
   // MAIN FILE LOOP
   for (file_name = feature_files;
@@ -375,7 +389,7 @@ int main(int argc, char *argv[])
       
 ///************************************************************************************************
       /// For EACH NEW VECTOR - give it to SNet
-      progObj->NewVector(obs, obs_out, NNet_input->mOutSize, NNet_instance->mOutSize, 
+      prog_obj->NewVector(obs, obs_out, NNet_input->mOutSize, NNet_instance->mOutSize, 
                          ((i+1) == header.mNSamples && (outlabel_map ? file_name->mpNext : file_name->mpNext->mpNext) == NULL));
 			 // this returns true, if last vector
 
@@ -393,9 +407,10 @@ int main(int argc, char *argv[])
     }
   }
   // END - MAIN FILE LOOP
-   
+
+///************************************************************************************************     
   /// DELETE SNET
-  delete progObj;  
+  delete prog_obj;  
   
   if (trace_flag & 2) {
     TraceLog("Total number of frames: %d", totFrames);

@@ -1,14 +1,24 @@
 #include "element.h"
+#include "nnet.h"
 
-SNet::Element::Element(NNet *nnet){
+SNet::Element::Element(NNet *nnet, bool alocate){
   mNLayers = nnet->NLayers();
   mpWeights = new Matrix<FLOAT>* [mNLayers];
   mpBiases = new Matrix<FLOAT>* [mNLayers];
-  for(int i=0; i < mNLayers; i++){
-    Matrix<FLOAT> *pomMatrix = nnet->Layers(i)->Weights();
-    mpWeights[i] = new Matrix<FLOAT>(pomMatrix->Rows(), pomMatrix->Cols(), pomMatrix->Storage());
-    pomMatrix = nnet->Layers(i)->Biases();
-    mpBiases[i] = new Matrix<FLOAT>(pomMatrix->Rows(), pomMatrix->Cols(), pomMatrix->Storage());
+  
+  if(alocate){
+    for(int i=0; i < mNLayers; i++){
+      Matrix<FLOAT> *pomMatrix = nnet->Layers(i)->Weights();
+      mpWeights[i] = new Matrix<FLOAT>(pomMatrix->Rows(), pomMatrix->Cols(), pomMatrix->Storage());
+      pomMatrix = nnet->Layers(i)->Biases();
+      mpBiases[i] = new Matrix<FLOAT>(pomMatrix->Rows(), pomMatrix->Cols(), pomMatrix->Storage());
+    }
+  } 
+  else{
+    for(int i=0; i < mNLayers; i++){
+      mpWeights[i] = NULL;
+      mpBiases[i] = NULL;
+    } 
   }
 }
 
@@ -19,4 +29,43 @@ SNet::Element::~Element(){
   }
   delete [] mpWeights;
   delete [] mpBiases;
+}
+
+void SNet::Element::ReferenceUpdate(NNet *nnet){
+  for(int i=0; i < mNLayers; i++){
+    assert(mpWeights[i] == NULL);
+    assert(mpBiases[i] == NULL);
+    mpWeights[i] = nnet->Layers(i)->ChangesWeights();
+    mpBiases[i] = nnet->Layers(i)->ChangesBiases();
+  }
+}
+
+void SNet::Element::Reference(NNet *nnet){
+  for(int i=0; i < mNLayers; i++){
+    assert(mpWeights[i] == NULL);
+    assert(mpBiases[i] == NULL);
+    mpWeights[i] = nnet->Layers(i)->Weights();
+    mpBiases[i] = nnet->Layers(i)->Biases();
+  }
+}
+
+void SNet::Element::Clear(){
+  for(int i=0; i < mNLayers; i++){
+    assert(mpWeights[i] != NULL);
+    assert(mpBiases[i] != NULL);
+    mpWeights[i]->Clear();
+    mpBiases[i]->Clear();
+  }
+}
+
+void SNet::Element::Add(Element *element, float c){
+  //std::cerr << "Adding layers " << this->mNLayers << " " <<  element->mNLayers << "\n";
+  assert(element != NULL);
+  assert(this->mNLayers == element->mNLayers);
+  for(int i=0; i < mNLayers; i++){
+    assert(mpWeights[i] != NULL);
+    assert(mpBiases[i] != NULL);
+    mpWeights[i]->AddMCMul(*(element->mpWeights[i]), c);
+    mpBiases[i]->AddMCMul(*(element->mpBiases[i]), c);
+  }
 }

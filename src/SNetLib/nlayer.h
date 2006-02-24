@@ -41,7 +41,11 @@ namespace SNet{
       Matrix<FLOAT>* Err()     const {return mpErr;};
       Matrix<FLOAT>* NextErr() const {return mpNextErr;};
       Matrix<FLOAT>* Weights() const {return mpWeights;};
-      Matrix<FLOAT>* Biases()  const {return mpBiases;};      
+      Matrix<FLOAT>* Biases()  const {return mpBiases;}; 
+      Matrix<FLOAT>* ChangesWeights() const {return mpChangesWeights;};
+      Matrix<FLOAT>* ChangesBiases()  const {return mpChangesBiases;};       
+      void Weights(Matrix<FLOAT>* weights)   {mpWeights = weights;};
+      void Biases(Matrix<FLOAT>* biases)   {mpBiases = biases;};
       void In(Matrix<FLOAT>* in)   {mpIn = in;};
       void Out(Matrix<FLOAT>* out) {mpOut = out;};
       void Err(Matrix<FLOAT>* error) {mpErr = error;};

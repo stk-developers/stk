@@ -132,6 +132,12 @@ namespace STK
       {
         return mStorageType;
       }
+      
+      size_t
+      Size() const
+      {
+        return mMSize;
+      }
 
 
       /**
