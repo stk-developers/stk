@@ -148,6 +148,8 @@ int main(int argc, char *argv[])
   float learning_rate;
   int clients;
   char *ip;
+  bool randomize;
+  bool sync;
 
   if (argc == 1) usage(argv[0]);
 
@@ -225,6 +227,8 @@ int main(int argc, char *argv[])
   learning_rate   = GetParamFlt(&cfgHash, SNAME":LEARNINGRATE",      0.008);
   clients   = GetParamInt(&cfgHash, SNAME":CLIENTS",            0);
   ip = (char*)GetParamStr(&cfgHash, SNAME":JOINIP",       NULL);
+  randomize =  GetParamBool(&cfgHash,SNAME":RANDOMIZE", TRUE);
+  sync = !GetParamBool(&cfgHash,SNAME":NOSYNC", FALSE);
   
   
   
@@ -292,8 +296,7 @@ int main(int argc, char *argv[])
   
 ///************************************************************************************************
   /// INITIALIZE SNET
-  ProgObj *prog_obj = new ProgObj(NNet_instance, cache_size, bunch_size, cross_validation, VERSION, learning_rate, clients, ip); 
-  
+  ProgObj *prog_obj = new ProgObj(NNet_instance, cache_size, bunch_size, cross_validation, VERSION, learning_rate, clients, ip, randomize, sync); 
   if(prog_obj->Server()){
     prog_obj->RunServer();
   }

@@ -25,7 +25,7 @@ typedef struct in_addr Tin_addr;
 typedef struct hostent Thostent;
 
 namespace Socket{
-  // Object for sockets
+  //! Object for sockets
   class SocketObj{
     protected:
       int mSocket;  ///< Socket identifier
@@ -36,7 +36,7 @@ namespace Socket{
       void SendData(char* data, int n);     ///< Sends N bytes from array DATA using socket
   };
   
-  // Object for server
+  //! Object for server
   class Server : public SocketObj{
     private:
       int *pmClientSocket; ///< Pointer of client sockets
@@ -56,7 +56,7 @@ namespace Socket{
       void SendElementBroad(SNet::Element *element);
   }; 
   
-  // Object for client
+  //! Object for client
   class Client : public SocketObj{
     private:
     public:
@@ -70,6 +70,5 @@ namespace Socket{
       void Receive(char *data, int n);
       void ReceiveElement(SNet::Element *element);
   }; 
-  
 } // namespace
 #endif

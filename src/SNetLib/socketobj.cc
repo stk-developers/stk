@@ -28,7 +28,9 @@ Server::Server(int port, int nOfClients){
   int i;
   
   pmClientSocket = new int(nOfClients);
-  for(i=0; i<mNOfClients; i++){
+  
+  // Create all connections
+  for(i=0; i<mNOfClients; i++){ 
     int client = accept(mSocket, (Tsockaddr*)&clientInfo, &addrlen);
     if(client == -1){
       STK::Error("Problems with client join");
@@ -36,6 +38,7 @@ Server::Server(int port, int nOfClients){
     printf("SERVER accepted client from %s\n",inet_ntoa((Tin_addr)clientInfo.sin_addr));
     pmClientSocket[i] = client;
   }
+  
 }
 
 Server::~Server(){
@@ -155,10 +158,8 @@ Client::Client(int port, char *ip){
   sock_name.sin_family = AF_INET;
   sock_name.sin_port = htons(port);
   memcpy(&(sock_name.sin_addr), host->h_addr, host->h_length);
-
   while(connect(socket_num, (Tsockaddr*)&sock_name, sizeof(sock_name)) == -1){
     fprintf(stderr, "WAITING - cannot connect to server\n");
-
     sleep(1);
   }
   printf("CLIENT joined server %s\n", ip);
@@ -210,11 +211,11 @@ void Client::Send(char *data, int n){
 }
 
 void Client::SendElement(SNet::Element *element){
+   // :KLUDGE: Scatter / gather should be used
    assert(element != NULL);
    SendInt(element->mLast);
    SendInt(element->mFrom);
    SendInt(element->mNLayers);
-   //std::cerr << "SendElement layers " << element->mNLayers << "\n";
    for(int i=0; i < element->mNLayers; i++){
      Send((char*)(*(element->mpWeights[i]))(), element->mpWeights[i]->Size());
      Send((char*)(*(element->mpBiases[i]))(), element->mpBiases[i]->Size());     
@@ -238,6 +239,7 @@ void Client::Receive(char *data, int n){
 }
 
 void Client::ReceiveElement(SNet::Element *element){
+   // :KLUDGE: Scatter / gather should be used
    assert(element != NULL);
    element->mLast = ReceiveInt();
    element->mFrom = ReceiveInt();
@@ -247,17 +249,3 @@ void Client::ReceiveElement(SNet::Element *element){
      Receive((char*)(*(element->mpBiases[i]))(), element->mpBiases[i]->Size());     
    }
 }
-/*
-int SocketObj::ReceiveInt(){
-  return 0;
-}
-
-void SocketObj::SendInt(int data){
-}
-
-void SocketObj::ReceiveData(char* data, int n){
-}
-
-void SocketObj::SendData(char* data, int n){
-}
-*/

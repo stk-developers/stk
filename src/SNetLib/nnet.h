@@ -8,7 +8,7 @@
 #include<queue>
 
 namespace SNet{
-  // Main neural net class
+  //! Main neural net class
   class NNet{
     private:
       int mNLayers;          ///< Number of neural net layers
@@ -23,22 +23,22 @@ namespace SNet{
       bool mCrossValidation; ///< Only compute cross-validation
       int mNCache;           ///< Actual cache number
       
-      Timers *mpTimers;                 ///< Help timers/counters
-      WindowMatrix<FLOAT>* mpInCache;   ///< Matrix of input vectors
-      WindowMatrix<FLOAT>* mpOutCache;  ///< Matrix of example output vectors
-      Matrix<FLOAT>* mpCompCachePart;   ///< Matrix of computed output vectors
-      Matrix<FLOAT>* mpError;           ///< Neural net global output error
-      NLayer** mpLayers;                ///< Pointer to neural net layers
-      Element *mpUpdateElement;
-      Socket::Client *mpClient;
-      std::queue<Element*> *mpReceivedElements;
-      std::queue<Element*> *mpFreeElements;
+      Timers *mpTimers;                         ///< Help timers/counters
+      WindowMatrix<FLOAT>* mpInCache;           ///< Matrix of input vectors
+      WindowMatrix<FLOAT>* mpOutCache;          ///< Matrix of example output vectors
+      Matrix<FLOAT>* mpCompCachePart;           ///< Matrix of computed output vectors
+      Matrix<FLOAT>* mpError;                   ///< Neural net global output error
+      NLayer** mpLayers;                        ///< Pointer to neural net layers
+      Element *mpUpdateElement;                 ///< Pointer to element used for update matrixes which are sent to server
+      Socket::Client *mpClient;                 ///< Client - used for sending updates
+      std::queue<Element*> *mpReceivedElements; ///< Pointer to queue of received elements of new weights (from progobj)
+      std::queue<Element*> *mpFreeElements;     ///< Pointer to queue of empty elements of new weights (from progobj)
+      pthread_mutex_t *mpFreeMutex;             ///< Pointer to mutex for queue of free elements (from progobj)
+      pthread_mutex_t *mpReceivedMutex;         ///< Pointer to mutex for queue of received elements (from progobj)
+      barrier_t *mpBarrier;                     ///< Pointer to barrier (from progobj)
+      bool *mpSync;                             ///< True if synchronization enabled (from progobj)
       
-      pthread_mutex_t *mpFreeMutex;
-      pthread_mutex_t *mpReceivedMutex;
-      barrier_t *mpBarrier;
-      
-      void RandomizeIndices(int *randind, int n);               ///< Makes random list 0,1,2,3...
+      void RandomizeIndices(int *randind, int n); ///< Makes random list 0,1,2,3...
     public:
       NNet(CompositeXform* nn, int cacheSize, int bunchSize, bool crossValidation, ///< Constructor
            float learningRate); 
@@ -47,30 +47,26 @@ namespace SNet{
       void AddToCache(FLOAT *inVector, FLOAT *outVector, int inSize, int outSize); ///< Copy input vector to cache
       bool CacheFull() const {return (mActualCache == mCacheSize);};               ///< Test if cache full
       void RandomizeCache();                                                       ///< Randomly shuffle cache     
-      void ComputeCache();                                                         ///< Compute whole cache
+      void ComputeCache(bool last);                                                ///< Compute whole cache
       void ComputeBunch();                                                         ///< Compute one bunch
       void GetAccuracy();                                                          ///< Find how many vectors in bunch are accurate
       void ComputeGlobalError();                                                   ///< Compute error on last layer
       void ComputeUpdates();                                                       ///< Compute weights changes using back-propagation
       void ChangeWeights();                                                        ///< Change weights
       void PrintInfo();                                                            ///< Print informations about training/cross-validation
-      void PrepareUpdateElement();
-      void ChangeToElement(Element *element);
-      void ReferenceUpdate(Element *element);
-            
+      void PrepareUpdateElement();                                                 ///< Creates new element and connects it to update matrixes
+      void ChangeToElement(Element *element);                                      ///< Changes NN using element
       
       // Accessors
       bool CrossValidation() const {return mCrossValidation;};
-      int NLayers() const {return mNLayers;};
-      NLayer* Layers(int i) const {return mpLayers[i];};
-      float LearnRate() const {return mLearnRate;};
-  
+      int NLayers()          const {return mNLayers;};
+      NLayer* Layers(int i)  const {return mpLayers[i];};
+      float LearnRate()      const {return mLearnRate;};
       void Client(Socket::Client *client){mpClient = client;};
       void ReceivedElements(std::queue<Element*> *receivedElements){mpReceivedElements = receivedElements;};
       void FreeElements(std::queue<Element*> *freeElements){mpFreeElements = freeElements;};
-      void Mutexes(pthread_mutex_t *free, pthread_mutex_t *received, barrier_t *barrier){
-        mpFreeMutex = free; mpReceivedMutex = received; mpBarrier = barrier;};
-  
+      void Mutexes(pthread_mutex_t *free, pthread_mutex_t *received, barrier_t *barrier, bool *sync){ ///< Sets sync objects  
+                   mpFreeMutex = free; mpReceivedMutex = received; mpBarrier = barrier; mpSync = sync;}; 
   };
 } // namespace
 #endif

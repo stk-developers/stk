@@ -1,12 +1,12 @@
 #include "element.h"
 #include "nnet.h"
 
-SNet::Element::Element(NNet *nnet, bool alocate){
+SNet::Element::Element(NNet *nnet, bool allocate){
   mNLayers = nnet->NLayers();
+  mLast = 0;
   mpWeights = new Matrix<FLOAT>* [mNLayers];
   mpBiases = new Matrix<FLOAT>* [mNLayers];
-  
-  if(alocate){
+  if(allocate){
     for(int i=0; i < mNLayers; i++){
       Matrix<FLOAT> *pomMatrix = nnet->Layers(i)->Weights();
       mpWeights[i] = new Matrix<FLOAT>(pomMatrix->Rows(), pomMatrix->Cols(), pomMatrix->Storage());
@@ -59,7 +59,6 @@ void SNet::Element::Clear(){
 }
 
 void SNet::Element::Add(Element *element, float c){
-  //std::cerr << "Adding layers " << this->mNLayers << " " <<  element->mNLayers << "\n";
   assert(element != NULL);
   assert(this->mNLayers == element->mNLayers);
   for(int i=0; i < mNLayers; i++){

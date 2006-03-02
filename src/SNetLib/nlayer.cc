@@ -16,8 +16,8 @@ SNet::NLayer::~NLayer(){
 }
 
 void SNet::NLayer::BunchBias(){
-  for(unsigned i=0; i < mpOut->Rows(); i++){
-    // For every row precopy biases FIRST! (see BunchLinear for details)
+  // For every row precopy biases FIRST! (see BunchLinear for details)
+  for(unsigned i=0; i < mpOut->Rows(); i++){  
     assert(mpBiases->Cols() == mpOut->Cols());
     memcpy(mpOut->Row(i), mpBiases->Row(0), mpBiases->Cols() * sizeof(FLOAT));
   }
@@ -87,7 +87,7 @@ void SNet::NLayer::ComputeLayerUpdates(){
   FLOAT *pChangesBiases = NULL;
   FLOAT *pErr = NULL;
   
-  // Biase changes are computed as sum of error rows
+  // Biases changes are computed as sum of error rows
   for(unsigned r=0; r < mpErr->Rows(); r++){
     pChangesBiases = mpChangesBiases->Row(0);
     pErr = mpErr->Row(r);

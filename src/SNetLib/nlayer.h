@@ -8,7 +8,7 @@
 #include "../STKLib/Matrix.h"
 
 namespace SNet{
-  /// One neural net layer (Consists of linear transformation, biases and non-linearity)
+  //! One neural net layer (Consists of linear transformation, biases and non-linearity)
   class NLayer{
     private:
       int mOutFunc; ///< Output function number
@@ -37,13 +37,14 @@ namespace SNet{
       void ComputeLayerUpdates();               ///< Computes update matrixes
       
       // Accessors
-      Matrix<FLOAT>* Out()     const {return mpOut;};
-      Matrix<FLOAT>* Err()     const {return mpErr;};
-      Matrix<FLOAT>* NextErr() const {return mpNextErr;};
-      Matrix<FLOAT>* Weights() const {return mpWeights;};
-      Matrix<FLOAT>* Biases()  const {return mpBiases;}; 
+      Matrix<FLOAT>* Out()            const {return mpOut;};
+      Matrix<FLOAT>* Err()            const {return mpErr;};
+      Matrix<FLOAT>* NextErr()        const {return mpNextErr;};
+      Matrix<FLOAT>* Weights()        const {return mpWeights;};
+      Matrix<FLOAT>* Biases()         const {return mpBiases;}; 
       Matrix<FLOAT>* ChangesWeights() const {return mpChangesWeights;};
-      Matrix<FLOAT>* ChangesBiases()  const {return mpChangesBiases;};       
+      Matrix<FLOAT>* ChangesBiases()  const {return mpChangesBiases;};  
+      Matrix<FLOAT>* NextWeights()    const {return mpNextWeights;}; 
       void Weights(Matrix<FLOAT>* weights)   {mpWeights = weights;};
       void Biases(Matrix<FLOAT>* biases)   {mpBiases = biases;};
       void In(Matrix<FLOAT>* in)   {mpIn = in;};

@@ -108,16 +108,21 @@ void SNet::NNet::RandomizeCache(){
 
   // Move elements
   for(int i=0; i < mActualCache; i++){
-    // element i have to be at possition randind[i]
-    memcpy(mpInCache->Row(i), old_in.Row(randind[i]), mpInCache->Cols() * sizeof(FLOAT));
+    memcpy(mpInCache->Row(i), old_in.Row(randind[i]), mpInCache->Cols() * sizeof(FLOAT)); // element i have to be at possition randind[i]
     memcpy(mpOutCache->Row(i), old_out.Row(randind[i]), mpOutCache->Cols() * sizeof(FLOAT));
   }
 }
-
-void SNet::NNet::ComputeCache(){
+int pocitadlox = 0;
+void SNet::NNet::ComputeCache(bool last){
   std::cout << "Computing cache #" << mNCache << " with " << mActualCache << " vectors ... " << std::flush;
   mActualNOfBunch = mActualCache / mBunchSize; // number of full bunches 
   mDiscarded += mActualCache % mBunchSize;     // remains will be discarded
+  
+  if(mActualNOfBunch == 0){
+    std::cerr << "Problem - cache with 0 bunches";
+    mpUpdateElement->mLast = 1;
+    mpClient->SendElement(mpUpdateElement);
+  }
   
   // Compute all bunches
   for(int i=0; i < mActualNOfBunch; i++){
@@ -125,12 +130,16 @@ void SNet::NNet::ComputeCache(){
     mpOutCache->SetSize(i*mBunchSize, mBunchSize); //  --||--
     ComputeBunch(); // compute this bunch using window matrixes
     GetAccuracy(); // compute how good training or cross-validation is 
-    if(!mCrossValidation){
+    if(!mCrossValidation){    
       ComputeGlobalError(); // compute global error - last layer
       ComputeUpdates(); // back-propagation
-      if(mpUpdateElement != NULL){
+      if(mpUpdateElement != NULL){ // server-client, not 1 CPU
+        if(i == mActualNOfBunch-1 && last){ // last cache & last bunch
+	  mpUpdateElement->mLast = 1;
+	}
         mpClient->SendElement(mpUpdateElement);
-	std::cerr << "Element sent\n";
+	if(mpUpdateElement->mLast == 1) std::cerr << "Element sent LAST\n";
+	else std::cerr << "Element sent\n";
       }
       ChangeWeights(); // update 
     }
@@ -145,7 +154,6 @@ void SNet::NNet::ComputeCache(){
   mNCache++;
   std::cout << "DONE! \n" << std::flush;
   std::cout << "GOOD " << mGood << "\n" << std::flush;
-  
 }
 
 void SNet::NNet::ComputeBunch(){
@@ -194,24 +202,27 @@ void SNet::NNet::ComputeUpdates(){
     mpLayers[i]->ComputeLayerUpdates(); // needs previous layer computed - not a problem
   }
 }
-
+int pocitadlo = 0;
 void SNet::NNet::ChangeWeights(){
-  if(mpUpdateElement == NULL){
+  if(mpUpdateElement == NULL){ // 1 CPU, not server-client
     for(int i=0; i < mNLayers; i++){
       mpLayers[i]->ChangeLayerWeights(mLearnRate); // learning rate needed
     }  
   }
-  else {
-    barrier_wait(mpBarrier);
+  else{ // server-client, not 1 CPU
+    if(*mpSync) std::cerr << "Waiting on barrier\n";
+    if(*mpSync) barrier_wait(mpBarrier);
     Element *element;
     int size = 0;
     pthread_mutex_lock(mpReceivedMutex);
      size = mpReceivedElements->size();
     pthread_mutex_unlock(mpReceivedMutex);
+    
+    // If there are new weights
     if(size > 0){
       std::cerr << "Have new weights\n";
       pthread_mutex_lock(mpReceivedMutex);
-      while(mpReceivedElements->size() > 0){
+      while(mpReceivedElements->size() > 0){ // get last weights in queue
         element = mpReceivedElements->front();
 	mpReceivedElements->pop();
         if(mpReceivedElements->size() > 0){
@@ -221,18 +232,18 @@ void SNet::NNet::ChangeWeights(){
 	}
       }
       pthread_mutex_unlock(mpReceivedMutex);
-      this->ChangeToElement(element);
+      this->ChangeToElement(element); // change NN using last received weights
       std::cerr << "Weights changed\n";
       pthread_mutex_lock(mpFreeMutex);
       mpFreeElements->push(element);
       pthread_mutex_unlock(mpFreeMutex);
     }
+    
   }
 }
 
 void SNet::NNet::PrintInfo(){
   mpTimers->End(0);
-  
   std::cout << "===== SNET FINISHED (" << mpTimers->Timer(0) << "s) ===== \n";
   if(mCrossValidation)
     std::cout << "-- CV correct: >> ";
@@ -244,25 +255,24 @@ void SNet::NNet::PrintInfo(){
 
 void SNet::NNet::PrepareUpdateElement(){
   mpUpdateElement = new Element(this, false);
-  mpUpdateElement->ReferenceUpdate(this);
+  mpUpdateElement->ReferenceUpdate(this); // set element as reference to update matrixes
 }
 
 void SNet::NNet::ChangeToElement(Element *element){
   Matrix<FLOAT> *pom;
-  for(int i=0; i < mNLayers; i++){
+  for(int i=mNLayers-1; i >= 0; i--){
     pom = this->Layers(i)->Weights();
     this->Layers(i)->Weights(element->mpWeights[i]);
     element->mpWeights[i] = pom;
-    
     pom = this->Layers(i)->Biases();
     this->Layers(i)->Biases(element->mpBiases[i]);
     element->mpBiases[i] = pom;
-  }
-}
-
-void SNet::NNet::ReferenceUpdate(Element *element){
-  for(int i=0; i < mNLayers; i++){
-    element->mpWeights[i] = this->Layers(i)->ChangesWeights();
-    element->mpBiases[i] = this->Layers(i)->ChangesBiases();
+    
+    // For every not-last layer change NextErr and NextWeights - REALLY IMPORTANT!!!
+    if(i < mNLayers-1){
+      this->Layers(i)->NextErr(this->Layers(i+1)->Err());
+      this->Layers(i)->NextWeights(this->Layers(i+1)->Weights());
+    }
+    
   }
 }

@@ -384,7 +384,7 @@ namespace STK
 template<typename _ElemT>
      void Matrix<_ElemT>::PrintOut(char* file){
   FILE* f = fopen(file, "w");
-  int i,j;
+  unsigned i,j;
   fprintf(f, "%dx%d\n", this->mMRows, this->mMCols);
   for(i=0; i<this->mMRows; i++){
     _ElemT *row = this->Row(i);
