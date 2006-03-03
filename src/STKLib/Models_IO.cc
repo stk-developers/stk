@@ -501,6 +501,7 @@ namespace STK
             if (gHmmsIgnoreMacroRedefinition == 0) {
               Error("Redefinition of macro ~%c %s (%s:%d)", type, keyword, pFileName, gCurrentMmfLine);
             } else {
+              Warning("Redefinition of macro ~%c %s (%s:%d)", type, keyword, pFileName, gCurrentMmfLine);
   //            Warning("Redefinition of macro ~%c %s (%s:%d) is ignored", type, keyword, mmFileName, gCurrentMmfLine);
             }
           }
@@ -522,13 +523,12 @@ namespace STK
           if (macro->mpData == NULL) {
             macro->mpData = data;
           } else {
-            Warning("Redefinition of macro ~%c %s (%s:%d)",
-                    type, keyword, pFileName, gCurrentMmfLine);
   
             // Macro is redefined. New item must be checked for compatibility with
             // the old one (vector sizes, delays, memory sizes) All references to
             // old item must be replaced and old item must be released
             // !!! How about AllocateAccumulatorsForXformStats() and ResetAccumsForHMMSet()
+            // !!! Replacing HMM will not work correctly after attaching network nodes to models
   
   
             unsigned int i;
@@ -584,10 +584,14 @@ namespace STK
             }
             
             for (i = 0; i < hash->mNEntries; i++) {
-              if (hash->mpEntry[i]->data == ud.mpOldData) {
-                hash->mpEntry[i]->data = ud.mpNewData;
+              if (reinterpret_cast<Macro *>(hash->mpEntry[i]->data)->mpData == ud.mpOldData) {
+                reinterpret_cast<Macro *>(hash->mpEntry[i]->data)->mpData = ud.mpNewData;
               }
             }
+/*            for (macro = mpFirstMacro; macro != NULL; macro->nextAll)
+            {
+               macro
+            }*/
           }
         }
       } else if (CheckKwd(keyword, KID_BeginHMM)) {
@@ -653,6 +657,10 @@ namespace STK
     // if ((ret = (Hmm *) malloc(sizeof(Hmm) + (nstates-3) * sizeof(State *))) == NULL) 
     //   Error("Insufficient memory");
     // ret->mNStates = nstates;
+    
+    if (nstates < 3)
+      Error("HMM must have at least 3 states (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      
     ret = new Hmm(nstates);  
     
   
@@ -756,7 +764,7 @@ namespace STK
       }
       ret->PDF_obs_coef = GetInt(fp) - 1;
       range = mpInputXform ? mpInputXform->mOutSize
-                                  : mInputVectorSize;
+                           : mInputVectorSize;
       if (ret->PDF_obs_coef < 0 || ret->PDF_obs_coef >= range) 
       {
         Error("Parameter <ObsCoef> is out of the range 1:%d (%s:%d)",
@@ -1105,6 +1113,7 @@ namespace STK
     //}
     if (ret->mpXform->mMemorySize > 0)
       ret->mpMemory = new char[ret->mpXform->mMemorySize];
+      memset(ret->mpMemory, 0, ret->mpXform->mMemorySize);
   
     ret->mpNext = mpXformInstances;
     mpXformInstances = ret;

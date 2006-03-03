@@ -154,7 +154,7 @@ namespace STK
     if (cxf == NULL)                                        return false;
     if (cxf->mXformType == XT_LINEAR)                       return true;
     if (cxf->mXformType != XT_COMPOSITE)                    return false;
-    if (cxf->mNLayers > 1 || cxf->mpLayer[0].mNBlocks > 1)    return false;
+    if (cxf->mNLayers > 1 || cxf->mpLayer[0].mNBlocks > 1)  return false;
     
     return Is1Layer1BlockLinearXform(cxf->mpLayer[0].mpBlock[0]);
   }
@@ -2533,9 +2533,9 @@ printf("%f", g_floor);
   
     // walk through the list of macros and decide what to do... 
     // we also decide which direction to walk based on the MTM_REVERSE_PASS flag
-    for (macro = mask & MTM_REVERSE_PASS ? mpLastMacro : mpFirstMacro;
+    for (macro = mask & MTM_REVERSE_PASS ? mpLastMacro   : mpFirstMacro;
         macro != NULL;
-        macro = mask & MTM_REVERSE_PASS ? macro->prevAll      : macro->nextAll) 
+        macro = mask & MTM_REVERSE_PASS ? macro->prevAll : macro->nextAll) 
     {
       if (macro->mpData != NULL && macro->mpData->mpMacro != macro) 
         continue;

@@ -923,7 +923,7 @@ namespace STK
   
     n_mixtures = LOWER_OF(state->mNumberOfMixtures, state2->mNumberOfMixtures);
   
-    if (bjtO < LOG_MIN) {
+    if (bjtO < LOG_MIN && n_mixtures > 1) {
       // State likelihood was not available in cache because
       // - occupation probabilities of mixtures are computed using target model
       // - not all mixtures of mAlignment model are used for computation of
@@ -940,11 +940,16 @@ namespace STK
     //for every emitting state
     for (m = 0; m < n_mixtures; m++) 
     { 
-      Mixture * mix   = state->mpMixture[m].mpEstimates;
-      FLOAT     cjm   = state->mpMixture[m].mWeight;
-      FLOAT *   xobs  = XformPass(mix->mpInputXform, obs, mTime, FORWARD);
-      FLOAT     bjmtO = DiagCGaussianDensity(mix, xobs, this);
-      FLOAT     Lqjmt = logPriorProb - bjtO + cjm + bjmtO;
+      FLOAT Lqjmt = logPriorProb;
+      
+      if (n_mixtures > 1)
+      {
+        Mixture * mix   = state->mpMixture[m].mpEstimates;
+        FLOAT     cjm   = state->mpMixture[m].mWeight;
+        FLOAT *   xobs  = XformPass(mix->mpInputXform, obs, mTime, FORWARD);
+        FLOAT     bjmtO = DiagCGaussianDensity(mix, xobs, this);
+        Lqjmt +=  -bjtO + cjm + bjmtO;
+      }
   
       if (Lqjmt > MIN_LOG_WEGIHT) 
       {
@@ -2231,8 +2236,9 @@ namespace STK
     ModelSet *        p_hmms_upd = mpModelSetToUpdate;
     Node     *        node;
   
+    AccumType origAccumType = mAccumType;
     
-    mAccumType = AT_ML;
+    mAccumType          = AT_ML;
     mPropagDir          = FORWARD;
     mAlignment          = NO_ALIGNMENT;
     
@@ -2272,14 +2278,16 @@ namespace STK
     P = fwbw.totLike;
   
     assert(P >= TP);
-  
-    F = TP - LogSub(P, TP);
-    printf("MCE distance: %g; ", F);
-    F = exp(-sigSlope * F);
-    F = (sigSlope*F) / SQR(1+F);
-    printf("weight: %g\n", F);
-    weight *= F;
-  
+    if(sigSlope > 0.0) 
+    {
+      F = TP - LogSub(P, TP);
+      printf("MCE distance: %g; ", F);
+      F = exp(-sigSlope * F);
+      F = (sigSlope*F) / SQR(1+F);
+      printf("weight: %g\n", F);
+      weight *= F;
+    }
+
     if (P < LOG_MIN) return LOG_0;
   
     for (node = mpFirst; node != NULL; node = node->mpNext) {
@@ -2462,17 +2470,24 @@ namespace STK
               }
   //            }
   
-              ReestState(
-                  node,
-                  j-1,
-                  (st[j].mAlpha + st[j].mBeta - TP)  * mOcpScale,
-                  weight, 
-                  obs, 
-                  obs2);
-  // For True MCE
-  //            ReestState(net, node, j-1,
-  //                       (st[j].mAlpha + st[j].mBeta - TP + LogAdd(TP,P) - P)  * mOcpScale,
-  //                        weight, obs, obs2);
+              if (origAccumType == AT_MMI)
+              {
+                ReestState(
+                    node,
+                    j-1,
+                    (st[j].mAlpha + st[j].mBeta - TP)  * mOcpScale,
+                    weight, 
+                    obs, 
+                    obs2);
+              }
+              else // origAccumType == AT_MCE
+              {
+                ReestState(node, j-1,
+                    (st[j].mAlpha + st[j].mBeta - TP + LogAdd(TP,P) - P)  * mOcpScale,
+                    weight, 
+                    obs, 
+                    obs2);
+              }
             }
           }
           
@@ -2491,7 +2506,7 @@ namespace STK
         free(node->mpAlphaBetaListReverse);
     }
   
-    mAccumType = AT_MCE;
+    mAccumType = origAccumType;
     return TP;
   }
   
@@ -2611,9 +2626,9 @@ namespace STK
             ocprob[mNumberOfNetStates * (mTime+1) + node->mEmittingStateId + j]
   //           = node->mPhoneAccuracy;
               = exp(st[j].mAlpha+st[j].mBeta-P) *
-                ((1-2*st[j].mAlphaAccuracy.negative) * exp(st[j].mAlphaAccuracy.logvalue - st[j].mAlpha) +
-                (1-2*st[j].mBetaAccuracy.negative)  * exp(st[j].mBetaAccuracy.logvalue  - st[j].mBeta)
-                - (1-2*fwbw.avgAccuracy.negative) * exp(fwbw.avgAccuracy.logvalue)
+                ((1-2*static_cast<int>(st[j].mAlphaAccuracy.negative)) * exp(st[j].mAlphaAccuracy.logvalue - st[j].mAlpha) +
+                (1-2*static_cast<int>(st[j].mBetaAccuracy.negative))  * exp(st[j].mBetaAccuracy.logvalue  - st[j].mBeta)
+                - (1-2*static_cast<int>(fwbw.avgAccuracy.negative)) * exp(fwbw.avgAccuracy.logvalue)
                 );
   
   #endif
@@ -2637,9 +2652,9 @@ namespace STK
   
               if (mAccumType == AT_MFE || mAccumType == AT_MPE) 
               {
-                update_dir = (1-2*st[j].mAlphaAccuracy.negative) * exp(st[j].mAlphaAccuracy.logvalue - st[j].mAlpha) +
-                             (1-2*st[j].mBetaAccuracy.negative)  * exp(st[j].mBetaAccuracy.logvalue  - st[j].mBeta)  -
-                             (1-2*fwbw.avgAccuracy.negative)     * exp(fwbw.avgAccuracy.logvalue);
+                update_dir = (1-2*static_cast<int>(st[j].mAlphaAccuracy.negative)) * exp(st[j].mAlphaAccuracy.logvalue - st[j].mAlpha) +
+                             (1-2*static_cast<int>(st[j].mBetaAccuracy.negative))  * exp(st[j].mBetaAccuracy.logvalue  - st[j].mBeta)  -
+                             (1-2*static_cast<int>(fwbw.avgAccuracy.negative))     * exp(fwbw.avgAccuracy.logvalue);
               } 
               else 
               {

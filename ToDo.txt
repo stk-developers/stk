@@ -18,7 +18,7 @@
 + MMI training
 + Software to pack mutiple accumulator files into single file
 - Re-estimation of models with more last level xforms
-- Load HMMs from individual files
++ Load HMMs from individual files
 - Mixture pruning threshold
 - Advanced variance flooring (fraction of global/state (with-in class) variance, Xform specific varFloors)
 - To do something with error messages (at line in file-> (filename:line),...)
@@ -28,11 +28,15 @@
 - <Stream>
 - Memory for mean and variance accumulators is always alocated to double size for MMI or MPE stats (even with ML training)
 - Accumulator files always contain weight_accum_den (not very elegant)
-- Something should be done with
 - In MPE update weight_accum_den is passed using quite ugly hack that work only if mixtures are not shared by more states
-- _Z online computation
-- Discarding mixture components with low occupancy
++ _Z online computation
++ Discarding mixture components with low occupancy
 
++ Speaker dependent MMF replacing some of macro definitions is now possible. Hoewer, ...
+  - Redefinition of logical model in tiedlist is ignored
+  - Newly loaded HMM's are not relinked in network -> Redefinition of HMM will cause program to crash.
+  - When redefining Xforms, the new Xform should be checked for compatibility with the old one (mem. size, delay, etc.)
+  
 Documentation
 - MLF is red sequentionally -> Sort labels file records
 - ALLOWXWRDEXP switch triphone expansion on, other expansion parameters are ignored
@@ -45,18 +49,19 @@ Bugs:
 Wrong total likelihood is reported with Viterbi trainind
 One word insertion penalty is not added to the total score
 Unreachable nodes must be removed before sorting in LatticeLocalOptimization()
-varFloor1 works only without Xforms. Xform specific varFloors are needed
-RemoveRedundantNullNodes can cause doubled links, which leads to error
++ varFloor1 works only without Xforms. Xform specific varFloors are needed
++ RemoveRedundantNullNodes can cause doubled links, which leads to error
 Global Xform defined after HMMs cause error
-DC phone expansion of network with short circuit leads to infinite loop
+CD phone expansion of network with short circuit leads to infinite loop
 <Copy> accept range (from:to) larger than its output size
 HPARM{1,2} in not recognized (only SPARM{1,2})
+
 
 To finish new SKT networks
 - Expanded network cannot hold information about word output symbols and
   pronunciation probabilities (HTK place -r to arc definition)
-- Phone accuracy
-- For SVite and HERest model nodes must be of NT_Model (not NT_Phone) and must beconnected to corresponding HMM structures
+- Phone accuracy: sil and sp is still hardwired as silence models
++ For SVite and HERest model nodes must be of NT_Model (not NT_Phone) and must beconnected to corresponding HMM structures
 - MakeNetworkFromLabels does not treat correctly mutli-level labels
 
 Config parameter remapings:

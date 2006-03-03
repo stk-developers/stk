@@ -66,7 +66,8 @@ namespace STK
     AT_ML=0,
     AT_MPE,
     AT_MFE,
-    AT_MCE
+    AT_MCE,
+    AT_MMI
   } AccumType;
   
   

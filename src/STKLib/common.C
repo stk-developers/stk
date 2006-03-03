@@ -1414,6 +1414,7 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
 
     // allocate space for the substring
     substr = new char[percent_count + 1];
+    substr[percent_count] = 0;
 
     // parse the string
     if (ret = match(rWildcard.c_str(), rString.c_str(), substr))

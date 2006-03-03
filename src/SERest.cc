@@ -193,6 +193,8 @@ int main(int argc, char *argv[])
         char *        cvn_file_alig;
   const char *        cvn_mask_alig;
   const char *        cvg_file_alig;
+  const char *        mmf_dir;
+  const char *        mmf_mask;
   
   int                 trace_flag;
   int                 min_examples;
@@ -337,17 +339,21 @@ int main(int argc, char *argv[])
   trg_hmm_dir  = GetParamStr(&cfgHash, SNAME":TARGETMODELDIR",  NULL);
   trg_hmm_ext  = GetParamStr(&cfgHash, SNAME":TARGETMODELEXT",  NULL);
   trg_mmf      = GetParamStr(&cfgHash, SNAME":TARGETMMF",       NULL);
+  
+  mmf_dir      = GetParamStr(&cfgHash, SNAME":MMFDIR",          ".");
+  mmf_mask     = GetParamStr(&cfgHash, SNAME":MMFMASK",         NULL);
 
-  update_mode  = (Update_Mode) GetParamEnum(&cfgHash,SNAME":UPDATEMODE",     UM_UPDATE,
+
+  update_mode  = (Update_Mode) GetParamEnum(&cfgHash,SNAME":UPDATEMODE",    UM_UPDATE,
                    "UPDATE",UM_UPDATE,"DUMP",UM_DUMP,"BOTH",UM_BOTH, NULL);
 
   accum_type   = (AccumType) GetParamEnum(&cfgHash,SNAME":ACCUMULATORTYPE", AT_ML,
-                              "ML",AT_ML,"MPE",AT_MPE,"MCE",AT_MCE,"MFE",AT_MFE, NULL);
+                              "ML",AT_ML,"MPE", AT_MPE, "MMI", AT_MMI,"MCE",AT_MCE,"MFE",AT_MFE, NULL);
 
-  update_type   = (Update_Type) GetParamEnum(&cfgHash,SNAME":UPDATETYPE",     UT_ML,
+  update_type   = (Update_Type) GetParamEnum(&cfgHash,SNAME":UPDATETYPE",   UT_ML,
                               "ML",UT_ML,"MPE",UT_MPE,"MMI",UT_MMI, NULL);
 
-  sig_slope    = GetParamFlt(&cfgHash, SNAME":MCESIGSLOPE",     1.0);
+  sig_slope    = GetParamFlt(&cfgHash, SNAME":MCESIGSLOPE",    -1.0); // -1.0 ~ off
   E_constant   = GetParamFlt(&cfgHash, SNAME":EBWCONSTANTE",    2.0);
   h_constant   = GetParamFlt(&cfgHash, SNAME":EBWCONSTANTH",    2.0);
   I_smoothing  = GetParamFlt(&cfgHash, SNAME":ISMOOTHING",  update_type==UT_MPE
@@ -554,13 +560,21 @@ int main(int argc, char *argv[])
       }
     }
     
+    sentWeight = 1.0;
+    
+    if ((chrptr = strrchr(file_name->mpPhysical, '{')) != NULL 
+        && ((i=0), sscanf(chrptr, "{%f}%n", &sentWeight, &i), chrptr[i] == '\0')) 
+    {
+      *chrptr = '\0';
+    }
+    
     if (parallel_mode == 0) 
     {
       FLOAT P, P2;
       long S;
 
       //ReadAccums(file_name->mpPhysical, 1.0, &hset, &S, &P, UT_ML);
-      hset.ReadAccums(file_name->mpPhysical, 1.0, &S, &P, UT_ML);
+      hset.ReadAccums(file_name->mpPhysical, sentWeight, &S, &P, UT_ML);
       totFrames  += S;
       totLogLike += P;
 
@@ -569,9 +583,19 @@ int main(int argc, char *argv[])
 
       if (update_type != UT_ML) 
       {
+      
         // Second set of accums is for compeating models
         //ReadAccums(file_name->mpNext->mpPhysical, 1.0, &hset, &S, &P2, update_type);
-        hset.ReadAccums(file_name->mpNext->mpPhysical, 1.0, &S, &P2, update_type);
+        
+        sentWeight = 1.0;
+
+        if ((chrptr = strrchr(file_name->mpNext->mpPhysical, '{')) != NULL 
+          && ((i=0), sscanf(chrptr, "{%f}%n", &sentWeight, &i), chrptr[i] == '\0')) 
+        {
+          *chrptr = '\0';
+        }
+        
+        hset.ReadAccums(file_name->mpNext->mpPhysical, sentWeight, &S, &P2, update_type);
         totLogPosterior += update_type == UT_MPE ? P2 : P - P2;
 
         if (trace_flag & 1)
@@ -585,16 +609,7 @@ int main(int argc, char *argv[])
       char *  lgcl_fn = (one_pass_reest ? file_name->mpNext : file_name)->logical;
 
       // read sentence weight definition if any ( physical_file.fea[s,e]{weight} )
-      if ((chrptr = strrchr(phys_fn, '{')) != NULL &&
-          ((i=0), sscanf(chrptr, "{%f}%n", &sentWeight, &i), chrptr[i] == '\0')) 
-      {
-        *chrptr = '\0';
-      } 
-      else 
-      {
-        sentWeight = 1.0;
-      }
-      
+
       if (cmn_mask) 
         process_mask(lgcl_fn, cmn_mask, cmn_file);
       if (cvn_mask) 
@@ -685,6 +700,21 @@ int main(int argc, char *argv[])
         obsMx_alig  = obsMx;
       }
       
+      if(mmf_mask != NULL) {
+        static string lastSpeakerMMF;
+        string speakerMMF;
+        ProcessMask(file_name->logical, mmf_mask, speakerMMF);
+        
+        if(lastSpeakerMMF != speakerMMF) 
+        {
+          hset_alig->ParseMmf((string(mmf_dir) + "/" + speakerMMF).c_str(), NULL);
+          lastSpeakerMMF = speakerMMF;
+        }
+      }
+
+// //////////////////////////////////////////////////////////////////
+      
+      
       if (!network_file) 
       {
         Node *node = NULL;
@@ -770,7 +800,7 @@ int main(int argc, char *argv[])
           break;
         }
         
-        if (accum_type == AT_MCE) 
+        if (accum_type == AT_MCE || accum_type == AT_MMI) 
         {
           P = net.MCEReest(obsMx_alig, obsMx, nFrames, sentWeight, sig_slope);
         } 
