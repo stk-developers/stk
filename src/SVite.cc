@@ -395,6 +395,9 @@ int main(int argc, char *argv[])
     ilfp = fopen(network_file, "rt");
     if (ilfp  == NULL) Error("Cannot open network file: %s", network_file);
 
+    //:TODO:
+    // header.mSamplePeriod not initialized yet... 
+    
     Node *node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash,
                                 notInDictAction, in_lbl_fmt,
                                 header.mSamplePeriod, network_file, NULL);

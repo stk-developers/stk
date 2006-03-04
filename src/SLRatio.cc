@@ -32,7 +32,7 @@ using namespace STK;
 
 typedef struct _LRTrace LRTrace;
 struct _LRTrace {
-  Node *wordEnd;
+  Node *mpWordEnd;
   FLOAT lastLR;
   FLOAT candidateLR;
   long long candidateStartTime;
@@ -66,7 +66,7 @@ LRTrace *MakeLRTraceTable(Network *net, int *nWords, Token **filler_end)
   }
   for (i = 0, node=net->mpFirst; node != NULL; node = node->mpNext) {
     if (node->mType == (NT_WORD | NT_STICKY) && node->mpPronun != NULL) {
-      lrt[i].wordEnd = node;
+      lrt[i].mpWordEnd = node;
       i++;
     }
   }
@@ -82,7 +82,7 @@ void PutCandidateToLabels(LRTrace *lrt, FLOAT scoreThreshold, FILE *lfp,
      Label label  = init_label;
      label.mStart = lrt->candidateStartTime;
      label.mStop  = lrt->candidateEndTime;
-     label.mpName = lrt->wordEnd->mpPronun->word->mpName;
+     label.mpName = lrt->mpWordEnd->mpPronun->mpWord->mpName;
      label.mScore = lrt->candidateLR;
 
      WriteLabels(lfp, &label, out_lbl_fmt, sampPeriod, label_file, out_MLF);
@@ -486,13 +486,13 @@ int main(int argc, char *argv[]) {
     KillToken(filler_end);
     
     for (j = 0; j < nWords; j++) 
-      KillToken(lrt[j].wordEnd->mpExitToken);
+      KillToken(lrt[j].mpWordEnd->mpExitToken);
 
     if (trace_flag & 2) 
     {
       printf("Node# %13s", "Filler");
       for (j = 0; j < nWords; j++) {
-        printf(" %13s", lrt[j].wordEnd->mpPronun->word->mpName);
+        printf(" %13s", lrt[j].mpWordEnd->mpPronun->mpWord->mpName);
       }
       puts("");
     }
@@ -503,7 +503,7 @@ int main(int argc, char *argv[]) {
       if (trace_flag & 2) {
         printf("      %13e", filler_end->mLike);
         for (j = 0; j < nWords; j++) {
-          printf(" %13e", lrt[j].wordEnd->mpExitToken->mLike);
+          printf(" %13e", lrt[j].mpWordEnd->mpExitToken->mLike);
         }
         puts("");
       }
@@ -512,7 +512,7 @@ int main(int argc, char *argv[]) {
       {
         long long   wordStartTime;
         float       lhRatio;
-        Token *     word_end = lrt[j].wordEnd->mpExitToken;
+        Token *     word_end = lrt[j].mpWordEnd->mpExitToken;
 
         if (!word_end->IsActive() || !filler_end->IsActive()) 
         {

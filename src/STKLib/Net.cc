@@ -161,13 +161,13 @@ namespace STK
       if (!(node->mType & NT_WORD)) continue;
   
       if (node->mpPronun == NULL) continue;
-      Word *word = node->mpPronun->word;
+      Word *word = node->mpPronun->mpWord;
   
       //Do not expand non-dictionary words, which where added by ReadSTKNetwork
       if (word->npronunsInDict == 0) continue;
   
       if (!multiple_pronun) {
-        singlePronunWrd.mpName = node->mpPronun->word->mpName;
+        singlePronunWrd.mpName = node->mpPronun->mpWord->mpName;
         word = &singlePronunWrd;
         *word->pronuns = node->mpPronun;
       }
@@ -330,7 +330,7 @@ namespace STK
         node->mpPronun = NULL;
       }
       if (format.mNoPronunVars && node->mType & NT_WORD && node->mpPronun != NULL) {
-        node->mpPronun = node->mpPronun->word->pronuns[0];
+        node->mpPronun = node->mpPronun->mpWord->pronuns[0];
       }
     }
     return pFirstNode;
@@ -430,7 +430,7 @@ namespace STK
 
   //          &&  (inode->mpPronun == NULL ||
   //             jnode->mpPronun == NULL ||
-  //             inode->mpPronun->word       != jnode->mpPronun->word ||
+  //             inode->mpPronun->mpWord       != jnode->mpPronun->mpWord ||
   //             inode->mpPronun->outSymbol  != jnode->mpPronun->outSymbol ||
   //             inode->mpPronun->variant_no != jnode->mpPronun->variant_no ||
   //             inode->mpPronun->prob       != jnode->mpPronun->prob)
@@ -1488,17 +1488,17 @@ namespace STK
       fprintf(fp, "n%d [shape=%s,label=\"%d:%s", node->mEmittingStateId,
               node->mType & NT_WORD ? "box" : "ellipse", node->mEmittingStateId,
               node->mType & NT_WORD ? (node->mpPronun ?
-                                      node->mpPronun->word->mpName : "-"):
+                                      node->mpPronun->mpWord->mpName : "-"):
               node->mType & NT_PHONE? node->mpName :
               node->mType & NT_MODEL? node->mpHmm->mpMacro->mpName : "???");
   
       if (node->mType & NT_WORD && node->mpPronun != NULL) {
-        if (node->mpPronun != node->mpPronun->word->pronuns[0]) {
+        if (node->mpPronun != node->mpPronun->mpWord->pronuns[0]) {
           fprintf(fp, ":%d", node->mpPronun->variant_no);
         }
         fprintf(fp, "\\n");
   
-        if (node->mpPronun->outSymbol != node->mpPronun->word->mpName) {
+        if (node->mpPronun->outSymbol != node->mpPronun->mpWord->mpName) {
           fprintf(fp, "[%s]", node->mpPronun->outSymbol ?
                               node->mpPronun->outSymbol : "");
         }

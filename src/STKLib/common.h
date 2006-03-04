@@ -24,7 +24,13 @@
 #define _GNU_SOURCE
 #endif
 #include <limits.h>
-#include <search.h>
+
+#ifdef __WIN32
+   #include <gnusearch.h>
+#else
+   #include <search.h>
+#endif
+
 #include <string>
 
 

@@ -1487,6 +1487,7 @@ printf("%f", g_floor);
     mpXformStatAccum          = NULL;
     mNumberOfXformStatAccums  = 0;
     mUpdatableFromStatAccums  = true;
+    mpWeights                 = NULL;
 }  
   
   

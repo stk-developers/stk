@@ -16,7 +16,6 @@
 #include "Matrix.h"
 #include "common.h"
 #include "stkstream.h"
-#include <search.h>
 
 
 #define SQR(x) ((x) * (x))
@@ -147,6 +146,8 @@ namespace STK
   /** *************************************************************************
    ** *************************************************************************
    *  @brief Macro data base class
+   *  
+   *  Any class, that can be defined as a macro in the MMF file
    */
   class MacroData
   {
@@ -220,6 +221,8 @@ namespace STK
   
     /* Numeric functions - FuncXform*/
     KID_Sigmoid,     KID_Log,        KID_Exp,        KID_Sqrt,     KID_SoftMax,
+    
+    KID_Weights,
   
     KID_MaxKwdID
   };
@@ -515,15 +518,14 @@ namespace STK
     /// Destructor
     virtual ~Hmm();
     
-    void
     /**
      * @brief Updates the object from the accumulators
      * @param rModelSet ModelSet object which holds the accumulator configuration
      */
+    void
     UpdateFromAccums(const ModelSet * pModelSet);
     
     
-    void
     /**
      * @brief Performs desired @c action on the HMM's data which are chosen by @mask
      * @param mask bit mask of flags that tells which data to process by @c action
@@ -531,6 +533,7 @@ namespace STK
      * @param action routine to apply on pUserData
      * @param pUserData the data to process by @c action
      */
+    virtual void
     Scan( int             mask,
           HMMSetNodeName  nodeNameBuffer,
           ScanAction      action, 
@@ -717,6 +720,8 @@ namespace STK
     XformStatAccum *        mpXformStatAccum;
     size_t                  mNumberOfXformStatAccums;
     bool                    mUpdatableFromStatAccums;
+    BiasXform *             mpWeights;                                          ///< Specifies weights vector defined by Bias Xform macro if mean is defined by weights of means, otherwise NULL
+    Matrix<FLOAT>           mVector;
     FLOAT *                 mpVectorO;
     
     

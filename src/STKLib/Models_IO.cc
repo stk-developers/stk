@@ -59,6 +59,8 @@ namespace STK
     gpKwds[KID_Sigmoid    ] = "Sigmoid";     gpKwds[KID_Log        ] = "Log";
     gpKwds[KID_Exp        ] = "Exp";         gpKwds[KID_Sqrt       ] = "Sqrt";
     gpKwds[KID_SoftMax    ] = "SoftMax";
+    
+    gpKwds[KID_Weights    ] = "Weights";
   }
   
   
@@ -919,12 +921,12 @@ namespace STK
   ModelSet::
   ReadMean(FILE *fp, Macro *macro)
   {
-    Mean *    ret;
+    Mean *    ret = NULL;
     char *    keyword;
     int       vec_size;
     int       i;
 //    int       accum_size = 0;
-  
+    
   //  puts("ReadMean");
     keyword = GetString(fp, 1);
     
@@ -932,32 +934,86 @@ namespace STK
     {
       keyword = GetString(fp, 1);
       if ((macro = FindMacro(&mMeanHash, keyword)) == NULL) {
-        Error("Undefined reference to macro ~u %s (%s:%d)", keyword, gpCurrentMmfName, gCurrentMmfLine);
+        Error("Undefined reference to macro ~u %s (%s:%d)", 
+          keyword, 
+          gpCurrentMmfName, 
+          gCurrentMmfLine);
       }
       return  (Mean *) macro->mpData;
     }
   
-    if (!CheckKwd(keyword, KID_Mean))
-      Error("Keyword <Mean> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+    // Mean definition can be defined by a set of weighted means
+    if (CheckKwd(keyword, KID_Weights))
+    {
+      Macro*        tmp_macro;
+      BiasXform*    bx;       // the weights are defined by BiasXform
+      FLOAT         tmp_val;  // temporary read value
+      ret = NULL;
+      
+      // expect Xform macro reference
+      keyword = GetString(fp, 1);
+      if (!strcmp(keyword, "~x"))
+      {
+        keyword = GetString(fp, 1);
+        if (NULL == (tmp_macro = (FindMacro(&mXformHash, keyword))))
+        {
+          Error("Undefined reference to macro ~x %s (%s:%d)", 
+            keyword, 
+            gpCurrentMmfName, 
+            gCurrentMmfLine);
+        }
+        
+        bx = static_cast<BiasXform *>(tmp_macro->mpData);
+        
+        // read bx->mInSize means
+        for (i = 0; i < bx->mInSize; i++)
+        {
+          keyword = GetString(fp, 1);
+          if (!CheckKwd(keyword, KID_Mean))
+            Error("Keyword <Mean> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+        
+          vec_size = GetInt(fp);
+         
+          // maybe we haven't created any Mean object yet
+          if (NULL == ret)
+          {
+            // create new Mean object
+            ret = new Mean(vec_size, mAllocAccums);            
+            // initialize matrix for original mean vectors definition
+            ret->mVector.Init(bx->mInSize, vec_size + (mAllocAccums ? (vec_size + 1) * 2 : 0));
+          }
+          
+          // read the values and fill appropriate structures
+          for (int j = 0; j < vec_size; j++)
+          {
+            tmp_val = GetFloat(fp);
+            // fill the matrix 
+            ret->mVector(i, j) = tmp_val;
+            // and the real vector
+            ret->mpVectorO[j] = (0 != i) ? 
+                (ret->mpVectorO[j] + tmp_val * bx->mpVectorO[i]) :
+                (tmp_val * bx->mpVectorO[i]);
+          }
+        } // for (i = 0; i < bx->mInSize; i++)
+      }
+    } // if (CheckKwd(keyword, KID_Weights))
+    
+    else if (CheckKwd(keyword, KID_Mean))
+    {
+      vec_size = GetInt(fp);
+      ret = new Mean(vec_size, mAllocAccums);
   
-    vec_size = GetInt(fp);
-  
-    //***
-    // old malloc
-    //  
-    //if (mAllocAccums) 
-    //  accum_size = (vec_size + 1) * 2; // * 2 for MMI accums
-    //
-    //ret = (Mean *) malloc(sizeof(Mean) + (vec_size+accum_size-1) * sizeof(FLOAT));
-    //if (ret == NULL)  Error("Insufficient memory");
-    //ret->mVectorSize = vec_size;
-    ret = new Mean(vec_size, mAllocAccums);
-  
-//  printf("vec_size: %d\n", vec_size);
-    for (i=0; i<vec_size; i++) {
-      ret->mpVectorO[i] = GetFloat(fp);
+      for (i=0; i<vec_size; i++) 
+      {
+        ret->mpVectorO[i] = GetFloat(fp);
+      }      
+    } // else if (CheckKwd(keyword, KID_Mean))
+    
+    else
+    {
+      Error("Keyword <Mean> or <Weights> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
     }
-  
+    
     ret->mpMacro = macro;
     return ret;
   }
@@ -1990,15 +2046,43 @@ namespace STK
   {
     size_t    i;
   
-    PutKwd(fp, binary, KID_Mean);
-    PutInt(fp, binary, mean->mVectorSize);
-    PutNLn(fp, binary);
-  
-    for (i=0; i < mean->mVectorSize; i++) {
-      PutFlt(fp, binary, mean->mpVectorO[i]);
+    // Mean specified by a set of vectors
+    if (NULL != mean->mpWeights)
+    {
+      PutKwd(fp, binary, KID_Weights);
+      fprintf(fp, "~x %s", mean->mpWeights->mpMacro->mpName);
+      PutNLn(fp, binary);
+      
+      // go through the rows in the vector
+      for (i = 0; i < mean->mpWeights->mInSize; i++)
+      {
+        PutKwd(fp, binary, KID_Mean);
+        PutInt(fp, binary, mean->mVectorSize);
+        PutNLn(fp, binary);
+      
+        for (size_t j=0; j < mean->mVectorSize; j++) 
+        {
+          PutFlt(fp, binary, mean->mVector(i, j));
+        }
+      
+        PutNLn(fp, binary);
+      }
     }
-  
-    PutNLn(fp, binary);
+    
+    // Mean specified regularly by a single vector
+    else
+    {
+      PutKwd(fp, binary, KID_Mean);
+      PutInt(fp, binary, mean->mVectorSize);
+      PutNLn(fp, binary);
+    
+      for (i=0; i < mean->mVectorSize; i++) 
+      {
+        PutFlt(fp, binary, mean->mpVectorO[i]);
+      }
+    
+      PutNLn(fp, binary);
+    }
   } //WriteMean(FILE *fp, bool binary, Mean *mean)
 
   

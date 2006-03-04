@@ -167,11 +167,11 @@ namespace STK
         putc('=', lfp);
         fprintHTKstr(lfp, node->mType & NT_MODEL   ? node->mpHmm->mpMacro->mpName   :
                           node->mType & NT_WORD    ? (!node->mpPronun ? "!NULL" :
-                                                    node->mpPronun->word->mpName) :
+                                                    node->mpPronun->mpWord->mpName) :
                                                     node->mpName); // NT_PHONE (NT_SUBNET)
       }
       if (!format.mNoPronunVars && node->mType & NT_WORD
-      && node->mpPronun != NULL && node->mpPronun->word->npronuns > 1
+      && node->mpPronun != NULL && node->mpPronun->mpWord->npronuns > 1
       && (node->mpPronun->variant_no > 1 || !format.mNoDefaults)) {
         fprintf(lfp," v=%d", node->mpPronun->variant_no);
       }
@@ -268,13 +268,13 @@ namespace STK
               node->mType & NT_SUBNET  ? node->mpName :
               node->mType & NT_WORD    ?
                 (node->mpPronun == NULL ? "-" :
-                                        node->mpPronun->word->mpName):
+                                        node->mpPronun->mpWord->mpName):
                                         "?");
       if (node->mType & NT_WORD && node->mpPronun) {
-        if (node->mpPronun->word->mpName != node->mpPronun->outSymbol) {
+        if (node->mpPronun->mpWord->mpName != node->mpPronun->outSymbol) {
           fprintf(lfp," [%s]", node->mpPronun->outSymbol);
         }
-        if (node->mpPronun->prob != 0.0 || node->mpPronun->word->npronuns > 1) {
+        if (node->mpPronun->prob != 0.0 || node->mpPronun->mpWord->npronuns > 1) {
           fprintf(lfp," {%d "FLOAT_FMT"}",
                   node->mpPronun->variant_no,
                   node->mpPronun->prob);
@@ -702,9 +702,13 @@ namespace STK
     MyHSearchData node_hash = {0};
     struct ReadlineData   rld       = {0};
   
-    for (;;) {
-      do {
-        if ((chptr = line = readline(lfp, &rld)) == NULL) break;
+    for (;;) 
+    {
+      do 
+      {
+        if ((chptr = line = readline(lfp, &rld)) == NULL) 
+          break;
+          
         if (chptr[0] == '.' && (chptr[1] == '\0' || isspace(chptr[1]))) {
           chptr = NULL;
           break;
@@ -890,7 +894,7 @@ namespace STK
                   word->pronuns[i] = (Pronun *) malloc(sizeof(Pronun));
                   if (word->pronuns[i] == NULL) Error("Insufficient memory");
   
-                  word->pronuns[i]->word       = word;
+                  word->pronuns[i]->mpWord       = word;
                   word->pronuns[i]->outSymbol  = word->mpName;
                   word->pronuns[i]->nmodels    = 0;
                   word->pronuns[i]->model      = NULL;

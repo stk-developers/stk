@@ -223,14 +223,16 @@ namespace STK
   BackwardPruning(int time, Node *node, int state)
   {
     while (node->mpAlphaBetaListReverse != NULL &&
-          node->mpAlphaBetaListReverse->mTime > time) {
+          node->mpAlphaBetaListReverse->mTime > time) 
+    {
       FWBWR *fwbwr = node->mpAlphaBetaListReverse;
       node->mpAlphaBetaListReverse = fwbwr->mpNext;
       free(fwbwr);
     }
   
     if (node->mpAlphaBetaListReverse != NULL &&
-      node->mpAlphaBetaListReverse->mTime == time) {
+      node->mpAlphaBetaListReverse->mTime == time) 
+    {
       FWBWR *fwbwr = node->mpAlphaBetaListReverse;
       node->mpAlphaBetaListReverse = fwbwr->mpNext;
       fwbwr->mpNext = node->mpAlphaBetaList;
@@ -2862,7 +2864,7 @@ namespace STK
     Label *           level[3] = {NULL, NULL, NULL};
     int               li = 0;
       
-    if (!this->IsActive())
+    if (!this->IsActive()) 
       return NULL;
     
     for (wlr = this->mpWlr; wlr != NULL; wlr = wlr->mpNext) 
@@ -2884,7 +2886,7 @@ namespace STK
       else //if (wlr->mpNode->mpPronun->outSymbol) 
       {
         li = 2;
-        tmp->mpData = wlr->mpNode->mpPronun->word;
+        tmp->mpData = wlr->mpNode->mpPronun->mpWord;
         tmp->mpName = wlr->mpNode->mpPronun->outSymbol;
         tmp->mpNextLevel = NULL;
       } 

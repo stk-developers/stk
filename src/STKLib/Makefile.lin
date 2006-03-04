@@ -1,0 +1,95 @@
+##############################################################################
+# archiver binary
+AR = ar
+
+##############################################################################
+# compiler options
+CFLAGS = -Wall -g -DDOUBLEPRECISION=0 -D_REENTRANT -I/usr/local/include -I/usr/include -O2
+CXXFLAGS = $(CFLAGS)
+
+###############################################################################
+# linker options
+LDLIBS = -lm -latlas -lpthread -O2
+#LDFLAGS = -a -g -L. -pg
+
+###############################################################################
+# compiler binary
+# CROSS_COMPILE ?= x86_64-linux-
+
+CC  := $(CROSS_COMPILE)g++
+CXX := $(CROSS_COMPILE)g++
+
+
+###############################################################################
+# library name
+LIBNAME = libSTKLib.a
+
+###############################################################################
+# library-specific modules
+OBJFILES = 	common.o \
+			dict.o	\
+			Error.o  \
+			fileio.o \
+			filmatch.o  \
+			labels.o  \
+			Matrix.o  \
+			Models_IO.o  \
+			Models.o  \
+			Net_IO.o  \
+			Net.o  \
+			Viterbi.o
+
+
+###############################################################################
+# implicit "make all" rule             
+all  : $(LIBNAME)
+	echo "Done :-)"
+
+
+###############################################################################
+# library specific rules
+#
+$(LIBNAME) : $(OBJFILES)
+	$(AR) r $(LIBNAME) $(OBJFILES)
+
+###############################################################################
+# cleans the binaries  
+clean:
+	rm -f *.o 
+	rm -f $(LIBNAME)
+	rm -f *~
+
+###############################################################################
+# runs makedepend to automatically define header files dependencies
+depend:
+	-makedepend -Y *.c *.C *.cc 
+    
+
+# DO NOT DELETE
+
+common.o: common.h Error.h Math.h filmatch.h
+dict.o: dict.h Models.h Matrix.h Error.h common.h Math.h Matrix.tcc
+dict.o: stkstream.h stkstream.tcc
+fileio.o: fileio.h common.h Error.h Math.h stkstream.h stkstream.tcc
+filmatch.o: filmatch.h common.h Error.h Math.h
+getopt.o: getopt.h
+imagesc.o: imagesc.h
+labels.o: Viterbi.h Models.h Matrix.h Error.h common.h Math.h Matrix.tcc
+labels.o: stkstream.h stkstream.tcc labels.h dict.h Net.h
+Buffer.o: Buffer.h
+Error.o: Error.h
+Features.o: Features.h common.h Error.h Math.h Matrix.h Matrix.tcc
+Features.o: stkstream.h stkstream.tcc
+labelreader.o: labelreader.h stkstream.h common.h Error.h Math.h
+labelreader.o: stkstream.tcc
+Matrix.o: Matrix.h Error.h common.h Math.h Matrix.tcc
+Models.o: Models.h Matrix.h Error.h common.h Math.h Matrix.tcc stkstream.h
+Models.o: stkstream.tcc
+Models_IO.o: Models.h Matrix.h Error.h common.h Math.h Matrix.tcc stkstream.h
+Models_IO.o: stkstream.tcc
+Net.o: Models.h Matrix.h Error.h common.h Math.h Matrix.tcc stkstream.h
+Net.o: stkstream.tcc labels.h dict.h Net.h
+Net_IO.o: labels.h common.h Error.h Math.h Net.h Models.h Matrix.h Matrix.tcc
+Net_IO.o: stkstream.h stkstream.tcc dict.h
+Viterbi.o: Viterbi.h Models.h Matrix.h Error.h common.h Math.h Matrix.tcc
+Viterbi.o: stkstream.h stkstream.tcc labels.h dict.h Net.h
