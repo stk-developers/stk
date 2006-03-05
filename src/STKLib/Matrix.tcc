@@ -8,17 +8,19 @@
 #ifndef STK_Matrix_tcc
 #define STK_Matrix_tcc
 
-#pragma GCC system_header
+//#pragma GCC system_header
 
 #include "common.h"
+#define _XOPEN_SOURCE 600
 #include <cstdlib>
-#include <malloc.h>
-//#include <cblas.h>
 #include <cassert>
-#include <cmath>
+#include <math.h>
+
+#ifdef USE_BLAS
 extern "C"{
   #include <cblas.h>
 }
+#endif
 
 #include<fstream>
 #include<iomanip>
@@ -51,7 +53,8 @@ namespace STK
     size_t  skip;
     size_t  real_cols;
     size_t  size;
-    void *  data;
+    void *  data;       // aligned memory block
+    void *  free_data;  // memory block to be really freed
 
     // at this moment, nothing is clear
     mStorageType = STORAGE_UNDEFINED;
@@ -69,12 +72,14 @@ namespace STK
     real_cols = cols + skip;
     size      = rows * real_cols * sizeof(_ElemT);
 
-
     // allocate the memory and set the right dimensions and parameters
-    if (!posix_memalign(& data, 16, size))
+
+    if (NULL != (data = stk_memalign(16, size, &free_data)))
     {
       this->mpData        = static_cast<_ElemT *> (data);
-
+#ifdef STK_MEMALIGN_MANUAL
+      this->mpFreeData    = static_cast<_ElemT *> (free_data);
+#endif
       this->mStorageType = st;
       this->mMRows      = rows;
       this->mMCols      = cols;
@@ -142,7 +147,11 @@ namespace STK
     // we need to free the data block if it was defined
     if (mStorageType != STORAGE_UNDEFINED)
     {
+#ifndef STK_MEMALIGN_MANUAL
       free(mpData);
+#else
+      free(mpFreeData);
+#endif
     }
   }
 
