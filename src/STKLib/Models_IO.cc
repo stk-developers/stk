@@ -1106,7 +1106,7 @@ namespace STK
       keyword = GetString(fp, 1);
     }
   
-    if ((i = ReadParmKind(keyword, TRUE)) != -1) {
+    if ((i = ReadParmKind(keyword, true)) != -1) {
       if (mParamKind != -1 && mParamKind != i) 
         Error("ParamKind mismatch (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
   
@@ -1643,7 +1643,7 @@ namespace STK
         mInputVectorSize = i;
         ret = 1;
       } 
-      else if ((i = ReadParmKind(keyword, TRUE)) != -1) 
+      else if ((i = ReadParmKind(keyword, true)) != -1) 
       {
         if (mParamKind != -1 && mParamKind != i) 
           Error("Mismatch in paramKind redefinition (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);

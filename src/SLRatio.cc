@@ -303,22 +303,22 @@ int main(int argc, char *argv[]) {
                                 &cvn_path, &cvn_file, &cvn_mask, &cvg_file,
                                 SNAME":", 0);
   expOptions.mCDPhoneExpansion =
-                 GetParamBool(&cfgHash,SNAME":ALLOWXWRDEXP",    FALSE);
+                 GetParamBool(&cfgHash,SNAME":ALLOWXWRDEXP",    false);
   expOptions.mRespectPronunVar
-               = GetParamBool(&cfgHash,SNAME":RESPECTPRONVARS", FALSE);
+               = GetParamBool(&cfgHash,SNAME":RESPECTPRONVARS", false);
   expOptions.mStrictTiming
-               = GetParamBool(&cfgHash,SNAME":EXACTTIMEMERGE",  FALSE);
+               = GetParamBool(&cfgHash,SNAME":EXACTTIMEMERGE",  false);
   expOptions.mNoOptimization
-               =!GetParamBool(&cfgHash,SNAME":MINIMIZENET",     FALSE);
+               =!GetParamBool(&cfgHash,SNAME":MINIMIZENET",     false);
   expOptions.mRemoveWordsNodes
-               = GetParamBool(&cfgHash,SNAME":REMEXPWRDNODES",  FALSE);
+               = GetParamBool(&cfgHash,SNAME":REMEXPWRDNODES",  false);
   in_lbl_fmt.TIMES_OFF =
-                !GetParamBool(&cfgHash,SNAME":TIMEPRUNING",    FALSE);
+                !GetParamBool(&cfgHash,SNAME":TIMEPRUNING",    false);
   in_lbl_fmt.left_extent  = -100 * (long long) (0.5 + 1e5 *
                  GetParamFlt(&cfgHash, SNAME":STARTTIMESHIFT",  0.0));
   in_lbl_fmt.right_extent =  100 * (long long) (0.5 + 1e5 *
                  GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0));
-  fulleval     = GetParamBool(&cfgHash,SNAME":EVALUATION",      FALSE);
+  fulleval     = GetParamBool(&cfgHash,SNAME":EVALUATION",      false);
   swap_features=!GetParamBool(&cfgHash,SNAME":NATURALREADORDER",isBigEndian());
   gpFilterWldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
   gpScriptFilter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",   NULL);  
@@ -371,13 +371,13 @@ int main(int argc, char *argv[]) {
         Warning("Unknown label formating flag '%c' ignored (NCST)", *cchrptr);
     }
   }
-  if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", FALSE)) {
+  if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", false)) {
     PrintConfig(&cfgHash);
   }
-  if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", FALSE)) {
+  if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", false)) {
     puts("Version: "VERSION"\n");
   }
-  if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", FALSE)) {
+  if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", false)) {
     CheckCommandLineParamUse(&cfgHash);
   }
 

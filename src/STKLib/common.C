@@ -1029,7 +1029,7 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
     *CVGFile     = GetParamStr(pConfigHash, paramName, NULL);
     strcpy(chrptr, "TARGETKIND");
     str = GetParamStr(pConfigHash, paramName, "ANON");
-    targetKind = ReadParmKind(str, FALSE);
+    targetKind = ReadParmKind(str, false);
     if (targetKind == -1) Error("Invalid TARGETKIND = '%s'", str);
   
     strcpy(chrptr, "DERIVWINDOWS");
@@ -1178,7 +1178,7 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
       free(bptr);
     }
     for (optind = 1; optind < argc && IS_OPTION(argv[optind]); optind++) {
-      option_must_follow = FALSE;
+      option_must_follow = false;
       tstr[2] = opt = argv[optind][1];
       optarg = argv[optind][2] != '\0' ? argv[optind] + 2 : NULL;
   

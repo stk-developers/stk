@@ -6,11 +6,6 @@
 
 #include "Matrix.h"
 
-extern "C" 
-{
-# include <cblas.h>
-}
-
 
 namespace STK
 {
@@ -41,12 +36,16 @@ namespace STK
       assert(this->Cols() == b.Cols());
       assert(a.mStorageType == STORAGE_REGULAR);
       if(b.Storage() == STORAGE_TRANSPOSED){
+#ifdef USE_BLAS
         cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, a.Rows(), b.Cols(), b.Rows(),
                     1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
+#endif        
       }
       else{
+#ifdef USE_BLAS
         cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, a.Rows(), b.Cols(), b.Rows(),
                     1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
+#endif
       }
       return *this;
     }; // AddMatMult(const ThisType & a, const ThisType & b)
@@ -73,11 +72,13 @@ namespace STK
       
       //printf("***%d %d %d %d %d %d\n", a.Rows(), b.Rows(), b.Cols(), a.mMRealCols, b.mMRealCols, this->mMRealCols);
       
+#ifdef USE_BLAS
       cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, a.Rows(), b.Rows(), b.Cols(),
                   1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
+#endif
       
-  //cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, C->rows, C->cols, B->rows,
-    //            1.0f, A->arr, A->realCols, B->arr, B->realCols, 1.0f, C->arr, C->realCols);		  
+      //cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, C->rows, C->cols, B->rows,
+      //            1.0f, A->arr, A->realCols, B->arr, B->realCols, 1.0f, C->arr, C->realCols);		  
 		  
       return *this;
     }; 
@@ -101,8 +102,10 @@ namespace STK
       //cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, this->Rows(), this->Cols(), b.Rows(),
       //          1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
       //printf("%d %d %d %d %d %d\n", a.Cols(), b.Cols(), b.Rows(), a.mMRealCols, b.mMRealCols, this->mMRealCols);
+#ifdef USE_BLAS
       cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, a.Cols(), b.Cols(), b.Rows(),
                   1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
+#endif
       
       return *this;
     }; 

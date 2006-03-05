@@ -261,7 +261,7 @@ int main(int argc, char *argv[])
     last_file = AddFileElem(last_file, argv[i]);
     nfeature_files++;
   }
-  one_pass_reest=GetParamBool(&cfgHash,SNAME":SINGLEPASSTRN",   FALSE);
+  one_pass_reest=GetParamBool(&cfgHash,SNAME":SINGLEPASSTRN",   false);
   targetKind   = GetDerivParams(&cfgHash, &derivOrder, &derivWinLengths,
                                 &startFrmExt, &endFrmExt,
                                 &cmn_path, &cmn_file, &cmn_mask,
@@ -275,21 +275,21 @@ int main(int argc, char *argv[])
                                      &cvn_path_alig, &cvn_file_alig, &cvn_mask_alig,
                                      &cvg_file_alig, SNAME":", 1);
   }
-  xfStatsBin   = GetParamBool(&cfgHash,SNAME":XFORMSTATSBINARY",FALSE);
+  xfStatsBin   = GetParamBool(&cfgHash,SNAME":XFORMSTATSBINARY",false);
   xformList    = GetParamStr(&cfgHash, SNAME":XFORMLIST",       NULL);
-  viterbiTrain = GetParamBool(&cfgHash,SNAME":VITERBITRAIN",    FALSE);
+  viterbiTrain = GetParamBool(&cfgHash,SNAME":VITERBITRAIN",    false);
   expOptions.mCDPhoneExpansion =
-                 GetParamBool(&cfgHash,SNAME":ALLOWXWRDEXP",    FALSE);
+                 GetParamBool(&cfgHash,SNAME":ALLOWXWRDEXP",    false);
   expOptions.mRespectPronunVar
-               = GetParamBool(&cfgHash,SNAME":RESPECTPRONVARS", FALSE);
+               = GetParamBool(&cfgHash,SNAME":RESPECTPRONVARS", false);
   expOptions.mStrictTiming
-               = GetParamBool(&cfgHash,SNAME":EXACTTIMEMERGE",  FALSE);
+               = GetParamBool(&cfgHash,SNAME":EXACTTIMEMERGE",  false);
   expOptions.mNoOptimization
-               =!GetParamBool(&cfgHash,SNAME":MINIMIZENET",     FALSE);
+               =!GetParamBool(&cfgHash,SNAME":MINIMIZENET",     false);
   expOptions.mRemoveWordsNodes
-               = GetParamBool(&cfgHash,SNAME":REMEXPWRDNODES",  FALSE);
+               = GetParamBool(&cfgHash,SNAME":REMEXPWRDNODES",  false);
   in_lbl_fmt.TIMES_OFF =
-                !GetParamBool(&cfgHash,SNAME":TIMEPRUNING",    FALSE);
+                !GetParamBool(&cfgHash,SNAME":TIMEPRUNING",    false);
   in_lbl_fmt.left_extent  = -100 * (long long) (0.5 + 1e5 *
                  GetParamFlt(&cfgHash, SNAME":STARTTIMESHIFT",  0.0));
   in_lbl_fmt.right_extent =  100 * (long long) (0.5 + 1e5 *
@@ -325,7 +325,7 @@ int main(int argc, char *argv[])
   parallel_mode= GetParamInt(&cfgHash, SNAME":PARALLELMODE",   -1);
   min_variance = GetParamFlt(&cfgHash, SNAME":MINVAR",          0.0);
   min_mix_wght = GetParamFlt(&cfgHash, SNAME":MIXWEIGHTFLOOR",  1.0);
-  hmms_binary  = GetParamBool(&cfgHash,SNAME":SAVEBINARY",      FALSE);
+  hmms_binary  = GetParamBool(&cfgHash,SNAME":SAVEBINARY",      false);
   script =(char*)GetParamStr(&cfgHash, SNAME":SCRIPT",          NULL);
   src_hmm_list = GetParamStr(&cfgHash, SNAME":SOURCEHMMLIST",   NULL);
   src_hmm_dir  = GetParamStr(&cfgHash, SNAME":SOURCEMODELDIR",  NULL);
@@ -335,7 +335,7 @@ int main(int argc, char *argv[])
   alg_hmm_dir  = GetParamStr(&cfgHash, SNAME":ALIGNMODELDIR",   NULL);
   alg_hmm_ext  = GetParamStr(&cfgHash, SNAME":ALIGNMODELEXT",   NULL);
   alg_mmf=(char*)GetParamStr(&cfgHash, SNAME":ALIGNMMF",        NULL);
-  alg_mixtures = GetParamBool(&cfgHash,SNAME":ALIGNMIXTURES",   FALSE);
+  alg_mixtures = GetParamBool(&cfgHash,SNAME":ALIGNMIXTURES",   false);
   trg_hmm_dir  = GetParamStr(&cfgHash, SNAME":TARGETMODELDIR",  NULL);
   trg_hmm_ext  = GetParamStr(&cfgHash, SNAME":TARGETMODELEXT",  NULL);
   trg_mmf      = GetParamStr(&cfgHash, SNAME":TARGETMMF",       NULL);
@@ -380,17 +380,17 @@ int main(int argc, char *argv[])
     }
   }
   
-  if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", FALSE)) 
+  if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", false)) 
     PrintConfig(&cfgHash);
   
-  if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", FALSE)) 
+  if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", false)) 
     puts("Version: "VERSION"\n");
   
 
-  GetParamBool(&cfgHash, SNAME":NFRAMEOUTPNORM", FALSE);
+  GetParamBool(&cfgHash, SNAME":NFRAMEOUTPNORM", false);
 
 
-  if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", FALSE)) {
+  if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", false)) {
     CheckCommandLineParamUse(&cfgHash);
   }
 
@@ -781,7 +781,7 @@ int main(int argc, char *argv[])
       double prn_step  = stprn_step;
       double prn_limit = stprn_limit;
 
-      if (GetParamBool(&cfgHash, SNAME":NFRAMEOUTPNORM", FALSE)) 
+      if (GetParamBool(&cfgHash, SNAME":NFRAMEOUTPNORM", false)) 
       {
         net.mOutpScale = outprb_scale / nFrames;
         net.mPruningThresh /= nFrames;

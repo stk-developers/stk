@@ -206,7 +206,7 @@ int main(int argc, char *argv[])
     Error("Insufficient memory");
   }
   i = ParseOptions(argc, argv, optionStr, SNAME, &cfgHash);
-  htk_compat = GetParamBool(&cfgHash, SNAME":HTKCOMPAT", FALSE);
+  htk_compat = GetParamBool(&cfgHash, SNAME":HTKCOMPAT", false);
   if (htk_compat) {
     if (argc == i) Error("Dictionary file name expected");
     InsertConfigParam(&cfgHash, SNAME":SOURCEDICT", argv[i++], '-');
@@ -223,23 +223,23 @@ int main(int argc, char *argv[])
                                 &cvn_path, &cvn_file, &cvn_mask, &cvg_file,
                                 SNAME":", 0);
   expOptions.mCDPhoneExpansion =
-                 GetParamBool(&cfgHash,SNAME":ALLOWXWRDEXP",    FALSE);
+                 GetParamBool(&cfgHash,SNAME":ALLOWXWRDEXP",    false);
   expOptions.mRespectPronunVar
-               = GetParamBool(&cfgHash,SNAME":RESPECTPRONVARS", FALSE);
+               = GetParamBool(&cfgHash,SNAME":RESPECTPRONVARS", false);
   expOptions.mStrictTiming
-               = GetParamBool(&cfgHash,SNAME":EXACTTIMEMERGE",  FALSE);
+               = GetParamBool(&cfgHash,SNAME":EXACTTIMEMERGE",  false);
   expOptions.mNoOptimization
                =!GetParamBool(&cfgHash,SNAME":MINIMIZENET",     expOptions.mCDPhoneExpansion
-                                                                ? TRUE : FALSE);
+                                                                ? true : false);
   expOptions.mRemoveWordsNodes
-               = GetParamBool(&cfgHash,SNAME":REMEXPWRDNODES",  FALSE);
+               = GetParamBool(&cfgHash,SNAME":REMEXPWRDNODES",  false);
   in_lbl_fmt.TIMES_OFF =
-                !GetParamBool(&cfgHash,SNAME":TIMEPRUNING",    FALSE);
+                !GetParamBool(&cfgHash,SNAME":TIMEPRUNING",    false);
   in_lbl_fmt.left_extent  = -100 * (long long) (0.5 + 1e5 *
                  GetParamFlt(&cfgHash, SNAME":STARTTIMESHIFT",  0.0));
   in_lbl_fmt.right_extent =  100 * (long long) (0.5 + 1e5 *
                  GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0));
-  baum_welch   = GetParamBool(&cfgHash,SNAME":EVALUATION",      FALSE);
+  baum_welch   = GetParamBool(&cfgHash,SNAME":EVALUATION",      false);
   swap_features=!GetParamBool(&cfgHash,SNAME":NATURALREADORDER",isBigEndian());
   gpFilterWldcrd= GetParamStr(&cfgHash,SNAME":HFILTERWILDCARD", "$");
   gpScriptFilter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",   NULL);
@@ -327,19 +327,19 @@ int main(int argc, char *argv[])
                               htk_compat ? TF_HTK : TF_STK,
                               "HTK", TF_HTK, "STK", TF_STK, NULL);
 
-  if (GetParamBool(&cfgHash, SNAME":STATEALIGNMENT", FALSE)) {
+  if (GetParamBool(&cfgHash, SNAME":STATEALIGNMENT", false)) {
     alignment |= STATE_ALIGNMENT;
   }
-  if (GetParamBool(&cfgHash, SNAME":MODELALIGNMENT", FALSE)) {
+  if (GetParamBool(&cfgHash, SNAME":MODELALIGNMENT", false)) {
     alignment |= MODEL_ALIGNMENT;
   }
-  if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", FALSE)) {
+  if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", false)) {
     PrintConfig(&cfgHash);
   }
-  if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", FALSE)) {
+  if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", false)) {
     puts("Version: "VERSION"\n");
   }
-  if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", FALSE)) {
+  if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", false)) {
     CheckCommandLineParamUse(&cfgHash);
   }
 

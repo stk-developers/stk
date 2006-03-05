@@ -1,18 +1,20 @@
 #ifndef STK_Matrix_h
 #define STK_Matrix_h
 
+#include "common.h"
 #include "Error.h"
-#include <cstddef>
-#include <cstdlib>
-//#include <stdlib.h>
+
+#include <stddef.h>
+#include <stdlib.h>
 #include <stdexcept>
 #include <iostream>
 
+#ifdef USE_BlAS
 extern "C"{
   #include <cblas.h>
 }
+#endif
 
-#include "common.h"
 
 #define CHECKSIZE
 
@@ -80,6 +82,10 @@ namespace STK
       /// data memory area
       _ElemT *  mpData;
 
+#ifdef STK_MEMALIGN_MANUAL
+      /// data to be freed (in case of manual memalignment use, see common.h)
+      _ElemT *  mpFreeData;
+#endif
 
     public:
       // Constructors

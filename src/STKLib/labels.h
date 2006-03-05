@@ -14,7 +14,7 @@
 #define LABELS_H
 
 #include "common.h"
-#include <stdio.h>
+#include <cstdio>
 #include <ctype.h>
 
 //typedef struct _LabelFormat LabelFormat;

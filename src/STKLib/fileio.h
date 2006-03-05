@@ -13,9 +13,9 @@
 #ifndef FILEIO_H
 #define FILEIO_H
 
-#include <string>
-#include <stdio.h>
 #include "common.h"
+#include <string>
+#include <cstdio>
 
 //using namespace std;
 namespace STK

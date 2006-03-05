@@ -77,7 +77,7 @@ char *optionStr =
 " -q r   NETFORMATING"
 //" -s n   EXACTTIMEMERGE=TRUE"
 //" -t r   TEEMODELS"
-//" -u n   MINIMIZENET=FALSE"
+//" -u n   MINIMIZENET=false"
 //" -w n   REMEXPWRDNODES=TRUE"
 " -y r   TARGETTRANSCEXT"
 " -D n   PRINTCONFIG=TRUE"
@@ -144,21 +144,21 @@ int main(int argc, char *argv[]) {
 
   }
   i = ParseOptions(argc, argv, optionStr, SNAME, &cfgHash);
-//  htk_compat = GetParamBool(&cfgHash, SNAME":HTKCOMPAT", FALSE);
+//  htk_compat = GetParamBool(&cfgHash, SNAME":HTKCOMPAT", false);
   for (; i < argc; i++) {
     last_file = AddFileElem(last_file, argv[i]);
     nfeature_files++;
   }
   expOptions.mCDPhoneExpansion =
-                 GetParamBool(&cfgHash,SNAME":ALLOWXWRDEXP",    FALSE);
+                 GetParamBool(&cfgHash,SNAME":ALLOWXWRDEXP",    false);
   expOptions.mRespectPronunVar
-               = GetParamBool(&cfgHash,SNAME":RESPECTPRONVARS", FALSE);
+               = GetParamBool(&cfgHash,SNAME":RESPECTPRONVARS", false);
   expOptions.mStrictTiming
-               = GetParamBool(&cfgHash,SNAME":EXACTTIMEMERGE",  FALSE);
+               = GetParamBool(&cfgHash,SNAME":EXACTTIMEMERGE",  false);
   expOptions.mNoOptimization
-               =!GetParamBool(&cfgHash,SNAME":MINIMIZENET",     TRUE);
+               =!GetParamBool(&cfgHash,SNAME":MINIMIZENET",     true);
   expOptions.mRemoveWordsNodes
-               = GetParamBool(&cfgHash,SNAME":REMEXPWRDNODES",  FALSE);
+               = GetParamBool(&cfgHash,SNAME":REMEXPWRDNODES",  false);
   in_lbl_fmt.left_extent  = -100 * (long long) (0.5 + 1e5 *
                  GetParamFlt(&cfgHash, SNAME":STARTTIMESHIFT",  0.0));
   in_lbl_fmt.right_extent =  100 * (long long) (0.5 + 1e5 *
@@ -217,13 +217,13 @@ int main(int argc, char *argv[]) {
   out_transc_fmt= (TranscriptionFormat) GetParamEnum(&cfgHash,SNAME":TARGETTRANSCFMT", TF_STK,
                               "STK", TF_STK, "net", TF_NOF, NULL);
 
-  if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", FALSE)) {
+  if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", false)) {
     PrintConfig(&cfgHash);
   }
-  if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", FALSE)) {
+  if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", false)) {
     puts("Version: "VERSION"\n");
   }
-  if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", FALSE)) {
+  if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", false)) {
     CheckCommandLineParamUse(&cfgHash);
   }
   for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) {

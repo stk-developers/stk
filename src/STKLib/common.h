@@ -14,28 +14,60 @@
 #define COMMON_H
 
 #include "Error.h"
-#include "Math.h"
+#include "StkMath.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <float.h>
 #include <math.h>
 
 #ifndef _GNU_SOURCE
-#define _GNU_SOURCE
+#  define _GNU_SOURCE
 #endif
 #include <limits.h>
 
 #ifdef __WIN32
-   #include <gnusearch.h>
+#  include <gnusearch.h>
+#  undef HAVE_POSIX_MEMALIGN
+#  undef HAVE_MEMALIGN
 #else
-   #include <search.h>
+#  include <search.h>
+#  define HAVE_POSIX_MEMALIGN
 #endif
 
 #include <string>
 
 
+/* Alignment of critical dynamic data structure
+ *
+ * Not all platforms support memalign so we provide a stk_memalign wrapper
+ * void *stk_memalign( size_t align, size_t size, void **pp_orig )
+ * *pp_orig is the pointer that has to be freed afterwards.
+ */
+#ifdef HAVE_POSIX_MEMALIGN
+#  define stk_memalign(align,size,pp_orig) \
+     ( !posix_memalign( pp_orig, align, size ) ? *(pp_orig) : NULL )
+#  ifdef STK_MEMALIGN_MANUAL
+#    undef STK_MEMALIGN_MANUAL
+#  endif
+#elif defined(HAVE_MEMALIGN)
+   /* Some systems have memalign() but no declaration for it */
+   void * memalign( size_t align, size_t size );
+#  define stk_memalign(align,size,pp_orig) \
+     ( *(pp_orig) = memalign( align, size ) )
+#  ifdef STK_MEMALIGN_MANUAL
+#    undef STK_MEMALIGN_MANUAL
+#  endif
+#else /* We don't have any choice but to align manually */
+#  define stk_memalign(align,size,pp_orig) \
+     (( *(pp_orig) = malloc( size + align - 1 )) ? \
+     (void *)( (((unsigned long)*(pp_orig)) + 15) & ~0xFUL ) : NULL )
+#  define STK_MEMALIGN_MANUAL
+#endif
+
+
 #ifndef M_PI
-#define M_PI 3.1415926535897932384626433832795
+#  define M_PI 3.1415926535897932384626433832795
 #endif
 
 #define M_LOG_2PI 1.8378770664093454835606594728112
@@ -53,25 +85,25 @@
 
 
 #ifndef DOUBLEPRECISION
-#define DOUBLEPRECISION 1
+#  define DOUBLEPRECISION 1
 #endif
 
 #if DOUBLEPRECISION
-#define FLOAT double
-#define EPSILON DBL_EPSILON
-#define FLOAT_FMT "%lg"
-#define swapFLOAT swap8
-#define _EXP  exp
-#define _LOG  log
-#define _SQRT sqrt
+#  define FLOAT double
+#  define EPSILON DBL_EPSILON
+#  define FLOAT_FMT "%lg"
+#  define swapFLOAT swap8
+#  define _EXP  exp
+#  define _LOG  log
+#  define _SQRT sqrt
 #else
-#define FLOAT float
-#define EPSILON FLT_EPSILON
-#define FLOAT_FMT "%g"
-#define swapFLOAT swap4
-#define _EXP  expf
-#define _LOG  logf
-#define _SQRT sqrtf
+#  define FLOAT float
+#  define EPSILON FLT_EPSILON
+#  define FLOAT_FMT "%g"
+#  define swapFLOAT swap4
+#  define _EXP  expf
+#  define _LOG  logf
+#  define _SQRT sqrtf
 #endif
 
 
@@ -88,7 +120,7 @@
 #define UNDEF_TIME -10000
 
 #ifdef WIN32
-#define access _access
+#  define access _access
 #endif
 
 
@@ -105,12 +137,11 @@ using namespace STK;
   /// This type will be used for flag passing
   typedef unsigned int    FlagType;
   
-  
-  typedef enum 
-  {
-    FALSE = 0,
-    TRUE  = 1
-  } BOOL;
+//  typedef enum 
+//  {
+//    FALSE = 0,
+ //   TRUE  = 1
+ // } BOOL;
   
   
   enum PropagDirectionType

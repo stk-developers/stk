@@ -1537,7 +1537,7 @@ namespace STK
         }
       }
   
-      int keepModelActive = FALSE;
+      int keepModelActive = false;
   
       assert(!node->mpTokens[hmm->mNStates-1].IsActive());
   
@@ -1610,7 +1610,7 @@ namespace STK
           }
   
           mActiveTokens++;
-          keepModelActive = TRUE;
+          keepModelActive = true;
           assert(node->mIsActive);
         } 
         else 

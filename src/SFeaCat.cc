@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
   
   
   i = ParseOptions(argc, argv, optionStr, SNAME, &cfg_hash);
-//  htk_compat   = GetParamBool(&cfgHash,SNAME":HTKCOMPAT",       FALSE);
+//  htk_compat   = GetParamBool(&cfgHash,SNAME":HTKCOMPAT",       false);
   for (; i < argc; i++) 
   {
     last_file = AddFileElem(last_file, argv[i]);
@@ -162,13 +162,13 @@ int main(int argc, char *argv[])
   src_hmm_ext    = GetParamStr(&cfg_hash, SNAME":SOURCEMODELEXT",  NULL);
   src_mmf = (char*)GetParamStr(&cfg_hash, SNAME":SOURCEMMF",       NULL);
 
-  if (GetParamBool(&cfg_hash, SNAME":PRINTCONFIG", FALSE))
+  if (GetParamBool(&cfg_hash, SNAME":PRINTCONFIG", false))
     PrintConfig(&cfg_hash);
   
-  if (GetParamBool(&cfg_hash, SNAME":PRINTVERSION", FALSE))
+  if (GetParamBool(&cfg_hash, SNAME":PRINTVERSION", false))
     puts("Version: "VERSION"\n");
                                  
-  if (!GetParamBool(&cfg_hash,SNAME":ACCEPTUNUSEDPARAM", FALSE))
+  if (!GetParamBool(&cfg_hash,SNAME":ACCEPTUNUSEDPARAM", false))
     CheckCommandLineParamUse(&cfg_hash);
 
   for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) 
