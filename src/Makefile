@@ -1,1 +1,3 @@
-include Makefile.lin# DO NOT DELETE
+include Makefile.win
+
+# DO NOT DELETE

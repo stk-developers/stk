@@ -5,7 +5,7 @@ ARCH = win
 
 ###############################################################################
 # compiler options
-CFLAGS = -Wall -g -DDOUBLEPRECISION=0 -D_REENTRANT -I/usr/local/include \
+CFLAGS = -Wall -g -DDOUBLEPRECISION=0 -D_REENTRANT -D WIN32 -I/usr/local/include \
          -I/usr/include -I./STKLib/gnu -O2
 CXXFLAGS = $(CFLAGS)
 
