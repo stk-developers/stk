@@ -27,7 +27,7 @@ Server::Server(int port, int nOfClients){
   socklen_t addrlen = sizeof(clientInfo);
   int i;
   
-  pmClientSocket = new int(nOfClients);
+  pmClientSocket = new int[nOfClients];
   
   // Create all connections
   for(i=0; i<mNOfClients; i++){ 
@@ -92,7 +92,7 @@ void Server::Send(char *data, int n, int who){
 void Server::SendElement(SNet::Element *element, int who){
    assert(element != NULL);
    SendInt(element->mLast, who);
-   SendInt(element->mFrom, who);
+   //SendInt(element->mFrom, who);
    SendInt(element->mNLayers, who);
    for(int i=0; i < element->mNLayers; i++){
      Send((char*)(*(element->mpWeights[i]))(), element->mpWeights[i]->Size(), who);
@@ -118,7 +118,7 @@ void Server::Receive(char *data, int n, int who){
 
 void Server::ReceiveElement(SNet::Element *element, int who){
    element->mLast = ReceiveInt(who);
-   element->mFrom = ReceiveInt(who);
+   //element->mFrom = ReceiveInt(who);
    element->mNLayers = ReceiveInt(who);   
    for(int i=0; i < element->mNLayers; i++){
      Receive((char*)(*(element->mpWeights[i]))(), element->mpWeights[i]->Size(), who);
@@ -140,7 +140,7 @@ void Server::SendBroad(char *data, int n){
 
 void Server::SendElementBroad(SNet::Element *element){
   for(int i=0; i < mNOfClients; i++){
-    element->mFrom = i;
+    //element->mFrom = i;
     SendElement(element, i);
   }
 }
@@ -214,7 +214,7 @@ void Client::SendElement(SNet::Element *element){
    // :KLUDGE: Scatter / gather should be used
    assert(element != NULL);
    SendInt(element->mLast);
-   SendInt(element->mFrom);
+   //SendInt(element->mFrom);
    SendInt(element->mNLayers);
    for(int i=0; i < element->mNLayers; i++){
      Send((char*)(*(element->mpWeights[i]))(), element->mpWeights[i]->Size());
@@ -242,7 +242,7 @@ void Client::ReceiveElement(SNet::Element *element){
    // :KLUDGE: Scatter / gather should be used
    assert(element != NULL);
    element->mLast = ReceiveInt();
-   element->mFrom = ReceiveInt();
+   //element->mFrom = ReceiveInt();
    element->mNLayers = ReceiveInt();
    for(int i=0; i < element->mNLayers; i++){
      Receive((char*)(*(element->mpWeights[i]))(), element->mpWeights[i]->Size());

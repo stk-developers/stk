@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
   src_lbl_dir  = GetParamStr(&cfgHash, SNAME":SOURCETRANSCDIR", NULL);
   src_lbl_ext  = GetParamStr(&cfgHash, SNAME":SOURCETRANSCEXT", "lab");
   trace_flag   = GetParamInt(&cfgHash, SNAME":TRACE",           0);
-  hmms_binary  = GetParamBool(&cfgHash,SNAME":SAVEBINARY",      FALSE);
+  hmms_binary  = GetParamBool(&cfgHash,SNAME":SAVEBINARY",      false);
   script =(char*)GetParamStr(&cfgHash, SNAME":SCRIPT",          NULL);
 //  src_hmm_list = GetParamStr(&cfgHash, SNAME":SOURCEHMMLIST",   NULL);
 //  src_hmm_dir  = GetParamStr(&cfgHash, SNAME":SOURCEMODELDIR",  NULL);
@@ -221,14 +221,14 @@ int main(int argc, char *argv[])
   trg_hmm_ext  = GetParamStr(&cfgHash, SNAME":TARGETMODELEXT",  NULL);
   trg_mmf      = GetParamStr(&cfgHash, SNAME":TARGETMMF",       NULL);
   
-  cross_validation  = GetParamBool(&cfgHash,SNAME":CROSSVALIDATION", FALSE);
+  cross_validation  = GetParamBool(&cfgHash,SNAME":CROSSVALIDATION", false);
   cache_size   = GetParamInt(&cfgHash, SNAME":CACHESIZE",            12000);
   bunch_size   = GetParamInt(&cfgHash, SNAME":BUNCHSIZE",            1000);
   learning_rate   = GetParamFlt(&cfgHash, SNAME":LEARNINGRATE",      0.008);
   clients   = GetParamInt(&cfgHash, SNAME":CLIENTS",            0);
   ip = (char*)GetParamStr(&cfgHash, SNAME":JOINIP",       NULL);
-  randomize =  GetParamBool(&cfgHash,SNAME":RANDOMIZE", TRUE);
-  sync = !GetParamBool(&cfgHash,SNAME":NOSYNC", FALSE);
+  randomize =  GetParamBool(&cfgHash,SNAME":RANDOMIZE", true);
+  sync = !GetParamBool(&cfgHash,SNAME":NOSYNC", false);
   
   
   
@@ -237,14 +237,14 @@ int main(int argc, char *argv[])
 //                              "HTK", TF_HTK, "STK", TF_STK, NULL);
 
 
-  if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", FALSE)) {
+  if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", false)) {
     PrintConfig(&cfgHash);
   }
-  if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", FALSE)) {
+  if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", false)) {
     puts("Version: "VERSION"\n");
   }
 
-  if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", FALSE)) {
+  if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", false)) {
     CheckCommandLineParamUse(&cfgHash);
   }
 
@@ -429,7 +429,9 @@ int main(int argc, char *argv[])
 
   if(!cross_validation)  
     hset.WriteMmf(trg_mmf, trg_hmm_dir, trg_hmm_ext, hmms_binary);
-  hset.Release();
+    
+  // :KLUDGE: Soudruzi neco nezvladli :o)
+  /// hset.Release();
 
   for (size_t i = 0; i < cfgHash.mNEntries; i++) free(cfgHash.mpEntry[i]->data);
   my_hdestroy_r(&cfgHash, 1);
@@ -451,5 +453,6 @@ int main(int argc, char *argv[])
     feature_files = feature_files->mpNext;
     free(file_name);
   }
+  
   return 0;
 }

@@ -62,11 +62,18 @@ namespace SNet{
       int NLayers()          const {return mNLayers;};
       NLayer* Layers(int i)  const {return mpLayers[i];};
       float LearnRate()      const {return mLearnRate;};
+      int Good()             const {return mGood;};
+      int Vectors()          const {return mVectors;};
+      int Discarded()        const {return mDiscarded;};
+      Timers* TimersGet()       const {return mpTimers;};
       void Client(Socket::Client *client){mpClient = client;};
       void ReceivedElements(std::queue<Element*> *receivedElements){mpReceivedElements = receivedElements;};
       void FreeElements(std::queue<Element*> *freeElements){mpFreeElements = freeElements;};
       void Mutexes(pthread_mutex_t *free, pthread_mutex_t *received, barrier_t *barrier, bool *sync){ ///< Sets sync objects  
                    mpFreeMutex = free; mpReceivedMutex = received; mpBarrier = barrier; mpSync = sync;}; 
+      void Good(int good){mGood = good;};
+      void Vectors(int vectors){mVectors = vectors;}
+      void Discarded(int discarded){mDiscarded = discarded;};
   };
 } // namespace
 #endif

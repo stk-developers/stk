@@ -1,5 +1,5 @@
 #include"progobj.h"
-   
+
 SNet::ProgObj::ProgObj(XformInstance *NNetInstance, int cacheSize, int bunchSize, bool crossValidation, 
                        std::string version, float learningRate, int clients, char* ip, bool randomize, bool sync){
   mPort = 2020;
@@ -26,7 +26,6 @@ SNet::ProgObj::ProgObj(XformInstance *NNetInstance, int cacheSize, int bunchSize
   mpServer = NULL;
   mpClient = NULL;  
 
-
   if(NNetInstance->mpXform->mXformType !=  XT_COMPOSITE)
     Error("NN has to be CompositeXform");
   
@@ -45,7 +44,12 @@ SNet::ProgObj::ProgObj(XformInstance *NNetInstance, int cacheSize, int bunchSize
   pthread_mutex_init(mpFreeMutex, NULL);
   pthread_mutex_init(mpReceivedMutex, NULL);
   mpBarrier = new barrier_t;
-  barrier_init(mpBarrier, 2);
+  mpEndBarrier = new barrier_t;
+  if(mClient) {
+    barrier_init(mpBarrier, 2); // receiving thread + main
+    barrier_init(mpEndBarrier, 2); 
+  }
+  if(mServer) barrier_init(mpBarrier, mNoClients+1); // all client threads + main
 }
 
 SNet::ProgObj::~ProgObj(){
@@ -56,6 +60,7 @@ SNet::ProgObj::~ProgObj(){
   delete mpFreeMutex;
   delete mpReceivedMutex;  
   delete mpBarrier;
+  delete mpEndBarrier;
 }
 
 void SNet::ProgObj::NewVector(FLOAT *inVector, FLOAT *outVector, int inSize, int outSize, bool last){
@@ -70,8 +75,14 @@ void SNet::ProgObj::NewVector(FLOAT *inVector, FLOAT *outVector, int inSize, int
   }
   if(last){
     if(mClient){
-      std::cerr << "END OF CLIENT, WAIT ON BARRIER\n";
-      barrier_wait(mpBarrier);
+      std::cerr << "END OF CLIENT, WAIT ON END-BARRIER\n";
+      barrier_wait(mpEndBarrier);
+      
+      mpClient->SendInt(mpNNet->Vectors());
+      mpClient->SendInt(mpNNet->Good());
+      mpClient->SendInt(mpNNet->Discarded());
+      std::cerr << "Numbers sent!\n";
+      
     }  
     mpNNet->PrintInfo(); // print numbers of vectors
   }
@@ -165,6 +176,9 @@ void SNet::ProgObj::RunServer(){
   }
   
   /// Main server thread
+  mpRecVectors = new int[mNoClients]; 
+  mpRecGood = new int[mNoClients]; 
+  mpRecDiscarded = new int[mNoClients];  
   Element *element_nn = new Element(mpNNet, false);
   element_nn->Reference(mpNNet);
   Element *element_add = new Element(mpNNet, true); // element for adding update matrixes
@@ -209,29 +223,52 @@ void SNet::ProgObj::RunServer(){
       
     }  
   }
+  barrier_wait(mpBarrier); // waiting for all clients to send info
+  int vectors = 0;
+  int good = 0;
+  int discarded = 0;
+  for(int i=0; i < mNoClients; i++){
+     vectors += mpRecVectors[i];
+     good += mpRecGood[i];
+     discarded += mpRecDiscarded[i];
+  }
+  mpNNet->Vectors(vectors);
+  mpNNet->Good(good);
+  mpNNet->Discarded(discarded);
+  mpNNet->PrintInfo(); // print numbers of vectors
   
+  delete[] mpRecVectors; 
+  delete[] mpRecGood; 
+  delete[] mpRecDiscarded; 
 }
 
 void SNet::ProgObj::ServerReceivingThread(int number){
   Element *element;
-  while(!Finished(mNoClients)){
+  while(/*!Finished(mNoClients)*/ !mpClientFinished[number]){
     element = GetOrCreate(&mFreeElements, mpNNet, mpFreeMutex);
+    std::cerr << "THREAD " << number << " : waiting for element\n";
     mpServer->ReceiveElement(element, number);
     pthread_mutex_lock(mpReceivedMutex);
      mReceivedElements.push(element);
-     if(element->mLast == 1) std::cerr << "THREAD: element received LAST\n";
-     else std::cerr << "THREAD: element received\n";
+     if(element->mLast == 1) std::cerr << "THREAD " << number << " : element received LAST\n";
+     else std::cerr << "THREAD " << number << " : element received\n";
     pthread_mutex_unlock(mpReceivedMutex);
     if(element->mLast == 1){ // last indicates that this client is done
       mpClientFinished[number] = true;
     }
   }
+  std::cerr << "THREAD " << number << " waiting for numbers!\n";
+  mpRecVectors[number] = mpServer->ReceiveInt(number);
+  mpRecGood[number] = mpServer->ReceiveInt(number);
+  mpRecDiscarded[number] = mpServer->ReceiveInt(number);
+  std::cerr << "THREAD " << number << " receivec numbers!\n";
+  barrier_wait(mpBarrier); // waiting for all clients to send info
 }
 
 /// ********** Client **********
 void SNet::ProgObj::RunClient(){
   // Open client receiving thread
-  mpThreads = new pthread_t;
+  mpThreads = new pthread_t[1]; // because of delete[]
   mpClient = new Socket::Client(mPort, (char*)mIp.c_str());
 
   // Create thread
@@ -259,15 +296,18 @@ void SNet::ProgObj::ClientReceivingThread(){
     mpClient->ReceiveElement(element);
     pthread_mutex_lock(mpReceivedMutex);
      mReceivedElements.push(element);
-     if(element->mLast == 1)  std::cerr << "THREAD: Received Weights LAST\n";
-     else std::cerr << "THREAD: Received Weights\n";
+     mpNNet->TimersGet()->Count(0);
+     if(element->mLast == 1)  std::cerr << "THREAD: Received Weights " << mpNNet->TimersGet()->Counter(0) << " LAST\n";
+     else std::cerr << "THREAD: Received Weights " << mpNNet->TimersGet()->Counter(0) << "\n";
     pthread_mutex_unlock(mpReceivedMutex);
+    
     if(mSync)  std::cerr << "THREAD: Waiting on barrier\n";
     if(mSync) barrier_wait(mpBarrier);
+
     if(element->mLast == 1){ // waiting for last element from server even if useless
       mClientShouldFinish = true;
     } 
   }
-  std::cerr << "THREAD: END OF THREAD\n";
-  barrier_wait(mpBarrier);
+  std::cerr << "THREAD: END OF THREAD WAITING ON END-BARRIER\n";
+  barrier_wait(mpEndBarrier);
 }

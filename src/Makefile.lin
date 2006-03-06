@@ -47,11 +47,14 @@ BASELIBS =  STKLib/libSTKLib.a
 # Recursive make subdirs
 SUBDIRS = STKLib
             
+.PHONY : all snet subdirs $(SUBDIRS)
+
 ###############################################################################
 # implicit "make all" rule             
 all  : subdirs $(TOOLS)
-.PHONY : all subdirs $(SUBDIRS)
 
+###############################################################################
+snet : subdirs SNet
 
 ###############################################################################
 subdirs : $(SUBDIRS)
@@ -91,11 +94,5 @@ clean:
 # runs makedepend to automatically define header files dependencies
 depend:
 	-makedepend -Y *.c *.C *.cc STKLib/*.C STKLib/*.cc SNetLib/*.C SNetLib/*.cc
-
-
-###############################################################################
-# some testing rules
-test : $(BASELIBS)
-test2 : test2.cc STKLib/common.o STKLib/Error.o STKLib/filmatch.o STKLib/Buffer.o
 
 # DO NOT DELETE

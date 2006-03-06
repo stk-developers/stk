@@ -32,11 +32,15 @@ namespace SNet{
       pthread_mutex_t *mpFreeMutex;     ///< Mutex for queue of free elements
       pthread_mutex_t *mpReceivedMutex; ///< Mutex for queue of received elements
       barrier_t *mpBarrier;             ///< Barrier for synchronized parallelism
+      barrier_t *mpEndBarrier;          ///< End of program (client) barrier
       bool *mpClientFinished;           ///< Array of flags if client finished
       bool *mpLastSent;                 ///< Array of flags if sent last data to client - really finished client
       pthread_t* mpThreads;             ///< Pointer to threads
       Socket::Server *mpServer;         ///< Server only - TCP/IP Server object
       Socket::Client *mpClient;         ///< Client only - TCP/IP Client object
+      int *mpRecVectors;                ///< Array for received number of vectors from clients
+      int *mpRecGood;                   ///< Array for received number of good vectors from clients 
+      int *mpRecDiscarded;              ///< Array for received number of discarded vectors from clients 
       
       int GiveMeSeed();                                       ///< Generates random seed
       bool Finished(int noClients);                           ///< Returns if noClients clients finished

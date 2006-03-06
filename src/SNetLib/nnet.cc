@@ -55,7 +55,7 @@ SNet::NNet::NNet(CompositeXform* nn, int cacheSize, int bunchSize, bool crossVal
   } 
   
   // Timers initialize
-  mpTimers = new Timers(1, 0);
+  mpTimers = new Timers(1, 2);
   mpTimers->Start(0);
 }
 
@@ -122,6 +122,8 @@ void SNet::NNet::ComputeCache(bool last){
     std::cerr << "Problem - cache with 0 bunches";
     mpUpdateElement->mLast = 1;
     mpClient->SendElement(mpUpdateElement);
+    if(*mpSync) std::cerr << "Waiting on barrier\n";
+    if(*mpSync) barrier_wait(mpBarrier);
   }
   
   // Compute all bunches
@@ -136,10 +138,16 @@ void SNet::NNet::ComputeCache(bool last){
       if(mpUpdateElement != NULL){ // server-client, not 1 CPU
         if(i == mActualNOfBunch-1 && last){ // last cache & last bunch
 	  mpUpdateElement->mLast = 1;
+	  
+	  *mpSync = false;
 	}
         mpClient->SendElement(mpUpdateElement);
-	if(mpUpdateElement->mLast == 1) std::cerr << "Element sent LAST\n";
-	else std::cerr << "Element sent\n";
+	mpTimers->Count(1);
+	if(mpUpdateElement->mLast == 1) std::cerr << "Element sent "<< mpTimers->Counter(1) <<" LAST\n";
+	else std::cerr << "Element sent "<< mpTimers->Counter(1) << "\n";
+	
+        if(*mpSync) std::cerr << "Waiting on barrier\n";
+        if(*mpSync) barrier_wait(mpBarrier);
       }
       ChangeWeights(); // update 
     }
@@ -210,8 +218,6 @@ void SNet::NNet::ChangeWeights(){
     }  
   }
   else{ // server-client, not 1 CPU
-    if(*mpSync) std::cerr << "Waiting on barrier\n";
-    if(*mpSync) barrier_wait(mpBarrier);
     Element *element;
     int size = 0;
     pthread_mutex_lock(mpReceivedMutex);
