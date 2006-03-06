@@ -978,9 +978,11 @@ namespace STK
           if (NULL == ret)
           {
             // create new Mean object
-            ret = new Mean(vec_size, mAllocAccums);            
+            ret = new Mean(vec_size, mAllocAccums);
             // initialize matrix for original mean vectors definition
             ret->mVector.Init(bx->mInSize, vec_size + (mAllocAccums ? (vec_size + 1) * 2 : 0));
+            // set the weights vector
+            ret->mpWeights = bx;            
           }
           
           // read the values and fill appropriate structures
@@ -2050,7 +2052,7 @@ namespace STK
     if (NULL != mean->mpWeights)
     {
       PutKwd(fp, binary, KID_Weights);
-      fprintf(fp, "~x %s", mean->mpWeights->mpMacro->mpName);
+      fprintf(fp, "~x \"%s\"", mean->mpWeights->mpMacro->mpName);
       PutNLn(fp, binary);
       
       // go through the rows in the vector

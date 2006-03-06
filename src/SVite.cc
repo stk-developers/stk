@@ -343,19 +343,27 @@ int main(int argc, char *argv[])
     CheckCommandLineParamUse(&cfgHash);
   }
 
-  for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) {
-    if ((sfp = my_fopen(script, "rt", gpScriptFilter)) == NULL) {
-      Error("Cannot open script file %s", script);
+  if (NULL != script)
+  {
+    for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) {
+      if ((sfp = my_fopen(script, "rt", gpScriptFilter)) == NULL) {
+        Error("Cannot open script file %s", script);
+      }
+      while (fscanf(sfp, "%s", line) == 1) {
+        last_file = AddFileElem(last_file, line);
+        nfeature_files++;
+      }
+      my_fclose(sfp);
     }
-    while (fscanf(sfp, "%s", line) == 1) {
-      last_file = AddFileElem(last_file, line);
-      nfeature_files++;
+  }
+  
+  if (NULL != mmf)
+  {
+    for (mmf=strtok(mmf, ","); mmf != NULL; mmf=strtok(NULL, ",")) {
+      hset.ParseMmf(mmf, NULL);
     }
-    my_fclose(sfp);
   }
-  for (mmf=strtok(mmf, ","); mmf != NULL; mmf=strtok(NULL, ",")) {
-    hset.ParseMmf(mmf, NULL);
-  }
+  
   if (hmm_list != NULL) hset.ReadHMMList(hmm_list, hmm_dir, hmm_ext);
   
   nonCDphHash = hset.MakeCIPhoneHash();

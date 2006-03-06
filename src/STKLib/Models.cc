@@ -2510,13 +2510,14 @@ printf("%f", g_floor);
     ReleaseMacroHash(&mXformHash);
     ReleaseMacroHash(&mXformInstanceHash);
   
-    // :KLUDGE: see the original function Release HMMSet
     for (i = 0; i < mNumberOfXformsToUpdate; i++) 
     {
-      free(mpXformToUpdate[i].mpShellCommand);
+      if (NULL != mpXformToUpdate[i].mpShellCommand)
+        free(mpXformToUpdate[i].mpShellCommand);
     }
   
-    free(mpXformToUpdate);    
+    if (NULL != mpXformToUpdate)
+      free(mpXformToUpdate);
   } // Release();
     
   

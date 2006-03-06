@@ -429,9 +429,12 @@ int main(int argc, char *argv[])
     //InitHMMSet(hset_alig, 0);
     hset_alig->Init();
 
-    for (alg_mmf = strtok(alg_mmf, ","); alg_mmf != NULL; alg_mmf=strtok(NULL, ",")) 
+    if (NULL != alg_mmf)
     {
-      hset_alig->ParseMmf(alg_mmf, NULL);
+      for (alg_mmf = strtok(alg_mmf, ","); alg_mmf != NULL; alg_mmf=strtok(NULL, ",")) 
+      {
+        hset_alig->ParseMmf(alg_mmf, NULL);
+      }
     }
   } 
   else 

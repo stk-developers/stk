@@ -364,7 +364,8 @@ FILE *OpenInputLabelFile(
         if (fgets(line, sizeof(line), MLFfp) == NULL) {
           Error("Invalid MLF file %s (%s)", in_MLF, line);
         }
-      } while ((chptr = strtok(line, " \n\t")) == NULL || strcmp(chptr, "."));
+      } while ((chptr = strtok(line, " \n\t")) == NULL 
+            ||(strcmp(chptr, ".")));
     }
   }
 

@@ -5,13 +5,13 @@ ARCH = lin
 
 ###############################################################################
 # compiler options
-CFLAGS = -Wall -g -DDOUBLEPRECISION=0 -D_REENTRANT -I/usr/local/include \
+CFLAGS = -Wall -g -pg -DDOUBLEPRECISION=0 -D_REENTRANT -I/usr/local/include \
          -I/usr/include -O2
 CXXFLAGS = $(CFLAGS)
 
 ###############################################################################
 # linker options
-LDFLAGS = -L./STKLib
+LDFLAGS = -g -pg -L./STKLib
 LDLIBS = -lm -latlas -lpthread -lSTKLib
 #LDLIBS = -lm -lSTKLib
 #LDFLAGS = -a -g -L. -pg

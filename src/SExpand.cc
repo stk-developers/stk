@@ -220,41 +220,58 @@ int main(int argc, char *argv[]) {
   if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", false)) {
     PrintConfig(&cfgHash);
   }
+  
   if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", false)) {
     puts("Version: "VERSION"\n");
   }
+  
   if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", false)) {
     CheckCommandLineParamUse(&cfgHash);
   }
-  for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) {
-    if ((sfp = my_fopen(script, "rt", gpScriptFilter)) == NULL) {
-      Error("Cannot open script file %s", optarg);
+  
+  if (NULL != script)
+  {
+    for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) {
+      if ((sfp = my_fopen(script, "rt", gpScriptFilter)) == NULL) {
+        Error("Cannot open script file %s", optarg);
+      }
+      while (fscanf(sfp, "%s", line) == 1) {
+        last_file = AddFileElem(last_file, line);
+        nfeature_files++;
+      }
+      my_fclose(sfp);
     }
-    while (fscanf(sfp, "%s", line) == 1) {
-      last_file = AddFileElem(last_file, line);
-      nfeature_files++;
+  }
+  
+  if (NULL != ci_phn)
+  {
+    for ( ci_phn=strtok(ci_phn, ",");  ci_phn != NULL; ci_phn=strtok(NULL, ",")) 
+    {
+      e.key = ci_phn;
+      my_hsearch_r(e, FIND, &ep, &nonCDphHash);
+      if (ep != NULL) continue;
+      if ((e.key = strdup(ci_phn)) == NULL) Error("Insufficient memory");
+      e.data = (void *) 0;
+      my_hsearch_r(e, ENTER, &ep, &nonCDphHash);
     }
-    my_fclose(sfp);
   }
-  for ( ci_phn=strtok(ci_phn, ",");  ci_phn != NULL; ci_phn=strtok(NULL, ",")) {
-    e.key = ci_phn;
-    my_hsearch_r(e, FIND, &ep, &nonCDphHash);
-    if (ep != NULL) continue;
-    if ((e.key = strdup(ci_phn)) == NULL) Error("Insufficient memory");
-    e.data = (void *) 0;
-    my_hsearch_r(e, ENTER, &ep, &nonCDphHash);
-  }
-  for (tee_phn=strtok(tee_phn, ",");tee_phn != NULL;tee_phn=strtok(NULL, ",")) {
-    e.key = tee_phn;
-    my_hsearch_r(e, FIND, &ep, &nonCDphHash);
-    if (ep != NULL) {
-      ep->data = (void *) 1;
-      continue;
+  
+  if (NULL != tee_phn)
+  {
+    for (tee_phn=strtok(tee_phn, ",");tee_phn != NULL;tee_phn=strtok(NULL, ",")) 
+    {
+      e.key = tee_phn;
+      my_hsearch_r(e, FIND, &ep, &nonCDphHash);
+      if (ep != NULL) {
+        ep->data = (void *) 1;
+        continue;
+      }
+      if ((e.key = strdup(tee_phn)) == NULL) Error("Insufficient memory");
+      e.data = (void *) 1;
+      my_hsearch_r(e, ENTER, &ep, &nonCDphHash);
     }
-    if ((e.key = strdup(tee_phn)) == NULL) Error("Insufficient memory");
-    e.data = (void *) 1;
-    my_hsearch_r(e, ENTER, &ep, &nonCDphHash);
   }
+  
   if (dictionary != NULL) {
     ReadDictionary(dictionary, &dictHash, &phoneHash);
     notInDictAction  = WORD_NOT_IN_DIC_WARN;

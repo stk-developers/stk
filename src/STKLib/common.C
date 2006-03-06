@@ -1037,16 +1037,22 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
       long lval;
       *derivOrder      = 0;
       *derivWinLens = NULL;
-      while ((str = strtok((char *) str, " \t_")) != NULL) {
-        lval = strtol(str, &chrptr, 0);
-        if (!*str || *chrptr) {
-          Error("Integers separated by '_' expected for parameter DERIVWINDOWS");
+      
+      if (NULL != str)
+      {
+        while ((str = strtok((char *) str, " \t_")) != NULL) 
+        {
+          lval = strtol(str, &chrptr, 0);
+          if (!*str || *chrptr) {
+            Error("Integers separated by '_' expected for parameter DERIVWINDOWS");
+          }
+          *derivWinLens = (int *)realloc(*derivWinLens, ++*derivOrder*sizeof(int));
+          if (*derivWinLens == NULL) Error("Insufficient memory");
+          (*derivWinLens)[*derivOrder-1] = lval;
+          str = NULL;
         }
-        *derivWinLens = (int *)realloc(*derivWinLens, ++*derivOrder*sizeof(int));
-        if (*derivWinLens == NULL) Error("Insufficient memory");
-        (*derivWinLens)[*derivOrder-1] = lval;
-        str = NULL;
       }
+      
       return targetKind;
     }
     *derivOrder = targetKind & PARAMKIND_T ? 3 :

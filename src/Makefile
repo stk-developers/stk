@@ -1,3 +1,3 @@
-include Makefile.win
+include Makefile.lin
 
 # DO NOT DELETE

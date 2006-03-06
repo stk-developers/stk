@@ -171,23 +171,29 @@ int main(int argc, char *argv[])
   if (!GetParamBool(&cfg_hash,SNAME":ACCEPTUNUSEDPARAM", false))
     CheckCommandLineParamUse(&cfg_hash);
 
-  for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) 
+  if (NULL != script)
   {
-    if ((sfp = my_fopen(script, "rt", gpScriptFilter)) == NULL) 
-      Error("Cannot open script file %s", script);
-    
-    while (fscanf(sfp, "%s", p_line) == 1) 
+    for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) 
     {
-      last_file = AddFileElem(last_file, p_line);
-      nfeature_files++;
+      if ((sfp = my_fopen(script, "rt", gpScriptFilter)) == NULL) 
+        Error("Cannot open script file %s", script);
+      
+      while (fscanf(sfp, "%s", p_line) == 1) 
+      {
+        last_file = AddFileElem(last_file, p_line);
+        nfeature_files++;
+      }
+      
+      my_fclose(sfp);
     }
-    
-    my_fclose(sfp);
   }
   
-  for (src_mmf=strtok(src_mmf, ","); src_mmf != NULL; src_mmf=strtok(NULL, ",")) 
+  if (NULL != src_mmf)
   {
-    hset.ParseMmf(src_mmf, NULL);
+    for (src_mmf=strtok(src_mmf, ","); src_mmf != NULL; src_mmf=strtok(NULL, ",")) 
+    {
+      hset.ParseMmf(src_mmf, NULL);
+    }
   }
   
   if (src_hmm_list) 

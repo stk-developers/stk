@@ -4,12 +4,13 @@ AR = ar
 
 ##############################################################################
 # compiler options
-CFLAGS = -Wall -g -DDOUBLEPRECISION=0 -D_REENTRANT -I/usr/local/include -I/usr/include -O2
+CFLAGS = -Wall -g -pg -DDOUBLEPRECISION=0 -D_REENTRANT -O2
 CXXFLAGS = $(CFLAGS)
 
 ###############################################################################
 # linker options
 LDLIBS = -lm -latlas -lpthread -O2
+LDFLAGS = -pg -g
 #LDFLAGS = -a -g -L. -pg
 
 ###############################################################################
