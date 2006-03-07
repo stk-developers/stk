@@ -722,15 +722,23 @@ namespace STK
     bool                    mUpdatableFromStatAccums;
     BiasXform *             mpWeights;                                          ///< Specifies weights vector defined by Bias Xform macro if mean is defined by weights of means, otherwise NULL
     Matrix<FLOAT>           mVector;
-    FLOAT *                 mpVectorO;
+    FLOAT *                 mpVectorO;                                          ///< Matrix of cluster mean vectors (with CAT)
     
     
-    void
     /**
      * @brief Updates the object from the accumulators
      * @param rModelSet ModelSet object which holds the accumulator configuration
      */
+    void
     UpdateFromAccums(const ModelSet * pModelSet);
+    
+    /** @brief Recalculates mean vector for cluster adaptive training
+     * 
+     * mVector holds the matrix of cluster mean vectors, mpWeights is the 
+     * cluster weight vector. This method implements their scalar multiplication
+     */
+    void
+    RecalculateCAT();
   };
 
   

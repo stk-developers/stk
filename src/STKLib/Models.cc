@@ -39,6 +39,7 @@ namespace STK
   size_t gFuncTableSize = sizeof(gFuncTable)/sizeof(*gFuncTable);
   enum StatType {MEAN_STATS, COV_STATS};
   
+  
   //***************************************************************************
   //***************************************************************************
   void 
@@ -95,6 +96,24 @@ namespace STK
       if (mixture->mpInputXform== ud->mpOldData) mixture->mpInputXform = (XformInstance*) ud->mpNewData;
     } 
     
+    else if (macro_type == 'u')
+    {
+      Mean* mean = static_cast<Mean*>(pData);
+      
+      // For cluster adaptive training, BiasXform holds the weights vector. If
+      // new bias is defined, we want to check all means and potentially update
+      // the weights refference and recalculate the values
+      if ('x' == ud->mType                                               
+      && (XT_BIAS == static_cast<Xform*>(ud->mpNewData)->mXformType)
+      && (mean->mpWeights == static_cast<BiasXform*>(ud->mpOldData)))
+      {
+        BiasXform* new_weights = static_cast<BiasXform*>(ud->mpNewData);
+        
+        mean->mpWeights = new_weights;
+        mean->RecalculateCAT();
+      }
+    }
+        
     else if (macro_type == 'x') 
     {
       CompositeXform *cxf = (CompositeXform *) pData;
@@ -1488,7 +1507,7 @@ printf("%f", g_floor);
     mNumberOfXformStatAccums  = 0;
     mUpdatableFromStatAccums  = true;
     mpWeights                 = NULL;
-}  
+  }  
   
   
   //**************************************************************************  
@@ -1558,7 +1577,32 @@ printf("%f", g_floor);
       }
     }
   } // UpdateFromAccums(const ModelSet * pModelSet)
-
+  
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  void 
+  Mean::
+  RecalculateCAT()
+  {
+    if (NULL != mpWeights)
+    {
+      //:KLUDGE: optimize this
+      memset(mpVectorO, 0, sizeof(FLOAT) * mVectorSize);      
+      
+      // go through rows in the cluster matrix
+      for (size_t i = 0; i < mpWeights->mInSize; i++)
+      {
+        // go through cols in the cluster matrix
+        for (size_t j = 0; j < mVectorSize; j++)
+        {
+          //std::cerr << mpVectorO[j] << "+=" << mVector(i, j) << "*" << mpWeights->mpVectorO[i] << std::endl;
+          mpVectorO[j] += mVector(i, j) * mpWeights->mpVectorO[i];
+        }
+      }
+    }
+  }
+  
   
   //**************************************************************************  
   //**************************************************************************  
@@ -2252,7 +2296,7 @@ printf("%f", g_floor);
     mMemorySize   = 0;
     mDelay        = 0;
     mXformType    = XT_BIAS;
-}
+  }
   
   //**************************************************************************  
   //**************************************************************************  

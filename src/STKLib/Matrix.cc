@@ -39,12 +39,16 @@ namespace STK
 #ifdef USE_BLAS
         cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, a.Rows(), b.Cols(), b.Rows(),
                     1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
+#else
+        Error("Method not implemented without BLAS");
 #endif        
       }
       else{
 #ifdef USE_BLAS
         cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, a.Rows(), b.Cols(), b.Rows(),
                     1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
+#else
+        Error("Method not implemented without BLAS");
 #endif
       }
       return *this;
@@ -75,11 +79,13 @@ namespace STK
 #ifdef USE_BLAS
       cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, a.Rows(), b.Rows(), b.Cols(),
                   1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
+#else
+      Error("Method not implemented without BLAS");
 #endif
       
       //cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, C->rows, C->cols, B->rows,
       //            1.0f, A->arr, A->realCols, B->arr, B->realCols, 1.0f, C->arr, C->realCols);		  
-		  
+  
       return *this;
     }; 
     
@@ -105,6 +111,8 @@ namespace STK
 #ifdef USE_BLAS
       cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, a.Cols(), b.Cols(), b.Rows(),
                   1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
+#else
+      Error("Method not implemented without BLAS");
 #endif
       
       return *this;

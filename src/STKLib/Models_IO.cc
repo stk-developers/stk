@@ -579,7 +579,7 @@ namespace STK
               hash = &mXformInstanceHash;
               break;
             case 'x':
-              this->Scan(MTM_XFORM | MTM_XFORM_INSTANCE,NULL,ReplaceItem, &ud);
+              this->Scan(MTM_XFORM | MTM_XFORM_INSTANCE | MTM_MEAN ,NULL,ReplaceItem, &ud);
               ud.mpOldData->Scan(MTM_REVERSE_PASS | MTM_ALL, NULL,ReleaseItem,NULL);
               hash = &mXformHash;
               break;
@@ -966,7 +966,7 @@ namespace STK
         bx = static_cast<BiasXform *>(tmp_macro->mpData);
         
         // read bx->mInSize means
-        for (i = 0; i < bx->mInSize; i++)
+        for (size_t i = 0; i < bx->mInSize; i++)
         {
           keyword = GetString(fp, 1);
           if (!CheckKwd(keyword, KID_Mean))

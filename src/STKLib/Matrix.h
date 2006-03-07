@@ -33,19 +33,76 @@ namespace STK
   } StorageType;
   
   
-
   // declare the class so the header knows about it
-  template<typename _ElemT>
-    class Matrix;
+  template<typename _ElemT> class BasicMatrix;
+  template<typename _ElemT> class Matrix;
 
   
   // we need to declare the friend << operator here
   template<typename _ElemT>
     std::ostream & operator << (std::ostream & out, Matrix<_ElemT> & m);
 
-
-  /**
+  
+  /** **************************************************************************
+   ** **************************************************************************
    *  @brief Provides a matrix abstraction class
+   *
+   *  This class provides a way to work with matrices in STK.
+   *  It encapsulates basic operations and memory optimizations.
+   *
+   */
+  template<typename _ElemT>
+    class BasicMatrix
+    {
+    public:
+      /// defines a type of this
+      typedef Matrix<_ElemT>    ThisType;
+
+      BasicMatrix<_ElemT> (): mStorageType(STORAGE_UNDEFINED) {}
+      
+      /**
+       *  @brief Gives access to the matrix memory area
+       *  @return pointer to the first field
+       */
+      _ElemT*
+      operator () () {return mpData;};
+
+      /**
+       *  @brief Gives access to the matrix memory area
+       *  @return pointer to the first field
+       */
+      _ElemT*
+      Data() {return mpData;};
+      
+      
+      /// Returns the way the matrix is stored in memory
+      const StorageType
+      Storage() const
+      {
+        return mStorageType;
+      }
+      
+      
+    protected:
+      /// keeps info about data layout in the memory
+      StorageType mStorageType;
+      
+      /// data memory area
+      _ElemT*   mpData;
+
+#ifdef STK_MEMALIGN_MANUAL
+      /// data to be freed (in case of manual memalignment use, see common.h)
+      _ElemT*   mpFreeData;
+#endif
+      
+    }; // class BasicMatrix
+    
+  
+  
+  
+  /** **************************************************************************
+   ** **************************************************************************
+   *  @brief Provides a matrix class
    *
    *  This class provides a way to work with matrices in STK.
    *  It encapsulates basic operations and memory optimizations.

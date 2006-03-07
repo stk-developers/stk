@@ -107,10 +107,6 @@
 #endif
 
 
-//#define BOOL  int
-//#define TRUE  1
-//#define FALSE 0
-
 #define LOG_0     (-1.0e10)
 #define LOG_MIN   (0.5 * LOG_0)
 #define MIN_WEGIHT (1e-5)
@@ -137,12 +133,6 @@ using namespace STK;
   /// This type will be used for flag passing
   typedef unsigned int    FlagType;
   
-//  typedef enum 
-//  {
-//    FALSE = 0,
- //   TRUE  = 1
- // } BOOL;
-  
   
   enum PropagDirectionType
   {
@@ -156,7 +146,6 @@ using namespace STK;
     ENTRY **            mpEntry;
     size_t              mNEntries;
   
-  //private
     struct hsearch_data mTab;
     size_t              mTabSize;
   };
@@ -187,8 +176,6 @@ using namespace STK;
     FileListElem *      mpNext;
     char *              mpPhysical;
     char                logical[1];
-    
-    
   };
   
   
@@ -198,12 +185,6 @@ using namespace STK;
     unsigned negative:1;
   } FloatInLog;
   
-  //#define Error(...) _Error_(__func__, __FILE__, __LINE__, __VA_ARGS__)
-  //#define Warning(...) _Warning_(__func__, __FILE__, __LINE__, __VA_ARGS__)
-  
-  //void _Error_(const char *func, const char *file, int line, char *msg, ...);
-  //void _Warning_(const char *func, const char *file, int line, char *msg, ...);
-  //void TraceLog(char *msg, ...);
   int     ReadParmKind(const char *str, bool checkBrackets);
   int     ParmKind2Str(unsigned parmKind, char *outstr);
   void    MakeFileName(char *outFileName, const char* inFileName,

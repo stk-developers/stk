@@ -688,17 +688,20 @@ namespace STK
     FLOAT mLike = 0.0;
     size_t j;
   
-    if (net && net->mpMixPCache[mix->mID].mTime == net->mTime) {
+    if (net && net->mpMixPCache[mix->mID].mTime == net->mTime) 
+    {
       return net->mpMixPCache[mix->mID].mValue;
     }
   
-    for (j = 0; j < mix->mpMean->mVectorSize; j++) {
+    for (j = 0; j < mix->mpMean->mVectorSize; j++) 
+    {
       mLike += SQR(obs[j] - mix->mpMean->mpVectorO[j]) * mix->mpVariance->mpVectorO[j];
     }
   
     mLike = -0.5 * (mix->GConst() + mLike);
   
-    if (net) {
+    if (net) 
+    {
       net->mpMixPCache[mix->mID].mTime  = net->mTime;
       net->mpMixPCache[mix->mID].mValue = mLike;
     }
@@ -706,9 +709,9 @@ namespace STK
     return mLike;
   }
   
-  #ifdef DEBUG_MSGS
+#ifdef DEBUG_MSGS
   int gaus_computaions = 0;
-  #endif
+#endif
   
   
   //***************************************************************************
@@ -721,11 +724,13 @@ namespace STK
   
     assert(state->mOutPdfKind == KID_DiagC);
   
-    if (net && net->mpOutPCache[state->mID].mTime == net->mTime) {
+    if (net && net->mpOutPCache[state->mID].mTime == net->mTime) 
+    {
       return net->mpOutPCache[state->mID].mValue;
     }
   
-    for (i = 0; i < state->mNumberOfMixtures; i++) {
+    for (i = 0; i < state->mNumberOfMixtures; i++) 
+    {
       FLOAT glike;
       Mixture *mix = state->mpMixture[i].mpEstimates;
   
@@ -738,9 +743,9 @@ namespace STK
       mLike  = LogAdd(mLike, glike + state->mpMixture[i].mWeight);
     }
   
-  #ifdef DEBUG_MSGS
+#ifdef DEBUG_MSGS
     gaus_computaions++;
-  #endif
+#endif
   
     if (net) {
       net->mpOutPCache[state->mID].mTime = net->mTime;
@@ -896,12 +901,12 @@ namespace STK
   //***************************************************************************
   void 
   Network::
-  ReestState(Node *    pNode,
+  ReestState(Node*     pNode,
              int       stateIndex, 
              FLOAT     logPriorProb, 
              FLOAT     updateDir,
-             FLOAT *   obs, 
-             FLOAT *   obs2) 
+             FLOAT*    obs, 
+             FLOAT*    obs2) 
   {
     size_t        i;
     size_t        j;
@@ -925,17 +930,19 @@ namespace STK
   
     n_mixtures = LOWER_OF(state->mNumberOfMixtures, state2->mNumberOfMixtures);
   
-    if (bjtO < LOG_MIN && n_mixtures > 1) {
+    if (bjtO < LOG_MIN && n_mixtures > 1) 
+    {
       // State likelihood was not available in cache because
       // - occupation probabilities of mixtures are computed using target model
       // - not all mixtures of mAlignment model are used for computation of
       //   occupation probabilities (state2->num_mix < state->num_mix)
-      for (m = 0; m < n_mixtures; m++) {
-        Mixture *mix = state->mpMixture[m].mpEstimates;
-        FLOAT cjm    = state->mpMixture[m].mWeight;
-        FLOAT *xobs  = XformPass(mix->mpInputXform, obs, mTime, FORWARD);
-        FLOAT bjmtO  = DiagCGaussianDensity(mix, xobs, this);
-        bjtO  = LogAdd(bjtO, cjm + bjmtO);
+      for (m = 0; m < n_mixtures; m++) 
+      {
+        Mixture *mix  = state->mpMixture[m].mpEstimates;
+        FLOAT  cjm    = state->mpMixture[m].mWeight;
+        FLOAT* xobs   = XformPass(mix->mpInputXform, obs, mTime, FORWARD);
+        FLOAT  bjmtO  = DiagCGaussianDensity(mix, xobs, this);
+        bjtO          = LogAdd(bjtO, cjm + bjmtO);
       }
     }
   
@@ -946,23 +953,24 @@ namespace STK
       
       if (n_mixtures > 1)
       {
-        Mixture * mix   = state->mpMixture[m].mpEstimates;
+        Mixture*  mix   = state->mpMixture[m].mpEstimates;
         FLOAT     cjm   = state->mpMixture[m].mWeight;
-        FLOAT *   xobs  = XformPass(mix->mpInputXform, obs, mTime, FORWARD);
+        FLOAT*    xobs  = XformPass(mix->mpInputXform, obs, mTime, FORWARD);
         FLOAT     bjmtO = DiagCGaussianDensity(mix, xobs, this);
+        
         Lqjmt +=  -bjtO + cjm + bjmtO;
       }
   
       if (Lqjmt > MIN_LOG_WEGIHT) 
       {
-        Mixture * mix      = state2->mpMixture[m].mpEstimates;
+        Mixture*  mix      = state2->mpMixture[m].mpEstimates;
         size_t    vec_size = mix->mpMean->mVectorSize;
-        FLOAT *   mnvec    = mix->mpMean->mpVectorO;
-        FLOAT *   mnacc    = mix->mpMean->mpVectorO     +     vec_size;
-        FLOAT *   vvacc    = mix->mpVariance->mpVectorO +     vec_size;
-        FLOAT *   vmacc    = mix->mpVariance->mpVectorO + 2 * vec_size;
-        XformInstance *ixf = mix->mpInputXform;
-        FLOAT *   xobs     = XformPass(ixf, obs2, mTime, FORWARD);
+        FLOAT*    mnvec    = mix->mpMean->mpVectorO;
+        FLOAT*    mnacc    = mix->mpMean->mpVectorO     +     vec_size;
+        FLOAT*    vvacc    = mix->mpVariance->mpVectorO +     vec_size;
+        FLOAT*    vmacc    = mix->mpVariance->mpVectorO + 2 * vec_size;
+        XformInstance* ixf = mix->mpInputXform;
+        FLOAT*    xobs     = XformPass(ixf, obs2, mTime, FORWARD);
   
   /*      if (mmi_den_pass) {
           mnacc += vec_size + 1;
@@ -970,6 +978,7 @@ namespace STK
           vmacc += 2 * vec_size + 1;
         }*/
   
+        // the real state occupation probability
         Lqjmt = exp(Lqjmt) * updateDir;
   
         // Update
@@ -1029,6 +1038,7 @@ namespace STK
           for (j = 0; j < mean->mNumberOfXformStatAccums; j++) 
           {
             XformStatAccum *xfsa = &mean->mpXformStatAccum[j];
+            
             if (xfsa->mpXform == xfsc->mpXform) 
             {
               size_t size = xfsc->mpXform->mInSize;
@@ -2525,9 +2535,9 @@ namespace STK
     int                     i;
     int                     j;
     int                     k;
-    ModelSet  *             p_hmms_alig = mpModelSet;
-    ModelSet  *             p_hmms_upd = mpModelSetToUpdate;
-    Node      *             node;
+    ModelSet*               p_hmms_alig = mpModelSet;
+    ModelSet*               p_hmms_upd = mpModelSetToUpdate;
+    Node*                   node;
   
     fwbw = ForwardBackward(pObsMx, nFrames);
     P    = fwbw.totLike;
@@ -2536,7 +2546,7 @@ namespace STK
       return LOG_0;
   
   #ifdef MOTIF
-    FLOAT *ocprob = (FLOAT *) malloc(mNumberOfNetStates * (nFrames+1) * sizeof(FLOAT));
+    FLOAT *ocprob = (FLOAT*) malloc(mNumberOfNetStates * (nFrames+1) * sizeof(FLOAT));
     for (i=0; i<mNumberOfNetStates * (nFrames+1); i++) ocprob[i] = 0;
   #endif
   
@@ -2576,17 +2586,22 @@ namespace STK
     k = HIGHER_OF(p_hmms_upd->mNMixtures, p_hmms_alig->mNMixtures);
     mpMixPCache = (Cache *) realloc(mpMixPCache, k * sizeof(Cache));
     
-    if (mpMixPCache == NULL) 
+    if (mpMixPCache == NULL)
+    { 
       Error("Insufficient memory");
-  
-    for (i = 0; i < k; i++) 
+    }
+    
+    for (i = 0; i < k; i++)
+    { 
       mpMixPCache[i].mTime = UNDEF_TIME;
-  
+    }
+    
   // Update accumulators
     for (mTime = 0; mTime < nFrames; mTime++) 
     { //for every frame
-      FLOAT *obs  =pObsMx +p_hmms_alig->mInputVectorSize*(mTime+p_hmms_alig->mTotalDelay);
-      FLOAT *obs2 =pObsMx2+p_hmms_upd->mInputVectorSize*(mTime+p_hmms_upd->mTotalDelay);
+      FLOAT* obs  = pObsMx +p_hmms_alig->mInputVectorSize*(mTime+p_hmms_alig->mTotalDelay);
+      FLOAT* obs2 = pObsMx2+p_hmms_upd->mInputVectorSize*(mTime+p_hmms_upd->mTotalDelay);
+      
       p_hmms_alig->UpdateStacks(obs, mTime, FORWARD);
       
       if (p_hmms_alig != p_hmms_upd)
@@ -2602,10 +2617,10 @@ namespace STK
         {
           struct AlphaBeta *st;
           int Nq       = node->mpHmm->mNStates;
-          FLOAT *aq    = node->mpHmm->        mpTransition->mpMatrixO;
-          FLOAT *aqacc = node->mpHmmToUpdate->mpTransition->mpMatrixO + SQR(Nq);
-  //        int qt_1 = (mNumberOfNetStates * mTime) + node->mEmittingStateId;
-  //        int qt = qt_1 + mNumberOfNetStates;
+          FLOAT* aq    = node->mpHmm->        mpTransition->mpMatrixO;
+          FLOAT* aqacc = node->mpHmmToUpdate->mpTransition->mpMatrixO + SQR(Nq);
+//        int qt_1 = (mNumberOfNetStates * mTime) + node->mEmittingStateId;
+//        int qt = qt_1 + mNumberOfNetStates;
   
           st = node->mpAlphaBetaList->mpState;
   
@@ -2615,8 +2630,7 @@ namespace STK
             for (i = 0; i < Nq - 1; i++) 
             {
               LOG_INC(aqacc[i * Nq + Nq-1], aq[i * Nq + Nq-1]  * mTranScale +
-                                          (st[i].mAlpha                         +
-                                            st[Nq-1].mBeta - P) * mOcpScale);
+                                          (st[i].mAlpha + st[Nq-1].mBeta - P) * mOcpScale);
             }
           }
   
@@ -2624,33 +2638,32 @@ namespace STK
           { //for every emitting state
             if (st[j].mAlpha + st[j].mBeta - P > MIN_LOG_WEGIHT) 
             {
-  #ifdef MOTIF
+#ifdef MOTIF
             ocprob[mNumberOfNetStates * (mTime+1) + node->mEmittingStateId + j]
-  //           = node->mPhoneAccuracy;
+//            = node->mPhoneAccuracy;
               = exp(st[j].mAlpha+st[j].mBeta-P) *
                 ((1-2*static_cast<int>(st[j].mAlphaAccuracy.negative)) * exp(st[j].mAlphaAccuracy.logvalue - st[j].mAlpha) +
                 (1-2*static_cast<int>(st[j].mBetaAccuracy.negative))  * exp(st[j].mBetaAccuracy.logvalue  - st[j].mBeta)
                 - (1-2*static_cast<int>(fwbw.avgAccuracy.negative)) * exp(fwbw.avgAccuracy.logvalue)
                 );
   
-  #endif
-  //            int qt_1   = qt - mNumberOfNetStates;
+#endif
+//            int qt_1   = qt - mNumberOfNetStates;
               FLOAT bjtO =mpOutPCache[p_hmms_alig->mNStates * mTime +
                                         node->mpHmm->mpState[j-1]->mID].mValue;
               // ForwardBackward() set mpOutPCache to contain out prob. for all frames
   
               assert(node->mpAlphaBetaListReverse->mTime == mTime);
   
-  //            if (!mmi_den_pass) {
+//            if (!mmi_den_pass) {
               for (i = 0; i < Nq - 1; i++) 
               {
                 LOG_INC(aqacc[i * Nq + j],
-                        aq[i * Nq + j]    * mTranScale +
+                        aq[i * Nq + j] * mTranScale +
                         (node->mpAlphaBetaListReverse->mpState[i].mAlpha +
-                        bjtO              * mOutpScale +
-                        st[j].mBeta - P)   * mOcpScale);
+                        bjtO * mOutpScale + st[j].mBeta - P) * mOcpScale);
               }
-  //            }
+//            }
   
               if (mAccumType == AT_MFE || mAccumType == AT_MPE) 
               {
@@ -2663,12 +2676,13 @@ namespace STK
                 update_dir = 1.0;
               }
   
-              ReestState( node, 
-                          j-1,
-                          (st[j].mAlpha + st[j].mBeta - P)  * mOcpScale,
-                          update_dir*weight, 
-                          obs, 
-                          obs2);
+              ReestState(
+                node, 
+                j - 1,
+                (st[j].mAlpha + st[j].mBeta - P)  * mOcpScale,
+                update_dir*weight, 
+                obs, 
+                obs2);
             }
           }
           
@@ -2687,7 +2701,7 @@ namespace STK
         free(node->mpAlphaBetaListReverse);
     }
   
-  #ifdef MOTIF
+#ifdef MOTIF
     FLOAT max = LOG_0;
     printf("mTranScale: %f\noutpScale: %f\n",mTranScale, mOutpScale);
     for (i = 0; i < mNumberOfNetStates * (nFrames+1); i++) 
@@ -2705,12 +2719,12 @@ namespace STK
       }
       printf("\n");
     }
-  //  for (i = 0; i < mNumberOfNetStates * (nFrames+1); i++) {
-  //    if (ocprob[i] < LOG_MIN) ocprob[i] = max;
-  //  }
-  //  imagesc(ocprob, mNumberOfNetStates, (nFrames+1), STR(FLOAT), NULL, cm_color, "Log OccProb");
+//  for (i = 0; i < mNumberOfNetStates * (nFrames+1); i++) {
+//    if (ocprob[i] < LOG_MIN) ocprob[i] = max;
+//  }
+//  imagesc(ocprob, mNumberOfNetStates, (nFrames+1), STR(FLOAT), NULL, cm_color, "Log OccProb");
     free(ocprob);
-  #endif
+#endif
   
     return P;
   }
