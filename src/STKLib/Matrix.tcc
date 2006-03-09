@@ -53,8 +53,8 @@ namespace STK
     size_t  skip;
     size_t  real_cols;
     size_t  size;
-    void *  data;       // aligned memory block
-    void *  free_data;  // memory block to be really freed
+    void*   data;       // aligned memory block
+    void*   free_data;  // memory block to be really freed
 
     // at this moment, nothing is clear
     mStorageType = STORAGE_UNDEFINED;
@@ -84,14 +84,13 @@ namespace STK
       this->mMRows      = rows;
       this->mMCols      = cols;
       this->mMRealCols  = real_cols;
-      //this->mMSkip      = skip;
-      this->mMSize      = size;
+      //this->mMSize      = size;
 
       this->mTRows      = r;
       this->mTCols      = c;
 
       // set all bytes to 0
-      memset(this->mpData, 0, this->mMSize);
+      memset(this->mpData, 0, this->MSize());
     }
     else
     {
@@ -100,45 +99,50 @@ namespace STK
   } //
   
 
-//******************************************************************************
+  //****************************************************************************
+  //****************************************************************************
   // Copy constructor
   template<typename _ElemT>
-  Matrix<_ElemT>::
-  Matrix<_ElemT> (const ThisType & t)
-  {
-    // we need to be sure that the storage type is defined
-    if (t.mStorageType != STORAGE_UNDEFINED)
+    Matrix<_ElemT>::
+    Matrix<_ElemT> (const ThisType & t)
     {
-      void * data;
-
-      // first allocate the memory
-      // this->mpData = new char[t.M_size];
-      // allocate the memory and set the right dimensions and parameters
-      if (!posix_memalign(& data, 16, t.mMSize))
+      // we need to be sure that the storage type is defined
+      if (t.mStorageType != STORAGE_UNDEFINED)
       {
-        this->mpData  = static_cast<_ElemT *> (data);
-
-        // copy the memory block
-        memcpy(this->mpData, t.mpData, t.mMSize);
-
-        // set the parameters
-        this->mStorageType = t.mStorageType;
-        this->mMRows       = t.mMRows;
-        this->mMCols       = t.mMCols;
-        this->mMRealCols   = t.mMRealCols;
-        //this->mMSkip       = t.mMSkip;
-        this->mMSize       = t.mMSize;
-      }
-      else
-      {
-        // throw bad_alloc exception if failure
-        throw std::bad_alloc();
+        void* data;
+        void* free_data;
+  
+        // first allocate the memory
+        // this->mpData = new char[t.M_size];
+        // allocate the memory and set the right dimensions and parameters
+        if (NULL != (data = stk_memalign(16, t.MSize(), &free_data)))
+        {
+          this->mpData        = static_cast<_ElemT *> (data);
+#ifdef STK_MEMALIGN_MANUAL
+          this->mpFreeData    = static_cast<_ElemT *> (free_data);
+#endif
+          // copy the memory block
+          memcpy(this->mpData, t.mpData, t.MSize());
+  
+          // set the parameters
+          this->mStorageType = t.mStorageType;
+          this->mMRows       = t.mMRows;
+          this->mMCols       = t.mMCols;
+          this->mMRealCols   = t.mMRealCols;
+          //this->mMSkip       = t.mMSkip;
+          //this->mMSize       = t.MSize();
+        }
+        else
+        {
+          // throw bad_alloc exception if failure
+          throw std::bad_alloc();
+        }
       }
     }
-  }
 
 
-//******************************************************************************
+  //****************************************************************************
+  //****************************************************************************
   // The destructor
   template<typename _ElemT>
   Matrix<_ElemT>::
@@ -406,11 +410,7 @@ namespace STK
   Matrix<_ElemT>::
   Clear()
   {
-    //std::cerr << "Cosi: " << mpData <<  " "<< mMSize << std::endl;
-  
-    memset(mpData, 0, mMSize);
-    
-    
+    memset(mpData, 0, MSize());
     return *this;
   }
   
@@ -469,17 +469,20 @@ namespace STK
       if (t.st != STORAGE_UNDEFINED)
       {
         // the data should be copied by the parent constructor
-        void * data;
+        void* data;
+        void* free_data;
 
         // first allocate the memory
         // this->mpData = new char[t.M_size];
         // allocate the memory and set the right dimensions and parameters
-        if (!posix_memalign(& data, 16, t.mMSize))
+        if (NULL != (data = stk_memalign(16, t.MSize(), &free_data)))
         {
-          Matrix<_ElemT>::mpData  = static_cast<_ElemT *> (data);
-
+          Matrix<_ElemT>::mpData        = static_cast<_ElemT *> (data);
+#ifdef STK_MEMALIGN_MANUAL
+          Matrix<_ElemT>::mpFreeData    = static_cast<_ElemT *> (free_data);
+#endif
           // copy the memory block
-          memcpy(this->mpData, t.mpData, t.mMSize);
+          memcpy(this->mpData, t.mpData, t.MSize());
 
           // set the parameters
           this->mStorageType = t.mStorageType;
@@ -487,7 +490,7 @@ namespace STK
           this->mMCols       = t.mMCols;
           this->mMRealCols   = t.mMRealCols;
           //this->mMSkip       = t.mMSkip;
-          this->mMSize       = t.mMSize;
+          //this->mMSize       = t.mMSize;
         }
         else
         {

@@ -116,36 +116,6 @@ namespace STK
       /// defines a type of this
       typedef Matrix<_ElemT>    ThisType;
 
-
-    protected:
-      /// keeps info about data layout in the memory
-      StorageType mStorageType;
-
-
-      //@{
-      /// these atributes store the real matrix size as it is stored in memory
-      /// including memalignment
-      size_t  mMRows;       ///< Number of rows
-      size_t  mMCols;       ///< Number of columns
-      size_t  mMRealCols;   ///< true number of columns for the internal matrix.
-                            ///< This number may differ from M_cols as memory
-                            ///< alignment might be used
-      size_t  mMSize;       ///< Total size of data block in bytes
-      //size_t  mMSkip;       ///< Bytes to skip (memalign...)
-
-      size_t  mTRows;       ///< Real number of rows (available to the user)
-      size_t  mTCols;       ///< Real number of columns
-      //@}
-
-      /// data memory area
-      _ElemT*   mpData;
-
-#ifdef STK_MEMALIGN_MANUAL
-      /// data to be freed (in case of manual memalignment use, see common.h)
-      _ElemT *  mpFreeData;
-#endif
-
-    public:
       // Constructors
 
       /// Empty constructor
@@ -197,13 +167,6 @@ namespace STK
         return mStorageType;
       }
       
-      
-      size_t
-      Size() const
-      {
-        return mMSize;
-      }
-
       /// Returns size of matrix in memory
       const size_t
       MSize() const
@@ -330,6 +293,33 @@ namespace STK
             
       void PrintOut(char *file);
 
+    
+    protected:
+      /// keeps info about data layout in the memory
+      StorageType mStorageType;
+
+
+      //@{
+      /// these atributes store the real matrix size as it is stored in memory
+      /// including memalignment
+      size_t  mMRows;       ///< Number of rows
+      size_t  mMCols;       ///< Number of columns
+      size_t  mMRealCols;   ///< true number of columns for the internal matrix.
+                            ///< This number may differ from M_cols as memory
+                            ///< alignment might be used
+      //size_t  mMSize;       ///< Total size of data block in bytes
+
+      size_t  mTRows;       ///< Real number of rows (available to the user)
+      size_t  mTCols;       ///< Real number of columns
+      //@}
+
+      /// data memory area
+      _ElemT*   mpData;
+
+#ifdef STK_MEMALIGN_MANUAL
+      /// data to be freed (in case of manual memalignment use, see common.h)
+      _ElemT *  mpFreeData;
+#endif
     }; // class Matrix
 
 
@@ -387,7 +377,7 @@ namespace STK
         mOrigMRows    (Matrix<_ElemT>::mMRows),
         mOrigMCols    (Matrix<_ElemT>::mMCols),
         mOrigMRealCols(Matrix<_ElemT>::mMRealCols),
-        mOrigMSize    (Matrix<_ElemT>::mMSize),
+        //mOrigMSize    (Matrix<_ElemT>::mMSize),
         //mOrigMSkip    (Matrix<_ElemT>::mMSkip),
         mOrigTRows    (Matrix<_ElemT>::mTRows),   // copy the original values
         mOrigTCols    (Matrix<_ElemT>::mTCols),
@@ -428,8 +418,7 @@ namespace STK
         Matrix<_ElemT>::mMRows    =  mOrigMRows;
         Matrix<_ElemT>::mMCols    =  mOrigMCols;
         Matrix<_ElemT>::mMRealCols=  mOrigMRealCols;
-        Matrix<_ElemT>::mMSize    =  mOrigMSize;
-        //Matrix<_ElemT>::mMSkip    =  mOrigMSkip;
+        //Matrix<_ElemT>::mMSize    =  mOrigMSize;
 
         mTRowOff = 0;
         mTColOff = 0;
