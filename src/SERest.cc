@@ -243,6 +243,13 @@ int main(int argc, char *argv[])
   LabelFormat             in_lbl_fmt        = {0};
   in_lbl_fmt.TIMES_OFF = 1;
 
+  IStkStream ss("-");
+  long long l = 9223372036854775807LL;
+  cout << l << endl;
+  
+  ss >> l;
+  cout << setw(8) << setfill('0') << l << endl;
+  cout << l << endl;
   
   if (argc == 1) usage(argv[0]);
 
