@@ -9,9 +9,10 @@
 #include <stdexcept>
 #include <iostream>
 
-#ifdef USE_BlAS
+#ifdef USE_BLAS
 extern "C"{
   #include <cblas.h>
+  #include <clapack.h>
 }
 #endif
 
@@ -130,14 +131,14 @@ namespace STK
                             ///< This number may differ from M_cols as memory
                             ///< alignment might be used
       size_t  mMSize;       ///< Total size of data block in bytes
-      size_t  mMSkip;       ///< Bytes to skip (memalign...)
+      //size_t  mMSkip;       ///< Bytes to skip (memalign...)
 
       size_t  mTRows;       ///< Real number of rows (available to the user)
       size_t  mTCols;       ///< Real number of columns
       //@}
 
       /// data memory area
-      _ElemT *  mpData;
+      _ElemT*   mpData;
 
 #ifdef STK_MEMALIGN_MANUAL
       /// data to be freed (in case of manual memalignment use, see common.h)
@@ -169,21 +170,21 @@ namespace STK
            const StorageType st = STORAGE_REGULAR);
       
       /// Returns number of rows in the matrix
-      size_t
+      const size_t
       Rows() const
       {
         return mTRows;
       }
 
       /// Returns number of columns in the matrix
-      size_t
+      const size_t
       Cols() const
       {
         return mTCols;
       }
 
       /// Returns vector (matrix) length
-      size_t
+      const size_t
       Length() const
       {
         return mTRows > mTCols ? mTRows : mTCols;
@@ -196,13 +197,30 @@ namespace STK
         return mStorageType;
       }
       
+      
       size_t
       Size() const
       {
         return mMSize;
       }
 
+      /// Returns size of matrix in memory
+      const size_t
+      MSize() const
+      {
+        return mMRows * mMRealCols * sizeof(_ElemT);
+      }
+      
+      
 
+      /**
+       * @brief Performs diagonal scaling
+       * @param pDiagVector Array representing matrix diagonal
+       * @return Refference to this
+       */
+      ThisType&
+      DiagScale(_ElemT* pDiagVector);
+      
       /**
        *  @brief Performs vector multiplication on a and b and and adds the
        *         result to this (elem by elem)
@@ -242,8 +260,23 @@ namespace STK
       ThisType &
       Transpose();
 
+      /**
+       *  @brief Performs matrix inversion
+       */
       ThisType &
-      Clear();      
+      Invert();
+      
+
+      ThisType &
+      Clear();
+      
+      
+      /**
+       * @brief Turns matrix into identity matrix
+       * @return Refference to this
+       */
+      ThisType &
+      ClearI();      
     
       /**
        *  @brief Gives access to the matrix memory area
@@ -252,16 +285,35 @@ namespace STK
       _ElemT *
       operator () () {return mpData;};
 
+      
       /**
-       *  @brief Gives access to a specified matrix row
+       *  @brief Gives access to a specified matrix row without range check
        *  @return pointer to the first field of the row
        */
-      _ElemT *
+      _ElemT*      
+      operator []  (size_t i)
+      {
+        return mpData + (i * mMRealCols);
+      }
+      
+      /**
+       *  @brief Gives access to a specified matrix row with range check
+       *  @return pointer to the first field of the row
+       */
+      _ElemT*
       Row (const size_t r)
       {
-        return mpData + (r * mMRealCols);
+        if (0 <= r && r < Rows())
+        {
+          return this->operator[] (r);
+        }
+        else
+        {
+          throw std::out_of_range("Matrix row out of range");
+        }
       }
 
+      
       /**
        *  @brief Gives access to matrix elements (row, col)
        *  @return pointer to the desired field
@@ -275,7 +327,7 @@ namespace STK
         std::ostream & out, 
         ThisType & m);
 
-        
+            
       void PrintOut(char *file);
 
     }; // class Matrix
@@ -336,7 +388,7 @@ namespace STK
         mOrigMCols    (Matrix<_ElemT>::mMCols),
         mOrigMRealCols(Matrix<_ElemT>::mMRealCols),
         mOrigMSize    (Matrix<_ElemT>::mMSize),
-        mOrigMSkip    (Matrix<_ElemT>::mMSkip),
+        //mOrigMSkip    (Matrix<_ElemT>::mMSkip),
         mOrigTRows    (Matrix<_ElemT>::mTRows),   // copy the original values
         mOrigTCols    (Matrix<_ElemT>::mTCols),
         mTRowOff(0), mTColOff(0)          // set the offset
@@ -377,7 +429,7 @@ namespace STK
         Matrix<_ElemT>::mMCols    =  mOrigMCols;
         Matrix<_ElemT>::mMRealCols=  mOrigMRealCols;
         Matrix<_ElemT>::mMSize    =  mOrigMSize;
-        Matrix<_ElemT>::mMSkip    =  mOrigMSkip;
+        //Matrix<_ElemT>::mMSkip    =  mOrigMSkip;
 
         mTRowOff = 0;
         mTColOff = 0;

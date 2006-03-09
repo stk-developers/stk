@@ -693,7 +693,7 @@ namespace STK
       return net->mpMixPCache[mix->mID].mValue;
     }
   
-    for (j = 0; j < mix->mpMean->mVectorSize; j++) 
+    for (j = 0; j < mix->mpMean->VectorSize(); j++) 
     {
       mLike += SQR(obs[j] - mix->mpMean->mpVectorO[j]) * mix->mpVariance->mpVectorO[j];
     }
@@ -901,27 +901,28 @@ namespace STK
   //***************************************************************************
   void 
   Network::
-  ReestState(Node*     pNode,
-             int       stateIndex, 
-             FLOAT     logPriorProb, 
-             FLOAT     updateDir,
-             FLOAT*    obs, 
-             FLOAT*    obs2) 
+  ReestState(
+    Node*         pNode,
+    int           stateIndex, 
+    FLOAT         logPriorProb, 
+    FLOAT         updateDir,
+    FLOAT*        pObs, 
+    FLOAT*        pObs2) 
   {
     size_t        i;
     size_t        j;
     size_t        k;
     size_t        m;
-    State *       state  = pNode->mpHmm->        mpState[stateIndex];
-    State *       state2 = pNode->mpHmmToUpdate->mpState[stateIndex];
+    State*        state  = pNode->mpHmm->        mpState[stateIndex];
+    State*        state2 = pNode->mpHmmToUpdate->mpState[stateIndex];
     FLOAT         bjtO   = LOG_0;
     size_t        n_mixtures;
   
-    if (!mpModelSetToUpdate->mGaussLvl2ModelReest &&
-         mpModelSet != mpModelSetToUpdate) 
+    if (!mpModelSetToUpdate->mGaussLvl2ModelReest 
+    && ( mpModelSet != mpModelSetToUpdate))
     {
       // Occupation probabilities of mixtures are computed using target model
-      state = state2; obs = obs2;
+      state = state2; pObs = pObs2;
     } 
     else if (state->mNumberOfMixtures <= state2->mNumberOfMixtures) 
     {
@@ -930,24 +931,24 @@ namespace STK
   
     n_mixtures = LOWER_OF(state->mNumberOfMixtures, state2->mNumberOfMixtures);
   
-    if (bjtO < LOG_MIN && n_mixtures > 1) 
+    if (bjtO < LOG_MIN && n_mixtures > 1)
     {
       // State likelihood was not available in cache because
       // - occupation probabilities of mixtures are computed using target model
       // - not all mixtures of mAlignment model are used for computation of
       //   occupation probabilities (state2->num_mix < state->num_mix)
-      for (m = 0; m < n_mixtures; m++) 
+      for (m = 0; m < n_mixtures; m++)
       {
         Mixture *mix  = state->mpMixture[m].mpEstimates;
         FLOAT  cjm    = state->mpMixture[m].mWeight;
-        FLOAT* xobs   = XformPass(mix->mpInputXform, obs, mTime, FORWARD);
+        FLOAT* xobs   = XformPass(mix->mpInputXform, pObs, mTime, FORWARD);
         FLOAT  bjmtO  = DiagCGaussianDensity(mix, xobs, this);
         bjtO          = LogAdd(bjtO, cjm + bjmtO);
       }
     }
   
     //for every emitting state
-    for (m = 0; m < n_mixtures; m++) 
+    for (m = 0; m < n_mixtures; m++)
     { 
       FLOAT Lqjmt = logPriorProb;
       
@@ -955,7 +956,7 @@ namespace STK
       {
         Mixture*  mix   = state->mpMixture[m].mpEstimates;
         FLOAT     cjm   = state->mpMixture[m].mWeight;
-        FLOAT*    xobs  = XformPass(mix->mpInputXform, obs, mTime, FORWARD);
+        FLOAT*    xobs  = XformPass(mix->mpInputXform, pObs, mTime, FORWARD);
         FLOAT     bjmtO = DiagCGaussianDensity(mix, xobs, this);
         
         Lqjmt +=  -bjtO + cjm + bjmtO;
@@ -964,15 +965,15 @@ namespace STK
       if (Lqjmt > MIN_LOG_WEGIHT) 
       {
         Mixture*  mix      = state2->mpMixture[m].mpEstimates;
-        size_t    vec_size = mix->mpMean->mVectorSize;
+        size_t    vec_size = mix->mpMean->VectorSize();
         FLOAT*    mnvec    = mix->mpMean->mpVectorO;
         FLOAT*    mnacc    = mix->mpMean->mpVectorO     +     vec_size;
         FLOAT*    vvacc    = mix->mpVariance->mpVectorO +     vec_size;
         FLOAT*    vmacc    = mix->mpVariance->mpVectorO + 2 * vec_size;
         XformInstance* ixf = mix->mpInputXform;
-        FLOAT*    xobs     = XformPass(ixf, obs2, mTime, FORWARD);
+        FLOAT*    xobs     = XformPass(ixf, pObs2, mTime, FORWARD);
   
-  /*      if (mmi_den_pass) {
+/*      if (mmi_den_pass) {
           mnacc += vec_size + 1;
           vvacc += 2 * vec_size + 1;
           vmacc += 2 * vec_size + 1;
@@ -992,18 +993,31 @@ namespace STK
           else 
           {
             vvacc[i] += Lqjmt * SQR(xobs[i]);           // scatter
-            vmacc[i] += Lqjmt * xobs[i];                //mean for var.
+            vmacc[i] += Lqjmt * xobs[i];                // mean for var.
           }
         }
   
         mnacc[vec_size] += Lqjmt; //norms for mean
         vmacc[vec_size] += Lqjmt; //norms for variance
+        
+        // collect statistics for cluster weight vectors 
+        if (0 < mix->mpMean->mCwvAccum.Cols())
+        {
+          for (size_t vi = 0; vi < mix->mpMean->mCwvAccum.Rows(); vi++)
+          {
+            mix->mpMean->mpOccProbAccums[vi] += Lqjmt;
+            for (size_t vj = 0; vj < mix->mpMean->mCwvAccum.Cols(); vj++)
+            {
+              mix->mpMean->mCwvAccum[vi][vj] += xobs[vj] * Lqjmt;
+            }
+          }
+        }
   
-  //      if (mmi_den_pass) {
-  //        state2->mpMixture[m].mWeightAccumDen += Lqjmt;
-  //      } else {
+//      if (mmi_den_pass) {
+//        state2->mpMixture[m].mWeightAccumDen += Lqjmt;
+//      } else {
         state2->mpMixture[m].mWeightAccum     += Lqjmt; //  Update weight accum
-  //      }
+//      }
   
         if (Lqjmt < 0)
           state2->mpMixture[m].mWeightAccumDen -= Lqjmt;
@@ -1011,7 +1025,7 @@ namespace STK
         if (ixf == NULL || ixf->mNumberOfXformStatCaches == 0) 
           continue;
   
-        UpdateXformInstanceStatCaches(ixf, obs2, mTime);
+        UpdateXformInstanceStatCaches(ixf, pObs2, mTime);
   
         for (i = 0; i < ixf->mNumberOfXformStatCaches; i++) 
         {

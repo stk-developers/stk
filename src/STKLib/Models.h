@@ -177,13 +177,13 @@ namespace STK
   class Macro 
   {
   public:
-    char *        mpName;
-    char *        mpFileName;
-    MacroData *   mpData;
+    char*         mpName;
+    char*         mpFileName;
+    MacroData*    mpData;
     long          mOccurances;
     int           mType;
-    Macro *       nextAll;
-    Macro *       prevAll;
+    Macro*        nextAll;
+    Macro*        prevAll;
   };
   
           
@@ -222,7 +222,7 @@ namespace STK
     /* Numeric functions - FuncXform*/
     KID_Sigmoid,     KID_Log,        KID_Exp,        KID_Sqrt,     KID_SoftMax,
     
-    KID_Weights,
+    KID_Weights = 253,
   
     KID_MaxKwdID
   };
@@ -300,14 +300,14 @@ namespace STK
     Macro *                   mpFirstMacro;
     Macro *                   mpLastMacro;
     
-    MyHSearchData    mHmmHash;
-    MyHSearchData    mStateHash;
-    MyHSearchData    mMixtureHash;
-    MyHSearchData    mMeanHash;
-    MyHSearchData    mVarianceHash;
-    MyHSearchData    mTransitionHash;
-    MyHSearchData    mXformInstanceHash;
-    MyHSearchData    mXformHash;
+    MyHSearchData             mHmmHash;
+    MyHSearchData             mStateHash;
+    MyHSearchData             mMixtureHash;
+    MyHSearchData             mMeanHash;
+    MyHSearchData             mVarianceHash;
+    MyHSearchData             mTransitionHash;
+    MyHSearchData             mXformInstanceHash;
+    MyHSearchData             mXformHash;
     
     int                       mInputVectorSize;
     int                       mParamKind;
@@ -337,6 +337,12 @@ namespace STK
     FLOAT                     MMI_h;
     FLOAT                     MMI_tauI;
     
+    bool                      mClusterWeightUpdate;
+    BiasXform**               mpClusterWeights;
+    int                       mNClusterWeights;
+    Matrix<FLOAT>*            mpGw;                                             ///< Accumulator G_w for cluster vector update
+    Matrix<FLOAT>*            mpKw;                                             ///< Accumulator k_w for cluster vector update
+    OStkStream                mClusterWeightStream;
     
     /**
      * @name MMF output functions
@@ -460,10 +466,10 @@ namespace STK
     ResetAccums();
     
     void 
-    ComputeGlobalStats(FLOAT *observation, int time);
+    ComputeGlobalStats(FLOAT* observation, int time);
     
     void 
-    UpdateFromAccums(const char * pOutputDir);
+    UpdateFromAccums(const char* pOutputDir);
     
     void 
     DistributeMacroOccurances();
@@ -472,14 +478,23 @@ namespace STK
     ResetXformInstances();
   
     void
-    UpdateStacks(FLOAT *obs, int time,  PropagDirectionType dir);
+    UpdateStacks(FLOAT* obs, int time,  PropagDirectionType dir);
     
-    Macro *
+    Macro*
     pAddMacro(const char type, const std::string & rNewName);    
     
     MyHSearchData 
     MakeCIPhoneHash();
     
+    
+    void
+    ComputeClusterWeightVectorCAT(size_t i);
+    
+    void
+    ComputeClusterWeightVectorsCAT();
+    
+    void 
+    ResetClusterWeightAccumsCAT(size_t i);
     
     void 
     /**
@@ -507,9 +522,8 @@ namespace STK
   {
   public:
     size_t                    mNStates;
-    Transition *              mpTransition;
-    State **                  mpState;
-    //State *                   state[1];
+    Transition*               mpTransition;
+    State**                   mpState;
     
   public:
     /// Constructor
@@ -547,8 +561,7 @@ namespace STK
     NStates() const
     {
       return mNStates;
-    }
-    
+    }    
   };
   
   
@@ -586,11 +599,11 @@ namespace STK
     struct MixtureLink
     {
     public:
-      Mixture *               mpEstimates;
+      Mixture*                mpEstimates;
       FLOAT                   mWeight;
       FLOAT                   mWeightAccum; //used for reestimation
       FLOAT                   mWeightAccumDen;
-    } *                     mpMixture;
+    }*                       mpMixture;
     
     void
     /**
@@ -638,9 +651,9 @@ namespace STK
     
     
     long                      mID;
-    Mean *                    mpMean;
-    Variance *                mpVariance;
-    XformInstance *           mpInputXform;
+    Mean*                     mpMean;
+    Variance*                 mpVariance;
+    XformInstance*            mpInputXform;
   
     /// Returns the GConst constant
     const FLOAT &
@@ -666,9 +679,16 @@ namespace STK
      * @param rModelSet parrent ModelSet containing variance floor vector
      * @return pointer to the mixture variance object
      */
-    Variance *
+    Variance*
     FloorVariance(const ModelSet * pModelSet);
 
+    
+    Mixture&
+    AddToAccumCAT(Matrix<FLOAT>* pGw, Matrix<FLOAT>* pKw);
+
+    Mixture&
+    ResetAccumCAT();
+        
     void
     /**
      * @brief Performs desired @c action on the HMM's data which are chosen by @mask
@@ -691,9 +711,9 @@ namespace STK
   class XformStatAccum
   {
   public:
-    Xform *                 mpXform;
+    Xform*                  mpXform;
     FLOAT                   mNorm;
-    FLOAT *                 mpStats;
+    FLOAT*                  mpStats;
   };
   
   
@@ -716,14 +736,27 @@ namespace STK
     ~Mean();
     
     
-    size_t                  mVectorSize;
-    XformStatAccum *        mpXformStatAccum;
+    XformStatAccum*         mpXformStatAccum;
     size_t                  mNumberOfXformStatAccums;
     bool                    mUpdatableFromStatAccums;
-    BiasXform *             mpWeights;                                          ///< Specifies weights vector defined by Bias Xform macro if mean is defined by weights of means, otherwise NULL
-    Matrix<FLOAT>           mVector;
-    FLOAT *                 mpVectorO;                                          ///< Matrix of cluster mean vectors (with CAT)
     
+    BiasXform**             mpWeights;                 ///< Specifies cluser weight vectors defined by Bias Xform macros (if CAT), otherwise NULL
+    size_t                  mNWeights;                 ///< Number of cluset weight vectors to use
+    Matrix<FLOAT>           mClusterMatrix;            ///< Cluster mean vectors in matrix (stored in transposed form = mean vectors in rows)
+    FLOAT*                  mpOccProbAccums;           ///< Occupation probability accumulators
+    Matrix<FLOAT>           mCwvAccum;                 ///< Cluster weight vector accumulators (\sum \gamma_m(\tau) o(\tau))
+    
+    FLOAT*                  mpVectorO;                 ///< Matrix of cluster mean vectors (with CAT)
+#ifdef STK_MEMALIGN_MANUAL
+    FLOAT*                  mpVectorOFree;
+#endif
+    
+    /**
+     * @brief Returns mean vector size
+     */
+    const size_t
+    VectorSize() const 
+    {return mVectorSize;}
     
     /**
      * @brief Updates the object from the accumulators
@@ -734,11 +767,14 @@ namespace STK
     
     /** @brief Recalculates mean vector for cluster adaptive training
      * 
-     * mVector holds the matrix of cluster mean vectors, mpWeights is the 
+     * mClusterMatrix holds the matrix of cluster mean vectors, mpWeights is the 
      * cluster weight vector. This method implements their scalar multiplication
      */
     void
     RecalculateCAT();
+  
+  private:
+    size_t                  mVectorSize;
   };
 
   
@@ -760,13 +796,21 @@ namespace STK
     virtual
     ~Variance();
   
-      
     //  BOOL         diagonal;
-    size_t                  mVectorSize;
     XformStatAccum *        mpXformStatAccum;
     size_t                  mNumberOfXformStatAccums;
     bool                    mUpdatableFromStatAccums;
-    FLOAT *                 mpVectorO;    
+    FLOAT*                  mpVectorO;    
+#ifdef STK_MEMALIGN_MANUAL
+    FLOAT*                  mpVectorOFree;
+#endif
+    
+    /**
+     * @brief Returns mean vector size
+     */
+    const size_t
+    VectorSize() const 
+    {return mVectorSize;}
     
     void
     /**
@@ -774,6 +818,9 @@ namespace STK
      * @param rModelSet ModelSet object which holds the accumulator configuration
      */
     UpdateFromAccums(const ModelSet * pModelSet);
+  
+  private:
+    size_t                  mVectorSize;
   };
   
   
@@ -851,22 +898,22 @@ namespace STK
     ~XformInstance();
     
   
-    XformInstance *       mpInput;
-    Xform *               mpXform;
+    XformInstance*        mpInput;
+    Xform*                mpXform;
     int                   mTime;
-    XformInstance  *      mpNext; // Chain of all instances
-    XformStatCache *      mpXformStatCache;
+    XformInstance*        mpNext; // Chain of all instances
+    XformStatCache*       mpXformStatCache;
     size_t                mNumberOfXformStatCaches;
     size_t                mOutSize;
     int                   mStatCacheTime;
-    char *                mpMemory;
+    char*                 mpMemory;
     int                   mTotalDelay;
 
-    Variance *            mpVarFloor;
+    Variance*             mpVarFloor;
         
-    FLOAT *               mpOutputVector; 
+    FLOAT*                mpOutputVector; 
     
-    FLOAT *
+    FLOAT*
     XformPass(FLOAT *in_vec, int time, PropagDirectionType dir);
   
   
@@ -881,7 +928,7 @@ namespace STK
     Scan( int             mask,
           HMMSetNodeName  nodeNameBuffer,
           ScanAction      action, 
-          void *          pUserData);
+          void*           pUserData);
   
   };
 
@@ -1059,7 +1106,7 @@ namespace STK
     ~BiasXform();
     
     Matrix<FLOAT>       mVector;
-    FLOAT *             mpVectorO;
+    //FLOAT *           mpVectorO;
     
     
     /**

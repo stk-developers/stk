@@ -154,12 +154,14 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
   //***************************************************************************
   //***************************************************************************
   void 
-  MakeFileName(char * pOutFileName, const char* inFileName,
-               const char *out_dir, const char *out_ext)
+  MakeFileName(char* pOutFileName,  const char* inFileName,
+               const char* out_dir, const char* out_ext)
   {
-    const char *base_name, *bname_end = NULL, *chrptr;
+    const char* base_name;
+    const char* bname_end = NULL;
+    const char* chrptr;
   
-  //  if (*inFileName == '*' && *++inFileName == '/') ++inFileName;
+    //  if (*inFileName == '*' && *++inFileName == '/') ++inFileName;
   
     base_name = strrchr(inFileName, '/');
     base_name = base_name != NULL ? base_name + 1 : inFileName;
@@ -1387,6 +1389,39 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
       wildcard = hlpptr;
     }
   }
+  
+  
+  //***************************************************************************
+  //***************************************************************************
+  void fprintf_ll(FILE* fp, long long n)
+  {
+    const char digit_map[]      = "0123456789abcdef";
+    const int  base            = 10;
+    const int  n_leading_zeros = 8;
+    // the max number for long long is 9223372036854775807LL =>
+    // reserve 19 places for number, 1 place for sign, 1 place for string 
+    // zero termination, 8 places for leading zeros
+    const int  buffer_size     = 19 + 1 + 1 + n_leading_zeros;
+    char       buffer[buffer_size];
+    int        buffer_i        = buffer_size - 1;
+    
+    assert(n >= 0);
+    
+    buffer[buffer_i--] = '\0';
+    
+    for (int i=32; n && i; i--, n /= base)
+    {
+      buffer[buffer_i--] = digit_map[n % base];
+    }
+    
+    for (; buffer_i + n_leading_zeros + 2 > buffer_size; buffer_i--)
+    {
+      buffer[buffer_i] = '0';
+    }
+    
+    fprintf(fp, "%s", buffer + buffer_i + 1);
+  } // void fprintf_ll(FILE* fp, long long n)
+        
   
   
   using std::string;

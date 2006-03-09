@@ -19,6 +19,7 @@
 #include "STKLib/labels.h"
 #include "STKLib/stkstream.h"
 
+
 #include <cstdlib>
 #include <cstring>
 #include <cstdio>
@@ -33,6 +34,8 @@
 
 #include <iostream>
 #include <string>
+#include <sstream>
+
 using namespace std;
 using namespace STK;
 
@@ -106,23 +109,23 @@ char *optionStr =
 int main(int argc, char *argv[]) 
 {
   ModelSet            hset;
-  ModelSet *          hset_alig = NULL;
+  ModelSet*           hset_alig = NULL;
   Network             net;
-  FILE *              sfp;
-  FILE *              ilfp = NULL;
-  FLOAT *             obsMx;
-  FLOAT *             obsMx_alig;
+  FILE*               sfp;
+  FILE*               ilfp = NULL;
+  FLOAT*              obsMx;
+  FLOAT*              obsMx_alig;
   FLOAT               sentWeight;
   HtkHeader           header;
   HtkHeader           header_alig;
-  Label *             labels;
+  Label*              labels;
   
   int                 i;
   int                 fcnt = 0;
   
   char                line[1024];
   char                label_file[1024];
-  char *              chrptr;
+  char*               chrptr;
   
 //  MyHSearchData labelHash;
   MyHSearchData nonCDphHash;
@@ -134,10 +137,10 @@ int main(int argc, char *argv[])
   FLOAT               totLogPosterior = 0;
   int                 totFrames       = 0;
 
-  FileListElem *      feature_files = NULL;
+  FileListElem*       feature_files = NULL;
   int                 nfeature_files = 0;
-  FileListElem *      file_name = NULL;
-  FileListElem **     last_file = &feature_files;
+  FileListElem*       file_name = NULL;
+  FileListElem**      last_file = &feature_files;
 
   int                 update_mask = 0;
 
@@ -158,44 +161,47 @@ int main(int argc, char *argv[])
   double              h_constant;
   double              I_smoothing;
         
-  const char *        cchrptr;
-  const char *        src_hmm_list;
-  const char *        src_hmm_dir;
-  const char *        src_hmm_ext;
-        char *        src_mmf;
-  const char *        alg_hmm_list;
-  const char *        alg_hmm_dir;
-  const char *        alg_hmm_ext;
-        char *        alg_mmf;
-  const char *        trg_hmm_dir;
-  const char *        trg_hmm_ext;
-  const char *        trg_mmf;
-  const char *        src_lbl_dir;
-  const char *        src_lbl_ext;
-  const char *        src_mlf;
-  const char *        network_file;
-  const char *        xformList;
-  const char *        stat_file;
-  char *              script;
-  const char *        dictionary;
-  const char *        label_filter;
-  const char *        net_filter;
-        char *        cmn_path;
-        char *        cmn_file;
-  const char *        cmn_mask;
-        char *        cvn_path;
-        char *        cvn_file;
-  const char *        cvn_mask;
-  const char *        cvg_file;
-        char *        cmn_path_alig;
-        char *        cmn_file_alig;
-  const char *        cmn_mask_alig;
-        char *        cvn_path_alig;
-        char *        cvn_file_alig;
-  const char *        cvn_mask_alig;
-  const char *        cvg_file_alig;
-  const char *        mmf_dir;
-  const char *        mmf_mask;
+  const char*         cchrptr;
+  const char*         src_hmm_list;
+  const char*         src_hmm_dir;
+  const char*         src_hmm_ext;
+        char*         src_mmf;
+  const char*         alg_hmm_list;
+  const char*         alg_hmm_dir;
+  const char*         alg_hmm_ext;
+        char*         alg_mmf;
+  const char*         trg_hmm_dir;
+  const char*         trg_hmm_ext;
+  const char*         trg_mmf;
+  const char*         src_lbl_dir;
+  const char*         src_lbl_ext;
+  const char*         src_mlf;
+  const char*         network_file;
+  const char*         xformList;
+  const char*         stat_file;
+        char*         script;
+  const char*         dictionary;
+  const char*         label_filter;
+  const char*         net_filter;
+        char*         cmn_path;
+        char*         cmn_file;
+  const char*         cmn_mask;
+        char*         cvn_path;
+        char*         cvn_file;
+  const char*         cvn_mask;
+  const char*         cvg_file;
+        char*         cmn_path_alig;
+        char*         cmn_file_alig;
+  const char*         cmn_mask_alig;
+        char*         cvn_path_alig;
+        char*         cvn_file_alig;
+  const char*         cvn_mask_alig;
+  const char*         cvg_file_alig;
+  
+  const char*         mmf_dir;
+  const char*         mmf_mask;
+  const char*         mmf_karkulka;
+  bool                karkulka;
   
   int                 trace_flag;
   int                 min_examples;
@@ -204,8 +210,8 @@ int main(int argc, char *argv[])
   int                 targetKind_alig = PARAMKIND_ANON;
   int                 derivOrder;
   int                 derivOrder_alig;
-  int *               derivWinLengths;
-  int *               derivWinLengths_alig = NULL;
+  int*                derivWinLengths;
+  int*                derivWinLengths_alig = NULL;
   int                 startFrmExt;
   int                 endFrmExt;
   int                 startFrmExt_alig;
@@ -237,6 +243,7 @@ int main(int argc, char *argv[])
   LabelFormat             in_lbl_fmt        = {0};
   in_lbl_fmt.TIMES_OFF = 1;
 
+  
   if (argc == 1) usage(argv[0]);
 
   //InitHMMSet(&hset, 1);
@@ -343,8 +350,10 @@ int main(int argc, char *argv[])
   
   mmf_dir      = GetParamStr(&cfgHash, SNAME":MMFDIR",          ".");
   mmf_mask     = GetParamStr(&cfgHash, SNAME":MMFMASK",         NULL);
-
-
+  mmf_karkulka = GetParamStr(&cfgHash, SNAME":MMFKARKULKA",     ".");
+  karkulka     = GetParamBool(&cfgHash,SNAME":KARKULKA",        false);
+  
+  
   update_mode  = (Update_Mode) GetParamEnum(&cfgHash,SNAME":UPDATEMODE",    UM_UPDATE,
                    "UPDATE",UM_UPDATE,"DUMP",UM_DUMP,"BOTH",UM_BOTH, NULL);
 
@@ -526,6 +535,7 @@ int main(int argc, char *argv[])
     ilfp = OpenInputMLF(src_mlf);
   }
 
+  hset.mClusterWeightUpdate = karkulka;
   hset.mMmiUpdate           = update_type;
   hset.ResetAccums();
   
@@ -709,13 +719,15 @@ int main(int argc, char *argv[])
         obsMx_alig  = obsMx;
       }
       
-      if(mmf_mask != NULL) {
+      if(mmf_mask != NULL) 
+      {
         static string lastSpeakerMMF;
         string speakerMMF;
         ProcessMask(file_name->logical, mmf_mask, speakerMMF);
         
         if(lastSpeakerMMF != speakerMMF) 
         {
+          
           hset_alig->ParseMmf((string(mmf_dir) + "/" + speakerMMF).c_str(), NULL);
           lastSpeakerMMF = speakerMMF;
         }
@@ -787,15 +799,15 @@ int main(int argc, char *argv[])
       net.mPruningThresh= state_pruning > 0.0 ? state_pruning : -LOG_0;
       net.mAccumType    = accum_type;
       
-      double prn_step  = stprn_step;
-      double prn_limit = stprn_limit;
+      double prn_step   = stprn_step;
+      double prn_limit  = stprn_limit;
 
       if (GetParamBool(&cfgHash, SNAME":NFRAMEOUTPNORM", false)) 
       {
-        net.mOutpScale = outprb_scale / nFrames;
+        net.mOutpScale  = outprb_scale / nFrames;
         net.mPruningThresh /= nFrames;
-        prn_step          /= nFrames;
-        prn_limit         /= nFrames;
+        prn_step       /= nFrames;
+        prn_limit      /= nFrames;
       }
 
       FLOAT P;
@@ -812,7 +824,7 @@ int main(int argc, char *argv[])
         if (accum_type == AT_MCE || accum_type == AT_MMI) 
         {
           P = net.MCEReest(obsMx_alig, obsMx, nFrames, sentWeight, sig_slope);
-        } 
+        }
         else 
         {
           P = !viterbiTrain
@@ -820,7 +832,7 @@ int main(int argc, char *argv[])
             : net.ViterbiReest  (obsMx_alig, obsMx, nFrames, sentWeight);
         }
         
-        if (P > LOG_MIN) 
+        if (P > LOG_MIN)
           break;
 
         if (net.mPruningThresh <= LOG_MIN ||
@@ -835,6 +847,12 @@ int main(int argc, char *argv[])
         Warning("Overpruning or bad data in file %s, "
                 "trying pruning threshold: %.2f",
                 file_name->mpPhysical, net.mPruningThresh);
+      }
+      
+      // here
+      if (hset_alig->mClusterWeightUpdate)
+      {
+        //hset_alig->Scan(MTM_MIXTURE, NULL,ReplaceItem, &ud);
       }
       
       if (P > LOG_MIN) 
@@ -879,8 +897,8 @@ int main(int argc, char *argv[])
   
   if (parallel_mode <= 0 && update_mode & UM_UPDATE) 
   {
-    Macro     *   macro;
-    Variance  **  vector_to_update;
+    Macro*        macro;
+    Variance**    vector_to_update;
     size_t        tmp_var_floor_size;
     string        suffix = "";
     string        macro_name;
@@ -900,9 +918,9 @@ int main(int argc, char *argv[])
       }
       else
       {
-        macro  = reinterpret_cast<Macro *>(hset.mXformInstanceHash.mpEntry[m]->data);
+        macro  = reinterpret_cast<Macro*>(hset.mXformInstanceHash.mpEntry[m]->data);
         suffix = macro->mpName;
-        XformInstance *xfi =  reinterpret_cast <XformInstance *>(macro->mpData);
+        XformInstance* xfi =  reinterpret_cast <XformInstance*>(macro->mpData);
         tmp_var_floor_size =  xfi->mOutSize;  
         vector_to_update   = &xfi->mpVarFloor;
       }
@@ -912,7 +930,7 @@ int main(int argc, char *argv[])
       if(macro) {
         *vector_to_update = (Variance *) macro->mpData;
         
-        if((*vector_to_update)->mVectorSize != tmp_var_floor_size) 
+        if((*vector_to_update)->VectorSize() != tmp_var_floor_size) 
         {
           Error("Ivalid size of variance floor vector '%s'", macro_name.c_str());
         }

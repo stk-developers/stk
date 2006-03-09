@@ -355,18 +355,18 @@ int main(int argc, char *argv[]) {
 
     if (macro != NULL || (float) min_variance > 0.0) {
       Variance *tmpvar = macro ? (Variance *) macro->mpData : NULL;
-//      assert(!tmpvar || hset.mInputVectorSize == tmpvar->mVectorSize);
+//      assert(!tmpvar || hset.mInputVectorSize == tmpvar->VectorSize());
 
       //***
       // old malloc
-      //hset.varFloor = (Variance *) malloc(sizeof(Variance)+((tmpvar ? tmpvar->mVectorSize : hset.mInputVectorSize)-1)*sizeof(FLOAT));
+      //hset.varFloor = (Variance *) malloc(sizeof(Variance)+((tmpvar ? tmpvar->VectorSize() : hset.mInputVectorSize)-1)*sizeof(FLOAT));
       //if (hset.varFloor == NULL) Error("Insufficient memory");
       //
-      //hset.varFloor->mVectorSize = tmpvar ? tmpvar->mVectorSize : hset.mInputVectorSize;
+      //hset.varFloor->VectorSize() = tmpvar ? tmpvar->VectorSize() : hset.mInputVectorSize;
       
-      hset.varFloor = new Variance((tmpvar ? tmpvar->mVectorSize : hset.mInputVectorSize), false);
+      hset.varFloor = new Variance((tmpvar ? tmpvar->VectorSize() : hset.mInputVectorSize), false);
 
-      for (i = 0; i < hset.varFloor->mVectorSize; i++) {
+      for (i = 0; i < hset.varFloor->VectorSize(); i++) {
         if (macro) {
           hset.varFloor->mpVectorO[i] =
              tmpvar && ((float) min_variance <= 0.0 ||

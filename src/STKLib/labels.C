@@ -128,16 +128,20 @@ void WriteLabels(FILE* lfp, Label *label, LabelFormat labelFormat, long smpPrd,
       for (level = label; level != NULL; level = level->mpNextLevel) {
         if (time == UNDEF_TIME || time < level->mStart) time = level->mStart;
       }
-      if (time != UNDEF_TIME) {
-        fprintf(lfp, "%08lld", (long long)
+      if (time != UNDEF_TIME) 
+      {
+        fprintf_ll(lfp, 
                 smpPrd * (2 * time + ctm) / 2 - labelFormat.left_extent);
 
         time = UNDEF_TIME;
-        for (level = label; level != NULL; level = level->mpNextLevel) {
+        for (level = label; level != NULL; level = level->mpNextLevel) 
+        {
           if (time == UNDEF_TIME || time > level->mStop) time = level->mStop;
         }
-        if (time != UNDEF_TIME) {
-          fprintf(lfp," %08lld", (long long)
+        if (time != UNDEF_TIME) 
+        {
+          fprintf(lfp, " ");
+          fprintf_ll(lfp,
                   smpPrd * (2 * time - ctm) / 2 + labelFormat.right_extent);
         }
       }

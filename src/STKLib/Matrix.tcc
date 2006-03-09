@@ -84,7 +84,7 @@ namespace STK
       this->mMRows      = rows;
       this->mMCols      = cols;
       this->mMRealCols  = real_cols;
-      this->mMSkip      = skip;
+      //this->mMSkip      = skip;
       this->mMSize      = size;
 
       this->mTRows      = r;
@@ -126,7 +126,7 @@ namespace STK
         this->mMRows       = t.mMRows;
         this->mMCols       = t.mMCols;
         this->mMRealCols   = t.mMRealCols;
-        this->mMSkip       = t.mMSkip;
+        //this->mMSkip       = t.mMSkip;
         this->mMSize       = t.mMSize;
       }
       else
@@ -340,6 +340,30 @@ namespace STK
     return *this;
   }
   
+  //***************************************************************************
+  //***************************************************************************
+  template<typename _ElemT>
+    Matrix<_ElemT> &
+    Matrix<_ElemT>::
+    DiagScale(_ElemT* pDiagVector)
+    {
+      assert(mStorageType == STORAGE_REGULAR);
+      
+      // :TODO: 
+      // optimize this
+      _ElemT* data = mpData;
+      int     skip = mMRealCols - mMCols;
+      for (size_t i=0; i < Rows(); i++)
+      {
+        for (size_t j=0; j < Cols(); j++)
+        {
+          data[j] *= pDiagVector[j];
+        }
+        data += skip;
+      }
+      
+      return *this;
+    }
 //******************************************************************************
 /*
   template<>
@@ -389,24 +413,52 @@ namespace STK
     
     return *this;
   }
-//******************************************************************************
-template<typename _ElemT>
-     void Matrix<_ElemT>::PrintOut(char* file){
-  FILE* f = fopen(file, "w");
-  unsigned i,j;
-  fprintf(f, "%dx%d\n", this->mMRows, this->mMCols);
-  for(i=0; i<this->mMRows; i++){
-    _ElemT *row = this->Row(i);
-    for(j=0; j<this->mMRealCols; j++){
-      fprintf(f, "%20.17f ",row[j]);
-    }
-    fprintf(f, "\n");
-  }
   
-  fclose(f);
-     }
+  
+  //****************************************************************************
+  //****************************************************************************
+  template<typename _ElemT>
+    void 
+    Matrix<_ElemT>::
+    PrintOut(char* file)
+    {
+      FILE* f = fopen(file, "w");
+      unsigned i,j;
+      fprintf(f, "%dx%d\n", this->mMRows, this->mMCols);
+      
+      for(i=0; i<this->mMRows; i++)
+      {
+        _ElemT *row = this->Row(i);
+        for(j=0; j<this->mMRealCols; j++){
+          fprintf(f, "%20.17f ",row[j]);
+        }
+        fprintf(f, "\n");
+      }
+      
+      fclose(f);
+    }
 
-//******************************************************************************
+  
+  //****************************************************************************
+  //****************************************************************************
+  template<typename _ElemT>
+    Matrix<_ElemT>&
+    Matrix<_ElemT>::
+    ClearI()
+    {
+      Clear();
+      size_t  skip = mMRealCols + 1;
+      _ElemT* data = mpData;
+      
+      for (size_t i=0; i < Rows(); i++)
+      {
+        *data = 1.0;
+        data += skip;
+      }
+      return *this;
+    }
+  
+  //****************************************************************************
   // Copy constructor
   template<typename _ElemT>
     WindowMatrix<_ElemT>::
@@ -434,7 +486,7 @@ template<typename _ElemT>
           this->mMRows       = t.mMRows;
           this->mMCols       = t.mMCols;
           this->mMRealCols   = t.mMRealCols;
-          this->mMSkip       = t.mMSkip;
+          //this->mMSkip       = t.mMSkip;
           this->mMSize       = t.mMSize;
         }
         else
@@ -462,7 +514,7 @@ template<typename _ElemT>
         Matrix<_ElemT>::mMRows = rows;
         Matrix<_ElemT>::mMCols = mOrigMCols;
         Matrix<_ElemT>::mMRealCols = mOrigMRealCols;
-        Matrix<_ElemT>::mMSkip = mOrigMSkip;
+        //Matrix<_ElemT>::mMSkip = mOrigMSkip;
       }
       else if (Matrix<_ElemT>::mStorageType == STORAGE_TRANSPOSED)
       {
@@ -473,7 +525,7 @@ template<typename _ElemT>
         Matrix<_ElemT>::mMRows = mOrigMCols;
         Matrix<_ElemT>::mMCols = rows;
         Matrix<_ElemT>::mMRealCols = mOrigMRealCols;
-        Matrix<_ElemT>::mMSkip = mOrigMRealCols - rows;
+        //Matrix<_ElemT>::mMSkip = mOrigMRealCols - rows;
       }
     }
 
@@ -496,7 +548,7 @@ template<typename _ElemT>
         Matrix<_ElemT>::mMRows = rows;
         Matrix<_ElemT>::mMCols = cols;
         Matrix<_ElemT>::mMRealCols = this->mOrigMRealCols;
-        Matrix<_ElemT>::mMSkip = this->mOrigMRealCols - cols;
+        //Matrix<_ElemT>::mMSkip = this->mOrigMRealCols - cols;
       }
       else if (Matrix<_ElemT>::mStorageType == STORAGE_TRANSPOSED)
       {
@@ -507,7 +559,7 @@ template<typename _ElemT>
         Matrix<_ElemT>::mMRows = mOrigMCols;
         Matrix<_ElemT>::mMCols = rows;
         Matrix<_ElemT>::mMRealCols = mOrigMRealCols;
-        Matrix<_ElemT>::mMSkip = mOrigMRealCols - rows;
+        //Matrix<_ElemT>::mMSkip = mOrigMRealCols - rows;
       }
 
     }

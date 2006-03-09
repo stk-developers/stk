@@ -42,6 +42,63 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
+  Mixture&
+  Mixture::
+  AddToAccumCAT(Matrix<FLOAT>* pGw, Matrix<FLOAT>* pKw)
+  {
+    FLOAT          tmp_val;
+    FLOAT          occ_counts;                                                  // occupation counts for current mixture
+    Matrix<FLOAT>  aux_mat1(mpMean->mClusterMatrix);                            // auxiliary matrix
+    
+    aux_mat1.DiagScale(mpVariance->mpVectorO);
+    
+    // we go through each accumulator set
+    for (size_t sub=0; sub < mpMean->mCwvAccum.Rows(); sub++)
+    {
+      occ_counts = mpMean->mpOccProbAccums[sub];                
+      
+      // we accumulate Gw here
+      for (size_t i=0; i < pGw[sub].Rows(); i++)
+      {
+        for (size_t j=0; j < pGw[sub].Cols(); j++)
+        {
+          tmp_val = 0;
+          for (size_t k=0; k < aux_mat1.Cols(); k++)
+          {
+            tmp_val += aux_mat1[i][k] * mpMean->mClusterMatrix[i][k];
+          } // k
+          pGw[sub][i][j] += occ_counts * tmp_val;
+        } // j
+      } // i
+      
+      // accumulate kw here
+      for (size_t i=0; i < aux_mat1.Rows(); i++)
+      {   
+        for (size_t k=0; k < aux_mat1.Cols(); k++)
+        {
+          pKw[sub][0][i] += aux_mat1[i][k] * mpMean->mCwvAccum[sub][k];
+        }      
+      }
+    } // for (size_t sub=0; sub < mpMean->mCwvAccum.Rows())
+        
+    return *this;
+  }
+    
+  
+  //***************************************************************************
+  //***************************************************************************
+  Mixture&
+  Mixture::
+  ResetAccumCAT()
+  {
+    *(mpMean->mpOccProbAccums) = 0.0;
+    mpMean->mCwvAccum.Clear();
+    return *this;
+  }
+  
+  
+  //***************************************************************************
+  //***************************************************************************
   void 
   ReplaceItem(
     int               macro_type, 
@@ -49,7 +106,7 @@ namespace STK
     MacroData *       pData, 
     void *            pUserData)
   {
-    ReplaceItemUserData *  ud = (ReplaceItemUserData *) pUserData;
+    ReplaceItemUserData*   ud = (ReplaceItemUserData*) pUserData;
     size_t                  i;
     size_t                  j;
   
@@ -90,7 +147,7 @@ namespace STK
     
     else if (macro_type == 'm') 
     {
-      Mixture *mixture = (Mixture *) pData;
+      Mixture* mixture = static_cast<Mixture*>(pData);
       if (mixture->mpMean      == ud->mpOldData) mixture->mpMean       = (Mean*)          ud->mpNewData;
       if (mixture->mpVariance  == ud->mpOldData) mixture->mpVariance   = (Variance*)      ud->mpNewData;
       if (mixture->mpInputXform== ud->mpOldData) mixture->mpInputXform = (XformInstance*) ud->mpNewData;
@@ -104,13 +161,23 @@ namespace STK
       // new bias is defined, we want to check all means and potentially update
       // the weights refference and recalculate the values
       if ('x' == ud->mType                                               
-      && (XT_BIAS == static_cast<Xform*>(ud->mpNewData)->mXformType)
-      && (mean->mpWeights == static_cast<BiasXform*>(ud->mpOldData)))
+      && (XT_BIAS == static_cast<Xform*>(ud->mpNewData)->mXformType))
       {
-        BiasXform* new_weights = static_cast<BiasXform*>(ud->mpNewData);
+        // find if any of the mpWeights points to the old data
+        for (i = 0; i < mean->mNWeights && (mean->mpWeights[i] != 
+             static_cast<BiasXform*>(ud->mpOldData)) ; i++)
+        {}
         
-        mean->mpWeights = new_weights;
-        mean->RecalculateCAT();
+        // if i < mean->mNWeights
+        if (i < mean->mNWeights)
+        {
+          BiasXform* new_weights = static_cast<BiasXform*>(ud->mpNewData);
+          
+          mean->mpWeights[i] = new_weights;
+          mean->RecalculateCAT();
+        }
+        
+        
       }
     }
         
@@ -238,11 +305,11 @@ namespace STK
   
     if (macro_type == mt_mean || macro_type == mt_variance) {
       if (macro_type == mt_mean) {
-        size   = ((Mean *)pData)->mVectorSize;
+        size   = ((Mean *)pData)->VectorSize();
         vector = ((Mean *)pData)->mpVectorO + size;
         size   = (size + 1) * 2;
       } else if (macro_type == mt_variance) {
-        size   = ((Variance *)pData)->mVectorSize;
+        size   = ((Variance *)pData)->VectorSize();
         vector = ((Variance *)pData)->mpVectorO + size;
         size   = (size * 2 + 1) * 2;
       }
@@ -272,8 +339,8 @@ namespace STK
   GlobalStats(
     int                 macro_type, 
     HMMSetNodeName      nn, 
-    MacroData       *   pData, 
-    void            *   pUserData)
+    MacroData*          pData, 
+    void*               pUserData)
   {
     size_t        i;
     
@@ -294,7 +361,7 @@ namespace STK
     else 
     { // macro_type == mt_mixture
       Mixture * mixture   = (Mixture *) pData;
-      size_t    vec_size  = mixture->mpMean->mVectorSize;
+      size_t    vec_size  = mixture->mpMean->VectorSize();
       FLOAT *   obs       = XformPass(mixture->mpInputXform,ud->observation,ud->mTime,FORWARD);
       
       for (i = 0; i < vec_size; i++) 
@@ -559,17 +626,17 @@ namespace STK
   WriteStatsForXform(int macro_type, HMMSetNodeName nodeName,
                      MacroData * pData, void * pUserData) 
   {
-    XformStatsFileNames *    file = NULL;
-    XformStatAccum *              xfsa = NULL;
+    XformStatsFileNames*     file = NULL;
+    XformStatAccum*               xfsa = NULL;
     size_t                        i;
     size_t                        j;
     size_t                        k;
     size_t                        nxfsa = 0;
     int                           cc = 0;
     size_t                        size;
-    FLOAT *                       mean;
-    FLOAT *                       cov;
-    WriteStatsForXformUserData * ud = (WriteStatsForXformUserData *) pUserData;
+    FLOAT*                        mean;
+    FLOAT*                        cov;
+    WriteStatsForXformUserData*   ud = (WriteStatsForXformUserData *) pUserData;
   
     if (macro_type == mt_mean) 
     {
@@ -795,7 +862,7 @@ namespace STK
       {
         xfsa   = ((Mean *)pData)->mpXformStatAccum;
         nxfsa  = ((Mean *)pData)->mNumberOfXformStatAccums;
-        size   = ((Mean *)pData)->mVectorSize;
+        size   = ((Mean *)pData)->VectorSize();
         vector = ((Mean *)pData)->mpVectorO+size;
         size   = size + 1;
       } 
@@ -803,7 +870,7 @@ namespace STK
       {
         xfsa   = ((Variance *)pData)->mpXformStatAccum;
         nxfsa  = ((Variance *)pData)->mNumberOfXformStatAccums;
-        size   = ((Variance *)pData)->mVectorSize;
+        size   = ((Variance *)pData)->VectorSize();
         vector = ((Variance *)pData)->mpVectorO+size;
         size   = size * 2 + 1;
       }
@@ -884,7 +951,7 @@ namespace STK
       {
         xfsa   = ((Mean *)pData)->mpXformStatAccum;
         nxfsa  = ((Mean *)pData)->mNumberOfXformStatAccums;
-        size   = ((Mean *)pData)->mVectorSize;
+        size   = ((Mean *)pData)->VectorSize();
         vector = ((Mean *)pData)->mpVectorO+size;
         size   = size + 1;
       } 
@@ -892,7 +959,7 @@ namespace STK
       {
         xfsa   = ((Variance *)pData)->mpXformStatAccum;
         nxfsa  = ((Variance *)pData)->mNumberOfXformStatAccums;
-        size   = ((Variance *)pData)->mVectorSize;
+        size   = ((Variance *)pData)->VectorSize();
         vector = ((Variance *)pData)->mpVectorO+size;
         size   = size * 2 + 1;
       }
@@ -1002,7 +1069,7 @@ namespace STK
       {
         xfsa   = ((Mean *)pData)->mpXformStatAccum;
         nxfsa  = ((Mean *)pData)->mNumberOfXformStatAccums;
-        size   = ((Mean *)pData)->mVectorSize;
+        size   = ((Mean *)pData)->VectorSize();
         vector = ((Mean *)pData)->mpVectorO+size;
         size   = size + 1;
       } 
@@ -1010,7 +1077,7 @@ namespace STK
       {
         xfsa   = ((Variance *)pData)->mpXformStatAccum;
         nxfsa  = ((Variance *)pData)->mNumberOfXformStatAccums;
-        size   = ((Variance *)pData)->mVectorSize;
+        size   = ((Variance *)pData)->VectorSize();
         vector = ((Variance *)pData)->mpVectorO+size;
         size   = size * 2 + 1;
       }
@@ -1218,11 +1285,11 @@ namespace STK
     FLOAT cov_det = 0;
     size_t i;
   
-    for (i = 0; i < mpVariance->mVectorSize; i++) 
+    for (i = 0; i < mpVariance->VectorSize(); i++) 
     {
       cov_det -= log(mpVariance->mpVectorO[i]);
     }
-    mGConst = cov_det + M_LOG_2PI * mpVariance->mVectorSize;
+    mGConst = cov_det + M_LOG_2PI * mpVariance->VectorSize();
   }  
 
   //***************************************************************************
@@ -1242,10 +1309,10 @@ namespace STK
     // none of the above needs to be set, so 
     if (f_floor != NULL)
     {
-      assert(f_floor->mVectorSize == mpVariance->mVectorSize);
+      assert(f_floor->VectorSize() == mpVariance->VectorSize());
       
       // go through each element and update
-      for (i = 0; i < mpVariance->mVectorSize; i++)
+      for (i = 0; i < mpVariance->VectorSize(); i++)
       {
         mpVariance->mpVectorO[i] = LOWER_OF(mpVariance->mpVectorO[i],
                                             f_floor->mpVectorO[i]);
@@ -1258,7 +1325,7 @@ namespace STK
 printf("%f", g_floor);
       // go through each element and update
       g_floor =  1.0 / g_floor;
-      for (i = 0; i < mpVariance->mVectorSize; i++)
+      for (i = 0; i < mpVariance->VectorSize(); i++)
       {
         mpVariance->mpVectorO[i] = LOWER_OF(mpVariance->mpVectorO[i], g_floor);
       }
@@ -1278,7 +1345,7 @@ printf("%f", g_floor);
 
     if (pModelSet->mMmiUpdate == 1 || pModelSet->mMmiUpdate == -1) 
     {
-      int vec_size    = mpVariance->mVectorSize;
+      int vec_size    = mpVariance->VectorSize();
       FLOAT *mean_vec = mpMean->mpVectorO;
       FLOAT *var_vec  = mpVariance->mpVectorO;
   
@@ -1353,7 +1420,7 @@ printf("%f", g_floor);
     // MFE update
     else if (pModelSet->mMmiUpdate == 2 || pModelSet->mMmiUpdate == -2 ) 
     { 
-      int vec_size    = mpVariance->mVectorSize;
+      int vec_size    = mpVariance->VectorSize();
       FLOAT *mean_vec = mpMean->mpVectorO;
       FLOAT *var_vec  = mpVariance->mpVectorO;
   
@@ -1496,11 +1563,16 @@ printf("%f", g_floor);
   Mean(size_t vectorSize, bool allocateAccums)
   {
     size_t accum_size = 0;
+    void* free_vec;
     
     if (allocateAccums) 
       accum_size = (vectorSize + 1) * 2; // * 2 for MMI accums
     
-    mpVectorO = new FLOAT[vectorSize + accum_size];
+    mpVectorO = static_cast<FLOAT*>
+      stk_memalign(16, vectorSize + accum_size, &free_vec);
+#ifdef STK_MEMALIGN_MANUAL
+    mpVectorOFree = static_cast<FLOAT*>(free_vec);
+#endif
     
     mVectorSize               = vectorSize;    
     mpXformStatAccum          = NULL;
@@ -1520,7 +1592,23 @@ printf("%f", g_floor);
       free(mpXformStatAccum->mpStats);
       free(mpXformStatAccum);
     }
-    delete [] mpVectorO;
+    
+    // delete refferences to weights Bias xforms
+    if (NULL != mpWeights)
+    { 
+      delete [] mpWeights;
+    }
+    
+    if (NULL != mpOccProbAccums)
+    {
+      delete [] mpOccProbAccums;
+    }
+    
+#ifdef STK_MEMALIGN_MANUAL
+    free(mpVectorOFree);
+#else
+    free(mpVectorO);
+#endif
   }  
   
   //**************************************************************************  
@@ -1531,14 +1619,14 @@ printf("%f", g_floor);
   {
     size_t   i;
     FLOAT *  vec  = mpVectorO;
-    FLOAT *  acc  = mpVectorO + 1 * mVectorSize;
-    FLOAT    nrm  = mpVectorO  [2 * mVectorSize];
+    FLOAT *  acc  = mpVectorO + 1 * VectorSize();
+    FLOAT    nrm  = mpVectorO  [2 * VectorSize()];
   
     if (pModelSet->mUpdateMask & UM_MEAN) 
     {
       if (mNumberOfXformStatAccums == 0) 
       {
-        for (i = 0; i < mVectorSize; i++) 
+        for (i = 0; i < VectorSize(); i++) 
         {
           vec[i] = acc[i] / nrm;
         }
@@ -1560,7 +1648,7 @@ printf("%f", g_floor);
           FLOAT *       mnv     = mpXformStatAccum[i].mpStats;
   
           assert(xform->mXformType == XT_LINEAR);
-          assert(pos + xform->mOutSize <= mVectorSize);
+          assert(pos + xform->mOutSize <= VectorSize());
           
           for (r = 0; r < xform->mOutSize; r++) 
           {
@@ -1573,7 +1661,7 @@ printf("%f", g_floor);
           pos += xform->mOutSize;
         }
         
-        assert(pos == mVectorSize);
+        assert(pos == VectorSize());
       }
     }
   } // UpdateFromAccums(const ModelSet * pModelSet)
@@ -1587,19 +1675,28 @@ printf("%f", g_floor);
   {
     if (NULL != mpWeights)
     {
+      std::cerr << "Recalculating..." << std::endl;
       //:KLUDGE: optimize this
-      memset(mpVectorO, 0, sizeof(FLOAT) * mVectorSize);      
+      memset(mpVectorO, 0, sizeof(FLOAT) * VectorSize());      
+      int v = 0;
       
-      // go through rows in the cluster matrix
-      for (size_t i = 0; i < mpWeights->mInSize; i++)
+      // go through weights vectors
+      for (size_t w = 0; w < mNWeights; w++)
       {
-        // go through cols in the cluster matrix
-        for (size_t j = 0; j < mVectorSize; j++)
+        // go through rows in the cluster matrix
+        for (size_t i = 0; i < mpWeights[w]->mInSize; i++)
         {
-          //std::cerr << mpVectorO[j] << "+=" << mVector(i, j) << "*" << mpWeights->mpVectorO[i] << std::endl;
-          mpVectorO[j] += mVector(i, j) * mpWeights->mpVectorO[i];
+          // go through cols in the cluster matrix
+          for (size_t j = 0; j < VectorSize(); j++)
+          {
+            std::cerr << "Recalculating using " << mpWeights[w]->mpMacro->mpName << "  " << mpVectorO[j] << "+=" << mClusterMatrix(v, j) << "*" << mpWeights[w]->mVector[0][i] << std::endl;
+            mpVectorO[j] += mClusterMatrix(v, j) * mpWeights[w]->mVector[0][i];
+          }
+          // move to next cluster mean vector
+          v++;
         }
       }
+      
     }
   }
   
@@ -1613,11 +1710,17 @@ printf("%f", g_floor);
   Variance(size_t vectorSize, bool allocateAccums)
   {
     size_t accum_size = 0;
+    void* free_vec;
     
     if (allocateAccums) 
       accum_size = (2*vectorSize + 1) * 2; // * 2 for MMI accums
     
-    mpVectorO = new FLOAT[vectorSize + accum_size];
+    mpVectorO = static_cast<FLOAT*>
+      (stk_memalign(16, vectorSize + accum_size, &free_vec));
+#ifdef STK_MEMALIGN_MANUAL
+    mpVectorOFree = static_cast<FLOAT*>(free_vec);
+#endif
+    
     mVectorSize               = vectorSize;    
     mpXformStatAccum          = NULL;
     mNumberOfXformStatAccums  = 0;
@@ -1634,7 +1737,12 @@ printf("%f", g_floor);
       free(mpXformStatAccum->mpStats);
       free(mpXformStatAccum);
     }
-    delete [] mpVectorO;
+    
+#ifdef STK_MEMALIGN_MANUAL
+    free(mpVectorOFree);
+#else
+    free(mpVectorO);
+#endif
   }  
   
   //**************************************************************************  
@@ -1650,11 +1758,11 @@ printf("%f", g_floor);
       if (mNumberOfXformStatAccums == 0) 
       {
         FLOAT *vec  = mpVectorO;
-        FLOAT *vac  = mpVectorO + 1 * mVectorSize; // varriance accum 
-        FLOAT *mac  = mpVectorO + 2 * mVectorSize; // mean accum 
-        FLOAT *nrm  = mpVectorO + 3 * mVectorSize; // norm - occupation count
+        FLOAT *vac  = mpVectorO + 1 * VectorSize(); // varriance accum 
+        FLOAT *mac  = mpVectorO + 2 * VectorSize(); // mean accum 
+        FLOAT *nrm  = mpVectorO + 3 * VectorSize(); // norm - occupation count
         
-        for (i = 0; i < mVectorSize; i++) 
+        for (i = 0; i < VectorSize(); i++) 
         {
           if (pModelSet->mUpdateMask & UM_OLDMEANVAR) 
           {
@@ -1670,7 +1778,7 @@ printf("%f", g_floor);
           
           // !!! Need for transformation dependent varFloors
           if (pModelSet->mpVarFloor && 
-              pModelSet->mpVarFloor->mVectorSize == mVectorSize) 
+              pModelSet->mpVarFloor->VectorSize() == VectorSize()) 
           {
             vec[i] = LOWER_OF(vec[i], pModelSet->mpVarFloor->mpVectorO[i]);
           }
@@ -1696,7 +1804,7 @@ printf("%f", g_floor);
           FLOAT *       cov  = mpXformStatAccum[i].mpStats + in_size;
   
           assert(xform->mXformType == XT_LINEAR);
-          assert(pos + xform->mOutSize <= mVectorSize);
+          assert(pos + xform->mOutSize <= VectorSize());
           
           for (r = 0; r < xform->mOutSize; r++) 
           {
@@ -1722,7 +1830,7 @@ printf("%f", g_floor);
 
             /* This block is moved one level higher
             if (pModelSet->mpVarFloor && 
-                pModelSet->mpVarFloor->mVectorSize == mVectorSize) // !!! Need for transformation dependent varFloors
+                pModelSet->mpVarFloor->VectorSize() == VectorSize()) // !!! Need for transformation dependent varFloors
             {
                  mpVectorO[pos + r] = LOWER_OF(mpVectorO[pos + r], pModelSet->mpVarFloor->mpVectorO[pos + r]);
             }
@@ -1732,7 +1840,7 @@ printf("%f", g_floor);
           pos += xform->mOutSize;
         } // for (i=0; i<mNumberOfXformStatAccums; i++) 
         
-        assert(pos == mVectorSize);
+        assert(pos == VectorSize());
       }
     }
   }
@@ -2290,7 +2398,7 @@ printf("%f", g_floor);
   BiasXform(size_t vectorSize) :
     mVector(1, vectorSize)
   {
-    mpVectorO     = new FLOAT[vectorSize];  
+    //mpVectorO     = new FLOAT[vectorSize];  
     mInSize       = vectorSize;
     mOutSize      = vectorSize;
     mMemorySize   = 0;
@@ -2303,7 +2411,7 @@ printf("%f", g_floor);
   BiasXform::
   ~BiasXform()
   {
-    delete [] mpVectorO;
+    //delete [] mpVectorO;
   }
   
   //**************************************************************************  
@@ -2320,7 +2428,7 @@ printf("%f", g_floor);
     
     for (i = 0; i < mOutSize; i++) 
     {
-      pOutputVector[i] = pInputVector[i] + mpVectorO[i];
+      pOutputVector[i] = pInputVector[i] + mVector[0][i];
     }
     return pOutputVector;
   }; //Evaluate(...)
@@ -2531,6 +2639,8 @@ printf("%f", g_floor);
     this->MMI_h                 = 2.0;
     this->MMI_tauI              = 100.0;
   
+    mClusterWeightUpdate        = false;
+    mpClusterWeights            = NULL;
     InitKwdTable();
   } // Init(...);
 
@@ -2640,16 +2750,16 @@ printf("%f", g_floor);
              int          mmiDenominatorAccums)
   {
     IStkStream                in;
-    FILE *                    fp;
+    FILE*                     fp;
     char                      macro_name[128];
-    MyHSearchData *  hash;
+    MyHSearchData*            hash;
     unsigned int              i;
     int                       t = 0;
     int                       c;
     int                       skip_accum = 0;
     INT_32                    occurances;
     ReadAccumUserData         ud;
-    Macro *                   macro;
+    Macro*                    macro;
     int                       mtm = MTM_PRESCAN | 
                                     MTM_STATE | 
                                     MTM_MEAN | 
@@ -3040,13 +3150,15 @@ printf("%f", g_floor);
     macro = new Macro;
     
     //if ((macro = (Macro *) malloc(sizeof(Macro))) == NULL ||
-    if (
-      (macro->mpName = strdup(rNewName.c_str())) == NULL              ||
-      (macro->mpFileName = NULL, gpCurrentMmfName
-        && (macro->mpFileName = strdup(gpCurrentMmfName)) == NULL)) 
+    if ((macro->mpName = strdup(rNewName.c_str())) == NULL              
+    ||  (macro->mpFileName = NULL, gpCurrentMmfName
+    &&  (macro->mpFileName = strdup(gpCurrentMmfName)) == NULL)) 
     {
       Error("Insufficient memory");
     }
+    
+    std::cerr << "Macro " << macro->mpName << " defined in file " 
+              << macro->mpFileName << std::endl;
     
     e.key  = macro->mpName;
     e.data = macro;
@@ -3059,7 +3171,7 @@ printf("%f", g_floor);
     macro->mpData = NULL;
     macro->mOccurances = 0;
     macro->mType = type;
-  //List of all macros is made to be able to save macros in proper order
+    // List of all macros is made to be able to save macros in proper order
     macro->nextAll = NULL;
     macro->prevAll = mpLastMacro;
     
@@ -3525,6 +3637,46 @@ printf("%f", g_floor);
     return retHash;
   }
   
+    
+  //**************************************************************************  
+  //**************************************************************************  
+  void
+  ModelSet::
+  ComputeClusterWeightVectorCAT(size_t w)
+  {
+    // offset to the accumulator matrix row
+    size_t start = 0;
+    size_t end;
+    
+    for (size_t i = 0; i < w; i++)
+    {
+      start += mpClusterWeights[i]->mInSize;
+    }
+    
+    end = start + mpClusterWeights[w]->mInSize;
+    
+    mpGw[w].Invert();
+    mpClusterWeights[w]->mVector.Clear();
+    
+    for (size_t i = start; i < end; i++)
+    {
+      for (size_t j=0; j < mpGw[w].Cols(); j++)
+      {
+        mpClusterWeights[w]->mVector[0][i-start] += mpGw[w][i][j] * mpKw[w][0][j];
+      }
+    }
+  }
+
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  void 
+  ModelSet::
+  ResetClusterWeightAccumsCAT(size_t i)
+  {
+    mpGw[i].Clear();
+    mpKw[i].Clear();
+  }
   
 }; //namespace STK  
   

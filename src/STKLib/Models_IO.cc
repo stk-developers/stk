@@ -442,33 +442,21 @@ namespace STK
   ModelSet::
   ParseMmf(const char * pFileName, char * expectHMM)
   {
-    //ReadHMMSet(rName.c_str(), this, expectHMM);
     IStkStream    input_stream;
-    FILE *        fp;
-    char *        keyword;
-    Macro *       macro;
-    MacroData *   data;
-  
-    data = NULL;
+    FILE*         fp;
+    char*         keyword;
+    Macro*        macro;
+    MacroData*    data = NULL;
     
     gCurrentMmfLine = 1;
     gpCurrentMmfName = pFileName;//mmFileName;
   
-    /*
-    if ((fp = fopen(mmFileName, "rb")) == NULL) 
-    {
-      Error("Cannot open input MMF %s", mmFileName);
-    }
-    */
-    
     // try to open the stream
     input_stream.open(pFileName, ios::in|ios::binary);
-    
     if (!input_stream.good())
     {
       Error("Cannot open input MMF %s", pFileName);
     }
-    
     fp = input_stream.file();    
     
     for (;;) 
@@ -479,7 +467,6 @@ namespace STK
         {
           Error("Cannot read input MMF", pFileName);
         }
-        //fclose(fp);
         input_stream.close();
         return;
       }
@@ -558,19 +545,16 @@ namespace STK
             case 'u':
               this->Scan(MTM_MIXTURE, NULL,ReplaceItem, &ud);
               delete ud.mpOldData;
-              //free(ud.mpOldData);
               hash = &mMeanHash;
               break;
             case 'v':
               this->Scan(MTM_MIXTURE, NULL,ReplaceItem, &ud);
               delete ud.mpOldData;
-              //free(ud.mpOldData);
               hash = &mVarianceHash;
               break;
             case 't':
               this->Scan(MTM_HMM, NULL,ReplaceItem, &ud);
               delete ud.mpOldData;
-              //free(ud.mpOldData);
               hash = &mTransitionHash;
               break;
             case 'j':
@@ -579,14 +563,40 @@ namespace STK
               hash = &mXformInstanceHash;
               break;
             case 'x':
+              //:KLUDGE:
+              // Fix this
+              if (mClusterWeightUpdate
+              &&  XT_BIAS == static_cast<Xform*>(ud.mpNewData)->mXformType)
+              {
+                for (i = 0; i < mNClusterWeights; i++)
+                {
+                  if (mpClusterWeights[i] == static_cast<BiasXform*>(ud.mpOldData))
+                  {
+                    // Recompute the weights vector
+                    ComputeClusterWeightVectorCAT(i);
+                    
+                    if (!mClusterWeightStream.is_open())
+                    {
+                      
+                    }
+                    // clear the accumulators 
+                    mpGw[i].Clear();
+                    mpKw[i].Clear();
+                    mpClusterWeights[i] = static_cast<BiasXform*>(ud.mpNewData);
+                  }
+                }
+              }              
+              
               this->Scan(MTM_XFORM | MTM_XFORM_INSTANCE | MTM_MEAN ,NULL,ReplaceItem, &ud);
               ud.mpOldData->Scan(MTM_REVERSE_PASS | MTM_ALL, NULL,ReleaseItem,NULL);
               hash = &mXformHash;
               break;
             }
             
-            for (i = 0; i < hash->mNEntries; i++) {
-              if (reinterpret_cast<Macro *>(hash->mpEntry[i]->data)->mpData == ud.mpOldData) {
+            for (i = 0; i < hash->mNEntries; i++) 
+            {
+              if (reinterpret_cast<Macro *>(hash->mpEntry[i]->data)->mpData == ud.mpOldData) 
+              {
                 reinterpret_cast<Macro *>(hash->mpEntry[i]->data)->mpData = ud.mpNewData;
               }
             }
@@ -891,8 +901,8 @@ namespace STK
     
     size_t size = ret->mpInputXform ? ret->mpInputXform->mOutSize : mInputVectorSize;
     
-    if (ret->mpMean->mVectorSize     != size || 
-        ret->mpVariance->mVectorSize != size) 
+    if (ret->mpMean->VectorSize()     != size || 
+        ret->mpVariance->VectorSize() != size) 
     {
       Error("Invalid mean or variance vector size (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
     }
@@ -933,7 +943,8 @@ namespace STK
     if (!strcmp(keyword, "~u")) 
     {
       keyword = GetString(fp, 1);
-      if ((macro = FindMacro(&mMeanHash, keyword)) == NULL) {
+      if ((macro = FindMacro(&mMeanHash, keyword)) == NULL) 
+      {
         Error("Undefined reference to macro ~u %s (%s:%d)", 
           keyword, 
           gpCurrentMmfName, 
@@ -946,58 +957,93 @@ namespace STK
     if (CheckKwd(keyword, KID_Weights))
     {
       Macro*        tmp_macro;
-      BiasXform*    bx;       // the weights are defined by BiasXform
       FLOAT         tmp_val;  // temporary read value
+      int           n_xforms; // number of xform refferences
+      BiasXform**   xforms;   // temporary storage of xform refferences
+      int           total_means = 0; 
       ret = NULL;
       
-      // expect Xform macro reference
-      keyword = GetString(fp, 1);
-      if (!strcmp(keyword, "~x"))
+      // now we expect number of Xform references
+      n_xforms = GetInt(fp);
+      // allocate space for refferences to these xforms
+      xforms = new BiasXform*[n_xforms];
+      
+      // we need to know globally which bias xforms are the weights
+      if (mClusterWeightUpdate
+      &&  NULL == mpClusterWeights)
       {
+        mNClusterWeights = n_xforms;      
+        mpClusterWeights = new BiasXform*[n_xforms];
+      }
+      
+      for (int xform_i = 0; xform_i < n_xforms; xform_i++)
+      {
+        // expect Xform macro reference
         keyword = GetString(fp, 1);
-        if (NULL == (tmp_macro = (FindMacro(&mXformHash, keyword))))
-        {
-          Error("Undefined reference to macro ~x %s (%s:%d)", 
-            keyword, 
-            gpCurrentMmfName, 
-            gCurrentMmfLine);
-        }
-        
-        bx = static_cast<BiasXform *>(tmp_macro->mpData);
-        
-        // read bx->mInSize means
-        for (size_t i = 0; i < bx->mInSize; i++)
+        if (!strcmp(keyword, "~x"))
         {
           keyword = GetString(fp, 1);
-          if (!CheckKwd(keyword, KID_Mean))
-            Error("Keyword <Mean> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
-        
-          vec_size = GetInt(fp);
-         
-          // maybe we haven't created any Mean object yet
-          if (NULL == ret)
+          if (NULL == (tmp_macro = (FindMacro(&mXformHash, keyword))))
           {
-            // create new Mean object
-            ret = new Mean(vec_size, mAllocAccums);
-            // initialize matrix for original mean vectors definition
-            ret->mVector.Init(bx->mInSize, vec_size + (mAllocAccums ? (vec_size + 1) * 2 : 0));
-            // set the weights vector
-            ret->mpWeights = bx;            
+            Error("Undefined reference to macro ~x %s (%s:%d)", 
+              keyword, 
+              gpCurrentMmfName, 
+              gCurrentMmfLine);
           }
           
-          // read the values and fill appropriate structures
-          for (int j = 0; j < vec_size; j++)
+          xforms[xform_i] = static_cast<BiasXform *>(tmp_macro->mpData);
+          total_means    += xforms[xform_i]->mInSize;
+          
+          if (mClusterWeightUpdate)
           {
-            tmp_val = GetFloat(fp);
-            // fill the matrix 
-            ret->mVector(i, j) = tmp_val;
-            // and the real vector
-            ret->mpVectorO[j] = (0 != i) ? 
-                (ret->mpVectorO[j] + tmp_val * bx->mpVectorO[i]) :
-                (tmp_val * bx->mpVectorO[i]);
+            mpClusterWeights[xform_i] = xforms[xform_i];
+          }          
+        }
+        else
+        {
+          Error("Reference to macro ~x expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+        }
+      } //for (int xform_i; xform_i < n_xforms; xform_i++)
+        
+      // read total_means means
+      for (int i = 0; i < total_means; i++)
+      {
+        keyword = GetString(fp, 1);
+        if (!CheckKwd(keyword, KID_Mean))
+          Error("Keyword <Mean> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      
+        vec_size = GetInt(fp);
+        
+        // maybe we haven't created any Mean object yet
+        if (NULL == ret)
+        {
+          // create new Mean object
+          ret = new Mean(vec_size, mAllocAccums);
+          // initialize matrix for original mean vectors definition
+          ret->mClusterMatrix.Init(total_means, vec_size + (mAllocAccums ? (vec_size + 1) * 2 : 0));
+          // set the weights vectors
+          ret->mpWeights = xforms;
+          ret->mNWeights = n_xforms;
+          
+          if (mClusterWeightUpdate)
+          {
+            ret->mCwvAccum.Init(total_means, vec_size);
+            ret->mpOccProbAccums = new FLOAT[total_means];
           }
-        } // for (i = 0; i < bx->mInSize; i++)
-      }
+        }
+        
+        // read the values and fill appropriate structures
+        for (int j = 0; j < vec_size; j++)
+        {
+          tmp_val = GetFloat(fp);
+          // fill the matrix 
+          ret->mClusterMatrix(i, j) = tmp_val;
+        }
+        
+      } // for (i = 0; i < bx->mInSize; i++)
+      
+      // recalculate the real vector using cluster mean vectors
+      ret->RecalculateCAT();
     } // if (CheckKwd(keyword, KID_Weights))
     
     else if (CheckKwd(keyword, KID_Mean))
@@ -1056,7 +1102,7 @@ namespace STK
     //ret = (Variance *) malloc(sizeof(Variance) + (vec_size+accum_size-1) * sizeof(FLOAT));
     //if (ret == NULL) Error("Insufficient memory");
     //
-    //ret->mVectorSize = vec_size;
+    //ret->VectorSize() = vec_size;
     
     ret = new Variance(vec_size, mAllocAccums);
   
@@ -1434,7 +1480,7 @@ namespace STK
   
     // read the parameters
     out_size = GetInt(fp);  // Rows in Xform matrix
-    in_size = GetInt(fp);   // Cols in Xform matrix
+    in_size =  GetInt(fp);   // Cols in Xform matrix
   
     //*** 
     // old malloc
@@ -1473,27 +1519,14 @@ namespace STK
     BiasXform *   ret;
     size_t        size;
     size_t        i;
-    FLOAT         tmp;
     
     size = GetInt(fp);
-  
-    //***
-    // old malloc
-    //     ret = (BiasXform *) malloc(sizeof(BiasXform)+(size-1)*sizeof(ret->mpVectorO[0]));
-    //     if (ret == NULL) Error("Insufficient memory");
-    //     
-    
-    ret = new BiasXform(size);
+    ret  = new BiasXform(size);
     
     // load values
     for (i=0; i < size; i++) 
     {
-      tmp = GetFloat(fp);
-      
-      if (mUseNewMatrix)  ret->mVector(0, i) = tmp;
-      //else                ret->mpVectorO[i]  = tmp;   //:TODO: Get rid of the obsolete thing
-      
-      ret->mpVectorO[i]  = tmp;   //:TODO: Get rid of the obsolete thing
+      ret->mVector[0][i]  = GetFloat(fp);
     }
   
     ret->mpMacro      = macro;
@@ -1799,10 +1832,10 @@ namespace STK
   WriteMmf(const char * pFileName, const char * pOutputDir,
            const char * pOutputExt, bool binary)
   {
-    FILE *    fp = NULL;
-    Macro *   macro;
+    FILE*     fp = NULL;
+    Macro*    macro;
     char      mmfile[1024];
-    char *    lastFileName = NULL;
+    char*     lastFileName = NULL;
     int       waitingForNonXform = 1;
   
     for (macro = mpFirstMacro; macro != NULL; macro = macro->nextAll) 
@@ -1826,8 +1859,10 @@ namespace STK
         {
           MakeFileName(mmfile, pFileName ? pFileName : macro->mpFileName, pOutputDir, pOutputExt);
           
-          if ((fp  = fopen(mmfile, "wb")) == NULL) 
+          if ((fp  = fopen(mmfile, "wb")) == NULL)
+          { 
             Error("Cannot open output MMF %s", mmfile);
+          }
         }
         
         waitingForNonXform = 1;
@@ -2052,19 +2087,24 @@ namespace STK
     if (NULL != mean->mpWeights)
     {
       PutKwd(fp, binary, KID_Weights);
-      fprintf(fp, "~x \"%s\"", mean->mpWeights->mpMacro->mpName);
+      PutInt(fp, binary, mean->mNWeights);
       PutNLn(fp, binary);
+      for (i = 0; i < mean->mNWeights; i++)
+      {
+        fprintf(fp, "~x \"%s\"", mean->mpWeights[i]->mpMacro->mpName);
+        PutNLn(fp, binary);
+      }
       
       // go through the rows in the vector
-      for (i = 0; i < mean->mpWeights->mInSize; i++)
+      for (i = 0; i < mean->mClusterMatrix.Rows(); i++)
       {
         PutKwd(fp, binary, KID_Mean);
-        PutInt(fp, binary, mean->mVectorSize);
+        PutInt(fp, binary, mean->VectorSize());
         PutNLn(fp, binary);
       
-        for (size_t j=0; j < mean->mVectorSize; j++) 
+        for (size_t j=0; j < mean->VectorSize(); j++) 
         {
-          PutFlt(fp, binary, mean->mVector(i, j));
+          PutFlt(fp, binary, mean->mClusterMatrix(i, j));
         }
       
         PutNLn(fp, binary);
@@ -2075,10 +2115,10 @@ namespace STK
     else
     {
       PutKwd(fp, binary, KID_Mean);
-      PutInt(fp, binary, mean->mVectorSize);
+      PutInt(fp, binary, mean->VectorSize());
       PutNLn(fp, binary);
     
-      for (i=0; i < mean->mVectorSize; i++) 
+      for (i=0; i < mean->VectorSize(); i++) 
       {
         PutFlt(fp, binary, mean->mpVectorO[i]);
       }
@@ -2097,10 +2137,10 @@ namespace STK
     size_t   i;
   
     PutKwd(fp, binary, KID_Variance);
-    PutInt(fp, binary, variance->mVectorSize);
+    PutInt(fp, binary, variance->VectorSize());
     PutNLn(fp, binary);
   
-    for (i=0; i < variance->mVectorSize; i++) {
+    for (i=0; i < variance->VectorSize(); i++) {
       PutFlt(fp, binary, 1/variance->mpVectorO[i]);
     }
   
@@ -2332,14 +2372,7 @@ namespace STK
     PutNLn(fp, binary);
     for (i=0; i < xform->mOutSize; i++) 
     {
-      if (mUseNewMatrix)
-      {
-        PutFlt(fp, binary, xform->mVector(0,i));
-      }
-      else
-      {
-        PutFlt(fp, binary, xform->mpVectorO[i]);
-      }
+      PutFlt(fp, binary, xform->mVector[0][i]);
     }
     PutNLn(fp, binary);
   } //WriteBiasXform(FILE *fp, bool binary, BiasXform *xform)

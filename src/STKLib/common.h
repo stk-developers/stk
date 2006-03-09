@@ -297,6 +297,7 @@ using namespace STK;
   int npercents(const char *str);
   int process_mask(const char *normstr, const char *wildcard, char *substr);
   
+  void fprintf_ll(FILE* fp, long long n);
   
   /**
   *  @brief Returns true if rString matches rWildcard and fills substr with

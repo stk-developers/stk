@@ -5,7 +5,7 @@ ARCH = lin
 
 ###############################################################################
 # compiler options
-CFLAGS = -Wall -g -DDOUBLEPRECISION=0 -D_REENTRANT -DUSE_BLAS -O2
+CFLAGS = -Wall -g -DDOUBLEPRECISION=0 -D_REENTRANT -DUSE_BLAS
 CXXFLAGS = $(CFLAGS)
 
 ###############################################################################
@@ -27,9 +27,9 @@ CXX := $(CROSS_COMPILE)g++
 
 ###############################################################################
 # tools summary (for make all)
-TOOLS =     SVite \
+TOOLS =     SERest \
+            SVite \
             SRover \
-            SERest \
             SResults \
             SExpand \
             SFeaCat \
@@ -49,24 +49,6 @@ SUBDIRS = STKLib
             
 .PHONY : all subdirs $(SUBDIRS)
 
-
-###############################################################################
-# tools-specific rules
-SFea2OutP   : $(STKLib)
-SVite       : $(STKLib)
-SLRatio     : $(STKLib)
-SERest      : $(STKLib) 
-SFeaCat     : $(STKLib)
-SRover      : $(STKLib)
-SResults    : $(STKLib)
-SExpand     : $(STKLib)
-SNet        : $(STKLIB) $(SNETLIB)
-
-SERestX     : SERest.o $(STKLIB) STKLib/imagesc.o
-	$(CXX) $(CFLAGS) $(XFLAGS) -o $@ $<
-
-
-
 ###############################################################################
 # implicit "make all" rule             
 all  : subdirs $(TOOLS)
@@ -81,9 +63,8 @@ $(SUBDIRS) :
 
 ###############################################################################
 # STKLib will compile itself in its directory so we call the PHONY rule
-$(STKLIB) : STKLib
-
-
+$(STKLIB) : FORCE
+	$(MAKE) -C STKLib -f Makefile.$(ARCH)
 
 
 ###############################################################################
@@ -99,6 +80,25 @@ clean:
 # runs makedepend to automatically define header files dependencies
 depend:
 	-makedepend -fMakefile.lin -Y *.c *.C *.cc STKLib/*.C STKLib/*.cc SNetLib/*.C SNetLib/*.cc
+
+FORCE:
+
+###############################################################################
+# tools-specific rules
+SFea2OutP   : $(STKLIB)
+SVite       : $(STKLIB)
+SLRatio     : $(STKLIB)
+SERest      : $(STKLIB) 
+SFeaCat     : $(STKLIB)
+SRover      : $(STKLIB)
+SResults    : $(STKLIB)
+SExpand     : $(STKLIB)
+SNet        : $(STKLIB) $(SNETLIB)
+
+SERestX     : SERest.o $(STKLIB) STKLib/imagesc.o
+	$(CXX) $(CFLAGS) $(XFLAGS) -o $@ $<
+
+
 
 # DO NOT DELETE
 

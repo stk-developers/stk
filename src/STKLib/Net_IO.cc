@@ -33,7 +33,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <stdarg.h>
-
+#include <sstream>
 
 #define INIT_NODE_HASH_SIZE 1000
 
@@ -286,9 +286,11 @@ namespace STK
       if (!(labelFormat.TIMES_OFF) &&
         node->mStart != UNDEF_TIME && node->mStop != UNDEF_TIME) {
         int ctm = labelFormat.CENTRE_TM;
-        fprintf(lfp," (%lld %lld)",
-                    (long long) sampPeriod * (2 * node->mStart + ctm) / 2 - labelFormat.left_extent,
-                    (long long) sampPeriod * (2 * node->mStop - ctm)  / 2 + labelFormat.right_extent);
+        fprintf   (lfp," (");
+        fprintf_ll(lfp, sampPeriod * (2 * node->mStart + ctm) / 2 - labelFormat.left_extent);
+        fprintf   (lfp," ");
+        fprintf_ll(lfp, sampPeriod * (2 * node->mStop - ctm)  / 2 + labelFormat.right_extent);
+        fprintf   (lfp,")");
       }
       fprintf(lfp,"\t%d", node->mNLinks);
       for (j = 0; j < node->mNLinks; j ++) {
@@ -380,13 +382,13 @@ namespace STK
   //***************************************************************************
   //***************************************************************************
   Node *ReadSTKNetworkInOldFormat(
-    FILE *                    lfp,
-    struct MyHSearchData *  word_hash,
-    struct MyHSearchData *  phone_hash,
+    FILE*                     lfp,
+    struct MyHSearchData*     word_hash,
+    struct MyHSearchData*     phone_hash,
     LabelFormat               labelFormat,
     long                      sampPeriod,
-    const char *              file_name,
-    const char *              in_MLF)
+    const char*               file_name,
+    const char*               in_MLF)
   {
     size_t    numOfNodes;
     size_t    i;
@@ -403,9 +405,11 @@ namespace STK
     char      wordOrModelName[1024] = {'\0'};
     double    linkLike;
     double    pronunProb;
-    Node *    node;
-    Node **   nodes;
+    Node*     node;
+    Node**    nodes;
   
+    std::stringstream ss; 
+    
     RemoveCommentLines(lfp);
   
     if (fscanf(lfp," %1023[^0-9]", wordOrModelName) == 1) {
