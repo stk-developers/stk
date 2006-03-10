@@ -27,16 +27,71 @@ extern "C"{
 
 namespace STK
 {
-//******************************************************************************
+  
+//******************************************************************************    
+  template<typename _ElemT>
+    void
+    BasicMatrix<_ElemT>::
+    Init(const size_t rows, const size_t cols)
+    {
+      size_t skip;
+      size_t l_dim;      // leading dimension
+      size_t size;
+      void*  data;
+      void*  free_data;
+      
+      // compute the size of skip and real cols
+      skip  = ((16 / sizeof(_ElemT)) - cols % (16 / sizeof(_ElemT))) 
+            %  (16 / sizeof(_ElemT));
+      l_dim = cols + skip;
+      size  = rows * l_dim * sizeof(_ElemT);
+      
+      if (NULL != (data = stk_memalign(16, size, &free_data)))
+      {
+        mpData        = static_cast<_ElemT*> (data);
+#ifdef STK_MEMALIGN_MANUAL
+        mpFreeData    = static_cast<_ElemT*> (free_data);
+#endif
+        mMRows = rows;
+        mMCols = cols;
+        mMRealCols = l_dim;
+        
+        // set all bytes to 0
+        memset(mpData, 0, size);
+      }
+      else
+      {
+        throw std::bad_alloc();
+      }
+    }
+  
+  //****************************************************************************
+  //****************************************************************************
+  // The destructor
+  template<typename _ElemT>
+    // virtual
+    BasicMatrix<_ElemT>::
+    ~BasicMatrix()
+    {
+      // we need to free the data block if it was defined
+#ifndef STK_MEMALIGN_MANUAL
+      free(mpData);
+#else
+      free(mpFreeData);
+#endif
+    }
+  
+  
+  //****************************************************************************
   // Basic constructor
   template<typename _ElemT>
-  Matrix<_ElemT>::
-  Matrix<_ElemT> (const size_t       r,
-                  const size_t       c,
-                  const StorageType  st)
-  {
-    Init(r, c, st);
-  }
+    Matrix<_ElemT>::
+    Matrix(const size_t       r,
+          const size_t       c,
+          const StorageType  st)
+    {
+      Init(r, c, st);
+    }
 
 
 //******************************************************************************    
@@ -104,7 +159,7 @@ namespace STK
   // Copy constructor
   template<typename _ElemT>
     Matrix<_ElemT>::
-    Matrix<_ElemT> (const ThisType & t)
+    Matrix(const ThisType & t)
     {
       // we need to be sure that the storage type is defined
       if (t.mStorageType != STORAGE_UNDEFINED)
@@ -383,36 +438,39 @@ namespace STK
   }
 */
   template<typename _ElemT>
-  Matrix<_ElemT> &
-  Matrix<_ElemT>::
-  Transpose()
-  {
-    if(this->mStorageType == STORAGE_REGULAR) 
-      this->mStorageType = STORAGE_TRANSPOSED;
-    else
-      this->mStorageType = STORAGE_REGULAR;  
+    Matrix<_ElemT> &
+    Matrix<_ElemT>::
+    Transpose()
+    {
+      if(this->mStorageType == STORAGE_REGULAR) 
+        this->mStorageType = STORAGE_TRANSPOSED;
+      else
+        this->mStorageType = STORAGE_REGULAR;  
+        
+      int pom;
       
-    int pom;
-    
-   /* pom = this->mMRows;
-    this->mMRows = mMCols;
-    this->mMCols = pom;*/
-
-    pom = this->mTRows;
-    this->mTRows = mTCols;
-    this->mTCols = pom;  
-    
-    return *this;
-  }
-//******************************************************************************
+    /* pom = this->mMRows;
+      this->mMRows = mMCols;
+      this->mMCols = pom;*/
+  
+      pom = this->mTRows;
+      this->mTRows = mTCols;
+      this->mTCols = pom;  
+      
+      return *this;
+    }
+  
+  
+  //******************************************************************************
+  //******************************************************************************
   template<typename _ElemT>
-  Matrix<_ElemT> &
-  Matrix<_ElemT>::
-  Clear()
-  {
-    memset(mpData, 0, MSize());
-    return *this;
-  }
+    Matrix<_ElemT> &
+    Matrix<_ElemT>::
+    Clear()
+    {
+      memset(mpData, 0, MSize());
+      return *this;
+    }
   
   
   //****************************************************************************
@@ -462,7 +520,7 @@ namespace STK
   // Copy constructor
   template<typename _ElemT>
     WindowMatrix<_ElemT>::
-    WindowMatrix<_ElemT> (const ThisType & t) :
+    WindowMatrix(const ThisType & t) :
       Matrix<_ElemT> (t)
     {
       // we need to be sure that the storage type is defined

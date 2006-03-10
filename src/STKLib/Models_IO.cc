@@ -451,173 +451,223 @@ namespace STK
     gCurrentMmfLine = 1;
     gpCurrentMmfName = pFileName;//mmFileName;
   
-    // try to open the stream
-    input_stream.open(pFileName, ios::in|ios::binary);
-    if (!input_stream.good())
+    try
     {
-      Error("Cannot open input MMF %s", pFileName);
-    }
-    fp = input_stream.file();    
-    
-    for (;;) 
-    {
-      if ((keyword = GetString(fp, 0)) == NULL) 
+      // try to open the stream
+      input_stream.open(pFileName, ios::in|ios::binary);
+      if (!input_stream.good())
       {
-        if (ferror(fp)) 
-        {
-          Error("Cannot read input MMF", pFileName);
-        }
-        input_stream.close();
-        return;
+        Error("Cannot open input MMF %s", pFileName);
       }
-  
+      fp = input_stream.file();    
       
-      if (keyword[0] == '~' && keyword[2] == '\0' ) 
+      for (;;) 
       {
-        char type = keyword[1];
-  
-        if (type == 'o') {
-          if (!ReadGlobalOptions(fp)) {
-            Error("No global option defined (%s:%d)", pFileName, gCurrentMmfLine);
-          }
-        } else {
-          keyword = GetString(fp, 1);
-          if ((macro = pAddMacro(type, keyword)) == NULL) {
-            Error("Unrecognized macro type ~%c (%s:%d)", type, pFileName, gCurrentMmfLine);
-          }
-  
-          if (macro->mpData != NULL) {
-            if (gHmmsIgnoreMacroRedefinition == 0) {
-              Error("Redefinition of macro ~%c %s (%s:%d)", type, keyword, pFileName, gCurrentMmfLine);
-            } else {
-              Warning("Redefinition of macro ~%c %s (%s:%d)", type, keyword, pFileName, gCurrentMmfLine);
-  //            Warning("Redefinition of macro ~%c %s (%s:%d) is ignored", type, keyword, mmFileName, gCurrentMmfLine);
-            }
-          }
-          switch (type)
+        if ((keyword = GetString(fp, 0)) == NULL) 
+        {
+          if (ferror(fp)) 
           {
-            case 'h': data =  ReadHMM          (fp, macro); break;
-            case 's': data =  ReadState        (fp, macro); break;
-            case 'm': data =  ReadMixture      (fp, macro); break;
-            case 'u': data =  ReadMean         (fp, macro); break;
-            case 'v': data =  ReadVariance     (fp, macro); break;
-            case 't': data =  ReadTransition   (fp, macro); break;
-            case 'j': data =  ReadXformInstance(fp, macro); break;
-            case 'x': data =  ReadXform        (fp, macro); break;
-            default : data = NULL; break;
-          }  
-  
-          assert(data != NULL);
-          
-          if (macro->mpData == NULL) {
-            macro->mpData = data;
-          } else {
-  
-            // Macro is redefined. New item must be checked for compatibility with
-            // the old one (vector sizes, delays, memory sizes) All references to
-            // old item must be replaced and old item must be released
-            // !!! How about AllocateAccumulatorsForXformStats() and ResetAccumsForHMMSet()
-            // !!! Replacing HMM will not work correctly after attaching network nodes to models
-  
-  
-            unsigned int i;
-            MyHSearchData *hash = NULL;
-            ReplaceItemUserData ud;
-            ud.mpOldData = macro->mpData;
-            ud.mpNewData = data;
-            ud.mType     = type;
-  
-            switch (type) {
-            case 'h':
-              ud.mpOldData->Scan(MTM_REVERSE_PASS | MTM_ALL, NULL,ReleaseItem,NULL);
-              hash = &mHmmHash;
-              break;
-            case 's':
-              this->Scan(MTM_HMM, NULL,ReplaceItem, &ud);
-              ud.mpOldData->Scan(MTM_REVERSE_PASS | MTM_ALL, NULL,ReleaseItem,NULL);
-              hash = &mStateHash;
-              break;
-            case 'm':
-              this->Scan(MTM_STATE, NULL,ReplaceItem, &ud);
-              ud.mpOldData->Scan(MTM_REVERSE_PASS | MTM_ALL, NULL,ReleaseItem,NULL);
-              hash = &mMixtureHash;
-              break;
-            case 'u':
-              this->Scan(MTM_MIXTURE, NULL,ReplaceItem, &ud);
-              delete ud.mpOldData;
-              hash = &mMeanHash;
-              break;
-            case 'v':
-              this->Scan(MTM_MIXTURE, NULL,ReplaceItem, &ud);
-              delete ud.mpOldData;
-              hash = &mVarianceHash;
-              break;
-            case 't':
-              this->Scan(MTM_HMM, NULL,ReplaceItem, &ud);
-              delete ud.mpOldData;
-              hash = &mTransitionHash;
-              break;
-            case 'j':
-              this->Scan(MTM_XFORM_INSTANCE | MTM_MIXTURE, NULL, ReplaceItem, &ud);
-              ud.mpOldData->Scan(MTM_REVERSE_PASS|MTM_ALL, NULL, ReleaseItem, NULL);
-              hash = &mXformInstanceHash;
-              break;
-            case 'x':
-              //:KLUDGE:
-              // Fix this
-              if (mClusterWeightUpdate
-              &&  XT_BIAS == static_cast<Xform*>(ud.mpNewData)->mXformType)
-              {
-                for (i = 0; i < mNClusterWeights; i++)
-                {
-                  if (mpClusterWeights[i] == static_cast<BiasXform*>(ud.mpOldData))
-                  {
-                    // Recompute the weights vector
-                    ComputeClusterWeightVectorCAT(i);
-                    
-                    if (!mClusterWeightStream.is_open())
-                    {
-                      
-                    }
-                    // clear the accumulators 
-                    mpGw[i].Clear();
-                    mpKw[i].Clear();
-                    mpClusterWeights[i] = static_cast<BiasXform*>(ud.mpNewData);
-                  }
-                }
-              }              
-              
-              this->Scan(MTM_XFORM | MTM_XFORM_INSTANCE | MTM_MEAN ,NULL,ReplaceItem, &ud);
-              ud.mpOldData->Scan(MTM_REVERSE_PASS | MTM_ALL, NULL,ReleaseItem,NULL);
-              hash = &mXformHash;
-              break;
+            Error("Cannot read input MMF", pFileName);
+          }
+          input_stream.close();
+          return;
+        }
+    
+        
+        if (keyword[0] == '~' && keyword[2] == '\0' ) 
+        {
+          char type = keyword[1];
+    
+          if (type == 'o') {
+            if (!ReadGlobalOptions(fp)) {
+              Error("No global option defined (%s:%d)", pFileName, gCurrentMmfLine);
             }
-            
-            for (i = 0; i < hash->mNEntries; i++) 
-            {
-              if (reinterpret_cast<Macro *>(hash->mpEntry[i]->data)->mpData == ud.mpOldData) 
-              {
-                reinterpret_cast<Macro *>(hash->mpEntry[i]->data)->mpData = ud.mpNewData;
+          } else {
+            keyword = GetString(fp, 1);
+            if ((macro = pAddMacro(type, keyword)) == NULL) {
+              Error("Unrecognized macro type ~%c (%s:%d)", type, pFileName, gCurrentMmfLine);
+            }
+    
+            if (macro->mpData != NULL) {
+              if (gHmmsIgnoreMacroRedefinition == 0) {
+                Error("Redefinition of macro ~%c %s (%s:%d)", type, keyword, pFileName, gCurrentMmfLine);
+              } else {
+                Warning("Redefinition of macro ~%c %s (%s:%d)", type, keyword, pFileName, gCurrentMmfLine);
+    //            Warning("Redefinition of macro ~%c %s (%s:%d) is ignored", type, keyword, mmFileName, gCurrentMmfLine);
               }
             }
-/*            for (macro = mpFirstMacro; macro != NULL; macro->nextAll)
+            switch (type)
             {
-               macro
-            }*/
+              case 'h': data =  ReadHMM          (fp, macro); break;
+              case 's': data =  ReadState        (fp, macro); break;
+              case 'm': data =  ReadMixture      (fp, macro); break;
+              case 'u': data =  ReadMean         (fp, macro); break;
+              case 'v': data =  ReadVariance     (fp, macro); break;
+              case 't': data =  ReadTransition   (fp, macro); break;
+              case 'j': data =  ReadXformInstance(fp, macro); break;
+              case 'x': data =  ReadXform        (fp, macro); break;
+              default : data = NULL; break;
+            }  
+    
+            assert(data != NULL);
+            
+            if (macro->mpData == NULL) {
+              macro->mpData = data;
+            } else {
+    
+              // Macro is redefined. New item must be checked for compatibility with
+              // the old one (vector sizes, delays, memory sizes) All references to
+              // old item must be replaced and old item must be released
+              // !!! How about AllocateAccumulatorsForXformStats() and ResetAccumsForHMMSet()
+              // !!! Replacing HMM will not work correctly after attaching network nodes to models
+    
+    
+              unsigned int i;
+              MyHSearchData *hash = NULL;
+              ReplaceItemUserData ud;
+              ud.mpOldData = macro->mpData;
+              ud.mpNewData = data;
+              ud.mType     = type;
+              
+              switch (type) {
+              case 'h':
+                ud.mpOldData->Scan(MTM_REVERSE_PASS | MTM_ALL, NULL,ReleaseItem,NULL);
+                hash = &mHmmHash;
+                break;
+              case 's':
+                this->Scan(MTM_HMM, NULL,ReplaceItem, &ud);
+                ud.mpOldData->Scan(MTM_REVERSE_PASS | MTM_ALL, NULL,ReleaseItem,NULL);
+                hash = &mStateHash;
+                break;
+              case 'm':
+                this->Scan(MTM_STATE, NULL,ReplaceItem, &ud);
+                ud.mpOldData->Scan(MTM_REVERSE_PASS | MTM_ALL, NULL,ReleaseItem,NULL);
+                hash = &mMixtureHash;
+                break;
+              case 'u':
+                this->Scan(MTM_MIXTURE, NULL,ReplaceItem, &ud);
+                delete ud.mpOldData;
+                hash = &mMeanHash;
+                break;
+              case 'v':
+                this->Scan(MTM_MIXTURE, NULL,ReplaceItem, &ud);
+                delete ud.mpOldData;
+                hash = &mVarianceHash;
+                break;
+              case 't':
+                this->Scan(MTM_HMM, NULL,ReplaceItem, &ud);
+                delete ud.mpOldData;
+                hash = &mTransitionHash;
+                break;
+              case 'j':
+                this->Scan(MTM_XFORM_INSTANCE | MTM_MIXTURE, NULL, ReplaceItem, &ud);
+                ud.mpOldData->Scan(MTM_REVERSE_PASS|MTM_ALL, NULL, ReleaseItem, NULL);
+                hash = &mXformInstanceHash;
+                break;
+              case 'x':
+                //:KLUDGE:
+                // Fix this
+                if (mClusterWeightUpdate
+                &&  XT_BIAS == static_cast<Xform*>(ud.mpNewData)->mXformType)
+                {
+                  for (i = 0; i < mNClusterWeights; i++)
+                  {
+                    if (mpClusterWeights[i] == static_cast<BiasXform*>(ud.mpOldData))
+                    {
+                      // Recompute the weights vector
+                      ComputeClusterWeightVectorCAT(i);
+                      
+                      char buff[1024];
+                      MakeFileName(buff, ud.mpOldData->mpMacro->mpFileName, 
+                        mClusterWeightOutPath.c_str(), NULL);
+                      
+                      std::cerr << buff << std::endl;  
+                      if (!mClusterWeightStream.is_open())
+                      {
+                        mClusterWeightStream.open(buff);
+                      }
+                      else if (mClusterWeightStream.name() != buff)
+                      {
+                        mClusterWeightStream.close();
+                        mClusterWeightStream.open(buff);
+                      }
+                      
+                      // check if nothing's wrong with the stream
+                      if (!mClusterWeightStream.good())
+                      {
+                        Error("Cannot open MMF output file %s", buff);
+                      }
+                      
+                      WriteBiasXform(mClusterWeightStream.file(), false, mpClusterWeights[i]);
+                      
+                      // clear the accumulators 
+                      mpGw[i].Clear();
+                      mpKw[i].Clear();
+                      mpClusterWeights[i] = static_cast<BiasXform*>(ud.mpNewData);
+                      
+                      free(ud.mpNewData->mpMacro->mpFileName);
+                      if ((ud.mpNewData->mpMacro->mpFileName = strdup(gpCurrentMmfName)) == NULL)
+                      {
+                        Error("Insufficient memory");
+                      } 
+
+                    }
+                  }
+                }              
+                
+                this->Scan(MTM_XFORM | MTM_XFORM_INSTANCE | MTM_MEAN ,NULL,ReplaceItem, &ud);
+                ud.mpOldData->Scan(MTM_REVERSE_PASS | MTM_ALL, NULL,ReleaseItem,NULL);
+                hash = &mXformHash;
+                break;
+              }
+              
+              for (i = 0; i < hash->mNEntries; i++) 
+              {
+                if (reinterpret_cast<Macro *>(hash->mpEntry[i]->data)->mpData == ud.mpOldData) 
+                {
+                  reinterpret_cast<Macro *>(hash->mpEntry[i]->data)->mpData = ud.mpNewData;
+                }
+              }
+  /*            for (macro = mpFirstMacro; macro != NULL; macro->nextAll)
+              {
+                macro
+              }*/
+            }
           }
+        } else if (CheckKwd(keyword, KID_BeginHMM)) {
+          UngetString();
+          if (expectHMM == NULL) {
+            Error("Macro definition expected (%s:%d)",pFileName,gCurrentMmfLine);
+          }
+          //macro = AddMacroToHMMSet('h', expectHMM, hmm_set);
+          macro = pAddMacro('h', expectHMM);
+          
+          macro->mpData = ReadHMM(fp, macro);
+        } else {
+          Error("Unexpected keyword %s (%s:%d)",keyword,pFileName,gCurrentMmfLine);
         }
-      } else if (CheckKwd(keyword, KID_BeginHMM)) {
-        UngetString();
-        if (expectHMM == NULL) {
-          Error("Macro definition expected (%s:%d)",pFileName,gCurrentMmfLine);
-        }
-        //macro = AddMacroToHMMSet('h', expectHMM, hmm_set);
-        macro = pAddMacro('h', expectHMM);
-        
-        macro->mpData = ReadHMM(fp, macro);
-      } else {
-        Error("Unexpected keyword %s (%s:%d)",keyword,pFileName,gCurrentMmfLine);
       }
+      
+      if (input_stream.is_open())
+      {
+        input_stream.close();
+      }
+      
+    } // try
+    
+    catch (...)
+    {
+      if (input_stream.is_open())
+      {
+        input_stream.close();
+      }
+
+      // if cluster weights update
+      if (mClusterWeightUpdate && mClusterWeightStream.is_open())
+      {
+        mClusterWeightStream.close();
+      }
+      throw;
     }
   }
   
@@ -961,6 +1011,7 @@ namespace STK
       int           n_xforms; // number of xform refferences
       BiasXform**   xforms;   // temporary storage of xform refferences
       int           total_means = 0; 
+      bool          init_Gwkw = false;
       ret = NULL;
       
       // now we expect number of Xform references
@@ -974,6 +1025,9 @@ namespace STK
       {
         mNClusterWeights = n_xforms;      
         mpClusterWeights = new BiasXform*[n_xforms];
+        mpGw             = new Matrix<FLOAT>[n_xforms];
+        mpKw             = new Matrix<FLOAT>[n_xforms];
+        init_Gwkw        = true;
       }
       
       for (int xform_i = 0; xform_i < n_xforms; xform_i++)
@@ -1005,6 +1059,15 @@ namespace STK
         }
       } //for (int xform_i; xform_i < n_xforms; xform_i++)
         
+      if (init_Gwkw)
+      {
+        for (int xform_i = 0; xform_i < n_xforms; xform_i++)
+        {
+          mpGw[xform_i].Init(total_means, total_means);
+          mpKw[xform_i].Init(1, total_means);
+        }
+      }
+      
       // read total_means means
       for (int i = 0; i < total_means; i++)
       {
@@ -1037,11 +1100,13 @@ namespace STK
         {
           tmp_val = GetFloat(fp);
           // fill the matrix 
-          ret->mClusterMatrix(i, j) = tmp_val;
+          ret->mClusterMatrix[i][j] = tmp_val;
         }
         
       } // for (i = 0; i < bx->mInSize; i++)
       
+                  
+
       // recalculate the real vector using cluster mean vectors
       ret->RecalculateCAT();
     } // if (CheckKwd(keyword, KID_Weights))
@@ -1049,6 +1114,7 @@ namespace STK
     else if (CheckKwd(keyword, KID_Mean))
     {
       vec_size = GetInt(fp);
+          
       ret = new Mean(vec_size, mAllocAccums);
   
       for (i=0; i<vec_size; i++) 
@@ -2363,7 +2429,7 @@ namespace STK
   //*****************************************************************************  
   void 
   ModelSet::
-  WriteBiasXform(FILE *fp, bool binary, BiasXform *xform)
+  WriteBiasXform(FILE *fp, bool binary, BiasXform* xform)
   {
     size_t  i;
   

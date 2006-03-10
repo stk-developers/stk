@@ -343,6 +343,7 @@ namespace STK
     Matrix<FLOAT>*            mpGw;                                             ///< Accumulator G_w for cluster vector update
     Matrix<FLOAT>*            mpKw;                                             ///< Accumulator k_w for cluster vector update
     OStkStream                mClusterWeightStream;
+    std::string               mClusterWeightOutPath;
     
     /**
      * @name MMF output functions
@@ -759,6 +760,14 @@ namespace STK
     {return mVectorSize;}
     
     /**
+     * @brief Accumulator array accessor
+     * @return Pointer to the array of accumulators
+     */
+    FLOAT*
+    Accumulators()
+    { return mpAccumulators; }
+    
+    /**
      * @brief Updates the object from the accumulators
      * @param rModelSet ModelSet object which holds the accumulator configuration
      */
@@ -775,6 +784,10 @@ namespace STK
   
   private:
     size_t                  mVectorSize;
+    FLOAT*                  mpAccumulators;
+#ifdef STK_MEMALIGN_MANUAL
+    FLOAT*                  mpAccumulatorsFree;
+#endif
   };
 
   
@@ -1256,6 +1269,14 @@ namespace STK
     int           mMmi;
   };
 
+  class ClusterWeightAccums
+  {
+  public:
+    int            mNClusterWeights;
+    Matrix<FLOAT>* mpGw;
+    Matrix<FLOAT>* mpKw;
+  };
+  
   class ReplaceItemUserData
   {
   public:
@@ -1330,6 +1351,7 @@ namespace STK
   void        ResetAccum (int macro_type, HMMSetNodeName, MacroData * pData, void *userData);
   void        WriteAccum (int macro_type, HMMSetNodeName, MacroData * pData, void *userData);
   void        WriteStatsForXform(int macro_type, HMMSetNodeName, MacroData * pData, void *userData);
+  void        ComputeClusterWeightVectorAccums(int macro_type, HMMSetNodeName nodeName, MacroData* pData, void* pUserData);
   /// @}  
   
 }; //namespace STK

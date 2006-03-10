@@ -53,21 +53,103 @@ namespace STK
    *
    */
   template<typename _ElemT>
+    class BasicVector
+    {
+    public:
+      /// defines a type of this
+      typedef BasicVector<_ElemT>    ThisType;
+      
+      BasicVector<_ElemT>(): mLength(0), mLeadingDim(0), mpData(NULL)
+#ifdef STK_MEMALIGN_MANUAL
+        ,mpFreeData(NULL)
+#endif
+      {}
+      
+      void
+      Init(size_t length);
+      
+      /**
+       * @brief Returns size of matrix in memory (in bytes)
+       */
+      const size_t
+      MSize() const
+      {
+        return mLeadingDim * sizeof(_ElemT);
+      }
+      
+    protected:
+      size_t  mLength;      ///< Number of elements
+      size_t  mLeadingDim;  ///< Real number of 
+      
+      /// data memory area
+      _ElemT*   mpData;
+#ifdef STK_MEMALIGN_MANUAL
+      /// data to be freed (in case of manual memalignment use, see common.h)
+      _ElemT*   mpFreeData;
+#endif
+    }; // class BasicVector
+  
+  /** **************************************************************************
+   ** **************************************************************************
+   *  @brief Provides a matrix abstraction class
+   *
+   *  This class provides a way to work with matrices in STK.
+   *  It encapsulates basic operations and memory optimizations.
+   *
+   */
+  template<typename _ElemT>
     class BasicMatrix
     {
     public:
       /// defines a type of this
-      typedef Matrix<_ElemT>    ThisType;
+      typedef BasicMatrix<_ElemT>    ThisType;
 
-      BasicMatrix<_ElemT> (): mStorageType(STORAGE_UNDEFINED) {}
+      BasicMatrix<_ElemT>(): mMRows(0), mMCols(0), mMRealCols(0), mpData(NULL)
+#ifdef STK_MEMALIGN_MANUAL
+        ,mpFreeData(NULL)
+#endif
+      {}
+      
+      virtual
+      ~BasicMatrix<_ElemT>();
+       
+      /// Initializes matrix (if not done by constructor)
+      void
+      Init(const size_t r, const size_t c);
+
+      /**
+       * @brief Returns number of rows
+       */
+      const size_t
+      Rows() const 
+      { return mMRows;}
+
+      /**
+       * @brief Returns number of columns
+       */
+      const size_t
+      Cols() const 
+      { return mMCols;}
+            
+      /**
+       * @brief Returns leading dimension of the matrix
+       *
+       * Leading dimension represents real number of columns in the memory
+       */
+      const size_t
+      LeadingDim() const
+      { return mMRealCols;}
+      
       
       /**
-       *  @brief Gives access to the matrix memory area
-       *  @return pointer to the first field
+       * @brief Returns size of matrix in memory (in bytes)
        */
-      _ElemT*
-      operator () () {return mpData;};
-
+      const size_t
+      MSize() const
+      {
+        return mMRows * mMRealCols * sizeof(_ElemT);
+      }
+      
       /**
        *  @brief Gives access to the matrix memory area
        *  @return pointer to the first field
@@ -75,27 +157,27 @@ namespace STK
       _ElemT*
       Data() {return mpData;};
       
-      
-      /// Returns the way the matrix is stored in memory
-      const StorageType
-      Storage() const
+      /**
+       *  @brief Gives access to a specified matrix row without range check
+       *  @return pointer to the first field of the row
+       */
+      _ElemT*      
+      operator [] (size_t i)
       {
-        return mStorageType;
+        return mpData + (i * mMRealCols);
       }
-      
-      
+    
     protected:
-      /// keeps info about data layout in the memory
-      StorageType mStorageType;
+      size_t  mMRows;       ///< Number of rows
+      size_t  mMCols;       ///< Number of columns
+      size_t  mMRealCols;   ///< true number of columns for the internal matrix.
       
       /// data memory area
       _ElemT*   mpData;
-
 #ifdef STK_MEMALIGN_MANUAL
       /// data to be freed (in case of manual memalignment use, see common.h)
       _ElemT*   mpFreeData;
 #endif
-      
     }; // class BasicMatrix
     
   
@@ -119,7 +201,13 @@ namespace STK
       // Constructors
 
       /// Empty constructor
-      Matrix<_ElemT> (): mStorageType(STORAGE_UNDEFINED) {}
+      Matrix<_ElemT> (): mStorageType(STORAGE_UNDEFINED),
+        mMRows(0),    
+        mMCols(0),    
+        mMRealCols(0),
+        mTRows(0),
+        mTCols(0)
+        {}
 
       /// Copy constructor
       Matrix<_ElemT> (const ThisType & t);
@@ -454,6 +542,11 @@ namespace STK
     Matrix<float> &
     Matrix<float>::
     AddMMMul(Matrix<float> & a, Matrix<float> & b);
+    
+  template<>
+    Matrix<float> &
+    Matrix<float>::
+    DiagScale(float* pDiagVector);
     
   template<>
     Matrix<float> &

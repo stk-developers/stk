@@ -83,7 +83,22 @@ namespace STK
         
     return *this;
   }
+  
+  void 
+  ComputeClusterWeightVectorAccums(
+    int               macro_type, 
+    HMMSetNodeName    nodeName, 
+    MacroData*        pData, 
+    void*             pUserData)
+  {
+    ClusterWeightAccums* cwa = reinterpret_cast<ClusterWeightAccums*>(pUserData);
+    Mixture*             mix = reinterpret_cast<Mixture*>(pData);
     
+    for (int i = 0; i < cwa->mNClusterWeights; i++)
+    {
+      mix->AddToAccumCAT(cwa->mpGw, cwa->mpKw);
+    }
+  }  
   
   //***************************************************************************
   //***************************************************************************
@@ -1563,13 +1578,17 @@ printf("%f", g_floor);
   Mean(size_t vectorSize, bool allocateAccums)
   {
     size_t accum_size = 0;
+    size_t size;
+    size_t skip;
     void* free_vec;
     
     if (allocateAccums) 
       accum_size = (vectorSize + 1) * 2; // * 2 for MMI accums
-    
+
+    size = (vectorSize + accum_size)*sizeof(FLOAT);
+        
     mpVectorO = static_cast<FLOAT*>
-      stk_memalign(16, vectorSize + accum_size, &free_vec);
+      stk_memalign(16, size, &free_vec);
 #ifdef STK_MEMALIGN_MANUAL
     mpVectorOFree = static_cast<FLOAT*>(free_vec);
 #endif
@@ -1579,6 +1598,8 @@ printf("%f", g_floor);
     mNumberOfXformStatAccums  = 0;
     mUpdatableFromStatAccums  = true;
     mpWeights                 = NULL;
+    mNWeights                 = 0;
+    mpOccProbAccums           = NULL;
   }  
   
   
@@ -1716,7 +1737,7 @@ printf("%f", g_floor);
       accum_size = (2*vectorSize + 1) * 2; // * 2 for MMI accums
     
     mpVectorO = static_cast<FLOAT*>
-      (stk_memalign(16, vectorSize + accum_size, &free_vec));
+      (stk_memalign(16, (vectorSize + accum_size) * sizeof(FLOAT), &free_vec));
 #ifdef STK_MEMALIGN_MANUAL
     mpVectorOFree = static_cast<FLOAT*>(free_vec);
 #endif
@@ -2641,7 +2662,8 @@ printf("%f", g_floor);
   
     mClusterWeightUpdate        = false;
     mpClusterWeights            = NULL;
-    InitKwdTable();
+    mNClusterWeights            = 0;
+    InitKwdTable();    
   } // Init(...);
 
 
@@ -2929,8 +2951,11 @@ printf("%f", g_floor);
   ModelSet::
   ResetAccums()
   {
-    Scan(MTM_STATE | MTM_MEAN | MTM_VARIANCE | MTM_TRANSITION,
-             NULL, ResetAccum, NULL);
+    if (mAllocAccums)
+    {
+      Scan(MTM_STATE | MTM_MEAN | MTM_VARIANCE | MTM_TRANSITION,
+              NULL, ResetAccum, NULL);
+    }
   }; // ResetAccums()
   
   
@@ -3141,7 +3166,7 @@ printf("%f", g_floor);
       return NULL;
     }
   
-    if ((macro = FindMacro(hash, rNewName.c_str())) != NULL) 
+    if ((macro = FindMacro(hash, rNewName.c_str())) != NULL)
     {
       return macro;
     }

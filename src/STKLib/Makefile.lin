@@ -17,8 +17,8 @@ LDLIBS = -lm -latlas -lpthread
 # compiler binary
 # CROSS_COMPILE ?= x86_64-linux-
 
-CC  := $(CROSS_COMPILE)g++
-CXX := $(CROSS_COMPILE)g++
+CC  := $(CROSS_COMPILE)g++-4.1
+CXX := $(CROSS_COMPILE)g++-4.1
 
 
 ###############################################################################

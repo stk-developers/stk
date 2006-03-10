@@ -243,14 +243,6 @@ int main(int argc, char *argv[])
   LabelFormat             in_lbl_fmt        = {0};
   in_lbl_fmt.TIMES_OFF = 1;
 
-  IStkStream ss("-");
-  long long l = 9223372036854775807LL;
-  cout << l << endl;
-  
-  ss >> l;
-  cout << setw(8) << setfill('0') << l << endl;
-  cout << l << endl;
-  
   if (argc == 1) usage(argv[0]);
 
   //InitHMMSet(&hset, 1);
@@ -360,6 +352,14 @@ int main(int argc, char *argv[])
   mmf_karkulka = GetParamStr(&cfgHash, SNAME":MMFKARKULKA",     ".");
   karkulka     = GetParamBool(&cfgHash,SNAME":KARKULKA",        false);
   
+  // ***************************************************************************
+  // Cluster adaptive training update
+  hset.mClusterWeightUpdate = karkulka;
+  std::cerr << "hset.mClusterWeightUpdate = " << hset.mClusterWeightUpdate << std::endl;
+  if (karkulka)
+  {
+    hset.mClusterWeightOutPath = mmf_karkulka;
+  }
   
   update_mode  = (Update_Mode) GetParamEnum(&cfgHash,SNAME":UPDATEMODE",    UM_UPDATE,
                    "UPDATE",UM_UPDATE,"DUMP",UM_DUMP,"BOTH",UM_BOTH, NULL);
@@ -542,7 +542,10 @@ int main(int argc, char *argv[])
     ilfp = OpenInputMLF(src_mlf);
   }
 
-  hset.mClusterWeightUpdate = karkulka;
+  
+  //
+  
+    
   hset.mMmiUpdate           = update_type;
   hset.ResetAccums();
   
@@ -855,11 +858,12 @@ int main(int argc, char *argv[])
                 "trying pruning threshold: %.2f",
                 file_name->mpPhysical, net.mPruningThresh);
       }
-      
+      ClusterWeightAccums cwa = {hset.mNClusterWeights, hset.mpGw, hset.mpKw};
+
       // here
       if (hset_alig->mClusterWeightUpdate)
       {
-        //hset_alig->Scan(MTM_MIXTURE, NULL,ReplaceItem, &ud);
+        hset_alig->Scan(MTM_MIXTURE, NULL, ComputeClusterWeightVectorAccums, &cwa);
       }
       
       if (P > LOG_MIN) 
@@ -962,6 +966,12 @@ int main(int argc, char *argv[])
     }
   }
   
+  // if cluster weights update
+  if (hset.mClusterWeightUpdate && hset.mClusterWeightStream.is_open())
+  {
+    hset.mClusterWeightStream.close();
+  }
+
   if (hset_alig != &hset) 
   {
     hset_alig->Release();
