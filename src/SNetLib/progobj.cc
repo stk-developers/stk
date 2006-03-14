@@ -75,15 +75,19 @@ void SNet::ProgObj::NewVector(FLOAT *inVector, FLOAT *outVector, int inSize, int
   }
   if(last){
     if(mClient){
-      std::cerr << "END OF CLIENT, WAIT ON END-BARRIER\n";
+      TimersGet()->End(0);
+      if(DEBUG_PROG) std::cerr << "END OF CLIENT, WAIT ON END-BARRIER\n";
       barrier_wait(mpEndBarrier);
       
       mpClient->SendInt(mpNNet->Vectors());
       mpClient->SendInt(mpNNet->Good());
       mpClient->SendInt(mpNNet->Discarded());
-      std::cerr << "Numbers sent!\n";
+      if(DEBUG_PROG) std::cerr << "Numbers sent!\n";
       
     }  
+    if(!mClient && !mServer){
+      TimersGet()->End(0);
+    }
     mpNNet->PrintInfo(); // print numbers of vectors
   }
 }
@@ -185,13 +189,15 @@ void SNet::ProgObj::RunServer(){
   Element *element;
   int size = 0;
   
+  TimersGet()->Start(0);
+  
   // While there is active client
   while(!LastSent(mNoClients)){
     pthread_mutex_lock(mpReceivedMutex);
      size = mReceivedElements.size();
     pthread_mutex_unlock(mpReceivedMutex);
     if(size >= ActiveClients()){ // if there is enough received elements to make update
-      std::cerr << "Have enough " << size << "\n";
+      if(DEBUG_PROG) std::cerr << "Have enough " << size << "\n";
       element_add->Clear();
       for(int i=0; i < size; i++){
         pthread_mutex_lock(mpReceivedMutex);
@@ -216,13 +222,18 @@ void SNet::ProgObj::RunServer(){
             element_nn->mLast = 0;
           }
 	  mpServer->SendElement(element_nn, i); // send new weights
-          if(element_nn->mLast == 0) std::cerr << "New weights (client "<<i<<") sent\n";
-          else std::cerr << "New weights (client "<<i<<") sent LAST\n";  
+          if(DEBUG_PROG) {
+	    if(element_nn->mLast == 0) std::cerr << "New weights (client "<<i<<") sent\n";
+            else std::cerr << "New weights (client "<<i<<") sent LAST\n";  
+	  }
 	}
       }
       
     }  
   }
+  
+  TimersGet()->End(0);
+  
   barrier_wait(mpBarrier); // waiting for all clients to send info
   int vectors = 0;
   int good = 0;
@@ -246,22 +257,24 @@ void SNet::ProgObj::ServerReceivingThread(int number){
   Element *element;
   while(/*!Finished(mNoClients)*/ !mpClientFinished[number]){
     element = GetOrCreate(&mFreeElements, mpNNet, mpFreeMutex);
-    std::cerr << "THREAD " << number << " : waiting for element\n";
+    if(DEBUG_PROG) std::cerr << "THREAD " << number << " : waiting for element\n";
     mpServer->ReceiveElement(element, number);
     pthread_mutex_lock(mpReceivedMutex);
      mReceivedElements.push(element);
-     if(element->mLast == 1) std::cerr << "THREAD " << number << " : element received LAST\n";
-     else std::cerr << "THREAD " << number << " : element received\n";
+     if(DEBUG_PROG) {
+       if(element->mLast == 1) std::cerr << "THREAD " << number << " : element received LAST\n";
+       else std::cerr << "THREAD " << number << " : element received\n"; 
+     }
     pthread_mutex_unlock(mpReceivedMutex);
     if(element->mLast == 1){ // last indicates that this client is done
       mpClientFinished[number] = true;
     }
   }
-  std::cerr << "THREAD " << number << " waiting for numbers!\n";
+  if(DEBUG_PROG) std::cerr << "THREAD " << number << " waiting for numbers!\n";
   mpRecVectors[number] = mpServer->ReceiveInt(number);
   mpRecGood[number] = mpServer->ReceiveInt(number);
   mpRecDiscarded[number] = mpServer->ReceiveInt(number);
-  std::cerr << "THREAD " << number << " receivec numbers!\n";
+  if(DEBUG_PROG) std::cerr << "THREAD " << number << " receivec numbers!\n";
   barrier_wait(mpBarrier); // waiting for all clients to send info
 }
 
@@ -285,6 +298,7 @@ void SNet::ProgObj::RunClient(){
   mpNNet->Mutexes(mpFreeMutex, mpReceivedMutex, mpBarrier, &mSync);
  
   // Do nothing, return to program
+  TimersGet()->Start(0);
 
 }
 
@@ -297,17 +311,19 @@ void SNet::ProgObj::ClientReceivingThread(){
     pthread_mutex_lock(mpReceivedMutex);
      mReceivedElements.push(element);
      mpNNet->TimersGet()->Count(0);
-     if(element->mLast == 1)  std::cerr << "THREAD: Received Weights " << mpNNet->TimersGet()->Counter(0) << " LAST\n";
-     else std::cerr << "THREAD: Received Weights " << mpNNet->TimersGet()->Counter(0) << "\n";
+     if(DEBUG_PROG) {
+       if(element->mLast == 1)  std::cerr << "THREAD: Received Weights " << mpNNet->TimersGet()->Counter(0) << " LAST\n";
+       else std::cerr << "THREAD: Received Weights " << mpNNet->TimersGet()->Counter(0) << "\n";
+     }
     pthread_mutex_unlock(mpReceivedMutex);
     
-    if(mSync)  std::cerr << "THREAD: Waiting on barrier\n";
+    if(DEBUG_PROG) if(mSync)  std::cerr << "THREAD: Waiting on barrier\n";
     if(mSync) barrier_wait(mpBarrier);
 
     if(element->mLast == 1){ // waiting for last element from server even if useless
       mClientShouldFinish = true;
     } 
   }
-  std::cerr << "THREAD: END OF THREAD WAITING ON END-BARRIER\n";
+  if(DEBUG_PROG) std::cerr << "THREAD: END OF THREAD WAITING ON END-BARRIER\n";
   barrier_wait(mpEndBarrier);
 }

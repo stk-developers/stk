@@ -7,6 +7,8 @@
 #include<cstdlib>
 #include<queue>
 
+#define DEBUG_PROG 0
+
 namespace SNet{
   //! Main neural net class
   class NNet{

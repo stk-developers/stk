@@ -63,6 +63,7 @@ namespace SNet{
       // Accessors
       bool Server() const {return mServer;};
       bool Client() const {return mClient;};
+      Timers* TimersGet() const {return mpNNet->TimersGet();};
   };
 } // namespace
 #endif

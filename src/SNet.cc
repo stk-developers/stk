@@ -10,7 +10,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#define VERSION "2.0.0"
+#define VERSION "2.0.0b"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -228,9 +228,9 @@ int main(int argc, char *argv[])
   clients   = GetParamInt(&cfgHash, SNAME":CLIENTS",            0);
   ip = (char*)GetParamStr(&cfgHash, SNAME":JOINIP",       NULL);
   randomize =  GetParamBool(&cfgHash,SNAME":RANDOMIZE", true);
-  sync = !GetParamBool(&cfgHash,SNAME":NOSYNC", false);
+  sync = GetParamBool(&cfgHash,SNAME":SYNCHRONIZE", true);
   
-  
+  if(clients != 0 && script != NULL) Error("Server should not have input data.");
   
 //  in_transc_fmt= (TranscriptionFormat) GetParamEnum(&cfgHash,SNAME":SOURCETRANSCFMT",
 //                              !network_file && htk_compat ? TF_HTK : TF_STK,
@@ -310,7 +310,9 @@ int main(int argc, char *argv[])
   else if(prog_obj->Client()){
     prog_obj->RunClient();
   }  
-  
+  else{
+    prog_obj->TimersGet()->Start(0);
+  }  
   // MAIN FILE LOOP
   for (file_name = feature_files;
       file_name != NULL;

@@ -56,7 +56,7 @@ SNet::NNet::NNet(CompositeXform* nn, int cacheSize, int bunchSize, bool crossVal
   
   // Timers initialize
   mpTimers = new Timers(1, 2);
-  mpTimers->Start(0);
+  //mpTimers->Start(0);
 }
 
 SNet::NNet::~NNet(){
@@ -118,12 +118,14 @@ void SNet::NNet::ComputeCache(bool last){
   mActualNOfBunch = mActualCache / mBunchSize; // number of full bunches 
   mDiscarded += mActualCache % mBunchSize;     // remains will be discarded
   
-  if(mActualNOfBunch == 0){
-    std::cerr << "Problem - cache with 0 bunches";
-    mpUpdateElement->mLast = 1;
-    mpClient->SendElement(mpUpdateElement);
-    if(*mpSync) std::cerr << "Waiting on barrier\n";
-    if(*mpSync) barrier_wait(mpBarrier);
+  if(mpUpdateElement != NULL){
+    if(mActualNOfBunch == 0){
+      std::cerr << "Problem SOLVED - cache with 0 bunches - should vrite only in Parallel version!";
+      mpUpdateElement->mLast = 1;
+      mpClient->SendElement(mpUpdateElement);
+      if(DEBUG_PROG) if(*mpSync) std::cerr << "Waiting on barrier\n";
+      if(*mpSync) barrier_wait(mpBarrier);
+    }
   }
   
   // Compute all bunches
@@ -143,10 +145,12 @@ void SNet::NNet::ComputeCache(bool last){
 	}
         mpClient->SendElement(mpUpdateElement);
 	mpTimers->Count(1);
-	if(mpUpdateElement->mLast == 1) std::cerr << "Element sent "<< mpTimers->Counter(1) <<" LAST\n";
-	else std::cerr << "Element sent "<< mpTimers->Counter(1) << "\n";
+	if(DEBUG_PROG) {
+	  if(mpUpdateElement->mLast == 1) std::cerr << "Element sent "<< mpTimers->Counter(1) <<" LAST\n";
+	  else std::cerr << "Element sent "<< mpTimers->Counter(1) << "\n";
+	}
 	
-        if(*mpSync) std::cerr << "Waiting on barrier\n";
+        if(DEBUG_PROG) if(*mpSync) std::cerr << "Waiting on barrier\n";
         if(*mpSync) barrier_wait(mpBarrier);
       }
       ChangeWeights(); // update 
@@ -161,7 +165,7 @@ void SNet::NNet::ComputeCache(bool last){
   
   mNCache++;
   std::cout << "DONE! \n" << std::flush;
-  std::cout << "GOOD " << mGood << "\n" << std::flush;
+  if(DEBUG_PROG) std::cout << "GOOD " << mGood << "\n" << std::flush;
 }
 
 void SNet::NNet::ComputeBunch(){
@@ -226,7 +230,7 @@ void SNet::NNet::ChangeWeights(){
     
     // If there are new weights
     if(size > 0){
-      std::cerr << "Have new weights\n";
+      if(DEBUG_PROG) std::cerr << "Have new weights\n";
       pthread_mutex_lock(mpReceivedMutex);
       while(mpReceivedElements->size() > 0){ // get last weights in queue
         element = mpReceivedElements->front();
@@ -239,7 +243,7 @@ void SNet::NNet::ChangeWeights(){
       }
       pthread_mutex_unlock(mpReceivedMutex);
       this->ChangeToElement(element); // change NN using last received weights
-      std::cerr << "Weights changed\n";
+      if(DEBUG_PROG) std::cerr << "Weights changed\n";
       pthread_mutex_lock(mpFreeMutex);
       mpFreeElements->push(element);
       pthread_mutex_unlock(mpFreeMutex);
@@ -249,13 +253,18 @@ void SNet::NNet::ChangeWeights(){
 }
 
 void SNet::NNet::PrintInfo(){
-  mpTimers->End(0);
   std::cout << "===== SNET FINISHED (" << mpTimers->Timer(0) << "s) ===== \n";
   if(mCrossValidation)
     std::cout << "-- CV correct: >> ";
   else 
     std::cout << "-- TR correct: >> ";
-  std::cout << 100.0*mGood / mVectors << "% << (Vectors " << mVectors << ", Good " << mGood << ", Discarded " << mDiscarded << ") \n";
+  std::cout << 100.0*mGood / mVectors << "% << (Vectors " << mVectors << ", Good " << mGood << ", Discarded " << mDiscarded;
+  if(mpUpdateElement != NULL){
+    std::cout << " SRR=" << mpTimers->Counter(1) / mpTimers->Counter(0);
+  }
+  
+  std::cout << ") \n";
+  
   std::cout << "\n";
 }
 
