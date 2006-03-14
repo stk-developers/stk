@@ -354,7 +354,7 @@ namespace STK
       _ElemT*
       Row (const size_t r)
       {
-        if (0 <= r && r < Rows())
+        if (0 <= r && r < mMRows)
         {
           return this->operator[] (r);
         }
