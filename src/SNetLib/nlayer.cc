@@ -25,7 +25,7 @@ void SNet::NLayer::BunchBias(){
       
 void SNet::NLayer::BunchLinear(){
   // Matrix computation -- O += I * W  
-  mpOut->AddMMMul(*mpIn, *mpWeights);
+  mpOut->AddMMTMul(*mpIn, *mpWeights);
   // Biases ready, added by BLAS operation - it is optimization
 }
       
@@ -51,8 +51,8 @@ void SNet::NLayer::ChangeLayerWeights(FLOAT learnRate){
 
 void SNet::NLayer::ErrorPropagation(){
   if(mpNextErr != NULL){ // last layer error = global error => do not compute it
-    // Matrix computation -- E = NE * NW^T 
-    mpErr->RepMMTMul(*mpNextErr, *mpNextWeights);
+    // Matrix computation -- E = NE * NW 
+    mpErr->RepMMMul(*mpNextErr, *mpNextWeights);
   }
   DerivateError(); // derivate error of this layer 
 }

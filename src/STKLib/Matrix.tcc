@@ -264,7 +264,7 @@ namespace STK
   template<typename _ElemT>
   Matrix<_ElemT> &
   Matrix<_ElemT>::
-  RepMMTMul(ThisType & a, ThisType & b)
+  RepMMMul(ThisType & a, ThisType & b)
   { 
 
       STK::Error("Just only BLAS for float..."); 

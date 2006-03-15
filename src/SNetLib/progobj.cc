@@ -86,7 +86,7 @@ void SNet::ProgObj::NewVector(FLOAT *inVector, FLOAT *outVector, int inSize, int
       
     }  
     if(!mClient && !mServer){
-      TimersGet()->End(0);
+      TimersGet()->End(0); // 1 CPU 
     }
     mpNNet->PrintInfo(); // print numbers of vectors
   }
@@ -202,31 +202,31 @@ void SNet::ProgObj::RunServer(){
       for(int i=0; i < size; i++){
         pthread_mutex_lock(mpReceivedMutex);
          element = mReceivedElements.front();
-	 mReceivedElements.pop();
-	pthread_mutex_unlock(mpReceivedMutex);
-	element_add->Add(element, 1.0); // add update matrixes
+         mReceivedElements.pop();
+        pthread_mutex_unlock(mpReceivedMutex);
+        element_add->Add(element, 1.0); // add update matrixes
         pthread_mutex_lock(mpFreeMutex);
-	 mFreeElements.push(element);
-	pthread_mutex_unlock(mpFreeMutex);
+         mFreeElements.push(element);
+        pthread_mutex_unlock(mpFreeMutex);
       }
       element_nn->Add(element_add, -1.0*mpNNet->LearnRate()); // make new weights
       
       // For all clients, send element if client is active
       for(int i=0; i<mNoClients; i++){
         if(!mpLastSent[i]){ // only if last element is not sent
-	  if(mpClientFinished[i]){
+          if(mpClientFinished[i]){
             element_nn->mLast = 1;
-	    mpLastSent[i] = true;
+            mpLastSent[i] = true;
           }
           else{
             element_nn->mLast = 0;
           }
-	  mpServer->SendElement(element_nn, i); // send new weights
+          mpServer->SendElement(element_nn, i); // send new weights
           if(DEBUG_PROG) {
-	    if(element_nn->mLast == 0) std::cerr << "New weights (client "<<i<<") sent\n";
+            if(element_nn->mLast == 0) std::cerr << "New weights (client "<<i<<") sent\n";
             else std::cerr << "New weights (client "<<i<<") sent LAST\n";  
-	  }
-	}
+          }
+        }
       }
       
     }  
@@ -255,7 +255,7 @@ void SNet::ProgObj::RunServer(){
 
 void SNet::ProgObj::ServerReceivingThread(int number){
   Element *element;
-  while(/*!Finished(mNoClients)*/ !mpClientFinished[number]){
+  while(!mpClientFinished[number]){
     element = GetOrCreate(&mFreeElements, mpNNet, mpFreeMutex);
     if(DEBUG_PROG) std::cerr << "THREAD " << number << " : waiting for element\n";
     mpServer->ReceiveElement(element, number);

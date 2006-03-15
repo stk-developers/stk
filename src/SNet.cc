@@ -311,7 +311,7 @@ int main(int argc, char *argv[])
     prog_obj->RunClient();
   }  
   else{
-    prog_obj->TimersGet()->Start(0);
+    prog_obj->TimersGet()->Start(0); // 1 CPU version starts here
   }  
   // MAIN FILE LOOP
   for (file_name = feature_files;
@@ -399,13 +399,12 @@ int main(int argc, char *argv[])
         obs_out = obsMx_out + (time-1) * NNet_instance->mOutSize;
       }
       
-///************************************************************************************************
+///*****************************************************************************************************************************
       /// For EACH NEW VECTOR - give it to SNet
       prog_obj->NewVector(obs, obs_out, NNet_input->mOutSize, NNet_instance->mOutSize, 
                          ((i+1) == header.mNSamples && (outlabel_map ? file_name->mpNext : file_name->mpNext->mpNext) == NULL));
-			 // this returns true, if last vector
-
-///************************************************************************************************
+                                                                       // this returns true, if last vector
+///*****************************************************************************************************************************
     }
 
     totFrames  += nFrames;
@@ -418,7 +417,7 @@ int main(int argc, char *argv[])
       ReleaseLabels(labels);
     }
   }
-  // END - MAIN FILE LOOP
+  // MAIN FILE LOOP END
 
 ///************************************************************************************************     
   /// DELETE SNET

@@ -280,13 +280,16 @@ namespace STK
       AddMMMul(ThisType & a, ThisType & b);
       
       ThisType &
+      AddMMTMul(ThisType & a, ThisType & b);
+      
+      ThisType &
       AddMCMul(ThisType & a, _ElemT c);
       
       ThisType &
       RepMMSub(ThisType & a, ThisType & b);
       
       ThisType &
-      RepMMTMul(ThisType & a, ThisType & b);
+      RepMMMul(ThisType & a, ThisType & b);
       
       ThisType &
       RepMTMMul(ThisType & a, ThisType & b);

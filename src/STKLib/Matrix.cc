@@ -80,18 +80,55 @@ namespace STK
       return *this;
     }
   
+    
+      
+  //***************************************************************************
+  //***************************************************************************
+  template<>
+    Matrix<float> &
+    Matrix<float>::
+    AddMMTMul(Matrix<float> & a, Matrix<float> & b)
+    { 
+     //fprintf(stderr, "A %d %d B %d %d C %d %d \n", a.Rows(), a.Cols(), b.Rows(), b.Cols(), Rows(), Cols());
+      
+      assert(a.Rows() == this->Rows());
+      assert(b.Rows() == this->Cols());
+      assert(a.Cols() == b.Cols());
+      assert(b.mStorageType == STORAGE_REGULAR);
+      
+      ///this->PrintOut("mojenuly.0");
+      
+      //cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, this->Rows(), this->Cols(), b.Rows(),
+      //            1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
+      
+      //printf("***%d %d %d %d %d %d\n", a.Rows(), b.Rows(), b.Cols(), a.mMRealCols, b.mMRealCols, this->mMRealCols);
+      
+#ifdef USE_BLAS
+        cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, a.Rows(), b.Rows(), b.Cols(),
+                    1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
+#else
+      Error("Method not implemented without BLAS");
+#endif
+      
+      //cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, C->rows, C->cols, B->rows,
+      //            1.0f, A->arr, A->realCols, B->arr, B->realCols, 1.0f, C->arr, C->realCols);     
+  
+      return *this;
+    }; 
   
   //***************************************************************************
   //***************************************************************************
   template<>
     Matrix<float> &
     Matrix<float>::
-    RepMMTMul(Matrix<float> & a, Matrix<float> & b)
+    RepMMMul(Matrix<float> & a, Matrix<float> & b)
     { 
+    //fprintf(stderr, "A %d %d B %d %d C %d %d \n", a.Rows(), a.Cols(), b.Rows(), b.Cols(), Rows(), Cols());
       assert(a.Rows() == this->Rows());
-      assert(b.Rows() == this->Cols());
-      assert(a.Cols() == b.Cols());
-      assert(b.mStorageType == STORAGE_TRANSPOSED);
+      assert(b.Cols() == this->Cols());
+      assert(a.Cols() == b.Rows());
+      //assert(b.mStorageType == STORAGE_TRANSPOSED);
+      assert(b.mStorageType == STORAGE_REGULAR);
       Clear();
       
       ///this->PrintOut("mojenuly.0");
@@ -102,8 +139,10 @@ namespace STK
       //printf("***%d %d %d %d %d %d\n", a.Rows(), b.Rows(), b.Cols(), a.mMRealCols, b.mMRealCols, this->mMRealCols);
       
 #ifdef USE_BLAS
-      cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, a.Rows(), b.Rows(), b.Cols(),
-                  1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
+        cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, a.Rows(), b.Cols(), b.Rows(),
+                    1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
+     // cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, a.Rows(), b.Rows(), b.Cols(),
+            //      1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
 #else
       Error("Method not implemented without BLAS");
 #endif
@@ -208,7 +247,7 @@ namespace STK
       assert(a.Cols() == b.Cols());
       */
       assert(a.mStorageType == STORAGE_REGULAR);
-      assert(this->mStorageType == STORAGE_TRANSPOSED);
+      //assert(this->mStorageType == STORAGE_TRANSPOSED);
       Clear();
             
       //cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, this->Rows(), this->Cols(), b.Rows(),

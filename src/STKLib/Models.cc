@@ -2364,7 +2364,8 @@ printf("%f", g_floor);
   //**************************************************************************  
   LinearXform::
   LinearXform(size_t inSize, size_t outSize):
-    mMatrix(inSize, outSize, STORAGE_TRANSPOSED)
+    //mMatrix(inSize, outSize, STORAGE_TRANSPOSED)
+    mMatrix(outSize, inSize, STORAGE_REGULAR)
   {
     //ret = (LinearXform *) malloc(sizeof(LinearXform)+(out_size*in_size-1)*sizeof(ret->mpMatrixO[0]));
     //if (ret == NULL) Error("Insufficient memory");

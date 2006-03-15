@@ -1564,7 +1564,8 @@ namespace STK
       {
         tmp = GetFloat(fp);
         
-        if (mUseNewMatrix) ret->mMatrix(r, c) = tmp;        
+        //if (mUseNewMatrix) ret->mMatrix(r, c) = tmp; 
+          if (mUseNewMatrix) ret->mMatrix[c][r] = tmp;               
         //else               ret->mpMatrixO[i]  = tmp;  //:TODO: Get rid of this old stuff
         
           ret->mpMatrixO[i]  = tmp;  //:TODO: Get rid of this old stuff
@@ -2463,7 +2464,7 @@ namespace STK
       {
         if (mUseNewMatrix)
         {
-          PutFlt(fp, binary, xform->mMatrix(j, i));
+          PutFlt(fp, binary, xform->mMatrix(i, j));
         }
         else
         {

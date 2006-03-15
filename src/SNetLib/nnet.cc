@@ -30,22 +30,22 @@ SNet::NNet::NNet(CompositeXform* nn, int cacheSize, int bunchSize, bool crossVal
   mNCache = 0;  
   
   // Create cache
-  int in_cols =  (static_cast<LinearXform*>(nn->mpLayer[0].mpBlock[0]))->mMatrix.Rows();              // get number of columns
-  int out_cols = (static_cast<LinearXform*>(nn->mpLayer[3*(mNLayers-1)].mpBlock[0]))->mMatrix.Cols(); // for cache size
+  int in_cols =  (static_cast<LinearXform*>(nn->mpLayer[0].mpBlock[0]))->mMatrix.Cols();              // get number of columns
+  int out_cols = (static_cast<LinearXform*>(nn->mpLayer[3*(mNLayers-1)].mpBlock[0]))->mMatrix.Rows(); // for cache size
   mpInCache =  new WindowMatrix<FLOAT>(cacheSize, in_cols);
   mpOutCache = new WindowMatrix<FLOAT>(cacheSize, out_cols);
    
   // Create partial cache for forwarded vectors
-  mpCompCachePart = new Matrix<FLOAT>(bunchSize, mpLayers[mNLayers-1]->Weights()->Cols());
+  mpCompCachePart = new Matrix<FLOAT>(bunchSize, mpLayers[mNLayers-1]->Weights()->Rows());
   
   // Create matrix for global NN errors
-  mpError = new Matrix<FLOAT>(bunchSize, mpLayers[mNLayers-1]->Weights()->Cols());
+  mpError = new Matrix<FLOAT>(bunchSize, mpLayers[mNLayers-1]->Weights()->Rows());
   
   // Connect layers using their inputs, outputs and errors
   for(int i=0; i<mNLayers; i++){
     mpLayers[i]->In((i == 0)           ? mpInCache  : mpLayers[i-1]->Out());
-    mpLayers[i]->Out((i == mNLayers-1) ? mpCompCachePart : new Matrix<FLOAT>(bunchSize, mpLayers[i]->Weights()->Cols()));
-    mpLayers[i]->Err((i == mNLayers-1) ? mpError : new Matrix<FLOAT>(bunchSize, mpLayers[i]->Weights()->Cols()));
+    mpLayers[i]->Out((i == mNLayers-1) ? mpCompCachePart : new Matrix<FLOAT>(bunchSize, mpLayers[i]->Weights()->Rows()));
+    mpLayers[i]->Err((i == mNLayers-1) ? mpError : new Matrix<FLOAT>(bunchSize, mpLayers[i]->Weights()->Rows()));
   }
   
   // Get next layer's weights and errors - for error propagation
