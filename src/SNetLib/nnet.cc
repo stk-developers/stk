@@ -55,7 +55,7 @@ SNet::NNet::NNet(CompositeXform* nn, int cacheSize, int bunchSize, bool crossVal
   } 
   
   // Timers initialize
-  mpTimers = new Timers(1, 2);
+  mpTimers = new Timers(1, 3);
   //mpTimers->Start(0);
 }
 
@@ -139,17 +139,18 @@ void SNet::NNet::ComputeCache(bool last){
       ComputeUpdates(); // back-propagation
       if(mpUpdateElement != NULL){ // server-client, not 1 CPU
         if(i == mActualNOfBunch-1 && last){ // last cache & last bunch
-	  mpUpdateElement->mLast = 1;
-	  
-	  *mpSync = false;
-	}
+          mpUpdateElement->mLast = 1;
+        }
         mpClient->SendElement(mpUpdateElement);
-	mpTimers->Count(1);
-	if(DEBUG_PROG) {
-	  if(mpUpdateElement->mLast == 1) std::cerr << "Element sent "<< mpTimers->Counter(1) <<" LAST\n";
-	  else std::cerr << "Element sent "<< mpTimers->Counter(1) << "\n";
-	}
-	
+        if(mpUpdateElement->mLast == 1){
+          *mpSync = false;
+          if(mpBarrier->counter == 1) barrier_wait(mpBarrier);
+        }
+        mpTimers->Count(1);
+        if(DEBUG_PROG) {
+          if(mpUpdateElement->mLast == 1) std::cerr << "Element sent "<< mpTimers->Counter(1) <<" LAST\n";
+          else std::cerr << "Element sent "<< mpTimers->Counter(1) << "\n";
+        }
         if(DEBUG_PROG) if(*mpSync) std::cerr << "Waiting on barrier\n";
         if(*mpSync) barrier_wait(mpBarrier);
       }
@@ -234,16 +235,17 @@ void SNet::NNet::ChangeWeights(){
       pthread_mutex_lock(mpReceivedMutex);
       while(mpReceivedElements->size() > 0){ // get last weights in queue
         element = mpReceivedElements->front();
-	mpReceivedElements->pop();
+        mpReceivedElements->pop();
         if(mpReceivedElements->size() > 0){
-	  pthread_mutex_lock(mpFreeMutex);
-          mpFreeElements->push(element);
-	  pthread_mutex_unlock(mpFreeMutex);
-	}
+          pthread_mutex_lock(mpFreeMutex);
+           mpFreeElements->push(element);
+          pthread_mutex_unlock(mpFreeMutex);
+        }
       }
       pthread_mutex_unlock(mpReceivedMutex);
       this->ChangeToElement(element); // change NN using last received weights
       if(DEBUG_PROG) std::cerr << "Weights changed\n";
+      mpTimers->Count(2);
       pthread_mutex_lock(mpFreeMutex);
       mpFreeElements->push(element);
       pthread_mutex_unlock(mpFreeMutex);
@@ -260,7 +262,7 @@ void SNet::NNet::PrintInfo(){
     std::cout << "-- TR correct: >> ";
   std::cout << 100.0*mGood / mVectors << "% << (Vectors " << mVectors << ", Good " << mGood << ", Discarded " << mDiscarded;
   if(mpUpdateElement != NULL){
-    std::cout << " SRR=" << mpTimers->Counter(1) / mpTimers->Counter(0);
+    std::cout << " SRR=" << (float) mpTimers->Counter(2) / mpTimers->Counter(1);
   }
   
   std::cout << ") \n";
@@ -290,4 +292,28 @@ void SNet::NNet::ChangeToElement(Element *element){
     }
     
   }
+}
+
+void SNet::NNet::WaitForStartingWeights(){
+  Element *element;
+  int size = 0;
+  if(DEBUG_PROG) std::cerr << "Waiting for first weights\n";
+  do{
+    pthread_mutex_lock(mpReceivedMutex);
+     size = mpReceivedElements->size();
+    pthread_mutex_unlock(mpReceivedMutex);
+    if(size != 0){
+      if(DEBUG_PROG) std::cerr << "Have first weights\n";
+      pthread_mutex_lock(mpReceivedMutex);
+       element = mpReceivedElements->front();
+       mpReceivedElements->pop();
+      pthread_mutex_unlock(mpReceivedMutex);
+      this->ChangeToElement(element); // change NN using last received weights
+      if(DEBUG_PROG) std::cerr << "Weights changed to first\n";
+      pthread_mutex_lock(mpFreeMutex);
+       mpFreeElements->push(element);
+      pthread_mutex_unlock(mpFreeMutex);
+    }
+  } while (size == 0);
+  
 }

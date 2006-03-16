@@ -24,7 +24,7 @@ void SNet::NLayer::BunchBias(){
 }
       
 void SNet::NLayer::BunchLinear(){
-  // Matrix computation -- O += I * W  
+  // Matrix computation -- O += I * W^T  
   mpOut->AddMMTMul(*mpIn, *mpWeights);
   // Biases ready, added by BLAS operation - it is optimization
 }

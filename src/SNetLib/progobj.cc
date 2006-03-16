@@ -189,6 +189,11 @@ void SNet::ProgObj::RunServer(){
   Element *element;
   int size = 0;
   
+  if(DEBUG_PROG) std::cerr << "Sending first weights " << size << "\n";
+  for(int i=0; i < mNoClients; i++){
+    mpServer->SendElement(element_nn, i); // at start send First Weights
+  }
+  
   TimersGet()->Start(0);
   
   // While there is active client
@@ -296,10 +301,11 @@ void SNet::ProgObj::RunClient(){
   mpNNet->ReceivedElements(&mReceivedElements);
   mpNNet->FreeElements(&mFreeElements);
   mpNNet->Mutexes(mpFreeMutex, mpReceivedMutex, mpBarrier, &mSync);
- 
-  // Do nothing, return to program
-  TimersGet()->Start(0);
 
+  
+  mpNNet->WaitForStartingWeights(); // wait for first weights
+  TimersGet()->Start(0);
+  // Do nothing, return to program
 }
 
 void SNet::ProgObj::ClientReceivingThread(){
@@ -324,6 +330,9 @@ void SNet::ProgObj::ClientReceivingThread(){
       mClientShouldFinish = true;
     } 
   }
+  
+  //if(mpBarrier->counter == 1) barrier_wait(mpBarrier); // could be last barrier
+  
   if(DEBUG_PROG) std::cerr << "THREAD: END OF THREAD WAITING ON END-BARRIER\n";
   barrier_wait(mpEndBarrier);
 }

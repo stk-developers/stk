@@ -51,7 +51,7 @@ namespace SNet{
     public:
       ProgObj(XformInstance *NNetInstance, int cacheSize, int bunchSize, bool crossValidation, ///< Constructor
               std::string version, float learningRate, int clients, char* ip, bool randomize, 
-	      bool sync); 
+              bool sync); 
       ~ProgObj();                                                                              ///< Destructor
       
       void NewVector(FLOAT *inVector, FLOAT *outVector, int inSize, int outSize, bool last);   ///< Work with new input vector

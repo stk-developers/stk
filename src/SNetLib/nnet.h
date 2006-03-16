@@ -58,6 +58,7 @@ namespace SNet{
       void PrintInfo();                                                            ///< Print informations about training/cross-validation
       void PrepareUpdateElement();                                                 ///< Creates new element and connects it to update matrixes
       void ChangeToElement(Element *element);                                      ///< Changes NN using element
+      void WaitForStartingWeights();                                               ///< Wait, receive and change to starting weights from server
       
       // Accessors
       bool CrossValidation() const {return mCrossValidation;};
