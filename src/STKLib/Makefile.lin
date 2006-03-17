@@ -4,7 +4,7 @@ AR = ar
 
 ##############################################################################
 # compiler options
-CFLAGS = -Wall -g -DDOUBLEPRECISION=0 -D_REENTRANT -DUSE_BLAS -O2
+CFLAGS = -Wall -g -DDOUBLEPRECISION=0 -D_REENTRANT -DUSE_BLAS
 CXXFLAGS = $(CFLAGS)
 
 ###############################################################################
@@ -38,7 +38,8 @@ OBJFILES = 	common.o \
 			Models.o  \
 			Net_IO.o  \
 			Net.o  \
-			Viterbi.o
+			Viterbi.o \
+			BasicVector.o      
 
 
 ###############################################################################

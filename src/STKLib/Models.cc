@@ -24,7 +24,7 @@
 
 namespace STK
 {
-  const char *    gpHListFilter;
+  const char*     gpHListFilter;
   bool            gHmmsIgnoreMacroRedefinition = true;
   FLOAT           gWeightAccumDen;
   
@@ -40,20 +40,50 @@ namespace STK
   enum StatType {MEAN_STATS, COV_STATS};
   
   
+  void
+  CatMVectors(BasicVector<FLOAT>& rV, Matrix<FLOAT>* pM, size_t nM)
+  {
+    size_t j(0);
+    
+    for (size_t n = 0; n < nM; n++)
+    {
+      for (size_t i = 0; i < pM[n].Cols(); i++)
+      {
+        rV[j++] = pM[n][0][i];
+      }
+    }
+  }
+  
+  void
+  CatClusterWeightPartialVectors(BasicVector<FLOAT>& rV, BiasXform** pM, size_t nM)
+  {
+    size_t j(0);
+    
+    for (size_t n = 0; n < nM; n++)
+    {
+      for (size_t i = 0; i < pM[n]->mInSize; i++)
+      {
+        rV[j++] = pM[n]->mVector[0][i];
+      }
+    }
+  }
+  
+  
+  
   //***************************************************************************
   //***************************************************************************
   Mixture&
   Mixture::
-  AddToAccumCAT(Matrix<FLOAT>* pGw, Matrix<FLOAT>* pKw)
+  AddToClusterWeightVectorsAccums(Matrix<FLOAT>* pGw, Matrix<FLOAT>* pKw)
   {
     FLOAT          tmp_val;
     FLOAT          occ_counts;                                                  // occupation counts for current mixture
-    Matrix<FLOAT>  aux_mat1(mpMean->mClusterMatrix);                            // auxiliary matrix
+    Matrix<FLOAT>  aux_mat1(mpMean->mClusterMatrixT);                            // auxiliary matrix
     
     aux_mat1.DiagScale(mpVariance->mpVectorO);
     
     // we go through each accumulator set
-    for (size_t sub=0; sub < mpMean->mCwvAccum.Rows(); sub++)
+    for (size_t sub=0; sub < mpMean->mNClusterWeightVectors; sub++)
     {
       occ_counts = mpMean->mpOccProbAccums[sub];                
       
@@ -65,7 +95,7 @@ namespace STK
           tmp_val = 0;
           for (size_t k=0; k < aux_mat1.Cols(); k++)
           {
-            tmp_val += aux_mat1[i][k] * mpMean->mClusterMatrix[i][k];
+            tmp_val += aux_mat1[i][k] * mpMean->mClusterMatrixT[i][k];
           } // k
           pGw[sub][i][j] += occ_counts * tmp_val;
         } // j
@@ -84,6 +114,8 @@ namespace STK
     return *this;
   }
   
+  //***************************************************************************
+  //***************************************************************************
   void 
   ComputeClusterWeightVectorAccums(
     int               macro_type, 
@@ -94,9 +126,12 @@ namespace STK
     ClusterWeightAccums* cwa = reinterpret_cast<ClusterWeightAccums*>(pUserData);
     Mixture*             mix = reinterpret_cast<Mixture*>(pData);
     
-    for (int i = 0; i < cwa->mNClusterWeights; i++)
+    if (mix->mpMean->mNClusterWeightVectors > 0)
     {
-      mix->AddToAccumCAT(cwa->mpGw, cwa->mpKw);
+      for (int i = 0; i < cwa->mNClusterWeightVectors; i++)
+      {
+        mix->AddToClusterWeightVectorsAccums(cwa->mpGw, cwa->mpKw);
+      }
     }
   }  
   
@@ -104,9 +139,13 @@ namespace STK
   //***************************************************************************
   Mixture&
   Mixture::
-  ResetAccumCAT()
+  ResetClusterWeightVectorsAccums()
   {
-    *(mpMean->mpOccProbAccums) = 0.0;
+    for (size_t i = 0; i < mpMean->mNClusterWeightVectors; i++)
+    {
+      mpMean->mpOccProbAccums[i] = 0.0;
+    }
+    
     mpMean->mCwvAccum.Clear();
     return *this;
   }
@@ -166,8 +205,42 @@ namespace STK
       if (mixture->mpMean      == ud->mpOldData) mixture->mpMean       = (Mean*)          ud->mpNewData;
       if (mixture->mpVariance  == ud->mpOldData) mixture->mpVariance   = (Variance*)      ud->mpNewData;
       if (mixture->mpInputXform== ud->mpOldData) mixture->mpInputXform = (XformInstance*) ud->mpNewData;
+      
+      // For cluster adaptive training, BiasXform holds the weights vector. If
+      // new bias is defined, we want to check all means and potentially update
+      // the weights refference and recalculate the values
+      if ('x' == ud->mType                                               
+      && (XT_BIAS == static_cast<Xform*>(ud->mpNewData)->mXformType))
+      {
+        Mean* mean(mixture->mpMean);
+        
+        // find if any of the mpWeights points to the old data
+        i=0;
+        while (i < mean->mNClusterWeightVectors 
+        &&    (mean->mpClusterWeightVectors[i] != static_cast<BiasXform*>(ud->mpOldData)))
+        {i++;}
+        
+        // if we found something... 
+        if (i < mean->mNClusterWeightVectors)
+        {
+          // the cluster parameters accumulators need to be updated as speaker 
+          // has changed
+          mixture->UpdateClusterParametersAccums();
+          
+          BiasXform* new_weights = static_cast<BiasXform*>(ud->mpNewData);
+          
+          mean->mpClusterWeightVectors[i] = new_weights;
+          mean->RecalculateCAT();
+          
+          if (mean->mCwvAccum.Rows() > 0)
+          {
+            mean->ResetClusterWeightVectorsAccums(i);
+          }
+        }        
+      }
     } 
     
+    /*
     else if (macro_type == 'u')
     {
       Mean* mean = static_cast<Mean*>(pData);
@@ -179,22 +252,17 @@ namespace STK
       && (XT_BIAS == static_cast<Xform*>(ud->mpNewData)->mXformType))
       {
         // find if any of the mpWeights points to the old data
-        for (i = 0; i < mean->mNWeights && (mean->mpWeights[i] != 
+        for (i = 0; i < mean->mNClusterWeightVectors && (mean->mpClusterWeightVectors[i] != 
              static_cast<BiasXform*>(ud->mpOldData)) ; i++)
         {}
         
-        // if i < mean->mNWeights
-        if (i < mean->mNWeights)
+        // if we found something... 
+        if (i < mean->mNClusterWeightVectors)
         {
-          BiasXform* new_weights = static_cast<BiasXform*>(ud->mpNewData);
-          
-          mean->mpWeights[i] = new_weights;
-          mean->RecalculateCAT();
-        }
-        
-        
+        }        
       }
     }
+    */
         
     else if (macro_type == 'x') 
     {
@@ -852,14 +920,14 @@ namespace STK
   //*****************************************************************************
   void 
   WriteAccum(int macro_type, HMMSetNodeName nodeName,
-             MacroData * pData, void *pUserData) 
+             MacroData* pData, void *pUserData) 
   {
     size_t                i;
     size_t                size;
-    FLOAT *               vector = NULL;
+    FLOAT*                vector = NULL;
   //  FILE *fp = (FILE *) pUserData;
-    WriteAccumUserData *  ud = (WriteAccumUserData * ) pUserData;
-    Macro *               macro = static_cast <MacroData *> (pData)->mpMacro;
+    WriteAccumUserData*   ud = static_cast<WriteAccumUserData*>(pUserData);
+    Macro*                macro = pData->mpMacro;
   
     if (macro &&
       (fprintf(ud->mpFp, "~%c \"%s\"", macro->mType, macro->mpName) < 0 ||
@@ -870,23 +938,23 @@ namespace STK
   
     if (macro_type == mt_mean || macro_type == mt_variance) 
     {
-      XformStatAccum *    xfsa = NULL;
+      XformStatAccum*     xfsa = NULL;
       UINT_32             nxfsa = 0;
   
       if (macro_type == mt_mean) 
       {
-        xfsa   = ((Mean *)pData)->mpXformStatAccum;
-        nxfsa  = ((Mean *)pData)->mNumberOfXformStatAccums;
-        size   = ((Mean *)pData)->VectorSize();
-        vector = ((Mean *)pData)->mpVectorO+size;
+        xfsa   = ((Mean*)pData)->mpXformStatAccum;
+        nxfsa  = ((Mean*)pData)->mNumberOfXformStatAccums;
+        size   = ((Mean*)pData)->VectorSize();
+        vector = ((Mean*)pData)->mpVectorO+size;
         size   = size + 1;
       } 
       else if (macro_type == mt_variance) 
       {
-        xfsa   = ((Variance *)pData)->mpXformStatAccum;
-        nxfsa  = ((Variance *)pData)->mNumberOfXformStatAccums;
-        size   = ((Variance *)pData)->VectorSize();
-        vector = ((Variance *)pData)->mpVectorO+size;
+        xfsa   = ((Variance*)pData)->mpXformStatAccum;
+        nxfsa  = ((Variance*)pData)->mNumberOfXformStatAccums;
+        size   = ((Variance*)pData)->VectorSize();
+        vector = ((Variance*)pData)->mpVectorO+size;
         size   = size * 2 + 1;
       }
   
@@ -1505,7 +1573,13 @@ printf("%f", g_floor);
         */
       }
     }
-     
+    
+    // Cluster parameters update
+    else if (0 < mAccumK.Rows())
+    {
+      UpdateClusterParametersFromAccums(pModelSet);
+    }
+    
     // ///////
     // ordinary update    
     else 
@@ -1567,8 +1641,64 @@ printf("%f", g_floor);
     }
   }
 
-        
   
+  //***************************************************************************
+  //***************************************************************************
+  void 
+  Mixture::
+  UpdateClusterParametersAccums()
+  {
+    //:KLUDGE:
+    // compute this once for each speaker
+    BasicVector<FLOAT> aux_vec(mAccumG.Rows());
+    CatClusterWeightPartialVectors(aux_vec, mpMean->mpClusterWeightVectors, 
+      mpMean->mNClusterWeightVectors);
+    
+    mAccumG.AddCVVtMul(mPartialAccumG, aux_vec, aux_vec);
+    mAccumK.AddCVVtMul(1, aux_vec, mPartialAccumK);
+    
+    // clear the partial accumulator as they are strictly speaker dependent
+    mPartialAccumG = 0;
+    mPartialAccumK.Clear();
+  }    
+          
+
+  //****************************************************************************
+  //****************************************************************************
+  void 
+  Mixture::
+  UpdateClusterParametersFromAccums(const ModelSet * pModelSet)
+  {
+    if (pModelSet->mUpdateMask & UM_MEAN)
+    {
+      // update the mean matrix
+      Matrix<FLOAT>   g_inv(mAccumG);
+      
+      g_inv.Invert();
+      mpMean->mClusterMatrixT.RepMMMul(g_inv, mAccumK);
+    }
+      
+    if (pModelSet->mUpdateMask & UM_VARIANCE)
+    {
+      FLOAT           tmp_val;
+      //: KLUDGE:
+      // norms for variances are stored in vector[vec_zize*3]. Not nice...
+      for (size_t i = 0; i < mpVariance->VectorSize(); i++)
+      {
+        tmp_val = 0;
+        
+        for (size_t j = 0; j < mAccumK.Rows(); j++)
+        {
+          tmp_val += mpMean->mClusterMatrixT[j][i] * mAccumK[j][i]; 
+        }
+        
+        mpVariance->mpVectorO[i] = (mpVariance->mpVectorO[mpVariance->VectorSize()*3]) / 
+          (mAccumL[i] - tmp_val);
+      }
+    }
+  }    
+  
+    
   //**************************************************************************  
   //**************************************************************************  
   // Mean section
@@ -1579,7 +1709,6 @@ printf("%f", g_floor);
   {
     size_t accum_size = 0;
     size_t size;
-    size_t skip;
     void* free_vec;
     
     if (allocateAccums) 
@@ -1597,8 +1726,8 @@ printf("%f", g_floor);
     mpXformStatAccum          = NULL;
     mNumberOfXformStatAccums  = 0;
     mUpdatableFromStatAccums  = true;
-    mpWeights                 = NULL;
-    mNWeights                 = 0;
+    mpClusterWeightVectors          = NULL;
+    mNClusterWeightVectors          = 0;
     mpOccProbAccums           = NULL;
   }  
   
@@ -1615,9 +1744,9 @@ printf("%f", g_floor);
     }
     
     // delete refferences to weights Bias xforms
-    if (NULL != mpWeights)
+    if (NULL != mpClusterWeightVectors)
     { 
-      delete [] mpWeights;
+      delete [] mpClusterWeightVectors;
     }
     
     if (NULL != mpOccProbAccums)
@@ -1694,24 +1823,22 @@ printf("%f", g_floor);
   Mean::
   RecalculateCAT()
   {
-    if (NULL != mpWeights)
+    if (NULL != mpClusterWeightVectors)
     {
-      std::cerr << "Recalculating..." << std::endl;
       //:KLUDGE: optimize this
       memset(mpVectorO, 0, sizeof(FLOAT) * VectorSize());      
       int v = 0;
       
       // go through weights vectors
-      for (size_t w = 0; w < mNWeights; w++)
+      for (size_t w = 0; w < mNClusterWeightVectors; w++)
       {
         // go through rows in the cluster matrix
-        for (size_t i = 0; i < mpWeights[w]->mInSize; i++)
+        for (size_t i = 0; i < mpClusterWeightVectors[w]->mInSize; i++)
         {
           // go through cols in the cluster matrix
           for (size_t j = 0; j < VectorSize(); j++)
           {
-            std::cerr << "Recalculating using " << mpWeights[w]->mpMacro->mpName << "  " << mpVectorO[j] << "+=" << mClusterMatrix(v, j) << "*" << mpWeights[w]->mVector[0][i] << std::endl;
-            mpVectorO[j] += mClusterMatrix(v, j) * mpWeights[w]->mVector[0][i];
+            mpVectorO[j] += mClusterMatrixT(v, j) * mpClusterWeightVectors[w]->mVector[0][i];
           }
           // move to next cluster mean vector
           v++;
@@ -2365,11 +2492,9 @@ printf("%f", g_floor);
   LinearXform::
   LinearXform(size_t inSize, size_t outSize):
     //mMatrix(inSize, outSize, STORAGE_TRANSPOSED)
-    mMatrix(outSize, inSize, STORAGE_REGULAR)
+    mMatrix(outSize, inSize)
   {
-    //ret = (LinearXform *) malloc(sizeof(LinearXform)+(out_size*in_size-1)*sizeof(ret->mpMatrixO[0]));
-    //if (ret == NULL) Error("Insufficient memory");
-    mpMatrixO     = new FLOAT[inSize * outSize];    
+    mpMatrixO     = new FLOAT[inSize * outSize];
     mOutSize      = outSize;
     mInSize       = inSize;
     mMemorySize   = 0;
@@ -2377,6 +2502,7 @@ printf("%f", g_floor);
     mXformType    = XT_LINEAR;
   }
     
+  
   //**************************************************************************  
   //**************************************************************************  
   LinearXform::
@@ -2384,6 +2510,7 @@ printf("%f", g_floor);
   {
     delete [] mpMatrixO;
   }
+  
   
   //**************************************************************************  
   //**************************************************************************  
@@ -2661,9 +2788,11 @@ printf("%f", g_floor);
     this->MMI_h                 = 2.0;
     this->MMI_tauI              = 100.0;
   
-    mClusterWeightUpdate        = false;
-    mpClusterWeights            = NULL;
-    mNClusterWeights            = 0;
+    mClusterWeightVectorsUpdate        = false;
+    mpClusterWeightVectors            = NULL;
+    mNClusterWeightVectors            = 0;
+    
+    //mClusterParametersUpdate    = false;
     InitKwdTable();    
   } // Init(...);
 
@@ -3181,10 +3310,7 @@ printf("%f", g_floor);
     &&  (macro->mpFileName = strdup(gpCurrentMmfName)) == NULL)) 
     {
       Error("Insufficient memory");
-    }
-    
-    std::cerr << "Macro " << macro->mpName << " defined in file " 
-              << macro->mpFileName << std::endl;
+    }    
     
     e.key  = macro->mpName;
     e.data = macro;
@@ -3365,11 +3491,10 @@ printf("%f", g_floor);
       }
     }
   } // WriteXformStatsAndRunCommands(const std::string & rOutDir, bool binary)
-  //***************************************************************************
 
   
-  //***************************************************************************
-  //*****************************************************************************  
+  //****************************************************************************
+  //****************************************************************************
   void 
   ModelSet::
   ReadXformStats(const char * pOutDir, bool binary) 
@@ -3668,7 +3793,7 @@ printf("%f", g_floor);
   //**************************************************************************  
   void
   ModelSet::
-  ComputeClusterWeightVectorCAT(size_t w)
+  ComputeClusterWeightsVector(size_t w)
   {
     // offset to the accumulator matrix row
     size_t start = 0;
@@ -3676,33 +3801,44 @@ printf("%f", g_floor);
     
     for (size_t i = 0; i < w; i++)
     {
-      start += mpClusterWeights[i]->mInSize;
+      start += mpClusterWeightVectors[i]->mInSize;
     }
     
-    end = start + mpClusterWeights[w]->mInSize;
+    end = start + mpClusterWeightVectors[w]->mInSize;
     
     mpGw[w].Invert();
-    mpClusterWeights[w]->mVector.Clear();
+    mpClusterWeightVectors[w]->mVector.Clear();
     
     for (size_t i = start; i < end; i++)
     {
       for (size_t j=0; j < mpGw[w].Cols(); j++)
       {
-        mpClusterWeights[w]->mVector[0][i-start] += mpGw[w][i][j] * mpKw[w][0][j];
+        mpClusterWeightVectors[w]->mVector[0][i-start] += mpGw[w][i][j] * mpKw[w][0][j];
       }
     }
+  }
+
+  //**************************************************************************  
+  //**************************************************************************  
+  void 
+  ModelSet::
+  ResetClusterWeightVectorsAccums(size_t i)
+  {
+    mpGw[i].Clear();
+    mpKw[i].Clear();
   }
 
   
   //**************************************************************************  
   //**************************************************************************  
-  void 
-  ModelSet::
-  ResetClusterWeightAccumsCAT(size_t i)
+  void
+  Mean::
+  ResetClusterWeightVectorsAccums(size_t i)
   {
-    mpGw[i].Clear();
-    mpKw[i].Clear();
+    mpOccProbAccums[i] = 0;
+    
+    for (size_t j = 0; j < mCwvAccum.Cols(); j++)
+      mCwvAccum[i][j] = 0;
   }
-  
 }; //namespace STK  
   

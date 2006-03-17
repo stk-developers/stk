@@ -95,8 +95,8 @@ void Server::SendElement(SNet::Element *element, int who){
    //SendInt(element->mFrom, who);
    SendInt(element->mNLayers, who);
    for(int i=0; i < element->mNLayers; i++){
-     Send((char*)(*(element->mpWeights[i]))(), element->mpWeights[i]->MSize(), who);
-     Send((char*)(*(element->mpBiases[i]))(), element->mpBiases[i]->MSize(), who);     
+     Send((char*)(*(element->mpWeights[i]))[0], element->mpWeights[i]->MSize(), who);
+     Send((char*)(*(element->mpBiases[i]))[0], element->mpBiases[i]->MSize(), who);     
    }
 }
 
@@ -121,8 +121,8 @@ void Server::ReceiveElement(SNet::Element *element, int who){
    //element->mFrom = ReceiveInt(who);
    element->mNLayers = ReceiveInt(who);   
    for(int i=0; i < element->mNLayers; i++){
-     Receive((char*)(*(element->mpWeights[i]))(), element->mpWeights[i]->MSize(), who);
-     Receive((char*)(*(element->mpBiases[i]))(), element->mpBiases[i]->MSize(), who);     
+     Receive((char*)(*(element->mpWeights[i]))[0], element->mpWeights[i]->MSize(), who);
+     Receive((char*)(*(element->mpBiases[i]))[0], element->mpBiases[i]->MSize(), who);     
    }
 }
 
@@ -217,8 +217,8 @@ void Client::SendElement(SNet::Element *element){
    //SendInt(element->mFrom);
    SendInt(element->mNLayers);
    for(int i=0; i < element->mNLayers; i++){
-     Send((char*)(*(element->mpWeights[i]))(), element->mpWeights[i]->MSize());
-     Send((char*)(*(element->mpBiases[i]))(), element->mpBiases[i]->MSize());     
+     Send((char*)(*(element->mpWeights[i]))[0], element->mpWeights[i]->MSize());
+     Send((char*)(*(element->mpBiases[i]))[0], element->mpBiases[i]->MSize());     
    }
 }
 
@@ -245,7 +245,7 @@ void Client::ReceiveElement(SNet::Element *element){
    //element->mFrom = ReceiveInt();
    element->mNLayers = ReceiveInt();
    for(int i=0; i < element->mNLayers; i++){
-     Receive((char*)(*(element->mpWeights[i]))(), element->mpWeights[i]->MSize());
-     Receive((char*)(*(element->mpBiases[i]))(), element->mpBiases[i]->MSize());     
+     Receive((char*)(*(element->mpWeights[i]))[0], element->mpWeights[i]->MSize());
+     Receive((char*)(*(element->mpBiases[i]))[0], element->mpBiases[i]->MSize());     
    }
 }

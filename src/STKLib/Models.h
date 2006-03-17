@@ -293,6 +293,8 @@ namespace STK
     void   WriteBiasXform    (FILE * fp, bool binary,      BiasXform * xform);
     void   WriteStackingXform(FILE * fp, bool binary,  StackingXform * xform);
     void   WriteGlobalOptions(FILE * fp, bool binary);  
+    
+    
     /// @}
     
     
@@ -337,19 +339,21 @@ namespace STK
     FLOAT                     MMI_h;
     FLOAT                     MMI_tauI;
     
-    bool                      mClusterWeightUpdate;
-    BiasXform**               mpClusterWeights;
-    int                       mNClusterWeights;
+    bool                      mClusterWeightVectorsUpdate;
+    BiasXform**               mpClusterWeightVectors;
+    int                       mNClusterWeightVectors;
     Matrix<FLOAT>*            mpGw;                                             ///< Accumulator G_w for cluster vector update
     Matrix<FLOAT>*            mpKw;                                             ///< Accumulator k_w for cluster vector update
-    OStkStream                mClusterWeightStream;
-    std::string               mClusterWeightOutPath;
+    OStkStream                mClusterWeightsStream;
+    std::string               mClusterWeightsOutPath;
+    
+    //bool                      mClusterParametersUpdate;
+    
     
     /**
      * @name MMF output functions
      */
     //@{
-    void 
     /**
      * @brief Writes the complete Model set to a file
      * @param rFileName file name to write to
@@ -357,15 +361,16 @@ namespace STK
      * @param rOutputExt output file's implicit extension
      * @param binary write in binary mode if true
      */
+    void 
     WriteMmf(const char * pFileName, 
              const char * pOutputDir,
              const char * pOutputExt, bool binary);
     
-    void 
     /**
      * @brief Writes HMM statistics to a file
      * @param rFileName file to write to
      */
+    void 
     WriteHMMStats(const char * pFileName);             
     
     
@@ -382,6 +387,13 @@ namespace STK
                 long         totFrames, 
                 FLOAT        totLogLike);
     
+    /**
+     * @brief 
+     * @param i 
+     */
+    void
+    WriteClusterWeightsVector(size_t i);            
+                
     void 
     /**
      * 
@@ -489,13 +501,13 @@ namespace STK
     
     
     void
-    ComputeClusterWeightVectorCAT(size_t i);
+    ComputeClusterWeightsVector(size_t i);
     
     void
     ComputeClusterWeightVectorsCAT();
     
     void 
-    ResetClusterWeightAccumsCAT(size_t i);
+    ResetClusterWeightVectorsAccums(size_t i);
     
     void 
     /**
@@ -643,18 +655,47 @@ namespace STK
     
   public:
     /// The (empty) constructor
-    Mixture(): mpMean(NULL), mpVariance(NULL), mpInputXform(NULL)
+    Mixture(): mID(0), mpMean(NULL), mpVariance(NULL), mpInputXform(NULL), 
+      mAccumG(), mAccumK(), mAccumL(), mAccumGamma(0), mPartialAccumG(0), 
+      mPartialAccumK()
     {};
     
     /// The (empty) destructor
     virtual
     ~Mixture() {};
     
-    
     long                      mID;
     Mean*                     mpMean;
     Variance*                 mpVariance;
     XformInstance*            mpInputXform;
+    
+    //: KLUDGE:
+    // get rid of this... 
+    // Cluster Parameter Update section
+    Matrix<FLOAT>             mAccumG;
+    Matrix<FLOAT>             mAccumK;
+    BasicVector<FLOAT>        mAccumL;
+    FLOAT                     mAccumGamma;
+    FLOAT                     mPartialAccumG;
+    BasicVector<FLOAT>        mPartialAccumK;
+    
+    /**
+     * @brief Updates the G, K, L accumulators from partial accums and lambdas
+     *
+     * Updates the G, K, L accumulators which sum over speakers, i.e. we want
+     * to call this function whenever new speaker is loaded = when new weights 
+     * are read. The partial accums are cleared.
+     */
+    void 
+    UpdateClusterParametersAccums();
+    
+    /**
+     * @brief Updates the mean vectors and covariance matrix
+     * @param pModelSet 
+     */
+    void
+    UpdateClusterParametersFromAccums(const ModelSet * pModelSet);
+    
   
     /// Returns the GConst constant
     const FLOAT &
@@ -685,10 +726,10 @@ namespace STK
 
     
     Mixture&
-    AddToAccumCAT(Matrix<FLOAT>* pGw, Matrix<FLOAT>* pKw);
+    AddToClusterWeightVectorsAccums(Matrix<FLOAT>* pGw, Matrix<FLOAT>* pKw);
 
     Mixture&
-    ResetAccumCAT();
+    ResetClusterWeightVectorsAccums();
         
     void
     /**
@@ -741,9 +782,9 @@ namespace STK
     size_t                  mNumberOfXformStatAccums;
     bool                    mUpdatableFromStatAccums;
     
-    BiasXform**             mpWeights;                 ///< Specifies cluser weight vectors defined by Bias Xform macros (if CAT), otherwise NULL
-    size_t                  mNWeights;                 ///< Number of cluset weight vectors to use
-    Matrix<FLOAT>           mClusterMatrix;            ///< Cluster mean vectors in matrix (stored in transposed form = mean vectors in rows)
+    BiasXform**             mpClusterWeightVectors;    ///< Specifies cluser weight vectors defined by Bias Xform macros (if CAT), otherwise NULL
+    size_t                  mNClusterWeightVectors;    ///< Number of cluset weight vectors to use
+    Matrix<FLOAT>           mClusterMatrixT;            ///< Cluster mean vectors in matrix (stored in transposed form = mean vectors in rows)
     FLOAT*                  mpOccProbAccums;           ///< Occupation probability accumulators
     Matrix<FLOAT>           mCwvAccum;                 ///< Cluster weight vector accumulators (\sum \gamma_m(\tau) o(\tau))
     
@@ -764,8 +805,8 @@ namespace STK
      * @return Pointer to the array of accumulators
      */
     FLOAT*
-    Accumulators()
-    { return mpAccumulators; }
+    pAccums()
+    { return mpVectorO + mVectorSize; }
     
     /**
      * @brief Updates the object from the accumulators
@@ -776,18 +817,18 @@ namespace STK
     
     /** @brief Recalculates mean vector for cluster adaptive training
      * 
-     * mClusterMatrix holds the matrix of cluster mean vectors, mpWeights is the 
+     * mClusterMatrixT holds the matrix of cluster mean vectors, mpWeights is the 
      * cluster weight vector. This method implements their scalar multiplication
      */
     void
     RecalculateCAT();
   
+    void
+    ResetClusterWeightVectorsAccums(size_t i);
+    
+    
   private:
     size_t                  mVectorSize;
-    FLOAT*                  mpAccumulators;
-#ifdef STK_MEMALIGN_MANUAL
-    FLOAT*                  mpAccumulatorsFree;
-#endif
   };
 
   
@@ -824,6 +865,14 @@ namespace STK
     const size_t
     VectorSize() const 
     {return mVectorSize;}
+    
+    /**
+     * @brief Accumulator array accessor
+     * @return Pointer to the array of accumulators
+     */
+    FLOAT*
+    pAccums()
+    { return mpVectorO + mVectorSize; }
     
     void
     /**
@@ -1085,7 +1134,7 @@ namespace STK
   
     
     Matrix<FLOAT>       mMatrix;
-    FLOAT *             mpMatrixO;
+    FLOAT*              mpMatrixO;
     
     /**
      * @brief Linear Xform evaluation 
@@ -1129,10 +1178,10 @@ namespace STK
      * @param pMemory pointer to the extra memory needed by the operation
      * @param direction propagation direction (forward/backward)
      */
-    virtual FLOAT * 
-    Evaluate(FLOAT *    pInputVector, 
-             FLOAT *    pOutputVector,
-             char *     pMemory,
+    virtual FLOAT* 
+    Evaluate(FLOAT*    pInputVector, 
+             FLOAT*    pOutputVector,
+             char*     pMemory,
              PropagDirectionType  direction);
   };
   
@@ -1272,9 +1321,16 @@ namespace STK
   class ClusterWeightAccums
   {
   public:
-    int            mNClusterWeights;
+    int            mNClusterWeightVectors;
     Matrix<FLOAT>* mpGw;
     Matrix<FLOAT>* mpKw;
+  };
+  
+  class ClusterParametersAccums
+  {
+  public:
+    Matrix<FLOAT>* mpGPartial;
+    Matrix<FLOAT>* mpLPartial;
   };
   
   class ReplaceItemUserData

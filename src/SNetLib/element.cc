@@ -9,9 +9,9 @@ SNet::Element::Element(NNet *nnet, bool allocate){
   if(allocate){
     for(int i=0; i < mNLayers; i++){
       Matrix<FLOAT> *pomMatrix = nnet->Layers(i)->Weights();
-      mpWeights[i] = new Matrix<FLOAT>(pomMatrix->Rows(), pomMatrix->Cols(), pomMatrix->Storage());
+      mpWeights[i] = new Matrix<FLOAT>(pomMatrix->Rows(), pomMatrix->Cols());
       pomMatrix = nnet->Layers(i)->Biases();
-      mpBiases[i] = new Matrix<FLOAT>(pomMatrix->Rows(), pomMatrix->Cols(), pomMatrix->Storage());
+      mpBiases[i] = new Matrix<FLOAT>(pomMatrix->Rows(), pomMatrix->Cols());
     }
   } 
   else{

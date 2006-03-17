@@ -6,8 +6,8 @@ SNet::NLayer::NLayer(Matrix<FLOAT>* weights, Matrix<FLOAT>* biases, int outFunc)
   mOutFunc = gFuncTable[outFunc].KID; // STK struct - only function number is needed
   
   // Make weights and biases copy => update matrixes
-  mpChangesWeights = new Matrix<FLOAT>(mpWeights->Rows(), mpWeights->Cols(), mpWeights->Storage());
-  mpChangesBiases = new Matrix<FLOAT>(mpBiases->Rows(), mpBiases->Cols(), mpBiases->Storage());
+  mpChangesWeights = new Matrix<FLOAT>(mpWeights->Rows(), mpWeights->Cols());
+  mpChangesBiases = new Matrix<FLOAT>(mpBiases->Rows(), mpBiases->Cols());
 }
 
 SNet::NLayer::~NLayer(){
@@ -19,7 +19,7 @@ void SNet::NLayer::BunchBias(){
   // For every row precopy biases FIRST! (see BunchLinear for details)
   for(unsigned i=0; i < mpOut->Rows(); i++){  
     assert(mpBiases->Cols() == mpOut->Cols());
-    memcpy(mpOut->Row(i), mpBiases->Row(0), mpBiases->Cols() * sizeof(FLOAT));
+    memcpy((*mpOut)[i], (*mpBiases)[0], mpBiases->Cols() * sizeof(FLOAT));
   }
 }
       

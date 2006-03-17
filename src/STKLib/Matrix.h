@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "Error.h"
+#include "BasicVector.h"
 
 #include <stddef.h>
 #include <stdlib.h>
@@ -44,142 +45,7 @@ namespace STK
     std::ostream & operator << (std::ostream & out, Matrix<_ElemT> & m);
 
   
-  /** **************************************************************************
-   ** **************************************************************************
-   *  @brief Provides a matrix abstraction class
-   *
-   *  This class provides a way to work with matrices in STK.
-   *  It encapsulates basic operations and memory optimizations.
-   *
-   */
-  template<typename _ElemT>
-    class BasicVector
-    {
-    public:
-      /// defines a type of this
-      typedef BasicVector<_ElemT>    ThisType;
-      
-      BasicVector<_ElemT>(): mLength(0), mLeadingDim(0), mpData(NULL)
-#ifdef STK_MEMALIGN_MANUAL
-        ,mpFreeData(NULL)
-#endif
-      {}
-      
-      void
-      Init(size_t length);
-      
-      /**
-       * @brief Returns size of matrix in memory (in bytes)
-       */
-      const size_t
-      MSize() const
-      {
-        return mLeadingDim * sizeof(_ElemT);
-      }
-      
-    protected:
-      size_t  mLength;      ///< Number of elements
-      size_t  mLeadingDim;  ///< Real number of 
-      
-      /// data memory area
-      _ElemT*   mpData;
-#ifdef STK_MEMALIGN_MANUAL
-      /// data to be freed (in case of manual memalignment use, see common.h)
-      _ElemT*   mpFreeData;
-#endif
-    }; // class BasicVector
   
-  /** **************************************************************************
-   ** **************************************************************************
-   *  @brief Provides a matrix abstraction class
-   *
-   *  This class provides a way to work with matrices in STK.
-   *  It encapsulates basic operations and memory optimizations.
-   *
-   */
-  template<typename _ElemT>
-    class BasicMatrix
-    {
-    public:
-      /// defines a type of this
-      typedef BasicMatrix<_ElemT>    ThisType;
-
-      BasicMatrix<_ElemT>(): mMRows(0), mMCols(0), mMRealCols(0), mpData(NULL)
-#ifdef STK_MEMALIGN_MANUAL
-        ,mpFreeData(NULL)
-#endif
-      {}
-      
-      virtual
-      ~BasicMatrix<_ElemT>();
-       
-      /// Initializes matrix (if not done by constructor)
-      void
-      Init(const size_t r, const size_t c);
-
-      /**
-       * @brief Returns number of rows
-       */
-      const size_t
-      Rows() const 
-      { return mMRows;}
-
-      /**
-       * @brief Returns number of columns
-       */
-      const size_t
-      Cols() const 
-      { return mMCols;}
-            
-      /**
-       * @brief Returns leading dimension of the matrix
-       *
-       * Leading dimension represents real number of columns in the memory
-       */
-      const size_t
-      LeadingDim() const
-      { return mMRealCols;}
-      
-      
-      /**
-       * @brief Returns size of matrix in memory (in bytes)
-       */
-      const size_t
-      MSize() const
-      {
-        return mMRows * mMRealCols * sizeof(_ElemT);
-      }
-      
-      /**
-       *  @brief Gives access to the matrix memory area
-       *  @return pointer to the first field
-       */
-      _ElemT*
-      Data() {return mpData;};
-      
-      /**
-       *  @brief Gives access to a specified matrix row without range check
-       *  @return pointer to the first field of the row
-       */
-      _ElemT*      
-      operator [] (size_t i)
-      {
-        return mpData + (i * mMRealCols);
-      }
-    
-    protected:
-      size_t  mMRows;       ///< Number of rows
-      size_t  mMCols;       ///< Number of columns
-      size_t  mMRealCols;   ///< true number of columns for the internal matrix.
-      
-      /// data memory area
-      _ElemT*   mpData;
-#ifdef STK_MEMALIGN_MANUAL
-      /// data to be freed (in case of manual memalignment use, see common.h)
-      _ElemT*   mpFreeData;
-#endif
-    }; // class BasicMatrix
-    
   
   
   
@@ -201,21 +67,18 @@ namespace STK
       // Constructors
 
       /// Empty constructor
-      Matrix<_ElemT> (): mStorageType(STORAGE_UNDEFINED),
+      Matrix<_ElemT> ():
         mMRows(0),    
         mMCols(0),    
-        mMRealCols(0),
-        mTRows(0),
-        mTCols(0)
-        {}
+        mStride(0)
+      {}
 
       /// Copy constructor
       Matrix<_ElemT> (const ThisType & t);
 
       /// Basic constructor
       Matrix<_ElemT> (const size_t r,
-                      const size_t c,
-                      const StorageType st = STORAGE_REGULAR);
+                      const size_t c);
 
       /// Destructor
       ~Matrix<_ElemT> ();
@@ -224,46 +87,42 @@ namespace STK
       /// Initializes matrix (if not done by constructor)
       void
       Init(const size_t r,
-           const size_t c,
-           const StorageType st = STORAGE_REGULAR);
+           const size_t c);
+      
       
       /// Returns number of rows in the matrix
       const size_t
       Rows() const
       {
-        return mTRows;
+        return mMRows;
       }
 
       /// Returns number of columns in the matrix
       const size_t
       Cols() const
       {
-        return mTCols;
+        return mMCols;
       }
 
-      /// Returns vector (matrix) length
+      /// Returns number of columns in the matrix memory
       const size_t
-      Length() const
+      Stride() const
       {
-        return mTRows > mTCols ? mTRows : mTCols;
+        return mStride;
       }
       
-      /// Returns the way the matrix is stored in memory
-      StorageType
-      Storage() const
-      {
-        return mStorageType;
-      }
-      
+
       /// Returns size of matrix in memory
       const size_t
       MSize() const
       {
-        return mMRows * mMRealCols * sizeof(_ElemT);
+        return mMRows * mStride * sizeof(_ElemT);
       }
       
       
-
+      //########################################################################
+      //########################################################################
+      // Math stuff
       /**
        * @brief Performs diagonal scaling
        * @param pDiagVector Array representing matrix diagonal
@@ -294,6 +153,18 @@ namespace STK
       ThisType &
       RepMTMMul(ThisType & a, ThisType & b);
       
+      ThisType &
+      AddCVVtMul(_ElemT c, BasicVector<_ElemT>& rA, BasicVector<_ElemT>& rB);
+      
+      ThisType &
+      AddCVVtMul(_ElemT c, _ElemT* pA, size_t nA, _ElemT* pB, size_t nB);
+
+      ThisType &
+      AddCVVt(_ElemT c, BasicVector<_ElemT>& rA, _ElemT* pB, size_t nB);
+      
+      //########################################################################
+      //########################################################################
+      
       /**
        *  @brief Performs fast sigmoid on row vectors
        *         result to this (elem by elem)
@@ -307,6 +178,9 @@ namespace STK
        */
       ThisType &
       FastRowSoftmax();
+      
+      //########################################################################
+      //########################################################################
       
       /**
        *  @brief Performs matrix transposition
@@ -324,22 +198,6 @@ namespace STK
       ThisType &
       Clear();
       
-      
-      /**
-       * @brief Turns matrix into identity matrix
-       * @return Refference to this
-       */
-      ThisType &
-      ClearI();      
-    
-      /**
-       *  @brief Gives access to the matrix memory area
-       *  @return pointer to the first field
-       */
-      _ElemT *
-      operator () () {return mpData;};
-
-      
       /**
        *  @brief Gives access to a specified matrix row without range check
        *  @return pointer to the first field of the row
@@ -347,7 +205,7 @@ namespace STK
       _ElemT*      
       operator []  (size_t i)
       {
-        return mpData + (i * mMRealCols);
+        return mpData + (i * mStride);
       }
       
       /**
@@ -372,49 +230,40 @@ namespace STK
        *  @brief Gives access to matrix elements (row, col)
        *  @return pointer to the desired field
        */
-      _ElemT &
-      operator () (const size_t r, const size_t c);
+      _ElemT&
+      operator () (const size_t r, const size_t c)
+      { return *(mpData + r * mStride + c); }
 
 
       friend std::ostream & 
-      operator << <> (
-        std::ostream & out, 
-        ThisType & m);
+      operator << <> (std::ostream & out, ThisType & m);
 
             
       void PrintOut(char *file);
 
     
     protected:
-      /// keeps info about data layout in the memory
-      StorageType mStorageType;
-
-
+      
       //@{
       /// these atributes store the real matrix size as it is stored in memory
       /// including memalignment
-      size_t  mMRows;       ///< Number of rows
-      size_t  mMCols;       ///< Number of columns
-      size_t  mMRealCols;   ///< true number of columns for the internal matrix.
-                            ///< This number may differ from M_cols as memory
-                            ///< alignment might be used
-      //size_t  mMSize;       ///< Total size of data block in bytes
-
-      size_t  mTRows;       ///< Real number of rows (available to the user)
-      size_t  mTCols;       ///< Real number of columns
-      //@}
-
+      size_t    mMRows;       ///< Number of rows
+      size_t    mMCols;       ///< Number of columns
+      size_t    mStride;      ///< true number of columns for the internal matrix.
+                              ///< This number may differ from M_cols as memory
+                              ///< alignment might be used
       /// data memory area
       _ElemT*   mpData;
 
 #ifdef STK_MEMALIGN_MANUAL
       /// data to be freed (in case of manual memalignment use, see common.h)
-      _ElemT *  mpFreeData;
+      _ElemT*   mpFreeData;
 #endif
     }; // class Matrix
 
 
 
+  
   /**
    *  @brief Provides a window matrix abstraction class
    *
@@ -462,16 +311,11 @@ namespace STK
 
       /// Basic constructor
       WindowMatrix<_ElemT> (const size_t r,
-                            const size_t c,
-                            const StorageType st = STORAGE_REGULAR):                            
-        Matrix<_ElemT>(r, c, st), // create the base class
+                            const size_t c):                            
+        Matrix<_ElemT>(r, c), // create the base class
         mOrigMRows    (Matrix<_ElemT>::mMRows),
         mOrigMCols    (Matrix<_ElemT>::mMCols),
-        mOrigMRealCols(Matrix<_ElemT>::mMRealCols),
-        //mOrigMSize    (Matrix<_ElemT>::mMSize),
-        //mOrigMSkip    (Matrix<_ElemT>::mMSkip),
-        mOrigTRows    (Matrix<_ElemT>::mTRows),   // copy the original values
-        mOrigTCols    (Matrix<_ElemT>::mTCols),
+        mOrigMRealCols(Matrix<_ElemT>::mStride),
         mTRowOff(0), mTColOff(0)          // set the offset
       {
         mpOrigData = Matrix<_ElemT>::mpData;
@@ -504,12 +348,9 @@ namespace STK
       Reset ()
       {
         Matrix<_ElemT>::mpData    =  mpOrigData;
-        Matrix<_ElemT>::mTRows    =  mOrigTRows; // copy the original values
-        Matrix<_ElemT>::mTCols    =  mOrigTCols;
         Matrix<_ElemT>::mMRows    =  mOrigMRows;
         Matrix<_ElemT>::mMCols    =  mOrigMCols;
-        Matrix<_ElemT>::mMRealCols=  mOrigMRealCols;
-        //Matrix<_ElemT>::mMSize    =  mOrigMSize;
+        Matrix<_ElemT>::mStride   =  mOrigMRealCols;
 
         mTRowOff = 0;
         mTColOff = 0;
@@ -555,6 +396,12 @@ namespace STK
     Matrix<float> &
     Matrix<float>::
     FastRowSoftmax();
+
+  template<>
+    Matrix<float> &
+    Matrix<float>::
+    AddCVVtMul(float c, BasicVector<float>& rA, BasicVector<float>& rB);
+
 } // namespace STK
     
 //#ifndef STK_Matrix_h

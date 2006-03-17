@@ -671,7 +671,7 @@ namespace STK
   //***************************************************************************
   //***************************************************************************
   void 
-  KillToken(Token *token)
+  KillToken(Token* token)
   {
     token->mLike = LOG_0;
     FreeWordLinkRecords(token->mpWlr);
@@ -683,7 +683,7 @@ namespace STK
   //***************************************************************************
   //***************************************************************************
   FLOAT 
-  DiagCGaussianDensity(Mixture *mix, FLOAT  *obs, Network *net)
+  DiagCGaussianDensity(Mixture* mix, FLOAT* obs, Network* net)
   {
     FLOAT mLike = 0.0;
     size_t j;
@@ -1001,7 +1001,8 @@ namespace STK
         vmacc[vec_size] += Lqjmt; //norms for variance
         
         // collect statistics for cluster weight vectors 
-        if (0 < mix->mpMean->mCwvAccum.Cols())
+        if (mpModelSetToUpdate->mClusterWeightVectorsUpdate
+        && (0 < mix->mpMean->mCwvAccum.Cols()))
         {
           for (size_t vi = 0; vi < mix->mpMean->mCwvAccum.Rows(); vi++)
           {
@@ -1012,7 +1013,16 @@ namespace STK
             }
           }
         }
-  
+        
+        // if Cluster Parameters are updated:
+        if (mix->mAccumG.Rows() > 0
+        && (!mpModelSetToUpdate->mClusterWeightVectorsUpdate))
+        {
+          mix->mPartialAccumG += Lqjmt;
+          mix->mPartialAccumK.AddCVMul(Lqjmt, xobs, vec_size);
+          mix->mAccumL.AddCVVDotMul(Lqjmt, xobs, vec_size, xobs, vec_size);
+        }
+        
 //      if (mmi_den_pass) {
 //        state2->mpMixture[m].mWeightAccumDen += Lqjmt;
 //      } else {
@@ -1978,9 +1988,9 @@ namespace STK
   
     SortNodes();  
     
-    mpAuxTokens = (Token *) malloc((maxStatesInModel-1) * sizeof(Token));
-    mpOutPCache = (Cache *) malloc(pHmms->mNStates   * sizeof(Cache));
-    mpMixPCache = (Cache *) malloc(pHmms->mNMixtures * sizeof(Cache));
+    mpAuxTokens = (Token*) malloc((maxStatesInModel-1) * sizeof(Token));
+    mpOutPCache = (Cache*) malloc(pHmms->mNStates      * sizeof(Cache));
+    mpMixPCache = (Cache*) malloc(pHmms->mNMixtures    * sizeof(Cache));
   
     if (mpAuxTokens == NULL ||
         mpOutPCache == NULL || mpMixPCache == NULL) 
@@ -2443,8 +2453,8 @@ namespace STK
   
   // Update accumulators
     for (mTime = 0; mTime < nFrames; mTime++) {//for every frame
-      FLOAT *obs  = pObsMx +p_hmms_alig->mInputVectorSize*(mTime+p_hmms_alig->mTotalDelay);
-      FLOAT *obs2 = pObsMx2+p_hmms_upd->mInputVectorSize*(mTime+p_hmms_upd->mTotalDelay);
+      FLOAT* obs  = pObsMx +p_hmms_alig->mInputVectorSize*(mTime+p_hmms_alig->mTotalDelay);
+      FLOAT* obs2 = pObsMx2+p_hmms_upd->mInputVectorSize*(mTime+p_hmms_upd->mTotalDelay);
       p_hmms_alig->UpdateStacks(obs, mTime, FORWARD);
       if (p_hmms_alig != p_hmms_upd) {
         p_hmms_upd->UpdateStacks(obs2, mTime, FORWARD);

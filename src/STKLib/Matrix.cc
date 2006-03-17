@@ -18,11 +18,30 @@ namespace STK
     {
       for(size_t row = 0; row < this->Rows(); row++)
       {
-        fast_sigmoid_vec(this->Row(row), this->Row(row), this->Cols());
+        fast_sigmoid_vec((*this)[row], (*this)[row], this->Cols());
       }
       return *this;
     }
   
+  
+  //***************************************************************************
+  //***************************************************************************
+  template<>
+    Matrix<float> &
+    Matrix<float>::
+    AddCVVtMul(float c, BasicVector<float>& rA, BasicVector<float>& rB)
+    {
+      assert(rA.Length() == this->mMRows);
+      assert(rB.Length() == this->mMCols);
+      
+#ifdef USE_BLAS
+      cblas_sger(CblasRowMajor, rA.Length(), rB.Length(), c, rA.pData(), 1,
+                 rB.pData(), 1, this->mpData, this->mStride);
+#else
+      Error("Method not implemented without BLAS");
+#endif
+      return *this;
+    }
   
   //***************************************************************************
   //***************************************************************************
@@ -34,23 +53,13 @@ namespace STK
       assert(a.Cols() == b.Rows());
       assert(this->Rows() == a.Rows());
       assert(this->Cols() == b.Cols());
-      assert(a.mStorageType == STORAGE_REGULAR);
-      if(b.Storage() == STORAGE_TRANSPOSED){
+      
 #ifdef USE_BLAS
-        cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, a.Rows(), b.Cols(), b.Rows(),
-                    1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
+      cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, a.Rows(), b.Cols(), b.Rows(),
+                  1.0f, a.mpData, a.mStride, b.mpData, b.mStride, 1.0f, this->mpData, this->mStride);
 #else
-        Error("Method not implemented without BLAS");
-#endif        
-      }
-      else{
-#ifdef USE_BLAS
-        cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, a.Rows(), b.Cols(), b.Rows(),
-                    1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
-#else
-        Error("Method not implemented without BLAS");
+      Error("Method not implemented without BLAS");
 #endif
-      }
       return *this;
     }; // AddMatMult(const ThisType & a, const ThisType & b)
 
@@ -62,19 +71,16 @@ namespace STK
     Matrix<float>::
     DiagScale(float* pDiagVector)
     {
-      assert(mStorageType == STORAGE_REGULAR);
-      
       // :TODO: 
       // optimize this
       float*  data = mpData;
-      int     skip = mMRealCols - mMCols;
       for (size_t i=0; i < Rows(); i++)
       {
         for (size_t j=0; j < Cols(); j++)
         {
           data[j] *= pDiagVector[j];
         }
-        data += skip;
+        data += mStride;
       }
       
       return *this;
@@ -89,29 +95,15 @@ namespace STK
     Matrix<float>::
     AddMMTMul(Matrix<float> & a, Matrix<float> & b)
     { 
-     //fprintf(stderr, "A %d %d B %d %d C %d %d \n", a.Rows(), a.Cols(), b.Rows(), b.Cols(), Rows(), Cols());
-      
       assert(a.Rows() == this->Rows());
       assert(b.Rows() == this->Cols());
       assert(a.Cols() == b.Cols());
-      assert(b.mStorageType == STORAGE_REGULAR);
-      
-      ///this->PrintOut("mojenuly.0");
-      
-      //cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, this->Rows(), this->Cols(), b.Rows(),
-      //            1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
-      
-      //printf("***%d %d %d %d %d %d\n", a.Rows(), b.Rows(), b.Cols(), a.mMRealCols, b.mMRealCols, this->mMRealCols);
-      
 #ifdef USE_BLAS
-        cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, a.Rows(), b.Rows(), b.Cols(),
-                    1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
+      cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, a.Rows(), b.Rows(), b.Cols(),
+                    1.0f, a.mpData, a.mStride, b.mpData, b.mStride, 1.0f, this->mpData, this->mStride);
 #else
       Error("Method not implemented without BLAS");
 #endif
-      
-      //cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, C->rows, C->cols, B->rows,
-      //            1.0f, A->arr, A->realCols, B->arr, B->realCols, 1.0f, C->arr, C->realCols);     
   
       return *this;
     }; 
@@ -127,22 +119,12 @@ namespace STK
       assert(a.Rows() == this->Rows());
       assert(b.Cols() == this->Cols());
       assert(a.Cols() == b.Rows());
-      //assert(b.mStorageType == STORAGE_TRANSPOSED);
-      assert(b.mStorageType == STORAGE_REGULAR);
+      
       Clear();
       
-      ///this->PrintOut("mojenuly.0");
-      
-      //cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, this->Rows(), this->Cols(), b.Rows(),
-      //            1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
-      
-      //printf("***%d %d %d %d %d %d\n", a.Rows(), b.Rows(), b.Cols(), a.mMRealCols, b.mMRealCols, this->mMRealCols);
-      
 #ifdef USE_BLAS
-        cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, a.Rows(), b.Cols(), b.Rows(),
-                    1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
-     // cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, a.Rows(), b.Rows(), b.Cols(),
-            //      1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
+      cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, a.Rows(), b.Cols(), b.Rows(),
+                  1.0f, a.mpData, a.mStride, b.mpData, b.mStride, 1.0f, this->mpData, this->mStride);
 #else
       Error("Method not implemented without BLAS");
 #endif
@@ -153,6 +135,7 @@ namespace STK
       return *this;
     }; 
 
+  
   //***************************************************************************
   //***************************************************************************
   template<>
@@ -163,17 +146,9 @@ namespace STK
       assert(Rows() == Cols());
       
 #ifdef USE_BLAS
-      int* pivot = new int[Rows()];
-      if (STORAGE_REGULAR == Storage())
-      {
-        clapack_sgetrf(CblasColMajor, Rows(), Cols(), mpData, mMRealCols, pivot);
-        clapack_sgetri(CblasColMajor, Rows(), mpData, mMRealCols, pivot);
-      }
-      else
-      {
-        clapack_sgetrf(CblasRowMajor, Rows(), Cols(), mpData, mMRealCols, pivot);
-        clapack_sgetri(CblasRowMajor, Rows(), mpData, mMRealCols, pivot);
-      }
+      int* pivot = new int[mMRows];
+      clapack_sgetrf(CblasColMajor, Rows(), Cols(), mpData, mStride, pivot);
+      clapack_sgetri(CblasColMajor, Rows(), mpData, mStride, pivot);
       delete [] pivot;
 #else
       Error("Method not implemented without BLAS");
@@ -246,16 +221,14 @@ namespace STK
       assert(b.Rows() == this->Cols());
       assert(a.Cols() == b.Cols());
       */
-      assert(a.mStorageType == STORAGE_REGULAR);
-      //assert(this->mStorageType == STORAGE_TRANSPOSED);
       Clear();
             
       //cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, this->Rows(), this->Cols(), b.Rows(),
-      //          1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
-      //printf("%d %d %d %d %d %d\n", a.Cols(), b.Cols(), b.Rows(), a.mMRealCols, b.mMRealCols, this->mMRealCols);
+      //          1.0f, a.mpData, a.mStride, b.mpData, b.mStride, 1.0f, this->mpData, this->mStride);
+      //printf("%d %d %d %d %d %d\n", a.Cols(), b.Cols(), b.Rows(), a.mStride, b.mStride, this->mStride);
 #ifdef USE_BLAS
       cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, a.Cols(), b.Cols(), b.Rows(),
-                  1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
+                  1.0f, a.mpData, a.mStride, b.mpData, b.mStride, 1.0f, this->mpData, this->mStride);
 #else
       Error("Method not implemented without BLAS");
 #endif
@@ -271,10 +244,8 @@ namespace STK
     FastRowSoftmax()
     {
       for(size_t row = 0; row < this->Rows(); row++){
-        fast_softmax_vec(this->Row(row), this->Row(row), this->Cols());
+        fast_softmax_vec((*this)[row], (*this)[row], this->Cols());
       }
       return *this;
     }
-    
-  
 }; //namespace STK

@@ -79,8 +79,8 @@ SNet::NNet::~NNet(){
 }
 
 void SNet::NNet::AddToCache(FLOAT *inVector, FLOAT *outVector, int inSize, int outSize){
-  memcpy(mpInCache->Row(mActualCache), inVector, inSize * sizeof(FLOAT));
-  memcpy(mpOutCache->Row(mActualCache), outVector, outSize * sizeof(FLOAT));
+  memcpy((*mpInCache)[mActualCache], inVector, inSize * sizeof(FLOAT));
+  memcpy((*mpOutCache)[mActualCache], outVector, outSize * sizeof(FLOAT));
   mActualCache++;
 }
 
@@ -108,8 +108,8 @@ void SNet::NNet::RandomizeCache(){
 
   // Move elements
   for(int i=0; i < mActualCache; i++){
-    memcpy(mpInCache->Row(i), old_in.Row(randind[i]), mpInCache->Cols() * sizeof(FLOAT)); // element i have to be at possition randind[i]
-    memcpy(mpOutCache->Row(i), old_out.Row(randind[i]), mpOutCache->Cols() * sizeof(FLOAT));
+    memcpy((*mpInCache)[i], old_in.Row(randind[i]), mpInCache->Cols() * sizeof(FLOAT)); // element i have to be at possition randind[i]
+    memcpy((*mpOutCache)[i], old_out.Row(randind[i]), mpOutCache->Cols() * sizeof(FLOAT));
   }
 }
 int pocitadlox = 0;
@@ -183,8 +183,8 @@ void SNet::NNet::GetAccuracy(){
   
   // Looking for maxs in rows of computed and example vectors
   for(unsigned r=0; r < mpCompCachePart->Rows(); r++){
-    FLOAT* a1 = mpCompCachePart->Row(r);
-    FLOAT* a2 = mpOutCache->Row(r);
+    FLOAT* a1 = (*mpCompCachePart)[r];
+    FLOAT* a2 = (*mpOutCache)[r];
     int maxPos1 = 0;
     int maxPos2 = 0;
     

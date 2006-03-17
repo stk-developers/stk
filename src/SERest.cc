@@ -349,16 +349,15 @@ int main(int argc, char *argv[])
   
   mmf_dir      = GetParamStr(&cfgHash, SNAME":MMFDIR",          ".");
   mmf_mask     = GetParamStr(&cfgHash, SNAME":MMFMASK",         NULL);
-  mmf_karkulka = GetParamStr(&cfgHash, SNAME":MMFKARKULKA",     ".");
-  karkulka     = GetParamBool(&cfgHash,SNAME":KARKULKA",        false);
+  mmf_karkulka = GetParamStr(&cfgHash, SNAME":CWOUTDIR",     ".");
+  karkulka     = GetParamBool(&cfgHash,SNAME":CWUPDATE",        false);
   
   // ***************************************************************************
   // Cluster adaptive training update
-  hset.mClusterWeightUpdate = karkulka;
-  std::cerr << "hset.mClusterWeightUpdate = " << hset.mClusterWeightUpdate << std::endl;
+  hset.mClusterWeightVectorsUpdate = karkulka;
   if (karkulka)
   {
-    hset.mClusterWeightOutPath = mmf_karkulka;
+    hset.mClusterWeightsOutPath = mmf_karkulka;
   }
   
   update_mode  = (Update_Mode) GetParamEnum(&cfgHash,SNAME":UPDATEMODE",    UM_UPDATE,
@@ -858,12 +857,13 @@ int main(int argc, char *argv[])
                 "trying pruning threshold: %.2f",
                 file_name->mpPhysical, net.mPruningThresh);
       }
-      ClusterWeightAccums cwa = {hset.mNClusterWeights, hset.mpGw, hset.mpKw};
+      
+      ClusterWeightAccums cwa = {hset.mNClusterWeightVectors, hset.mpGw, hset.mpKw};
 
       // here
-      if (hset_alig->mClusterWeightUpdate)
+      if (hset.mClusterWeightVectorsUpdate)
       {
-        hset_alig->Scan(MTM_MIXTURE, NULL, ComputeClusterWeightVectorAccums, &cwa);
+        hset.Scan(MTM_MIXTURE, NULL, ComputeClusterWeightVectorAccums, &cwa);
       }
       
       if (P > LOG_MIN) 
@@ -884,6 +884,18 @@ int main(int argc, char *argv[])
     }
   }
 
+  // save unsaved cluster mean weights
+  if (hset.mClusterWeightVectorsUpdate)
+  {
+    for (size_t i = 0; i < hset_alig->mNClusterWeightVectors; i++)
+    {
+      hset.ComputeClusterWeightsVector(i);
+      hset.WriteClusterWeightsVector(i);
+    }    
+    hset.mClusterWeightsStream.close();
+  }
+  
+  
   if (trace_flag & 2) 
   {
     TraceLog("Total number of frames: %d\nTotal log likelihood: %e",
@@ -960,6 +972,7 @@ int main(int argc, char *argv[])
       {
         hset.ReadXformStats(trg_hmm_dir, xfStatsBin);
       }
+      
       //UpdateHMMSetFromAccums(trg_hmm_dir, &hset);
       hset.UpdateFromAccums(trg_hmm_dir);
       hset.WriteMmf(trg_mmf, trg_hmm_dir, trg_hmm_ext, hmms_binary);
@@ -967,9 +980,9 @@ int main(int argc, char *argv[])
   }
   
   // if cluster weights update
-  if (hset.mClusterWeightUpdate && hset.mClusterWeightStream.is_open())
+  if (hset.mClusterWeightVectorsUpdate && hset.mClusterWeightsStream.is_open())
   {
-    hset.mClusterWeightStream.close();
+    hset.mClusterWeightsStream.close();
   }
 
   if (hset_alig != &hset) 

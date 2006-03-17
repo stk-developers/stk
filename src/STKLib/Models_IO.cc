@@ -506,7 +506,7 @@ namespace STK
               case 't': data =  ReadTransition   (fp, macro); break;
               case 'j': data =  ReadXformInstance(fp, macro); break;
               case 'x': data =  ReadXform        (fp, macro); break;
-              default : data = NULL; break;
+              default : data =  NULL; break;
             }  
     
             assert(data != NULL);
@@ -567,43 +567,21 @@ namespace STK
               case 'x':
                 //:KLUDGE:
                 // Fix this
-                if (mClusterWeightUpdate
+                if (mClusterWeightVectorsUpdate
                 &&  XT_BIAS == static_cast<Xform*>(ud.mpNewData)->mXformType)
                 {
-                  for (i = 0; i < mNClusterWeights; i++)
+                  for (i = 0; i < mNClusterWeightVectors; i++)
                   {
-                    if (mpClusterWeights[i] == static_cast<BiasXform*>(ud.mpOldData))
+                    if (mpClusterWeightVectors[i] == static_cast<BiasXform*>(ud.mpOldData))
                     {
                       // Recompute the weights vector
-                      ComputeClusterWeightVectorCAT(i);
+                      ComputeClusterWeightsVector(i);
+                      WriteClusterWeightsVector(i);
                       
-                      char buff[1024];
-                      MakeFileName(buff, ud.mpOldData->mpMacro->mpFileName, 
-                        mClusterWeightOutPath.c_str(), NULL);
-                      
-                      std::cerr << buff << std::endl;  
-                      if (!mClusterWeightStream.is_open())
-                      {
-                        mClusterWeightStream.open(buff);
-                      }
-                      else if (mClusterWeightStream.name() != buff)
-                      {
-                        mClusterWeightStream.close();
-                        mClusterWeightStream.open(buff);
-                      }
-                      
-                      // check if nothing's wrong with the stream
-                      if (!mClusterWeightStream.good())
-                      {
-                        Error("Cannot open MMF output file %s", buff);
-                      }
-                      
-                      WriteBiasXform(mClusterWeightStream.file(), false, mpClusterWeights[i]);
-                      
-                      // clear the accumulators 
+                      // clear the accumulators                          
                       mpGw[i].Clear();
                       mpKw[i].Clear();
-                      mpClusterWeights[i] = static_cast<BiasXform*>(ud.mpNewData);
+                      mpClusterWeightVectors[i] = static_cast<BiasXform*>(ud.mpNewData);
                       
                       free(ud.mpNewData->mpMacro->mpFileName);
                       if ((ud.mpNewData->mpMacro->mpFileName = strdup(gpCurrentMmfName)) == NULL)
@@ -615,7 +593,7 @@ namespace STK
                   }
                 }              
                 
-                this->Scan(MTM_XFORM | MTM_XFORM_INSTANCE | MTM_MEAN ,NULL,ReplaceItem, &ud);
+                this->Scan(MTM_XFORM | MTM_XFORM_INSTANCE | MTM_MEAN | MTM_MIXTURE ,NULL,ReplaceItem, &ud);
                 ud.mpOldData->Scan(MTM_REVERSE_PASS | MTM_ALL, NULL,ReleaseItem,NULL);
                 hash = &mXformHash;
                 break;
@@ -663,9 +641,9 @@ namespace STK
       }
 
       // if cluster weights update
-      if (mClusterWeightUpdate && mClusterWeightStream.is_open())
+      if (mClusterWeightVectorsUpdate && mClusterWeightsStream.is_open())
       {
-        mClusterWeightStream.close();
+        mClusterWeightsStream.close();
       }
       throw;
     }
@@ -900,7 +878,7 @@ namespace STK
     return ret;
   }
   
-
+  
   //***************************************************************************
   //***************************************************************************
   Mixture *
@@ -942,6 +920,21 @@ namespace STK
     }
   
     ret->mpMean = ReadMean(fp, NULL);
+    
+    if (!mClusterWeightVectorsUpdate
+    && (NULL != ret->mpMean->mpClusterWeightVectors))
+    {
+      // Cluster Parameter Update section
+      ret->mAccumG.Init(ret->mpMean->mClusterMatrixT.Rows(),
+                        ret->mpMean->mClusterMatrixT.Rows());
+      ret->mAccumK.Init(ret->mpMean->mClusterMatrixT.Rows(),
+                        ret->mpMean->mClusterMatrixT.Cols());
+      ret->mAccumL.Init(ret->mpMean->mClusterMatrixT.Cols());
+      
+      ret->mPartialAccumG = 0;
+      ret->mPartialAccumK.Init(ret->mpMean->mClusterMatrixT.Rows());
+    }
+    
     ret->mpVariance = ReadVariance(fp, NULL);
   
     if (!ret->mpInputXform && (mInputVectorSize == -1))
@@ -977,12 +970,12 @@ namespace STK
 
   //***************************************************************************
   //***************************************************************************
-  Mean *
+  Mean*
   ModelSet::
-  ReadMean(FILE *fp, Macro *macro)
+  ReadMean(FILE* fp, Macro* macro)
   {
-    Mean *    ret = NULL;
-    char *    keyword;
+    Mean*     ret = NULL;
+    char*     keyword;
     int       vec_size;
     int       i;
 //    int       accum_size = 0;
@@ -1000,7 +993,7 @@ namespace STK
           gpCurrentMmfName, 
           gCurrentMmfLine);
       }
-      return  (Mean *) macro->mpData;
+      return  (Mean*) macro->mpData;
     }
   
     // Mean definition can be defined by a set of weighted means
@@ -1020,15 +1013,16 @@ namespace STK
       xforms = new BiasXform*[n_xforms];
       
       // we need to know globally which bias xforms are the weights
-      if (mClusterWeightUpdate
-      &&  NULL == mpClusterWeights)
+      if (mClusterWeightVectorsUpdate
+      &&  NULL == mpClusterWeightVectors)
       {
-        mNClusterWeights = n_xforms;      
-        mpClusterWeights = new BiasXform*[n_xforms];
+        mNClusterWeightVectors = n_xforms;      
+        mpClusterWeightVectors = new BiasXform*[n_xforms];
         mpGw             = new Matrix<FLOAT>[n_xforms];
         mpKw             = new Matrix<FLOAT>[n_xforms];
         init_Gwkw        = true;
       }
+      
       
       for (int xform_i = 0; xform_i < n_xforms; xform_i++)
       {
@@ -1048,9 +1042,9 @@ namespace STK
           xforms[xform_i] = static_cast<BiasXform *>(tmp_macro->mpData);
           total_means    += xforms[xform_i]->mInSize;
           
-          if (mClusterWeightUpdate)
+          if (mClusterWeightVectorsUpdate)
           {
-            mpClusterWeights[xform_i] = xforms[xform_i];
+            mpClusterWeightVectors[xform_i] = xforms[xform_i];
           }          
         }
         else
@@ -1059,6 +1053,7 @@ namespace STK
         }
       } //for (int xform_i; xform_i < n_xforms; xform_i++)
         
+      // at this moment we know how many means we are going to use
       if (init_Gwkw)
       {
         for (int xform_i = 0; xform_i < n_xforms; xform_i++)
@@ -1083,15 +1078,16 @@ namespace STK
           // create new Mean object
           ret = new Mean(vec_size, mAllocAccums);
           // initialize matrix for original mean vectors definition
-          ret->mClusterMatrix.Init(total_means, vec_size + (mAllocAccums ? (vec_size + 1) * 2 : 0));
+          ret->mClusterMatrixT.Init(total_means, vec_size);
           // set the weights vectors
-          ret->mpWeights = xforms;
-          ret->mNWeights = n_xforms;
+          ret->mpClusterWeightVectors = xforms;
+          ret->mNClusterWeightVectors = n_xforms;
           
-          if (mClusterWeightUpdate)
+          
+          if (mClusterWeightVectorsUpdate)
           {
-            ret->mCwvAccum.Init(total_means, vec_size);
-            ret->mpOccProbAccums = new FLOAT[total_means];
+            ret->mCwvAccum.Init(n_xforms, vec_size);
+            ret->mpOccProbAccums = new FLOAT[n_xforms];
           }
         }
         
@@ -1100,7 +1096,7 @@ namespace STK
         {
           tmp_val = GetFloat(fp);
           // fill the matrix 
-          ret->mClusterMatrix[i][j] = tmp_val;
+          ret->mClusterMatrixT[i][j] = tmp_val;
         }
         
       } // for (i = 0; i < bx->mInSize; i++)
@@ -1548,11 +1544,6 @@ namespace STK
     out_size = GetInt(fp);  // Rows in Xform matrix
     in_size =  GetInt(fp);   // Cols in Xform matrix
   
-    //*** 
-    // old malloc
-    //ret = (LinearXform *) malloc(sizeof(LinearXform)+(out_size*in_size-1)*sizeof(ret->mpMatrixO[0]));
-    //if (ret == NULL) Error("Insufficient memory");
-    
     // create new object
     ret = new LinearXform(in_size, out_size);
     
@@ -1564,11 +1555,9 @@ namespace STK
       {
         tmp = GetFloat(fp);
         
-        //if (mUseNewMatrix) ret->mMatrix(r, c) = tmp; 
-          if (mUseNewMatrix) ret->mMatrix[c][r] = tmp;               
-        //else               ret->mpMatrixO[i]  = tmp;  //:TODO: Get rid of this old stuff
+        if (mUseNewMatrix) ret->mMatrix[c][r] = tmp;        
         
-          ret->mpMatrixO[i]  = tmp;  //:TODO: Get rid of this old stuff
+        ret->mpMatrixO[i]  = tmp;  //:TODO: Get rid of this old stuff
         i++;
       }
     }
@@ -2151,19 +2140,20 @@ namespace STK
     size_t    i;
   
     // Mean specified by a set of vectors
-    if (NULL != mean->mpWeights)
+    if (NULL != mean->mpClusterWeightVectors)
+    //if(false)
     {
       PutKwd(fp, binary, KID_Weights);
-      PutInt(fp, binary, mean->mNWeights);
+      PutInt(fp, binary, mean->mNClusterWeightVectors);
       PutNLn(fp, binary);
-      for (i = 0; i < mean->mNWeights; i++)
+      for (i = 0; i < mean->mNClusterWeightVectors; i++)
       {
-        fprintf(fp, "~x \"%s\"", mean->mpWeights[i]->mpMacro->mpName);
+        fprintf(fp, "~x \"%s\"", mean->mpClusterWeightVectors[i]->mpMacro->mpName);
         PutNLn(fp, binary);
       }
       
       // go through the rows in the vector
-      for (i = 0; i < mean->mClusterMatrix.Rows(); i++)
+      for (i = 0; i < mean->mClusterMatrixT.Rows(); i++)
       {
         PutKwd(fp, binary, KID_Mean);
         PutInt(fp, binary, mean->VectorSize());
@@ -2171,7 +2161,7 @@ namespace STK
       
         for (size_t j=0; j < mean->VectorSize(); j++) 
         {
-          PutFlt(fp, binary, mean->mClusterMatrix(i, j));
+          PutFlt(fp, binary, mean->mClusterMatrixT(i, j));
         }
       
         PutNLn(fp, binary);
@@ -2636,4 +2626,37 @@ namespace STK
     fclose(fp);
   }; //ReadXformList(const std::string & rFileName);
   
+
+  //***************************************************************************
+  //*****************************************************************************  
+  void
+  ModelSet::
+  WriteClusterWeightsVector(size_t i)
+  {
+    static char buff[1024];
+    
+    MakeFileName(buff, mpClusterWeightVectors[i]->mpMacro->mpFileName, 
+      mClusterWeightsOutPath.c_str(), NULL);
+    
+    if (!mClusterWeightsStream.is_open())
+    {
+      mClusterWeightsStream.open(buff);
+    }
+    else if (mClusterWeightsStream.name() != buff)
+    {
+      mClusterWeightsStream.close();
+      mClusterWeightsStream.open(buff);
+    }
+    
+    // check if nothing's wrong with the stream
+    if (!mClusterWeightsStream.good())
+    {
+      Error("Cannot open MMF output file %s", buff);
+    }
+    
+    fprintf(mClusterWeightsStream.file(), "~x \"%s\"\n", 
+      mpClusterWeightVectors[i]->mpMacro->mpName);
+    WriteBiasXform(mClusterWeightsStream.file(), false, mpClusterWeightVectors[i]);
+}
+
 }; // namespace STK
