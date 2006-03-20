@@ -195,7 +195,8 @@ namespace STK
     UM_WEIGHT     = 8,
     UM_OLDMEANVAR = 16,
     UM_XFSTATS    = 32,
-    UM_XFORM      = 64
+    UM_XFORM      = 64,
+    UM_CWEIGHTS   = 128
   };
   
   enum KeywordID
@@ -339,11 +340,10 @@ namespace STK
     FLOAT                     MMI_h;
     FLOAT                     MMI_tauI;
     
-    bool                      mClusterWeightVectorsUpdate;
     BiasXform**               mpClusterWeightVectors;
     int                       mNClusterWeightVectors;
     Matrix<FLOAT>*            mpGw;                                             ///< Accumulator G_w for cluster vector update
-    Matrix<FLOAT>*            mpKw;                                             ///< Accumulator k_w for cluster vector update
+    BasicVector<FLOAT>*       mpKw;                                             ///< Accumulator k_w for cluster vector update
     OStkStream                mClusterWeightsStream;
     std::string               mClusterWeightsOutPath;
     
@@ -493,6 +493,12 @@ namespace STK
     void
     UpdateStacks(FLOAT* obs, int time,  PropagDirectionType dir);
     
+    /**
+     * @brief Creates a macro object and adds it into the hash
+     * @param type Type of macro
+     * @param rNewName Macro name
+     * @return Pointer to the new macro object
+     */
     Macro*
     pAddMacro(const char type, const std::string & rNewName);    
     
@@ -502,9 +508,6 @@ namespace STK
     
     void
     ComputeClusterWeightsVector(size_t i);
-    
-    void
-    ComputeClusterWeightVectorsCAT();
     
     void 
     ResetClusterWeightVectorsAccums(size_t i);
@@ -656,7 +659,7 @@ namespace STK
   public:
     /// The (empty) constructor
     Mixture(): mID(0), mpMean(NULL), mpVariance(NULL), mpInputXform(NULL), 
-      mAccumG(), mAccumK(), mAccumL(), mAccumGamma(0), mPartialAccumG(0), 
+      mAccumG(), mAccumK(), mAccumL(), mPartialAccumG(0), 
       mPartialAccumK()
     {};
     
@@ -675,7 +678,7 @@ namespace STK
     Matrix<FLOAT>             mAccumG;
     Matrix<FLOAT>             mAccumK;
     BasicVector<FLOAT>        mAccumL;
-    FLOAT                     mAccumGamma;
+    //FLOAT                   mAccumGamma;         // this accumulator is now in mpVectorO[mVectorSize*3]
     FLOAT                     mPartialAccumG;
     BasicVector<FLOAT>        mPartialAccumK;
     
@@ -726,7 +729,7 @@ namespace STK
 
     
     Mixture&
-    AddToClusterWeightVectorsAccums(Matrix<FLOAT>* pGw, Matrix<FLOAT>* pKw);
+    AddToClusterWeightVectorsAccums(Matrix<FLOAT>* pGw, BasicVector<FLOAT>* pKw);
 
     Mixture&
     ResetClusterWeightVectorsAccums();
@@ -966,19 +969,49 @@ namespace STK
     XformInstance*        mpNext; // Chain of all instances
     XformStatCache*       mpXformStatCache;
     size_t                mNumberOfXformStatCaches;
-    size_t                mOutSize;
+    
     int                   mStatCacheTime;
     char*                 mpMemory;
     int                   mTotalDelay;
 
     Variance*             mpVarFloor;
         
-    FLOAT*                mpOutputVector; 
     
+    /**
+     * @brief Returns output vector size
+     */
+    const size_t
+    OutSize() const
+    { return mOutputVector.Length(); }
+    
+    
+    /**
+     * @brief Gives access to the output data vector
+     * @return Pointer to the const data array
+     */
+    const FLOAT*
+    pOutputData() const
+    { return mOutputVector.pData(); }
+    
+
+    /**
+     * @brief Gives access to the output data vector
+     * @return Pointer to the data array
+     */
     FLOAT*
-    XformPass(FLOAT *in_vec, int time, PropagDirectionType dir);
-  
-  
+    pOutputData()
+    { return mOutputVector.pData(); }
+    
+    
+    /**
+     * @brief Output vector accessor
+     * @return Const refference to the output vector object
+     */
+    const BasicVector<FLOAT>&
+    OutputVector() const
+    { return mOutputVector; }
+    
+    
     void
     /**
      * @brief Performs desired @c action on the HMM's data which are chosen by @mask
@@ -992,6 +1025,17 @@ namespace STK
           ScanAction      action, 
           void*           pUserData);
   
+    
+    friend 
+    FLOAT*
+    XformPass( XformInstance*         pXformInst, 
+               FLOAT*                 pInputVector, 
+               int                    time, 
+               PropagDirectionType    dir);
+               
+  private:
+    /// Output vector declaration
+    BasicVector<FLOAT>    mOutputVector;
   };
 
   
@@ -1321,9 +1365,9 @@ namespace STK
   class ClusterWeightAccums
   {
   public:
-    int            mNClusterWeightVectors;
-    Matrix<FLOAT>* mpGw;
-    Matrix<FLOAT>* mpKw;
+    int                   mNClusterWeightVectors;
+    Matrix<FLOAT>*        mpGw;
+    BasicVector<FLOAT>*   mpKw;
   };
   
   class ClusterParametersAccums

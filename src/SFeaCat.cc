@@ -227,7 +227,7 @@ int main(int argc, char *argv[])
                             cmn_path, cvn_path, cvg_file, &rhfbuff);
 
     vec_size = header.mSampleSize / sizeof(float);
-    out_size = p_input ? p_input->mOutSize : vec_size;
+    out_size = p_input ? p_input->OutSize() : vec_size;
 
     if (hset.mInputVectorSize != -1 && hset.mInputVectorSize != vec_size) 
     {

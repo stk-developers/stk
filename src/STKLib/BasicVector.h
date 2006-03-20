@@ -32,6 +32,7 @@ extern "C"{
 namespace STK
 {
   template<typename _ElemT> class BasicVector;
+  template<typename _ElemT> class Matrix;
   
   // we need to declare the friend << operator here
   template<typename _ElemT>
@@ -98,6 +99,14 @@ namespace STK
       { return mpData; }
       
       /**
+       *  @brief Gives access to the vector memory area
+       *  @return pointer to the first field
+       */
+      const _ElemT*
+      pData() const
+      { return mpData; }
+      
+      /**
        *  @brief Gives access to a specified vector element without range check
        *  @return pointer to the first field of the row
        */
@@ -118,7 +127,14 @@ namespace STK
       AddCVVDotMul(const _ElemT c, const _ElemT* pV, const size_t nV, 
                                    const _ElemT* pV, const size_t nV);
       
-      
+      BasicVector<_ElemT>&
+      AddCMVMul(const _ElemT c, const Matrix<_ElemT>& rM, 
+                const BasicVector<_ElemT>& rV);
+
+      BasicVector<_ElemT>&
+      AddCMVMul(const _ElemT c, const Matrix<_ElemT>& rM, 
+                const _ElemT* pV);
+                      
       //########################################################################
       //########################################################################
       
@@ -164,12 +180,34 @@ namespace STK
     BasicVector<float>&
     BasicVector<float>::
     AddCVMul(const float c, const BasicVector<float>& rV);
-  
+
+  template<>
+    BasicVector<double>&
+    BasicVector<double>::
+    AddCVMul(const double c, const BasicVector<double>& rV);
+    
+      
   template<>
     BasicVector<float>&
     BasicVector<float>::
     AddCVMul(const float c, const float* pV, const size_t nV);
 
+  template<>
+    BasicVector<double>&
+    BasicVector<double>::
+    AddCVMul(const double c, const double* pV, const size_t nV);
+    
+  
+  template<>
+    BasicVector<float>&
+    BasicVector<float>::
+    AddCMVMul(const float c, const Matrix<float>& rV, const BasicVector<float>& rV);
+
+  template<>
+    BasicVector<double>&
+    BasicVector<double>::
+    AddCMVMul(const double c, const Matrix<double>& rV, const BasicVector<double>& rV);
+    
 } // namespace STK
 
 

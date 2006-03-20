@@ -139,9 +139,9 @@ namespace STK
     {
       // we need to free the data block if it was defined
 #ifndef STK_MEMALIGN_MANUAL
-      free(mpData);
+      if (NULL != mpData) free(mpData);
 #else
-      free(mpFreeData);
+      if (NULL != mpFreeData) free(mpFreeData);
 #endif
     }
 
@@ -235,11 +235,11 @@ namespace STK
   template<typename _ElemT>
     Matrix<_ElemT> &
     Matrix<_ElemT>::
-    AddCVVtMul(_ElemT c, _ElemT* pA, size_t nA, _ElemT* pB, size_t nB)
+    AddCVVtMul(_ElemT c, _ElemT* pA, _ElemT* pB)
     {
-      for (size_t i= 0; i < nA; i++)
+      for (size_t i= 0; i < Rows(); i++)
       {
-        for (size_t j = 0; j < nB; j++)
+        for (size_t j = 0; j < Cols(); j++)
         {
           (*this)[i][j] = c * pA[i] * pB[j];
         }
@@ -365,33 +365,10 @@ namespace STK
       
       return *this;
     }
-//******************************************************************************
-/*
-  template<>
-  inline
-  Matrix<float> &
-  Matrix<float>::
-  FastRowSoftmax()
-  {
-    for(size_t row = 0; row < this->Rows(); row++){
-      softmax_vec(this->Row(row), this->Row(row), this->Cols());
-    }
-    return *this;
-  }
-*/
-  //******************************************************************************
-  //******************************************************************************
-  template<typename _ElemT>
-    Matrix<_ElemT> &
-    Matrix<_ElemT>::
-    Transpose()
-    {
-      return *this;
-    }
-  
-  
-  //******************************************************************************
-  //******************************************************************************
+
+      
+  //****************************************************************************
+  //****************************************************************************
   template<typename _ElemT>
     Matrix<_ElemT> &
     Matrix<_ElemT>::

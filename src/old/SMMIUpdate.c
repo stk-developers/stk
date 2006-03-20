@@ -183,6 +183,7 @@ int main(int argc, char *argv[]) {
                     case 's': update_mask |= UM_XFSTATS;    break;
                     case 'x': update_mask |= UM_XFORM;      break;
                     case 'o': update_mask |= UM_OLDMEANVAR; break;
+                    case 'c': update_mask |= UM_CWEIGHTS;   break;
                     default:
                       Error("Some of characters 'tmvwsxo' are expected after option -u");
                   }

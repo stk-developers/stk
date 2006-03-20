@@ -352,13 +352,6 @@ int main(int argc, char *argv[])
   mmf_karkulka = GetParamStr(&cfgHash, SNAME":CWOUTDIR",     ".");
   karkulka     = GetParamBool(&cfgHash,SNAME":CWUPDATE",        false);
   
-  // ***************************************************************************
-  // Cluster adaptive training update
-  hset.mClusterWeightVectorsUpdate = karkulka;
-  if (karkulka)
-  {
-    hset.mClusterWeightsOutPath = mmf_karkulka;
-  }
   
   update_mode  = (Update_Mode) GetParamEnum(&cfgHash,SNAME":UPDATEMODE",    UM_UPDATE,
                    "UPDATE",UM_UPDATE,"DUMP",UM_DUMP,"BOTH",UM_BOTH, NULL);
@@ -392,8 +385,19 @@ int main(int argc, char *argv[])
       case 's': update_mask |= UM_XFSTATS;    break;
       case 'x': update_mask |= UM_XFORM;      break;
       case 'o': update_mask |= UM_OLDMEANVAR; break;
+      case 'c': update_mask |= UM_CWEIGHTS;   break;
       default:  Error("Unknown update flag '%c' (tmvwsx)", *cchrptr);
     }
+  }
+  
+  hset.mUpdateMask          = update_mask ? update_mask :
+                             UM_TRANSITION | UM_MEAN    | UM_VARIANCE |
+                             UM_WEIGHT     | UM_XFSTATS | UM_XFORM ;
+  // ***************************************************************************
+  // Cluster adaptive training update
+  if (update_mask & UM_CWEIGHTS)
+  {
+    hset.mClusterWeightsOutPath = mmf_karkulka;
   }
   
   if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", false)) 
@@ -557,7 +561,7 @@ int main(int argc, char *argv[])
   hset.mMinMixWeight        = min_mix_wght * MIN_WEGIHT;
   hset.mUpdateMask          = update_mask ? update_mask :
                              UM_TRANSITION | UM_MEAN    | UM_VARIANCE |
-                             UM_WEIGHT     | UM_XFSTATS | UM_XFORM;
+                             UM_WEIGHT     | UM_XFSTATS | UM_XFORM ;
 
   if ((hset.mUpdateMask & (UM_MEAN | UM_VARIANCE)) &&
      !hset.mAllMixuresUpdatableFromStatAccums) 
@@ -861,7 +865,7 @@ int main(int argc, char *argv[])
       ClusterWeightAccums cwa = {hset.mNClusterWeightVectors, hset.mpGw, hset.mpKw};
 
       // here
-      if (hset.mClusterWeightVectorsUpdate)
+      if (hset.mUpdateMask  & UM_CWEIGHTS)
       {
         hset.Scan(MTM_MIXTURE, NULL, ComputeClusterWeightVectorAccums, &cwa);
       }
@@ -885,9 +889,9 @@ int main(int argc, char *argv[])
   }
 
   // save unsaved cluster mean weights
-  if (hset.mClusterWeightVectorsUpdate)
+  if (hset.mUpdateMask & UM_CWEIGHTS)
   {
-    for (size_t i = 0; i < hset_alig->mNClusterWeightVectors; i++)
+    for (int i = 0; i < hset.mNClusterWeightVectors; i++)
     {
       hset.ComputeClusterWeightsVector(i);
       hset.WriteClusterWeightsVector(i);
@@ -944,7 +948,7 @@ int main(int argc, char *argv[])
         macro  = reinterpret_cast<Macro*>(hset.mXformInstanceHash.mpEntry[m]->data);
         suffix = macro->mpName;
         XformInstance* xfi =  reinterpret_cast <XformInstance*>(macro->mpData);
-        tmp_var_floor_size =  xfi->mOutSize;  
+        tmp_var_floor_size =  xfi->OutSize();  
         vector_to_update   = &xfi->mpVarFloor;
       }
         
@@ -979,12 +983,6 @@ int main(int argc, char *argv[])
     }
   }
   
-  // if cluster weights update
-  if (hset.mClusterWeightVectorsUpdate && hset.mClusterWeightsStream.is_open())
-  {
-    hset.mClusterWeightsStream.close();
-  }
-
   if (hset_alig != &hset) 
   {
     hset_alig->Release();

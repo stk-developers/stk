@@ -567,10 +567,10 @@ namespace STK
               case 'x':
                 //:KLUDGE:
                 // Fix this
-                if (mClusterWeightVectorsUpdate
+                if (mUpdateMask & UM_CWEIGHTS
                 &&  XT_BIAS == static_cast<Xform*>(ud.mpNewData)->mXformType)
                 {
-                  for (i = 0; i < mNClusterWeightVectors; i++)
+                  for (int i = 0; i < mNClusterWeightVectors; i++)
                   {
                     if (mpClusterWeightVectors[i] == static_cast<BiasXform*>(ud.mpOldData))
                     {
@@ -582,6 +582,8 @@ namespace STK
                       mpGw[i].Clear();
                       mpKw[i].Clear();
                       mpClusterWeightVectors[i] = static_cast<BiasXform*>(ud.mpNewData);
+                      
+                      //delete [] ud.mpOldData;
                       
                       free(ud.mpNewData->mpMacro->mpFileName);
                       if ((ud.mpNewData->mpMacro->mpFileName = strdup(gpCurrentMmfName)) == NULL)
@@ -641,7 +643,7 @@ namespace STK
       }
 
       // if cluster weights update
-      if (mClusterWeightVectorsUpdate && mClusterWeightsStream.is_open())
+      if ((mUpdateMask & UM_CWEIGHTS) && mClusterWeightsStream.is_open())
       {
         mClusterWeightsStream.close();
       }
@@ -803,7 +805,7 @@ namespace STK
               gpCurrentMmfName, gCurrentMmfLine);
       }
       ret->PDF_obs_coef = GetInt(fp) - 1;
-      range = mpInputXform ? mpInputXform->mOutSize
+      range = mpInputXform ? mpInputXform->OutSize()
                            : mInputVectorSize;
       if (ret->PDF_obs_coef < 0 || ret->PDF_obs_coef >= range) 
       {
@@ -921,8 +923,7 @@ namespace STK
   
     ret->mpMean = ReadMean(fp, NULL);
     
-    if (!mClusterWeightVectorsUpdate
-    && (NULL != ret->mpMean->mpClusterWeightVectors))
+    if (NULL != ret->mpMean->mpClusterWeightVectors)
     {
       // Cluster Parameter Update section
       ret->mAccumG.Init(ret->mpMean->mClusterMatrixT.Rows(),
@@ -942,7 +943,7 @@ namespace STK
       Error("<VecSize> is not defined yet (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
     } 
     
-    size_t size = ret->mpInputXform ? ret->mpInputXform->mOutSize : mInputVectorSize;
+    size_t size = ret->mpInputXform ? ret->mpInputXform->OutSize() : mInputVectorSize;
     
     if (ret->mpMean->VectorSize()     != size || 
         ret->mpVariance->VectorSize() != size) 
@@ -1013,13 +1014,13 @@ namespace STK
       xforms = new BiasXform*[n_xforms];
       
       // we need to know globally which bias xforms are the weights
-      if (mClusterWeightVectorsUpdate
-      &&  NULL == mpClusterWeightVectors)
+      if ((mUpdateMask & UM_CWEIGHTS)
+      && (NULL == mpClusterWeightVectors))
       {
         mNClusterWeightVectors = n_xforms;      
         mpClusterWeightVectors = new BiasXform*[n_xforms];
         mpGw             = new Matrix<FLOAT>[n_xforms];
-        mpKw             = new Matrix<FLOAT>[n_xforms];
+        mpKw             = new BasicVector<FLOAT>[n_xforms];
         init_Gwkw        = true;
       }
       
@@ -1042,7 +1043,7 @@ namespace STK
           xforms[xform_i] = static_cast<BiasXform *>(tmp_macro->mpData);
           total_means    += xforms[xform_i]->mInSize;
           
-          if (mClusterWeightVectorsUpdate)
+          if (mUpdateMask & UM_CWEIGHTS)
           {
             mpClusterWeightVectors[xform_i] = xforms[xform_i];
           }          
@@ -1059,7 +1060,7 @@ namespace STK
         for (int xform_i = 0; xform_i < n_xforms; xform_i++)
         {
           mpGw[xform_i].Init(total_means, total_means);
-          mpKw[xform_i].Init(1, total_means);
+          mpKw[xform_i].Init(total_means);
         }
       }
       
@@ -1083,8 +1084,7 @@ namespace STK
           ret->mpClusterWeightVectors = xforms;
           ret->mNClusterWeightVectors = n_xforms;
           
-          
-          if (mClusterWeightVectorsUpdate)
+          if (mUpdateMask & UM_CWEIGHTS)
           {
             ret->mCwvAccum.Init(n_xforms, vec_size);
             ret->mpOccProbAccums = new FLOAT[n_xforms];
@@ -1263,7 +1263,7 @@ namespace STK
               gpCurrentMmfName, gCurrentMmfLine);
       }
     } else {
-      if (ret->mpXform->mInSize != input->mOutSize) {
+      if (ret->mpXform->mInSize != input->OutSize()) {
         Error("Xform input size must equal to <Input> <VecSize> (%s:%d)",
               gpCurrentMmfName, gCurrentMmfLine);
       }
@@ -2289,7 +2289,7 @@ namespace STK
     }
   
     PutKwd(fp, binary, KID_VecSize);
-    PutInt(fp, binary, xformInstance->mOutSize);
+    PutInt(fp, binary, xformInstance->OutSize());
     PutNLn(fp, binary);
   
     if (xformInstance->mpXform->mpMacro) 

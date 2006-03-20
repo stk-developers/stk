@@ -288,14 +288,14 @@ int main(int argc, char *argv[])
   if (outlabel_map) {
     labelHash = readLabelList(outlabel_map);
     
-    if (NNet_instance->mOutSize != labelHash.mNEntries) {
+    if (NNet_instance->OutSize() != labelHash.mNEntries) {
         Error("Number of entries [%d] in file '%s' does not match with NNet output size [%d]",
-              labelHash.mNEntries, outlabel_map, NNet_instance->mOutSize);
+              labelHash.mNEntries, outlabel_map, NNet_instance->OutSize());
       }
 
     //Allocate buffer, to which example of output vector will be created
     //according to labels
-    obs_out = (FLOAT *)malloc(NNet_instance->mOutSize * sizeof(FLOAT));
+    obs_out = (FLOAT *)malloc(NNet_instance->OutSize() * sizeof(FLOAT));
     if (!obs_out) Error("Insufficient memory");
   }
   
@@ -386,23 +386,23 @@ int main(int argc, char *argv[])
 
       //Get next NN input vector by propagating vector from feature file
       //through NNet_input transformation.
-      obs = NNet_input->XformPass(obs, time, FORWARD);
+      obs = XformPass(NNet_input, obs, time, FORWARD);
       //Input of NN is not yet read because of NNet_input delay
       if (time <= 0) continue;
 
       if (outlabel_map) {
         //Create NN output example vector from lables
-        for (j = 0; j < NNet_instance->mOutSize; j++) obs_out[j] = 0;
+        for (j = 0; j < NNet_instance->OutSize(); j++) obs_out[j] = 0;
         while (lbl_ptr && lbl_ptr->mStop < time) lbl_ptr = lbl_ptr->mpNext;
         if (lbl_ptr && lbl_ptr->mStart <= time) obs_out[(int) lbl_ptr->mpData - 1] = 1;
       } else {
         //Get NN output example vector from obsMx_out matrix
-        obs_out = obsMx_out + (time-1) * NNet_instance->mOutSize;
+        obs_out = obsMx_out + (time-1) * NNet_instance->OutSize();
       }
       
 ///*****************************************************************************************************************************
       /// For EACH NEW VECTOR - give it to SNet
-      prog_obj->NewVector(obs, obs_out, NNet_input->mOutSize, NNet_instance->mOutSize, 
+      prog_obj->NewVector(obs, obs_out, NNet_input->OutSize(), NNet_instance->OutSize(), 
                          ((i+1) == header.mNSamples && (outlabel_map ? file_name->mpNext : file_name->mpNext->mpNext) == NULL));
                                                                        // this returns true, if last vector
 ///*****************************************************************************************************************************

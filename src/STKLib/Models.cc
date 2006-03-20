@@ -74,11 +74,10 @@ namespace STK
   //***************************************************************************
   Mixture&
   Mixture::
-  AddToClusterWeightVectorsAccums(Matrix<FLOAT>* pGw, Matrix<FLOAT>* pKw)
+  AddToClusterWeightVectorsAccums(Matrix<FLOAT>* pGw, BasicVector<FLOAT>* pKw)
   {
-    FLOAT          tmp_val;
     FLOAT          occ_counts;                                                  // occupation counts for current mixture
-    Matrix<FLOAT>  aux_mat1(mpMean->mClusterMatrixT);                            // auxiliary matrix
+    Matrix<FLOAT>  aux_mat1(mpMean->mClusterMatrixT);                           // auxiliary matrix
     
     aux_mat1.DiagScale(mpVariance->mpVectorO);
     
@@ -87,28 +86,19 @@ namespace STK
     {
       occ_counts = mpMean->mpOccProbAccums[sub];                
       
-      // we accumulate Gw here
-      for (size_t i=0; i < pGw[sub].Rows(); i++)
-      {
-        for (size_t j=0; j < pGw[sub].Cols(); j++)
-        {
-          tmp_val = 0;
-          for (size_t k=0; k < aux_mat1.Cols(); k++)
-          {
-            tmp_val += aux_mat1[i][k] * mpMean->mClusterMatrixT[i][k];
-          } // k
-          pGw[sub][i][j] += occ_counts * tmp_val;
-        } // j
-      } // i
+      pGw[sub].AddCMMtMul(occ_counts, aux_mat1, mpMean->mClusterMatrixT);
+      pKw[sub].AddCMVMul(1, aux_mat1, mpMean->mCwvAccum[sub]);
       
+      /*
       // accumulate kw here
       for (size_t i=0; i < aux_mat1.Rows(); i++)
       {   
         for (size_t k=0; k < aux_mat1.Cols(); k++)
         {
-          pKw[sub][0][i] += aux_mat1[i][k] * mpMean->mCwvAccum[sub][k];
+          pKw[sub][i] += aux_mat1[i][k] * mpMean->mCwvAccum[sub][k];
         }      
       }
+      */
     } // for (size_t sub=0; sub < mpMean->mCwvAccum.Rows())
         
     return *this;
@@ -128,10 +118,7 @@ namespace STK
     
     if (mix->mpMean->mNClusterWeightVectors > 0)
     {
-      for (int i = 0; i < cwa->mNClusterWeightVectors; i++)
-      {
-        mix->AddToClusterWeightVectorsAccums(cwa->mpGw, cwa->mpKw);
-      }
+      mix->AddToClusterWeightVectorsAccums(cwa->mpGw, cwa->mpKw);
     }
   }  
   
@@ -466,10 +453,10 @@ namespace STK
   
   //*****************************************************************************
   //*****************************************************************************
-  FLOAT *
+  FLOAT*
   XformPass(
-    XformInstance   *     pXformInst, 
-    FLOAT           *     pInputVector, 
+    XformInstance*        pXformInst, 
+    FLOAT*                pInputVector, 
     int                   time, 
     PropagDirectionType   dir)
   {
@@ -477,7 +464,9 @@ namespace STK
       return pInputVector;
   
     if (time != UNDEF_TIME && pXformInst->mTime == time) 
-      return pXformInst->mpOutputVector;
+// oldvec:
+//      return pXformInst->mpOutputVector; 
+      return pXformInst->pOutputData();
   
     pXformInst->mTime = time;
   
@@ -487,11 +476,14 @@ namespace STK
   
     // evaluate this transformation
     pXformInst->mpXform->Evaluate(
-                          pInputVector,
-                          pXformInst->mpOutputVector,
-                          pXformInst->mpMemory,dir);
+        pInputVector,
+// oldvec:
+//        pXformInst->mpOutputVector,
+        pXformInst->pOutputData(),
+        pXformInst->mpMemory,
+        dir);
   
-    return pXformInst->mpOutputVector;
+    return pXformInst->pOutputData();
   }
 
     
@@ -1669,6 +1661,8 @@ printf("%f", g_floor);
   Mixture::
   UpdateClusterParametersFromAccums(const ModelSet * pModelSet)
   {
+    UpdateClusterParametersAccums();
+    
     if (pModelSet->mUpdateMask & UM_MEAN)
     {
       // update the mean matrix
@@ -1686,7 +1680,7 @@ printf("%f", g_floor);
       for (size_t i = 0; i < mpVariance->VectorSize(); i++)
       {
         tmp_val = 0;
-        
+         
         for (size_t j = 0; j < mAccumK.Rows(); j++)
         {
           tmp_val += mpMean->mClusterMatrixT[j][i] * mAccumK[j][i]; 
@@ -2214,11 +2208,12 @@ printf("%f", g_floor);
   //***************************************************************************
   //***************************************************************************
   XformInstance::
-  XformInstance(size_t vectorSize)
+  XformInstance(size_t vectorSize) :
+    mOutputVector(vectorSize)
   {
-    mpOutputVector  = new FLOAT[vectorSize];
+    //mpOutputVector  = new FLOAT[vectorSize];
     mpVarFloor      = NULL;
-    mOutSize        = vectorSize;
+    //mOutSize        = vectorSize;
     mpXformStatCache = NULL;
 
     mpInput          = NULL;
@@ -2234,11 +2229,12 @@ printf("%f", g_floor);
   //***************************************************************************
   //***************************************************************************
   XformInstance::
-  XformInstance(Xform * pXform, size_t vectorSize)
+  XformInstance(Xform* pXform, size_t vectorSize) :
+    mOutputVector(vectorSize)
   {
-    mpOutputVector      = new FLOAT[vectorSize];
+    //mpOutputVector      = new FLOAT[vectorSize];
     mpVarFloor          = NULL;
-    mOutSize            = vectorSize;
+    //mOutSize            = vectorSize;
     mpXformStatCache    = NULL;
 
     mpInput             = NULL;
@@ -2262,34 +2258,9 @@ printf("%f", g_floor);
       free(mpXformStatCache->mpStats);
       free(mpXformStatCache);
     }
-    delete [] mpOutputVector;
+    //delete [] mpOutputVector;
     delete [] mpMemory;
   }
-  
-  //***************************************************************************
-  //***************************************************************************
-  FLOAT *
-  XformInstance::
-  XformPass(FLOAT * pInputVector, int time, PropagDirectionType dir)
-  {
-    if (time != UNDEF_TIME && this->mTime == time) 
-      return mpOutputVector;
-  
-    this->mTime = time;
-  
-    if (this->mpInput) {
-      pInputVector = mpInput->XformPass(pInputVector, time, dir);
-    }
-  
-    mpXform->Evaluate(pInputVector, mpOutputVector, mpMemory, dir);
-  
-  /*  {int i;
-    for (i=0; i<xformInst->mOutSize; i++)
-      printf("%.2f ", xformInst->mpOutputVector[i]);
-    printf("%s\n", dir == FORWARD ? "FORWARD" : "BACKWARD");}*/
-  
-    return mpOutputVector;
-  }; // XformPass(FLOAT *in_vec, int time, PropagDirectionType dir)
   
   
   //*****************************************************************************
@@ -2467,8 +2438,8 @@ printf("%f", g_floor);
   
     for (i = 0; i < mNLayers; i++) 
     {
-      FLOAT *in  = (i == 0)          ? pInputVector  : mpLayer[i-1].mpOutputVector;
-      FLOAT *out = (i == mNLayers-1) ? pOutputVector : mpLayer[i].mpOutputVector;
+      FLOAT* in  = (i == 0)          ? pInputVector  : mpLayer[i-1].mpOutputVector;
+      FLOAT* out = (i == mNLayers-1) ? pOutputVector : mpLayer[i].mpOutputVector;
       
       for (j = 0; j < mpLayer[i].mNBlocks; j++) 
       {
@@ -2788,10 +2759,10 @@ printf("%f", g_floor);
     this->MMI_h                 = 2.0;
     this->MMI_tauI              = 100.0;
   
-    mClusterWeightVectorsUpdate        = false;
     mpClusterWeightVectors            = NULL;
     mNClusterWeightVectors            = 0;
-    
+    mpGw                              = NULL;
+    mpKw                              = NULL;
     //mClusterParametersUpdate    = false;
     InitKwdTable();    
   } // Init(...);
@@ -2824,6 +2795,11 @@ printf("%f", g_floor);
   
     if (NULL != mpXformToUpdate)
       free(mpXformToUpdate);
+        
+    if (NULL != mpClusterWeightVectors) delete [] mpClusterWeightVectors;
+    if (NULL != mpGw)                   delete [] mpGw;
+    if (NULL != mpKw)                   delete [] mpKw;
+      
   } // Release();
     
   
@@ -3813,7 +3789,7 @@ printf("%f", g_floor);
     {
       for (size_t j=0; j < mpGw[w].Cols(); j++)
       {
-        mpClusterWeightVectors[w]->mVector[0][i-start] += mpGw[w][i][j] * mpKw[w][0][j];
+        mpClusterWeightVectors[w]->mVector[0][i-start] += mpGw[w][i][j] * mpKw[w][j];
       }
     }
   }

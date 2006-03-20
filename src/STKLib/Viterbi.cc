@@ -1001,7 +1001,7 @@ namespace STK
         vmacc[vec_size] += Lqjmt; //norms for variance
         
         // collect statistics for cluster weight vectors 
-        if (mpModelSetToUpdate->mClusterWeightVectorsUpdate
+        if (mpModelSetToUpdate->mUpdateMask & UM_CWEIGHTS
         && (0 < mix->mpMean->mCwvAccum.Cols()))
         {
           for (size_t vi = 0; vi < mix->mpMean->mCwvAccum.Rows(); vi++)
@@ -1015,8 +1015,7 @@ namespace STK
         }
         
         // if Cluster Parameters are updated:
-        if (mix->mAccumG.Rows() > 0
-        && (!mpModelSetToUpdate->mClusterWeightVectorsUpdate))
+        if (0 < mix->mAccumG.Rows())
         {
           mix->mPartialAccumG += Lqjmt;
           mix->mPartialAccumK.AddCVMul(Lqjmt, xobs, vec_size);
@@ -2127,11 +2126,11 @@ namespace STK
   ForwardBackward(FLOAT *obsMx, int nFrames)
   {
     int         i;
-    Cache *     p_out_p_cache;
+    Cache*      p_out_p_cache;
     struct      FWBWRet ret;
-    ModelSet *  hmms = mpModelSet;
+    ModelSet*   hmms = mpModelSet;
   
-    p_out_p_cache = (Cache *) malloc(nFrames * hmms->mNStates * sizeof(Cache));
+    p_out_p_cache = (Cache*) malloc(nFrames * hmms->mNStates * sizeof(Cache));
   
     if (p_out_p_cache == NULL) {
       Error("Insufficient memory");
@@ -2156,7 +2155,9 @@ namespace STK
     mTime = -hmms->mTotalDelay;
   
     mpModelSet->ResetXformInstances();
-    for (i = 0; i < hmms->mTotalDelay; i++) {
+    
+    for (i = 0; i < hmms->mTotalDelay; i++) 
+    {
       mTime++;
       hmms->UpdateStacks(obsMx + hmms->mInputVectorSize * i, mTime, FORWARD);
     }
@@ -2196,9 +2197,9 @@ namespace STK
   
     for (i = nFrames + hmms->mTotalDelay - 1; i >= nFrames; i--) 
     {
-  //  We do not need any features, in backward prop. All output probab. are cached.
-  //  UpdateStacks(hmms, obsMx + hmms->mInputVectorSize * i,
-  //                 mTime, BACKWARD);
+//  We do not need any features, in backward prop. All output probab. are cached.
+//  UpdateStacks(hmms, obsMx + hmms->mInputVectorSize * i,
+//                 mTime, BACKWARD);
       mTime--;
     }
   
@@ -2208,10 +2209,10 @@ namespace STK
     for (i = nFrames-1; i >= 0; i--) {
       mpOutPCache = p_out_p_cache + hmms->mNStates * (mTime-1);
   
-  //  We do not need any features, in backward prop. All output probab. are cached.
-  //  UpdateStacks(mpModelSet, obsMx + hmms->mInputVectorSize * i,     |
-  //                 mTime, mPropagDir);                   |
-  //                                                               V
+//  We do not need any features, in backward prop. All output probab. are cached.
+//  UpdateStacks(mpModelSet, obsMx + hmms->mInputVectorSize * i,     |
+//                 mTime, mPropagDir);                   |
+//                                                               V
       TokenPropagationInModels(NULL); //obsMx + hmms->mInputVectorSize * i);
       mTime--;
       TokenPropagationInNetwork();
@@ -2219,7 +2220,8 @@ namespace STK
   
     mpOutPCache = p_out_p_cache;
   
-    if (!mpFirst->mpExitToken->IsActive()) { // No token survivered
+    if (!mpFirst->mpExitToken->IsActive()) 
+    { // No token survivered
       TokenPropagationDone();
       FreeFWBWRecords();
       ret.totLike = LOG_0;
@@ -2256,7 +2258,7 @@ namespace STK
   //***************************************************************************
   FLOAT 
   Network::
-  MCEReest(FLOAT * pObsMx, FLOAT * pObsMx2, int nFrames, FLOAT weight, FLOAT sigSlope)
+  MCEReest(FLOAT* pObsMx, FLOAT* pObsMx2, int nFrames, FLOAT weight, FLOAT sigSlope)
   {
     struct FWBWRet    fwbw;
     FLOAT             TP;
@@ -2268,9 +2270,9 @@ namespace STK
     int               k;
     int               t;
     
-    ModelSet *        p_hmms_alig = mpModelSet;
-    ModelSet *        p_hmms_upd = mpModelSetToUpdate;
-    Node     *        node;
+    ModelSet*         p_hmms_alig = mpModelSet;
+    ModelSet*         p_hmms_upd = mpModelSetToUpdate;
+    Node*             node;
   
     AccumType origAccumType = mAccumType;
     
@@ -2356,7 +2358,7 @@ namespace STK
     // mpMixPCache might be used to cache likelihoods of mixtures of target
     // models. Reallocate the cache to fit mixtures of both models and reset it.
     k = HIGHER_OF(p_hmms_upd->mNMixtures, p_hmms_alig->mNMixtures);
-    mpMixPCache = (Cache *) realloc(mpMixPCache, k * sizeof(Cache));
+    mpMixPCache = (Cache*) realloc(mpMixPCache, k * sizeof(Cache));
     if (mpMixPCache == NULL) Error("Insufficient memory");
   
     for (i = 0; i < k; i++) mpMixPCache[i].mTime = UNDEF_TIME;
@@ -2569,10 +2571,10 @@ namespace STK
     if (P < LOG_MIN) 
       return LOG_0;
   
-  #ifdef MOTIF
+#ifdef MOTIF
     FLOAT *ocprob = (FLOAT*) malloc(mNumberOfNetStates * (nFrames+1) * sizeof(FLOAT));
     for (i=0; i<mNumberOfNetStates * (nFrames+1); i++) ocprob[i] = 0;
-  #endif
+#endif
   
     for (node = mpFirst; node != NULL; node = node->mpNext) 
     {

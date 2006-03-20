@@ -118,9 +118,9 @@ namespace STK
     {
       // we need to free the data block if it was defined
 #ifndef STK_MEMALIGN_MANUAL
-      free(mpData);
+      if (NULL != mpData) free(mpData);
 #else
-      free(mpFreeData);
+      if (NULL != mpFreeData) free(mpFreeData);
 #endif
     }
 

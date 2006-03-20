@@ -42,7 +42,28 @@ namespace STK
 #endif
       return *this;
     }
-  
+
+  //***************************************************************************
+  //***************************************************************************
+  template<>
+    Matrix<double> &
+    Matrix<double>::
+    AddCVVtMul(double c, BasicVector<double>& rA, BasicVector<double>& rB)
+    {
+      assert(rA.Length() == this->mMRows);
+      assert(rB.Length() == this->mMCols);
+      
+#ifdef USE_BLAS
+      cblas_dger(CblasRowMajor, rA.Length(), rB.Length(), c, rA.pData(), 1,
+                 rB.pData(), 1, this->mpData, this->mStride);
+#else
+      Error("Method not implemented without BLAS");
+#endif
+      return *this;
+    }
+    
+
+          
   //***************************************************************************
   //***************************************************************************
   template<>
@@ -63,6 +84,27 @@ namespace STK
       return *this;
     }; // AddMatMult(const ThisType & a, const ThisType & b)
 
+  
+  //***************************************************************************
+  //***************************************************************************
+  template<>
+    Matrix<double> &
+    Matrix<double>::
+    AddMMMul(Matrix<double> & a, Matrix<double> & b)
+    { 
+      assert(a.Cols() == b.Rows());
+      assert(this->Rows() == a.Rows());
+      assert(this->Cols() == b.Cols());
+      
+#ifdef USE_BLAS
+      cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, a.Rows(), b.Cols(), b.Rows(),
+                  1.0f, a.mpData, a.mStride, b.mpData, b.mStride, 1.0f, this->mpData, this->mStride);
+#else
+      Error("Method not implemented without BLAS");
+#endif
+      return *this;
+    }; // AddMatMult(const ThisType & a, const ThisType & b)    
+    
   
   //***************************************************************************
   //***************************************************************************
@@ -107,7 +149,49 @@ namespace STK
   
       return *this;
     }; 
+
   
+  //***************************************************************************
+  //***************************************************************************
+  template<>
+    Matrix<float> &
+    Matrix<float>::
+    AddCMMtMul(float c, Matrix<float> & a, Matrix<float> & b)
+    { 
+      assert(a.Rows() == this->Rows());
+      assert(b.Rows() == this->Cols());
+      assert(a.Cols() == b.Cols());
+#ifdef USE_BLAS
+      cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, a.Rows(), b.Rows(), b.Cols(),
+                    c, a.mpData, a.mStride, b.mpData, b.mStride, 1.0f, this->mpData, this->mStride);
+#else
+      Error("Method not implemented without BLAS");
+#endif
+  
+      return *this;
+    }; 
+
+  //***************************************************************************
+  //***************************************************************************
+  template<>
+    Matrix<double> &
+    Matrix<double>::
+    AddCMMtMul(double c, Matrix<double> & a, Matrix<double> & b)
+    { 
+      assert(a.Rows() == this->Rows());
+      assert(b.Rows() == this->Cols());
+      assert(a.Cols() == b.Cols());
+#ifdef USE_BLAS
+      cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, a.Rows(), b.Rows(), b.Cols(),
+                    c, a.mpData, a.mStride, b.mpData, b.mStride, 1.0F, this->mpData, this->mStride);
+#else
+      Error("Method not implemented without BLAS");
+#endif
+  
+      return *this;
+    }; 
+
+                  
   //***************************************************************************
   //***************************************************************************
   template<>

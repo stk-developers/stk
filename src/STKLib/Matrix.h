@@ -36,16 +36,12 @@ namespace STK
   
   
   // declare the class so the header knows about it
-  template<typename _ElemT> class BasicMatrix;
   template<typename _ElemT> class Matrix;
 
   
   // we need to declare the friend << operator here
   template<typename _ElemT>
     std::ostream & operator << (std::ostream & out, Matrix<_ElemT> & m);
-
-  
-  
   
   
   
@@ -68,9 +64,10 @@ namespace STK
 
       /// Empty constructor
       Matrix<_ElemT> ():
-        mMRows(0),    
-        mMCols(0),    
-        mStride(0)
+        mMRows(0), mMCols(0), mStride(0), mpData(NULL)
+#ifdef STK_MEMALIGN_MANUAL
+        , mpFreeData(NULL)        
+#endif      
       {}
 
       /// Copy constructor
@@ -111,6 +108,16 @@ namespace STK
         return mStride;
       }
       
+      
+      /**
+       *  @brief Gives access to a specified matrix row without range check
+       *  @return pointer to the first field of the row
+       */
+      const _ElemT*      
+      pData () const
+      {
+        return mpData;
+      }
 
       /// Returns size of matrix in memory
       const size_t
@@ -140,7 +147,10 @@ namespace STK
       
       ThisType &
       AddMMTMul(ThisType & a, ThisType & b);
-      
+
+      ThisType &
+      AddCMMtMul(_ElemT c, ThisType & a, ThisType & b);
+            
       ThisType &
       AddMCMul(ThisType & a, _ElemT c);
       
@@ -157,10 +167,10 @@ namespace STK
       AddCVVtMul(_ElemT c, BasicVector<_ElemT>& rA, BasicVector<_ElemT>& rB);
       
       ThisType &
-      AddCVVtMul(_ElemT c, _ElemT* pA, size_t nA, _ElemT* pB, size_t nB);
+      AddCVVtMul(_ElemT c, _ElemT* pA, _ElemT* pB);
 
       ThisType &
-      AddCVVt(_ElemT c, BasicVector<_ElemT>& rA, _ElemT* pB, size_t nB);
+      AddCVVt(_ElemT c, BasicVector<_ElemT>& rA, _ElemT* pB);
       
       //########################################################################
       //########################################################################
@@ -179,15 +189,6 @@ namespace STK
       ThisType &
       FastRowSoftmax();
       
-      //########################################################################
-      //########################################################################
-      
-      /**
-       *  @brief Performs matrix transposition
-       */
-      ThisType &
-      Transpose();
-
       /**
        *  @brief Performs matrix inversion
        */
@@ -263,8 +264,8 @@ namespace STK
 
 
 
-  
-  /**
+  /** **************************************************************************
+   ** **************************************************************************
    *  @brief Provides a window matrix abstraction class
    *
    *  This class provides a way to work with matrix cutouts in STK.
@@ -287,12 +288,6 @@ namespace STK
       size_t  mOrigMRealCols;   ///< true number of columns for the internal matrix.
                                 ///< This number may differ from M_cols as memory
                                 ///< alignment might be used
-      size_t  mOrigMSize;       ///< Total size of data block in bytes
-      size_t  mOrigMSkip;       ///< Bytes to skip (memalign...)
-
-      size_t  mOrigTRows;       ///< Original number of window rows
-      size_t  mOrigTCols;       ///< Original number of window columns
-
       size_t  mTRowOff;         ///< First row of the window
       size_t  mTColOff;         ///< First column of the window
       //@}
@@ -307,11 +302,10 @@ namespace STK
       WindowMatrix() : Matrix<_ElemT>() {};
 
       /// Copy constructor
-      WindowMatrix<_ElemT> (const ThisType & rT);
+      WindowMatrix(const ThisType & rT);
 
       /// Basic constructor
-      WindowMatrix<_ElemT> (const size_t r,
-                            const size_t c):                            
+      WindowMatrix(const size_t r, const size_t c):                            
         Matrix<_ElemT>(r, c), // create the base class
         mOrigMRows    (Matrix<_ElemT>::mMRows),
         mOrigMCols    (Matrix<_ElemT>::mMCols),
@@ -382,26 +376,51 @@ namespace STK
     Matrix<float>::
     FastRowSigmoid();
     
-  template<>
-    Matrix<float> &
-    Matrix<float>::
-    AddMMMul(Matrix<float> & a, Matrix<float> & b);
-    
+  
   template<>
     Matrix<float> &
     Matrix<float>::
     DiagScale(float* pDiagVector);
     
+  
   template<>
     Matrix<float> &
     Matrix<float>::
     FastRowSoftmax();
+  
+  
+  template<>
+    Matrix<float> &
+    Matrix<float>::
+    AddMMMul(Matrix<float> & a, Matrix<float>& b);
+  
+  template<>
+    Matrix<double> &
+    Matrix<double>::
+    AddMMMul(Matrix<double> & a, Matrix<double>& b);
 
+    
+  template<>
+    Matrix<float> &
+    Matrix<float>::
+    AddCMMtMul(float c, Matrix<float>& a, Matrix<float>& b);
+
+  template<>
+    Matrix<double> &
+    Matrix<double>::
+    AddCMMtMul(double c, Matrix<double>& a, Matrix<double>& b);
+
+      
   template<>
     Matrix<float> &
     Matrix<float>::
     AddCVVtMul(float c, BasicVector<float>& rA, BasicVector<float>& rB);
 
+  template<>
+    Matrix<double> &
+    Matrix<double>::
+    AddCVVtMul(double c, BasicVector<double>& rA, BasicVector<double>& rB);
+    
 } // namespace STK
     
 //#ifndef STK_Matrix_h
