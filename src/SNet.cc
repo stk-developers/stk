@@ -39,7 +39,6 @@ void usage(char *progname)
   fprintf(stderr,
 "\nUSAGE: %s [options] DataFiles...\n\n"
 " Option                                                     Default\n\n"
-" -o s       Extension for new hmm files                     As src\n"
 " -A         Print command line arguments                    Off\n"
 " -B         Save HMM macro files as binary                  Off\n"
 " -C cf      Set config file to cf                           Default\n"
@@ -53,6 +52,7 @@ void usage(char *progname)
 " -T N       Set trace flags to N                            0\n"
 " -V         Print version information                       Off\n"
 " -X ext     Set input label (or netwokr) file ext           lab (net)\n"
+" -o s       Extension for new hmm files                     As src\n"
 "\n"
 " %s is Copyright (C) 2004-2005 Lukas Burget et al. and\n"
 " licensed under the GNU General Public License, version 2.\n"
@@ -432,7 +432,7 @@ int main(int argc, char *argv[])
   if(!cross_validation)  
     hset.WriteMmf(trg_mmf, trg_hmm_dir, trg_hmm_ext, hmms_binary);
     
-  // :KLUDGE: Soudruzi neco nezvladli :o)
+  // :KLUDGE: Some bug in STK
   /// hset.Release();
 
   for (size_t i = 0; i < cfgHash.mNEntries; i++) free(cfgHash.mpEntry[i]->data);

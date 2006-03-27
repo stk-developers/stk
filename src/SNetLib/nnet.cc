@@ -56,7 +56,6 @@ SNet::NNet::NNet(CompositeXform* nn, int cacheSize, int bunchSize, bool crossVal
   
   // Timers initialize
   mpTimers = new Timers(1, 3);
-  //mpTimers->Start(0);
 }
 
 SNet::NNet::~NNet(){
@@ -112,7 +111,7 @@ void SNet::NNet::RandomizeCache(){
     memcpy((*mpOutCache)[i], old_out.Row(randind[i]), mpOutCache->Cols() * sizeof(FLOAT));
   }
 }
-int pocitadlox = 0;
+
 void SNet::NNet::ComputeCache(bool last){
   std::cout << "Computing cache #" << mNCache << " with " << mActualCache << " vectors ... " << std::flush;
   mActualNOfBunch = mActualCache / mBunchSize; // number of full bunches 
@@ -120,7 +119,7 @@ void SNet::NNet::ComputeCache(bool last){
   
   if(mpUpdateElement != NULL){
     if(mActualNOfBunch == 0){
-      std::cerr << "Problem SOLVED - cache with 0 bunches - should vrite only in Parallel version!";
+      // std::cerr << "Problem SOLVED - cache with 0 bunches - should write only in Parallel version!";
       mpUpdateElement->mLast = 1;
       mpClient->SendElement(mpUpdateElement);
       if(DEBUG_PROG) if(*mpSync) std::cerr << "Waiting on barrier\n";

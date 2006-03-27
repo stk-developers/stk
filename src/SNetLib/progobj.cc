@@ -83,7 +83,6 @@ void SNet::ProgObj::NewVector(FLOAT *inVector, FLOAT *outVector, int inSize, int
       mpClient->SendInt(mpNNet->Good());
       mpClient->SendInt(mpNNet->Discarded());
       if(DEBUG_PROG) std::cerr << "Numbers sent!\n";
-      
     }  
     if(!mClient && !mServer){
       TimersGet()->End(0); // 1 CPU 
@@ -201,7 +200,7 @@ void SNet::ProgObj::RunServer(){
     pthread_mutex_lock(mpReceivedMutex);
      size = mReceivedElements.size();
     pthread_mutex_unlock(mpReceivedMutex);
-    if(size >= ActiveClients()){ // if there is enough received elements to make update
+    if( (mSync) ?(size >= ActiveClients()) :(size >= mNoClients || Finished(mNoClients))){ // if there is enough received elements to make update
       if(DEBUG_PROG) std::cerr << "Have enough " << size << "\n";
       element_add->Clear();
       for(int i=0; i < size; i++){
@@ -322,17 +321,12 @@ void SNet::ProgObj::ClientReceivingThread(){
        else std::cerr << "THREAD: Received Weights " << mpNNet->TimersGet()->Counter(0) << "\n";
      }
     pthread_mutex_unlock(mpReceivedMutex);
-    
     if(DEBUG_PROG) if(mSync)  std::cerr << "THREAD: Waiting on barrier\n";
     if(mSync) barrier_wait(mpBarrier);
-
     if(element->mLast == 1){ // waiting for last element from server even if useless
       mClientShouldFinish = true;
     } 
   }
-  
-  //if(mpBarrier->counter == 1) barrier_wait(mpBarrier); // could be last barrier
-  
   if(DEBUG_PROG) std::cerr << "THREAD: END OF THREAD WAITING ON END-BARRIER\n";
   barrier_wait(mpEndBarrier);
 }

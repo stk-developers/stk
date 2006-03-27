@@ -4,7 +4,7 @@ AR = ar
 
 ##############################################################################
 # compiler options
-CFLAGS = -Wall -g -DDOUBLEPRECISION=0 -D_REENTRANT -DUSE_BLAS
+CFLAGS = -Wall -g -DDOUBLEPRECISION=0 -D_REENTRANT -DUSE_BLAS -O2
 CXXFLAGS = $(CFLAGS)
 
 ###############################################################################

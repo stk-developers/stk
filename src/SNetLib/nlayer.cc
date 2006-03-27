@@ -70,9 +70,9 @@ void SNet::NLayer::DerivateError(){
       pErr = mpErr->Row(row);
       pOut = mpOut->Row(row);
       for(unsigned col = 0; col < mpErr->Cols(); col++){
-	(*pErr) = (1 - (*pOut)) * (*pOut) * (*pErr);
-	pOut++;
-	pErr++;
+        (*pErr) = (1 - (*pOut)) * (*pOut) * (*pErr);
+        pOut++;
+        pErr++;
       }
     }
     
