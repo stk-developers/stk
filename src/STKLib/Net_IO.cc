@@ -59,7 +59,8 @@ namespace STK
   // to this new record is returned.
   {
     Node *node;
-    ENTRY e, *ep;
+    ENTRY e = {0}; //{0} is just to make compiler happy
+    ENTRY *ep;
   
     if (node_hash->mTabSize == 0 && !my_hcreate_r(INIT_NODE_HASH_SIZE, node_hash))
       Error("Insufficient memory");
@@ -528,7 +529,8 @@ namespace STK
         nodeType = nodeType == 'K' ? 'W' : 'N';
         }
         if (nodeType == 'W') {
-          ENTRY e, *ep;
+          ENTRY e = {0}; //{0} is just to make compiler happy
+          ENTRY *ep;
           Word *word = NULL;
   
           e.key  = wordOrModelName;
@@ -818,7 +820,8 @@ namespace STK
             Error("Sub-lattice nodes are not yet supported (%s:%d)",
                   *valptr, file_name, line_no);
           } else if (!strcmp(chptr, "WORD") || !strcmp(chptr, "W")) {
-            ENTRY e, *ep;
+            ENTRY e = {0}; //{0} is just to make compiler happy
+            ENTRY *ep;
             if (getHTKstr(e.key = valptr, &chptr)) {
               Error("%s (%s:%d)", chptr, file_name, line_no);
             }
@@ -855,7 +858,8 @@ namespace STK
             node->mType &= ~(NT_MODEL | NT_PHONE);
             node->mType |= NT_WORD;
           } else if (!strcmp(chptr, "MODEL") || !strcmp(chptr, "M")) {
-            ENTRY e, *ep;
+            ENTRY e = {0}; //{0} is just to make compiler happy
+            ENTRY *ep;
   
             if (getHTKstr(e.key = valptr, &chptr)) {
               Error("%s (%s:%d)", chptr, file_name, line_no);
@@ -1242,7 +1246,8 @@ namespace STK
           } else if (chptr[0] == 'v') {
             node_var = getInteger(valptr, &chptr, file_name, line_no) - 1;
           } else if (chptr[0] == 'W') {
-            ENTRY e, *ep;
+            ENTRY e = {0}; //{0} is just to make compiler happy
+            ENTRY *ep;
             if (getHTKstr(e.key = valptr, &chptr)) {
               Error("%s (%s:%d)", chptr, file_name, line_no);
             }

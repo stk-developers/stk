@@ -173,6 +173,9 @@ int main(int argc, char *argv[])
         char *                  cvn_file;
   const char *                  cvn_mask;
   const char *                  cvg_file;
+  const char *                  mmf_dir;
+  const char *                  mmf_mask;
+
   int                           trace_flag;
   int                           targetKind;
   int                           derivOrder;
@@ -275,6 +278,10 @@ int main(int argc, char *argv[])
   trace_flag   = GetParamInt(&cfgHash, SNAME":TRACE",           0);
   script =(char*)GetParamStr(&cfgHash, SNAME":SCRIPT",          NULL);
   mmf    =(char*)GetParamStr(&cfgHash, SNAME":SOURCEMMF",       NULL);
+  
+  mmf_dir      = GetParamStr(&cfgHash, SNAME":MMFDIR",          ".");
+  mmf_mask     = GetParamStr(&cfgHash, SNAME":MMFMASK",         NULL);
+
 
   cchrptr      = GetParamStr(&cfgHash, SNAME":LABELFORMATING",  "");
   while (*cchrptr) {
@@ -442,6 +449,18 @@ int main(int argc, char *argv[])
     if (hset.mInputVectorSize != static_cast<int>(header.mSampleSize / sizeof(float))) {
       Error("Vector size [%d] in '%s' is incompatible with HMM set [%d]",
             header.mSampleSize/sizeof(float), file_name->mpPhysical, hset.mInputVectorSize);
+    }
+    
+    if(mmf_mask != NULL) {
+      static string lastSpeakerMMF;
+      string speakerMMF;
+      ProcessMask(file_name->logical, mmf_mask, speakerMMF);
+        
+      if(lastSpeakerMMF != speakerMMF) 
+      {
+        hset.ParseMmf((string(mmf_dir) + "/" + speakerMMF).c_str(), NULL);
+        lastSpeakerMMF = speakerMMF;
+      }
     }
     
     if (!network_file) 

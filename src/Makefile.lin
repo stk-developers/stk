@@ -94,6 +94,9 @@ SRover      : $(STKLIB)
 SResults    : $(STKLIB)
 SExpand     : $(STKLIB)
 SNet        : $(STKLIB) $(SNETLIB)
+SNetStats   : $(STKLIB) $(SNETLIB)
+
+
 
 SERestX     : SERest.o $(STKLIB) STKLib/imagesc.o
 	$(CXX) $(CFLAGS) $(XFLAGS) -o $@ $<

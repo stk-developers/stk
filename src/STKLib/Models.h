@@ -196,7 +196,8 @@ namespace STK
     UM_OLDMEANVAR = 16,
     UM_XFSTATS    = 32,
     UM_XFORM      = 64,
-    UM_CWEIGHTS   = 128
+    UM_MAP        = 128,
+    UM_CWEIGHTS   = 256
   };
   
   enum KeywordID
@@ -339,6 +340,7 @@ namespace STK
     FLOAT                     MMI_E;
     FLOAT                     MMI_h;
     FLOAT                     MMI_tauI;
+    FLOAT                     mMapTau;
     
     BiasXform**               mpClusterWeightVectors;
     int                       mNClusterWeightVectors;
@@ -484,6 +486,10 @@ namespace STK
     void 
     UpdateFromAccums(const char* pOutputDir);
     
+    void
+    AttachPriors(ModelSet *pPriorModelSet);
+
+    
     void 
     DistributeMacroOccurances();
     
@@ -555,6 +561,15 @@ namespace STK
     void
     UpdateFromAccums(const ModelSet * pModelSet);
     
+        /**
+     * 
+     * @brief Attach prior model nodes to target model nodes
+     * @param nodeName 
+     * @param pPriorMean 
+     */
+    void
+    AttachPriors(HMMSetNodeName nodeName, Hmm * pPriorHmm);
+
     
     /**
      * @brief Performs desired @c action on the HMM's data which are chosen by @mask
@@ -619,7 +634,9 @@ namespace STK
       FLOAT                   mWeight;
       FLOAT                   mWeightAccum; //used for reestimation
       FLOAT                   mWeightAccumDen;
-    }*                       mpMixture;
+    }*                        mpMixture;
+    
+    State *                   mpPrior;
     
     void
     /**
@@ -628,8 +645,16 @@ namespace STK
      * @param rHmm parrent Hmm of this state
      */
     UpdateFromAccums(const ModelSet * pModelSet, const Hmm * pHmm);
-  
-  
+
+    /**
+     * 
+     * @brief Attach prior model nodes to target model nodes
+     * @param nodeName 
+     * @param pPriorMean 
+     */
+    void
+    AttachPriors(HMMSetNodeName nodeName, State * pPriorState);
+    
     void
     /**
      * @brief Performs desired @c action on the HMM's data which are chosen by @mask
@@ -720,6 +745,15 @@ namespace STK
     UpdateFromAccums(const ModelSet * pModelSet);
     
     /**
+     * 
+     * @brief Attach prior model nodes to target model nodes
+     * @param nodeName 
+     * @param pPriorMean 
+     */
+    void
+    AttachPriors(HMMSetNodeName nodeName, Mixture * pPriorMixture);
+    
+    /**
      * @brief Performs variance flooring on the mixture's variance
      * @param rModelSet parrent ModelSet containing variance floor vector
      * @return pointer to the mixture variance object
@@ -784,6 +818,7 @@ namespace STK
     XformStatAccum*         mpXformStatAccum;
     size_t                  mNumberOfXformStatAccums;
     bool                    mUpdatableFromStatAccums;
+    Mean  *                 mpPrior;
     
     BiasXform**             mpClusterWeightVectors;    ///< Specifies cluser weight vectors defined by Bias Xform macros (if CAT), otherwise NULL
     size_t                  mNClusterWeightVectors;    ///< Number of cluset weight vectors to use
@@ -817,6 +852,15 @@ namespace STK
      */
     void
     UpdateFromAccums(const ModelSet * pModelSet);
+    
+    /**
+     * 
+     * @brief Attach prior model nodes to target model nodes
+     * @param nodeName 
+     * @param pPriorMean 
+     */
+    void
+    AttachPriors(HMMSetNodeName nodeName, Mean * pPriorMean);
     
     /** @brief Recalculates mean vector for cluster adaptive training
      * 
@@ -857,7 +901,8 @@ namespace STK
     XformStatAccum *        mpXformStatAccum;
     size_t                  mNumberOfXformStatAccums;
     bool                    mUpdatableFromStatAccums;
-    FLOAT*                  mpVectorO;    
+    FLOAT*                  mpVectorO;
+    Variance*               mpPrior;
 #ifdef STK_MEMALIGN_MANUAL
     FLOAT*                  mpVectorOFree;
 #endif
@@ -883,10 +928,21 @@ namespace STK
      * @param rModelSet ModelSet object which holds the accumulator configuration
      */
     UpdateFromAccums(const ModelSet * pModelSet);
+
+    /**
+     * 
+     * @brief Attach prior model nodes to target model nodes
+     * @param nodeName 
+     * @param pPriorMean 
+     */
+    void
+    AttachPriors(HMMSetNodeName nodeName, Variance * pPriorVariance);
+
   
   private:
     size_t                  mVectorSize;
   };
+
   
   
   /** *************************************************************************
@@ -912,13 +968,23 @@ namespace STK
     size_t                  mNStates;
     //Matrix<FLOAT>           mMatrix;
     FLOAT *                 mpMatrixO;
+    Transition *            mpPrior;
   
-    void
     /**
      * @brief Updates the object from the accumulators
      * @param rModelSet ModelSet object which holds the accumulator configuration
      */
+    void
     UpdateFromAccums(const ModelSet * pModelSet);
+    
+    /**
+     * 
+     * @brief Attach prior model nodes to target model nodes
+     * @param nodeName 
+     * @param pPriorMean 
+     */
+    void
+    AttachPriors(HMMSetNodeName nodeName, Transition * pPriorTransition);
   };
 
 

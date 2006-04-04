@@ -681,7 +681,8 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
     const char *pParamName,
     const char *value,
     int optionChar) {
-    ENTRY e, *ep;
+    ENTRY e = {0};  // {0} is just to make compiler happy
+    ENTRY *ep;
     int i;
     char *bmod, *emod;
   
@@ -827,7 +828,8 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
     MyHSearchData *pConfigHash,
     const char *pParamName)
   {
-    ENTRY e, *ep;
+    ENTRY e={0}; // {0} is just to make compiler happy
+    ENTRY *ep;
   
     e.key = (char *) (pParamName - 1);
     do {
@@ -1118,7 +1120,7 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
     if (fp == stdin || fp == stdout) return 0;
   
     if (fstat(fileno(fp), &sb)) {
-//      return EOF;
+      return EOF;
     }
     if (S_ISFIFO(sb.st_mode)) return pclose(fp);
     else return fclose(fp);
@@ -1459,7 +1461,7 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
     substr[0]             = '\0';
 
     // parse the string
-    if (ret = match(rWildcard.c_str(), rString.c_str(), substr))
+    if (0 != (ret = match(rWildcard.c_str(), rString.c_str(), substr)))
     {
       rSubstr = substr;
     }

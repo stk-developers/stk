@@ -176,6 +176,7 @@ namespace STK
       State *state = (State *) pData;
       if (state->mOutPdfKind != KID_PDFObsVec) 
       {
+//!!! Test for macro_type == 'm'
         for (i = 0; i < state->mNumberOfMixtures; i++) 
         {
           if (state->mpMixture[i].mpEstimates == ud->mpOldData) 
@@ -321,7 +322,8 @@ namespace STK
   Macro *
   FindMacro(MyHSearchData *macro_hash, const char *name) 
   {
-    ENTRY e, *ep;
+    ENTRY e={0}; // {0} is just to make compiler happy
+    ENTRY *ep; 
     e.key = (char *) name;
     my_hsearch_r(e, FIND, &ep, macro_hash);
     return (Macro *) (ep ? ep->data : NULL);
@@ -984,7 +986,7 @@ namespace STK
         {
           if (fwrite(&state->mpMixture[i].mWeightAccum,
                     sizeof(FLOAT), 1, ud->mpFp) != 1 ||
-            fwrite(&state->mpMixture[i].mWeightAccumDen,
+              fwrite(&state->mpMixture[i].mWeightAccumDen,
                     sizeof(FLOAT), 1, ud->mpFp) != 1) 
           {
             Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
@@ -1169,7 +1171,7 @@ namespace STK
       if (!ud->mMmi) { // MMI estimation of Xform statistics has not been implemented yet
         for (i = 0; i < nxfsa_inf; i++) 
         {
-          if (getc(ud->mpFp) != '"') 
+          if ((c=getc(ud->mpFp)) != '"') 
             Error("Incompatible accumulator file: '%s'", ud->mpFileName);
   
           for (j=0; (c=getc(ud->mpFp)) != EOF && c != '"' && j < sizeof(xfName)-1; j++) 
@@ -1227,11 +1229,6 @@ namespace STK
           if (ud->mMmi == 1) {
             if (faddfloat(&state->mpMixture[i].mWeightAccumDen, 1, ud->mWeight, ud->mpFp) != 1 ||
                 faddfloat(&junk,                                1, ud->mWeight, ud->mpFp) != 1) {
-              Error("Incompatible accumulator file: '%s'", ud->mpFileName);
-            }
-          } else if (ud->mMmi == 2) {
-            if (faddfloat(&junk,                                1, ud->mWeight, ud->mpFp) != 1 ||
-                faddfloat(&state->mpMixture[i].mWeightAccumDen, 1, ud->mWeight, ud->mpFp) != 1) {
               Error("Incompatible accumulator file: '%s'", ud->mpFileName);
             }
           } else {
@@ -1302,6 +1299,7 @@ namespace STK
 
   //*****************************************************************************
   //*****************************************************************************
+  //virtual 
   void 
   Hmm::
   Scan(int mask, HMMSetNodeName nodeName,
@@ -1397,7 +1395,6 @@ namespace STK
     // we still may have global varfloor constant set
     if (g_floor > 0.0)
     {
-printf("%f", g_floor);
       // go through each element and update
       g_floor =  1.0 / g_floor;
       for (i = 0; i < mpVariance->VectorSize(); i++)
@@ -1432,44 +1429,70 @@ printf("%f", g_floor);
       FLOAT *mac_den  = mac_num + 2 * vec_size + 1;
       FLOAT *nrm_den  = nrm_num + 2 * vec_size + 1;
   
+      FLOAT *var_pri  = mpVariance->mpPrior->mpVectorO;
+      FLOAT *mean_pri = mpMean    ->mpPrior->mpVectorO;
+
       if (pModelSet->mMmiUpdate == 1) 
       {
-        // I-smoothing
+        // Obsolete way of I-smoothing making use of numearator statistics
         for (i = 0; i < vec_size; i++) 
         {
           mac_num[i] *= (*nrm_num + pModelSet->MMI_tauI) / *nrm_num;
           vac_num[i] *= (*nrm_num + pModelSet->MMI_tauI) / *nrm_num;
         }
         *nrm_num   += pModelSet->MMI_tauI;
+
+        // New way of I-smoothing or general MAP update making use of prior model set
+        if (pModelSet->mUpdateMask & UM_MAP)
+        {
+          for (i = 0; i < vec_size; i++) {
+            mac_num[i] += pModelSet->mMapTau * mean_pri[i];
+            vac_num[i] += pModelSet->mMapTau * var_pri[i];
+          }
+          *nrm_num += pModelSet->mMapTau;
+        }
       }
   
       Djm = 0.0;
       
-      // Find minimum Djm leading to positive update of variances
-      for (i = 0; i < vec_size; i++) {
-        double macn_macd = mac_num[i]-mac_den[i];
-        double vacn_vacd = vac_num[i]-vac_den[i];
-        double nrmn_nrmd = *nrm_num - *nrm_den;
-        double a  = 1/var_vec[i];
-        double b  = vacn_vacd + nrmn_nrmd * (1/var_vec[i] + SQR(mean_vec[i])) -
-                  2 * macn_macd * mean_vec[i];
-        double c  = nrmn_nrmd * vacn_vacd - SQR(macn_macd);
-        double Dd = (- b + sqrt(SQR(b) - 4 * a * c)) / (2 * a);
-  
-        Djm = HIGHER_OF(Djm, Dd);
+      if (pModelSet->mUpdateMask & UM_VARIANCE) 
+      {
+        // Find minimum Djm leading to positive update of variances
+        for (i = 0; i < vec_size; i++) {
+          double macn_macd = mac_num[i]-mac_den[i];
+          double vacn_vacd = vac_num[i]-vac_den[i];
+          double nrmn_nrmd = *nrm_num - *nrm_den;
+          double a  = 1/var_vec[i];
+          double b  = vacn_vacd + nrmn_nrmd * (1/var_vec[i] + SQR(mean_vec[i])) -
+                      2 * macn_macd * mean_vec[i];
+          double c  = nrmn_nrmd * vacn_vacd - SQR(macn_macd);
+          double Dd = (- b + sqrt(SQR(b) - 4 * a * c)) / (2 * a);
+    
+          Djm = HIGHER_OF(Djm, Dd);
+        }
       }
   
       Djm = HIGHER_OF(pModelSet->MMI_h * Djm, pModelSet->MMI_E * *nrm_den);
   
       if (pModelSet->mMmiUpdate == -1) 
       {
-        // I-smoothing
+        // Obsolete way of I-smoothing making use of numearator statistics
         for (i = 0; i < vec_size; i++) 
         {
           mac_num[i] *= (*nrm_num + pModelSet->MMI_tauI) / *nrm_num;
           vac_num[i] *= (*nrm_num + pModelSet->MMI_tauI) / *nrm_num;
         }
         *nrm_num   += pModelSet->MMI_tauI;
+
+        // New way of I-smoothing or general MAP update making use of prior model set
+        if (pModelSet->mUpdateMask & UM_MAP)
+        {
+          for (i = 0; i < vec_size; i++) {
+            mac_num[i] += pModelSet->mMapTau * mean_pri[i];
+            vac_num[i] += pModelSet->mMapTau * var_pri[i];
+          }
+          *nrm_num += pModelSet->mMapTau;
+        }
       }
       
       for (i = 0; i < vec_size; i++) 
@@ -1479,90 +1502,106 @@ printf("%f", g_floor);
         double nrmn_nrmd = *nrm_num - *nrm_den;
   
         double new_mean = (macn_macd + Djm * mean_vec[i]) / (nrmn_nrmd + Djm);
-        var_vec[i]     = 1/((vacn_vacd + Djm * (1/var_vec[i] + SQR(mean_vec[i]))) /
-                        (nrmn_nrmd + Djm) - SQR(new_mean));
-        mean_vec[i]    = new_mean;
-  
-        /* We will floor the variance separately at the end of this member function
-        if (pModelSet->mpVarFloor) {
-          var_vec[i] = LOWER_OF(var_vec[i], pModelSet->mpVarFloor->mpVectorO[i]);
+        
+        if (pModelSet->mUpdateMask & UM_VARIANCE) 
+        {
+          var_vec[i]   = 1/((vacn_vacd + Djm * (1/var_vec[i] + SQR(mean_vec[i]))) /
+                            (nrmn_nrmd + Djm) - SQR(new_mean));
         }
-        */
+        
+        if (pModelSet->mUpdateMask & UM_MEAN) 
+        {
+          mean_vec[i]  = new_mean;
+        }
       }
     } 
     
     // //////////
-    // MFE update
+    // MPE update
     else if (pModelSet->mMmiUpdate == 2 || pModelSet->mMmiUpdate == -2 ) 
     { 
       int vec_size    = mpVariance->VectorSize();
       FLOAT *mean_vec = mpMean->mpVectorO;
       FLOAT *var_vec  = mpVariance->mpVectorO;
   
-      FLOAT *vac_mle  = var_vec + 1 * vec_size;
-      FLOAT *mac_mle  = var_vec + 2 * vec_size;
-      FLOAT *nrm_mle  = var_vec + 3 * vec_size;
+      FLOAT *vac_mpe  = var_vec + 1 * vec_size;
+      FLOAT *mac_mpe  = var_vec + 2 * vec_size;
+      FLOAT *nrm_mpe  = var_vec + 3 * vec_size;
   
-      FLOAT *vac_mfe  = vac_mle + 2 * vec_size + 1;
-      FLOAT *mac_mfe  = mac_mle + 2 * vec_size + 1;
-      FLOAT *nrm_mfe  = nrm_mle + 2 * vec_size + 1;
+      FLOAT *var_pri  = mpVariance->mpPrior->mpVectorO;
+      FLOAT *mean_pri = mpMean    ->mpPrior->mpVectorO;
   
       if (pModelSet->mMmiUpdate == 2) 
       {
-        // I-smoothing
-        for (i = 0; i < vec_size; i++) {
-          mac_mfe[i] += (pModelSet->MMI_tauI / *nrm_mle * mac_mle[i]);
-          vac_mfe[i] += (pModelSet->MMI_tauI / *nrm_mle * vac_mle[i]);
+        // I-smoothing or general MAP update
+        if (pModelSet->mUpdateMask & UM_MAP)
+        {
+//printf("mac_mpe[0]=%f, pModelSet->mMapTau=%f, mean_pri[0]=%f\n", mac_mpe[0], pModelSet->mMapTau, mean_pri[0]);
+//printf("vac_mpe[0]=%f, pModelSet->mMapTau=%f, 1.0/var_pri[0] + SQR(mean_pri[0])=%f\n",  vac_mpe[0], pModelSet->mMapTau, 1.0/var_pri[0] + SQR(mean_pri[0]));
+          for (i = 0; i < vec_size; i++) {
+            mac_mpe[i] += pModelSet->mMapTau * mean_pri[i];
+            vac_mpe[i] += pModelSet->mMapTau * (1.0/var_pri[i] + SQR(mean_pri[i]));
+          }
+          *nrm_mpe += pModelSet->mMapTau;
         }
-        *nrm_mfe += pModelSet->MMI_tauI;
       }
       
       Djm = 0.0;
       
-      // Find minimum Djm leading to positive update of variances
-      for (i = 0; i < vec_size; i++) 
+      if (pModelSet->mUpdateMask & UM_VARIANCE) 
       {
-        double macn_macd = mac_mfe[i];
-        double vacn_vacd = vac_mfe[i];
-        double nrmn_nrmd = *nrm_mfe;
-        double a  = 1/var_vec[i];
-        double b  = vacn_vacd + nrmn_nrmd * (1/var_vec[i] + SQR(mean_vec[i])) -
-                  2 * macn_macd * mean_vec[i];
-        double c  = nrmn_nrmd * vacn_vacd - SQR(macn_macd);
-        double Dd = (- b + sqrt(SQR(b) - 4 * a * c)) / (2 * a);
+        // Find minimum Djm leading to positive update of variances
+        for (i = 0; i < vec_size; i++) 
+        {
+          double macn_macd = mac_mpe[i];
+          double vacn_vacd = vac_mpe[i];
+          double nrmn_nrmd = *nrm_mpe;
+          double a  = 1/var_vec[i];
+          double b  = vacn_vacd + nrmn_nrmd * (1/var_vec[i] + SQR(mean_vec[i])) -
+                    2 * macn_macd * mean_vec[i];
+          double c  = nrmn_nrmd * vacn_vacd - SQR(macn_macd);
+          double Dd = (- b + sqrt(SQR(b) - 4 * a * c)) / (2 * a);
   
-        Djm = HIGHER_OF(Djm, Dd);
+          Djm = HIGHER_OF(Djm, Dd);
+        }
       }
   
-      // gWeightAccumDen is passed using quite ugly hack that work
-      // only if mixtures are not shared by more states - MUST BE REWRITEN
+//printf("Djm=%f, gWeightAccumDen=%f\n", Djm, gWeightAccumDen);
+      // !!! gWeightAccumDen is passed using quite ugly hack that work
+      // !!! only if mixtures are not shared by more states - MUST BE REWRITEN
       Djm = HIGHER_OF(pModelSet->MMI_h * Djm, pModelSet->MMI_E * gWeightAccumDen);
   
       if (pModelSet->mMmiUpdate == -2) 
       {
         // I-smoothing
-        for (i = 0; i < vec_size; i++) 
+        if (pModelSet->mUpdateMask & UM_MAP)
         {
-          mac_mfe[i] += (pModelSet->MMI_tauI / *nrm_mle * mac_mle[i]);
-          vac_mfe[i] += (pModelSet->MMI_tauI / *nrm_mle * vac_mle[i]);
+          for (i = 0; i < vec_size; i++) {
+            mac_mpe[i] += pModelSet->mMapTau * mean_pri[i];
+            vac_mpe[i] += pModelSet->mMapTau * (1.0/var_pri[i] + SQR(mean_pri[i]));
+          }
+          *nrm_mpe += pModelSet->mMapTau;
         }
-        *nrm_mfe += pModelSet->MMI_tauI;
       }
   
+//printf("mac_mpe[0]=%f, Djm=%f, mean_vec[0]=%f, *nrm_mpe=%f\n", mac_mpe[0], Djm, mean_vec[0], *nrm_mpe);
+//printf("vac_mpe[0]=%f, var_vec[0]=%f\n", vac_mpe[0], var_vec[0]);
       for (i = 0; i < vec_size; i++) 
       {
-        double macn_macd = mac_mfe[i];
-        double vacn_vacd = vac_mfe[i];
-        double nrmn_nrmd = *nrm_mfe;
+        double macn_macd = mac_mpe[i];
+        double vacn_vacd = vac_mpe[i];
+        double nrmn_nrmd = *nrm_mpe;
         double new_mean  = (macn_macd + Djm * mean_vec[i]) / (nrmn_nrmd + Djm);
-        var_vec[i]       = 1 / ((vacn_vacd + Djm * (1/var_vec[i] + SQR(mean_vec[i]))) /
-                               (nrmn_nrmd + Djm) - SQR(new_mean));
-        mean_vec[i]      = new_mean;
-  
-        /* We will floor variance separately in the end
-        if (pModelSet->mpVarFloor) 
-          var_vec[i] = LOWER_OF(var_vec[i], pModelSet->mpVarFloor->mpVectorO[i]);
-        */
+        if (pModelSet->mUpdateMask & UM_VARIANCE) 
+        {
+          var_vec[i]     = 1 / ((vacn_vacd + Djm * (1/var_vec[i] + SQR(mean_vec[i]))) /
+                                (nrmn_nrmd + Djm) - SQR(new_mean));
+        }
+
+        if (pModelSet->mUpdateMask & UM_MEAN)  
+        {
+          mean_vec[i]    = new_mean;
+        }
       }
     }
     
@@ -1576,6 +1615,32 @@ printf("%f", g_floor);
     // ordinary update    
     else 
     {
+      // !!! MAP update should not be here !!!
+      int vec_size    = mpVariance->VectorSize();
+      FLOAT *mean_vec = mpMean->mpVectorO;
+      FLOAT *var_vec  = mpVariance->mpVectorO;
+  
+      FLOAT *mmac  = mean_vec + 1 * vec_size;
+      FLOAT *mnrm  = mean_vec + 2 * vec_size;
+      FLOAT *vvac  = var_vec  + 1 * vec_size;
+      FLOAT *vmac  = var_vec  + 2 * vec_size;
+      FLOAT *vnrm  = var_vec  + 3 * vec_size;
+  
+      FLOAT *var_pri  = mpVariance->mpPrior->mpVectorO;
+      FLOAT *mean_pri = mpMean    ->mpPrior->mpVectorO;
+      
+      if (pModelSet->mUpdateMask & UM_MAP)
+      {
+        for (i = 0; i < vec_size; i++) {
+          mmac[i] += pModelSet->mMapTau * mean_pri[i];
+          vmac[i] += pModelSet->mMapTau * mean_pri[i];
+          vvac[i] += pModelSet->mMapTau * (1.0/var_pri[i] + SQR(mean_pri[i]));
+        }
+        *mnrm += pModelSet->mMapTau;
+        *vnrm += pModelSet->mMapTau;
+      }
+      // !!! MAP update should not be here !!!
+      
       if (!mpVariance->mpMacro)
         mpVariance->UpdateFromAccums(pModelSet);
   
@@ -1593,6 +1658,7 @@ printf("%f", g_floor);
   
   //***************************************************************************
   //***************************************************************************
+  //virtual 
   void 
   Mixture::
   Scan(int mask, HMMSetNodeName nodeName, ScanAction action, void *pUserData)
@@ -1720,12 +1786,12 @@ printf("%f", g_floor);
     mpXformStatAccum          = NULL;
     mNumberOfXformStatAccums  = 0;
     mUpdatableFromStatAccums  = true;
-    mpClusterWeightVectors          = NULL;
-    mNClusterWeightVectors          = 0;
+    mpPrior                   = NULL;
+    mpClusterWeightVectors    = NULL;
+    mNClusterWeightVectors    = 0;
     mpOccProbAccums           = NULL;
   }  
-  
-  
+
   //**************************************************************************  
   //**************************************************************************  
   Mean::
@@ -1769,7 +1835,7 @@ printf("%f", g_floor);
     if (pModelSet->mUpdateMask & UM_MEAN) 
     {
       if (mNumberOfXformStatAccums == 0) 
-      {
+      {              
         for (i = 0; i < VectorSize(); i++) 
         {
           vec[i] = acc[i] / nrm;
@@ -1867,6 +1933,7 @@ printf("%f", g_floor);
     mpXformStatAccum          = NULL;
     mNumberOfXformStatAccums  = 0;
     mUpdatableFromStatAccums  = true;
+    mpPrior                   = NULL;
   }  
   
   //**************************************************************************  
@@ -2001,6 +2068,7 @@ printf("%f", g_floor);
     
     mpMatrixO = new FLOAT[alloc_size];
     mNStates = nStates;
+    mpPrior  = NULL;
   }
   
   //**************************************************************************  
@@ -2056,7 +2124,8 @@ printf("%f", g_floor);
   State::
   State(size_t numMixtures)
   {
-    mpMixture = (numMixtures > 0) ? new MixtureLink[numMixtures] : NULL;    
+    mpMixture = (numMixtures > 0) ? new MixtureLink[numMixtures] : NULL;
+    mpPrior   = NULL;
   }
   
   
@@ -2085,10 +2154,24 @@ printf("%f", g_floor);
 //    if (hmm_set->mUpdateMask & UM_WEIGHT) {
       for (i = 0; i < mNumberOfMixtures; i++) 
       {
+        if(pModelSet->mMmiUpdate == 2 || pModelSet->mMmiUpdate == -2)
+        {
+          //!!! We do not have mWeightAccum, so priot weights are taken instead.
+          //!!! Anyway, this is something not very nice.
+          if(mpPrior->mpMixture[i].mWeight < LOG_MIN)
+          {
+            mpMixture[i].mWeightAccum = 0.0;
+          }
+          else
+          {
+            mpMixture[i].mWeightAccum = exp(mpPrior->mpMixture[i].mWeight);
+          }
+        }
+        
         accum_sum += mpMixture[i].mWeightAccum;
       }
 
-      if (accum_sum <= 0.0) 
+      if (accum_sum <= 0.0 && pModelSet->mMinMixWeight > 0.0) 
       {
         if (mpMacro) 
         {
@@ -2161,6 +2244,7 @@ printf("%f", g_floor);
 
   //***************************************************************************
   //***************************************************************************
+  //virtual 
   void 
   State::
   Scan(int mask, HMMSetNodeName nodeName,  ScanAction action, void *pUserData)
@@ -2265,6 +2349,7 @@ printf("%f", g_floor);
   
   //*****************************************************************************
   //*****************************************************************************
+  //virtual   
   void 
   XformInstance::
   Scan(int mask, HMMSetNodeName nodeName, ScanAction action, void *pUserData)
@@ -2311,6 +2396,7 @@ printf("%f", g_floor);
   
   //****************************************************************************
   //****************************************************************************
+  //virtual 
   void 
   Xform::
   Scan(int mask, HMMSetNodeName nodeName, ScanAction action, void *pUserData)
@@ -2758,7 +2844,7 @@ printf("%f", g_floor);
     this->MMI_E                 = 2.0;
     this->MMI_h                 = 2.0;
     this->MMI_tauI              = 100.0;
-  
+    this->mMapTau               = 10.0;
     mpClusterWeightVectors            = NULL;
     mNClusterWeightVectors            = 0;
     mpGw                              = NULL;
@@ -2821,7 +2907,8 @@ printf("%f", g_floor);
         macro != NULL;
         macro = mask & MTM_REVERSE_PASS ? macro->prevAll : macro->nextAll) 
     {
-      if (macro->mpData != NULL && macro->mpData->mpMacro != macro) 
+      assert(macro->mpData != NULL);
+      if (macro->mpData->mpMacro != macro) 
         continue;
       
       if (nodeName != NULL) 
@@ -2986,12 +3073,12 @@ printf("%f", g_floor);
       if (!mmiDenominatorAccums) macro->mOccurances += occurances;
       switch (t) 
       {
-        case 'h': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
-        case 's': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
-        case 'm': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
-        case 'u': ReadAccum(mt_mean, NULL, macro->mpData, &ud);                break;
-        case 'v': ReadAccum(mt_variance, NULL, macro->mpData, &ud);            break;
-        case 't': ReadAccum(mt_transition, NULL, macro->mpData, &ud);          break;
+        case 'h': 
+        case 's':
+        case 'm': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud);     break;
+        case 'u': ReadAccum(mt_mean, NULL, macro->mpData, &ud);       break;
+        case 'v': ReadAccum(mt_variance, NULL, macro->mpData, &ud);   break;
+        case 't': ReadAccum(mt_transition, NULL, macro->mpData, &ud); break;
         default:  assert(0);
       }
     }
@@ -3160,7 +3247,7 @@ printf("%f", g_floor);
   //  for (macro = variance_list; macro != NULL; macro = macro->mpNext) {
       if (macro->mpData->mpMacro != macro) continue;
       
-      if (strcmp(macro->mpName, "varFloor1")) 
+      if (strncmp(macro->mpName, "varFloor", 8)) 
       {
         if (macro->mOccurances < mMinOccurances) 
         {
@@ -3691,7 +3778,7 @@ printf("%f", g_floor);
     int                       nCIphns = 0;
     MyHSearchData    tmpHash;
     MyHSearchData    retHash;
-    ENTRY                     e;
+    ENTRY                     e={0}; // {0} is just to make compiler happy
     ENTRY *                   ep;
   
     if (!my_hcreate_r(100, &tmpHash)) 
@@ -3808,6 +3895,207 @@ printf("%f", g_floor);
   //**************************************************************************  
   //**************************************************************************  
   void
+  ModelSet::
+  AttachPriors(ModelSet *pPriorModelSet)
+  {
+    Macro *macro;
+    Macro *pPriorMacro;
+    HMMSetNodeName nodeName;
+    
+    strcpy(nodeName+sizeof(HMMSetNodeName)-4, "...");
+  
+    for (macro = mpFirstMacro; macro != NULL; macro = macro->nextAll) 
+    {
+      if (macro->mpData->mpMacro != macro) 
+        continue;
+        
+      MyHSearchData * hash;
+      hash = macro->mType == 'h' ? &pPriorModelSet->mHmmHash :
+             macro->mType == 's' ? &pPriorModelSet->mStateHash :
+             macro->mType == 'm' ? &pPriorModelSet->mMixtureHash :
+             macro->mType == 'u' ? &pPriorModelSet->mMeanHash :
+             macro->mType == 'v' ? &pPriorModelSet->mVarianceHash :
+             macro->mType == 't' ? &pPriorModelSet->mTransitionHash : NULL;
+             
+      if (hash == NULL)
+        continue;
+        
+      if (NULL == (pPriorMacro = FindMacro(hash, macro->mpName))
+      ||  macro->mType != pPriorMacro->mType) 
+      {
+        Error("Macro ~%c \"%s\" is not defined in prior model set", macro->mType, macro->mpName);
+      }
+      
+      if (nodeName != NULL) 
+        strncpy(nodeName, macro->mpName, sizeof(HMMSetNodeName)-4);
+
+      switch (macro->mType) 
+      {
+        case mt_mean:       
+          reinterpret_cast<Mean       *>(macro->mpData)->AttachPriors(nodeName, reinterpret_cast<Mean       *>(pPriorMacro->mpData));
+          break;
+        case mt_variance:   
+          reinterpret_cast<Variance   *>(macro->mpData)->AttachPriors(nodeName, reinterpret_cast<Variance   *>(pPriorMacro->mpData));
+          break;
+        case mt_transition: 
+          reinterpret_cast<Transition *>(macro->mpData)->AttachPriors(nodeName, reinterpret_cast<Transition *>(pPriorMacro->mpData));
+          break;
+        case mt_mixture:    
+          reinterpret_cast<Mixture    *>(macro->mpData)->AttachPriors(nodeName, reinterpret_cast<Mixture    *>(pPriorMacro->mpData));
+          break;
+        case mt_state:      
+          reinterpret_cast<State      *>(macro->mpData)->AttachPriors(nodeName, reinterpret_cast<State      *>(pPriorMacro->mpData));
+          break;
+        case mt_hmm:        
+          reinterpret_cast<Hmm        *>(macro->mpData)->AttachPriors(nodeName, reinterpret_cast<Hmm        *>(pPriorMacro->mpData));
+          break;
+        case mt_Xform:
+        case mt_XformInstance: 
+          break;
+        default: assert(0);
+      }   
+    }
+  }
+  
+  //*****************************************************************************
+  //*****************************************************************************
+  void 
+  Hmm::
+  AttachPriors(HMMSetNodeName nodeName, Hmm * pPriorHmm)
+  {
+    size_t    i;
+    size_t    n = 0;
+    char *    chptr = NULL;
+  
+    if (nodeName != NULL) 
+    {
+      n = strlen(nodeName);
+      chptr = nodeName + n;
+      n = sizeof(HMMSetNodeName) - 4 - n;
+    }
+  
+    if (mNStates != pPriorHmm->mNStates)
+    {
+      Error("Mismatch in number of states in target and prior HMM's '%s'", nodeName);
+    }
+      
+    for (i=0; i < mNStates-2; i++) 
+    {
+      if (!mpState[i]->mpMacro) 
+      {
+        if (n > 0 ) snprintf(chptr, n, ".state[%d]", (int) i+2);
+        mpState[i]->AttachPriors(nodeName, pPriorHmm->mpState[i]);
+      }
+    }
+  
+    if (!mpTransition->mpMacro) 
+    {
+      if (n > 0) strncpy(chptr, ".transP", n);
+      mpTransition->AttachPriors(nodeName, pPriorHmm->mpTransition);
+    }
+  }
+  
+  //***************************************************************************
+  //***************************************************************************
+  void 
+  State::
+  AttachPriors(HMMSetNodeName nodeName, State * pPriorState)
+  {
+    size_t    i;
+    size_t    n = 0;
+    char *    chptr = NULL;
+  
+    if (nodeName != NULL) 
+    {
+      n = strlen(nodeName);
+      chptr = nodeName + n;
+      n = sizeof(HMMSetNodeName) - 4 - n;
+    }
+  
+    if (mOutPdfKind == KID_PDFObsVec) 
+    {
+      return;
+    }
+    
+    if (mOutPdfKind != pPriorState->mOutPdfKind)
+    {
+      Error("Mismatch in OutPdfKind of target and prior states '%s'", nodeName);
+    }
+    
+    if (mNumberOfMixtures != pPriorState->mNumberOfMixtures)
+    {
+      Error("Mismatch in number of mixtures in target and prior states '%s'", nodeName);
+    }
+    
+    for (i=0; i < mNumberOfMixtures; i++)
+    {
+      if (!mpMixture[i].mpEstimates->mpMacro)
+      {
+        if (n > 0 ) snprintf(chptr, n, ".mix[%d]", (int) i+1);
+        mpMixture[i].mpEstimates->AttachPriors(nodeName, pPriorState->mpMixture[i].mpEstimates);
+      }
+    }
+    
+    mpPrior = pPriorState;
+  }
+    
+  //***************************************************************************
+  //***************************************************************************
+  void 
+  Mixture::
+  AttachPriors(HMMSetNodeName nodeName, Mixture * pPriorMixture)
+  {
+    int n = 0;
+    char *chptr = NULL;
+    
+    if (nodeName != NULL) 
+    {
+      n = strlen(nodeName);
+      chptr = nodeName + n;
+      n = sizeof(HMMSetNodeName) - 4 - n;
+    }  
+  
+    if (!mpMean->mpMacro) {
+      if (n > 0) strncpy(chptr, ".mean", n);
+      mpMean->AttachPriors(nodeName, pPriorMixture->mpMean);
+    }
+  
+    if (!mpVariance->mpMacro) {
+      if (n > 0) strncpy(chptr, ".cov", n);
+      mpVariance->AttachPriors(nodeName, pPriorMixture->mpVariance);
+    }  
+  }
+  
+  //***************************************************************************
+  //***************************************************************************
+  void 
+  Mean::
+  AttachPriors(HMMSetNodeName nodeName, Mean * pPriorMean)
+  {
+    mpPrior = pPriorMean;
+  }
+  
+  //***************************************************************************
+  //***************************************************************************
+  void 
+  Variance::
+  AttachPriors(HMMSetNodeName nodeName, Variance * pPriorVariance)
+  {
+    mpPrior = pPriorVariance;
+  }
+
+  //***************************************************************************
+  //***************************************************************************
+  void 
+  Transition::
+  AttachPriors(HMMSetNodeName nodeName, Transition * pPriorTransition)
+  {
+    mpPrior = pPriorTransition;
+  }  
+
+  //**************************************************************************  
+  //**************************************************************************  
+  void
   Mean::
   ResetClusterWeightVectorsAccums(size_t i)
   {
@@ -3817,4 +4105,3 @@ printf("%f", g_floor);
       mCwvAccum[i][j] = 0;
   }
 }; //namespace STK  
-  

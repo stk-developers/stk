@@ -405,7 +405,8 @@ Label *ReadLabels(
 {
   char line[1024];
   Label *labels = NULL;
-  ENTRY e, *ep;
+  ENTRY e = {0}; // {0} is just to make compiler happy
+  ENTRY *ep;
 
   char *chptr, *endptr;
   Label *prev, *current = NULL;

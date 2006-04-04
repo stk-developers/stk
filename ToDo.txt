@@ -55,6 +55,9 @@ Global Xform defined after HMMs cause error
 CD phone expansion of network with short circuit leads to infinite loop
 <Copy> accept range (from:to) larger than its output size
 HPARM{1,2} in not recognized (only SPARM{1,2})
+SVite: -w (without para does not switch on -G STH)
+In common.C: fstat(fileno(fp), &sb) does not work with 64bit architecture
+SERest.c triers to update varFloorXFORMNAME macros, which results in vector on NaNs and screw up the flooring
 
 
 To finish new SKT networks

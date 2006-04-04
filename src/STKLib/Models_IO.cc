@@ -69,9 +69,10 @@ namespace STK
   int CheckKwd(const char *str, KeywordID kwdID)
   {
     const char *chptr;
+    
     if (str[0] == ':') {
       gHmmReadBinary = true;
-      return str[1] == kwdID;
+      return static_cast<unsigned char>(str[1]) == kwdID;
     }
   
     if (str[0] != '<') return 0;
@@ -1346,7 +1347,7 @@ namespace STK
       }
     }
   
-    Error("Invalid Xform definition (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+    Error("Invalid Xform definition; unexpected keyword %s (%s:%d)", keyword, gpCurrentMmfName, gCurrentMmfLine);
     return NULL;
   }; //ReadXform(FILE *fp, Macro *macro) 
   

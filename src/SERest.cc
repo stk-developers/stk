@@ -109,7 +109,8 @@ char *optionStr =
 int main(int argc, char *argv[]) 
 {
   ModelSet            hset;
-  ModelSet*           hset_alig = NULL;
+  ModelSet*           hset_alig  = NULL;
+  ModelSet*           hset_prior = NULL;
   Network             net;
   FILE*               sfp;
   FILE*               ilfp = NULL;
@@ -160,6 +161,7 @@ int main(int argc, char *argv[])
   double              E_constant;
   double              h_constant;
   double              I_smoothing;
+  double              MAP_tau;
         
   const char*         cchrptr;
   const char*         src_hmm_list;
@@ -170,6 +172,10 @@ int main(int argc, char *argv[])
   const char*         alg_hmm_dir;
   const char*         alg_hmm_ext;
         char*         alg_mmf;
+  const char*         pri_hmm_list;
+  const char*         pri_hmm_dir;
+  const char*         pri_hmm_ext;
+        char*         pri_mmf;
   const char*         trg_hmm_dir;
   const char*         trg_hmm_ext;
   const char*         trg_mmf;
@@ -179,7 +185,7 @@ int main(int argc, char *argv[])
   const char*         network_file;
   const char*         xformList;
   const char*         stat_file;
-        char*         script;
+  char*               script;
   const char*         dictionary;
   const char*         label_filter;
   const char*         net_filter;
@@ -197,7 +203,6 @@ int main(int argc, char *argv[])
         char*         cvn_file_alig;
   const char*         cvn_mask_alig;
   const char*         cvg_file_alig;
-  
   const char*         mmf_dir;
   const char*         mmf_mask;
   const char*         mmf_karkulka;
@@ -296,21 +301,21 @@ int main(int argc, char *argv[])
   expOptions.mRemoveWordsNodes
                = GetParamBool(&cfgHash,SNAME":REMEXPWRDNODES",  false);
   in_lbl_fmt.TIMES_OFF =
-                !GetParamBool(&cfgHash,SNAME":TIMEPRUNING",    false);
+                !GetParamBool(&cfgHash,SNAME":TIMEPRUNING",     false);
   in_lbl_fmt.left_extent  = -100 * (long long) (0.5 + 1e5 *
                  GetParamFlt(&cfgHash, SNAME":STARTTIMESHIFT",  0.0));
   in_lbl_fmt.right_extent =  100 * (long long) (0.5 + 1e5 *
                  GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0));
   swap_features_alig =
   swap_features=!GetParamBool(&cfgHash,SNAME":NATURALREADORDER",isBigEndian());
-  gpFilterWldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
-  gpScriptFilter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",   NULL);
-  gpHListFilter = GetParamStr(&cfgHash, SNAME":HMMLISTFILTER",   NULL);
-  gpMmfFilter   = GetParamStr(&cfgHash, SNAME":HMMDEFFILTER",    NULL);
+  gpFilterWldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD","$");
+  gpScriptFilter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",  NULL);
+  gpHListFilter = GetParamStr(&cfgHash, SNAME":HMMLISTFILTER",  NULL);
+  gpMmfFilter   = GetParamStr(&cfgHash, SNAME":HMMDEFFILTER",   NULL);
   label_filter = GetParamStr(&cfgHash, SNAME":HLABELFILTER",    NULL);
   net_filter   = GetParamStr(&cfgHash, SNAME":HNETFILTER",      NULL);
   dict_filter  = GetParamStr(&cfgHash, SNAME":HDICTFILTER",     NULL);
-  gpMmfOFilter  = GetParamStr(&cfgHash, SNAME":HMMDEFOFILTER",   NULL);
+  gpMmfOFilter = GetParamStr(&cfgHash, SNAME":HMMDEFOFILTER",   NULL);
   dictionary   = GetParamStr(&cfgHash, SNAME":SOURCEDICT",      NULL);
   grammar_scale= GetParamFlt(&cfgHash, SNAME":LMSCALE",         1.0);
   outprb_scale = GetParamFlt(&cfgHash, SNAME":OUTPSCALE",       1.0);
@@ -343,13 +348,17 @@ int main(int argc, char *argv[])
   alg_hmm_ext  = GetParamStr(&cfgHash, SNAME":ALIGNMODELEXT",   NULL);
   alg_mmf=(char*)GetParamStr(&cfgHash, SNAME":ALIGNMMF",        NULL);
   alg_mixtures = GetParamBool(&cfgHash,SNAME":ALIGNMIXTURES",   false);
+  pri_hmm_list = GetParamStr(&cfgHash, SNAME":PRIORHMMLIST",    NULL);
+  pri_hmm_dir  = GetParamStr(&cfgHash, SNAME":PRIORMODELDIR",   NULL);
+  pri_hmm_ext  = GetParamStr(&cfgHash, SNAME":PRIORMODELEXT",   NULL);
+  pri_mmf=(char*)GetParamStr(&cfgHash, SNAME":PRIORMMF",        NULL);
   trg_hmm_dir  = GetParamStr(&cfgHash, SNAME":TARGETMODELDIR",  NULL);
   trg_hmm_ext  = GetParamStr(&cfgHash, SNAME":TARGETMODELEXT",  NULL);
   trg_mmf      = GetParamStr(&cfgHash, SNAME":TARGETMMF",       NULL);
   
   mmf_dir      = GetParamStr(&cfgHash, SNAME":MMFDIR",          ".");
   mmf_mask     = GetParamStr(&cfgHash, SNAME":MMFMASK",         NULL);
-  mmf_karkulka = GetParamStr(&cfgHash, SNAME":CWOUTDIR",     ".");
+  mmf_karkulka = GetParamStr(&cfgHash, SNAME":CWOUTDIR",        ".");
   karkulka     = GetParamBool(&cfgHash,SNAME":CWUPDATE",        false);
   
   
@@ -365,8 +374,8 @@ int main(int argc, char *argv[])
   sig_slope    = GetParamFlt(&cfgHash, SNAME":MCESIGSLOPE",    -1.0); // -1.0 ~ off
   E_constant   = GetParamFlt(&cfgHash, SNAME":EBWCONSTANTE",    2.0);
   h_constant   = GetParamFlt(&cfgHash, SNAME":EBWCONSTANTH",    2.0);
-  I_smoothing  = GetParamFlt(&cfgHash, SNAME":ISMOOTHING",  update_type==UT_MPE
-                                                            ?   50 : 200);
+  I_smoothing  = GetParamFlt(&cfgHash, SNAME":ISMOOTHING",      200);
+  MAP_tau      = GetParamFlt(&cfgHash, SNAME":MAPTAU",          update_type == UT_ML ? 10 : 0);
 
   in_transc_fmt= (TranscriptionFormat) GetParamEnum(&cfgHash,SNAME":SOURCETRANSCFMT",
                               !network_file && htk_compat ? TF_HTK : TF_STK,
@@ -385,6 +394,7 @@ int main(int argc, char *argv[])
       case 's': update_mask |= UM_XFSTATS;    break;
       case 'x': update_mask |= UM_XFORM;      break;
       case 'o': update_mask |= UM_OLDMEANVAR; break;
+      case 'p': update_mask |= UM_MAP;        break;
       case 'c': update_mask |= UM_CWEIGHTS;   break;
       default:  Error("Unknown update flag '%c' (tmvwsx)", *cchrptr);
     }
@@ -441,11 +451,6 @@ int main(int argc, char *argv[])
   if (alg_hmm_list != NULL || alg_mmf != NULL) 
   {
     hset_alig = new ModelSet;
-    
-    if (!hset_alig) 
-      Error("Insufficient memory");
-
-    //InitHMMSet(hset_alig, 0);
     hset_alig->Init();
 
     if (NULL != alg_mmf)
@@ -460,6 +465,23 @@ int main(int argc, char *argv[])
   {
     hset_alig = &hset;
   }
+  
+  if (pri_hmm_list != NULL || pri_mmf != NULL) 
+  {
+    hset_prior = new ModelSet;
+    hset_prior->Init();
+
+    for (pri_mmf = strtok(pri_mmf, ","); pri_mmf != NULL; pri_mmf=strtok(NULL, ",")) 
+    {
+      hset_prior->ParseMmf(pri_mmf, NULL);
+    }
+  } 
+  else 
+  {
+    hset_prior = &hset;
+  }
+  
+  hset.AttachPriors(hset_prior);
 
   if (parallel_mode == 0) 
     one_pass_reest = 0;
@@ -467,14 +489,14 @@ int main(int argc, char *argv[])
   if ((nfeature_files & 1) && one_pass_reest) 
     Error("Single pass re-estimation requires even number (two sets) of feature files");
 
-  char *ut_str = (char*) (update_type == UT_MMI ? "MMI" :
-                 update_type == UT_MPE ? "MPE" : "Chosen type of ");
+//  char *ut_str = (char*) (update_type == UT_MMI ? "MMI" :
+//                 update_type == UT_MPE ? "MPE" : "Chosen type of ");
 
-  if (parallel_mode == -1 &&  update_type != UT_ML)
-    Error("%s update is not possible without using parallel mode", ut_str);
+  if (parallel_mode == -1 &&  update_type == UT_MMI)
+    Error("MMI update is not possible without using parallel mode");
     
-  if ((nfeature_files & 1) && update_type != UT_ML && parallel_mode == 0)
-    Error("%s update requires even number (two sets) of accumulator files", ut_str);
+  if ((nfeature_files & 1) && update_type == UT_MMI && parallel_mode == 0)
+    Error("MMI update requires even number (two sets) of accumulator files");
     
   if (src_hmm_list) 
     hset.ReadHMMList(src_hmm_list, src_hmm_dir ? src_hmm_dir : "", src_hmm_ext ? src_hmm_ext : "");
@@ -482,6 +504,9 @@ int main(int argc, char *argv[])
   if (alg_hmm_list) 
     hset_alig->ReadHMMList(alg_hmm_list, alg_hmm_dir, alg_hmm_ext);
     
+  if (pri_hmm_list) 
+    hset_prior->ReadHMMList(pri_hmm_list, pri_hmm_dir, pri_hmm_ext);
+  
   nonCDphHash = hset.MakeCIPhoneHash();
 
   if (dictionary != NULL) 
@@ -556,6 +581,7 @@ int main(int argc, char *argv[])
   hset.MMI_E                = E_constant;
   hset.MMI_h                = h_constant;
   hset.MMI_tauI             = I_smoothing;
+  hset.mMapTau              = MAP_tau;
   hset.mGaussLvl2ModelReest = alg_mixtures;
   hset.mMinOccurances       = min_examples;
   hset.mMinMixWeight        = min_mix_wght * MIN_WEGIHT;
@@ -574,12 +600,12 @@ int main(int argc, char *argv[])
   
   for (file_name = feature_files;
       file_name != NULL;
-      file_name = one_pass_reest || (parallel_mode == 0 && update_type != UT_ML)
+      file_name = one_pass_reest || (parallel_mode == 0 && update_type == UT_MMI)
                   ? file_name->mpNext->mpNext : file_name->mpNext) 
   {
     if (trace_flag & 1) 
     {
-      if (one_pass_reest || (parallel_mode == 0 && update_type != UT_ML)) 
+      if (one_pass_reest || (parallel_mode == 0 && update_type == UT_MMI)) 
       {
         TraceLog("Processing file pair %d/%d '%s' <-> %s",  ++fcnt,
                  nfeature_files / (one_pass_reest ? 2 : 1),
@@ -605,7 +631,6 @@ int main(int argc, char *argv[])
       FLOAT P, P2;
       long S;
 
-      //ReadAccums(file_name->mpPhysical, 1.0, &hset, &S, &P, UT_ML);
       hset.ReadAccums(file_name->mpPhysical, sentWeight, &S, &P, UT_ML);
       totFrames  += S;
       totLogLike += P;
@@ -613,12 +638,9 @@ int main(int argc, char *argv[])
       if (trace_flag & 1)
         TraceLog("[%d frames] %f", S, P/S);
 
-      if (update_type != UT_ML) 
+      if (update_type == UT_MMI) 
       {
-      
         // Second set of accums is for compeating models
-        //ReadAccums(file_name->mpNext->mpPhysical, 1.0, &hset, &S, &P2, update_type);
-        
         sentWeight = 1.0;
 
         if ((chrptr = strrchr(file_name->mpNext->mpPhysical, '{')) != NULL 
@@ -628,7 +650,7 @@ int main(int argc, char *argv[])
         }
         
         hset.ReadAccums(file_name->mpNext->mpPhysical, sentWeight, &S, &P2, update_type);
-        totLogPosterior += update_type == UT_MPE ? P2 : P - P2;
+        totLogPosterior += P - P2;
 
         if (trace_flag & 1)
           TraceLog("[%d frames] %f", S, P2/S);
@@ -905,7 +927,7 @@ int main(int argc, char *argv[])
     TraceLog("Total number of frames: %d\nTotal log likelihood: %e",
               totFrames, totLogLike);
     
-    if (parallel_mode == 0 && update_type != UT_ML) 
+    if (parallel_mode == 0 && update_type == UT_MMI) 
       TraceLog("Total log posterior: %e", totLogPosterior);
   }
   
@@ -989,6 +1011,12 @@ int main(int argc, char *argv[])
     delete hset_alig;
   }
   
+  if (hset_prior != &hset) 
+  {
+    hset_prior->Release();
+    delete hset_prior;
+  }
+
   hset.Release();
 
 //  my_hdestroy_r(&labelHash, 0);
