@@ -13,7 +13,9 @@
 #ifndef FILEIO_H
 #define FILEIO_H
 
+#include "Matrix.h"
 #include "common.h"
+
 #include <string>
 #include <cstdio>
 
@@ -21,8 +23,8 @@
 namespace STK
 {
   /**
-  * Structure for HTK header
-  */
+   * Structure for HTK header
+   */
   struct HtkHeader
   {
     INT_32    mNSamples;              
@@ -33,17 +35,17 @@ namespace STK
   
   struct RHFBuffer
   {
-    char *    mpLastFileName;
-    char *    mpLastCmnFile;
-    char *    mpLastCvnFile;
-    char *    mpLastCvgFile;
-    FILE *    mpFp;
-    FLOAT *   cmn;
-    FLOAT *   cvn;
-    FLOAT *   cvg;
+    char*     mpLastFileName;
+    char*     mpLastCmnFile;
+    char*     mpLastCvnFile;
+    char*     mpLastCvgFile;
+    FILE*     mpFp;
+    FLOAT*    cmn;
+    FLOAT*    cvn;
+    FLOAT*    cvg;
     HtkHeader last_header;
-    FLOAT *   A;
-    FLOAT *   B;
+    FLOAT*    A;
+    FLOAT*    B;
   } ;
   
   
@@ -56,20 +58,37 @@ namespace STK
   int Mkdir4File(const char * file_name);
   
   
-  FLOAT *ReadHTKFeatures(
-    char *        file_name,
+  FLOAT*
+  ReadHTKFeatures(
+    char*         file_name,
     bool          swap,
     int           extLeft,
     int           extRight,
     int           targetKind,
     int           derivOrder,
-    int *         derivWinLen,
-    HtkHeader *   header,
-    const char *  cmn_file,
-    const char *  cvn_file,
-    const char *  cvg_file,
-    RHFBuffer *   buff);
-  
+    int*          derivWinLen,
+    HtkHeader*    header,
+    const char*   cmn_file,
+    const char*   cvn_file,
+    const char*   cvg_file,
+    RHFBuffer*    buff);
+
+  bool 
+  ReadHTKFeatures(
+    char*                 pFileName,
+    bool                  swap,
+    int                   extLeft,
+    int                   extRight,
+    int                   targetKind,
+    int                   derivOrder,
+    int*                  derivWinLen,
+    HtkHeader*            pHeader,
+    const char*           pCmnFile,
+    const char*           pCvnFile,
+    const char*           pCvgFile,
+    RHFBuffer*            pBuff,
+    Matrix<FLOAT>&        rFeatureMatrix);
+      
 }; // namespace STK  
 
 #endif // FILEIO_H

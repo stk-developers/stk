@@ -116,7 +116,11 @@ int main(int argc, char *argv[])
   FILE *                        sfp;
   FILE *                        lfp = NULL;
   FILE *                        ilfp = NULL;
-  FLOAT *                       obsMx;
+#ifndef USE_NEW_MATRIX  
+  FLOAT*                        obsMx;
+#else
+  Matrix<FLOAT>                 feature_matrix;
+#endif  
   FLOAT                         like;
   int                           i;
   int                           fcnt = 0;
@@ -424,7 +428,8 @@ int main(int argc, char *argv[])
   }
   lfp = OpenOutputMLF(out_MLF);
 
-  for (file_name = feature_files; file_name; file_name = file_name->mpNext) {
+  for (file_name = feature_files; file_name; file_name = file_name->mpNext) 
+  {
 
     if (trace_flag & 1) {
       TraceLog("Processing file %d/%d '%s'", ++fcnt,
@@ -434,10 +439,17 @@ int main(int argc, char *argv[])
     if (cmn_mask) process_mask(file_name->logical, cmn_mask, cmn_file);
     if (cvn_mask) process_mask(file_name->logical, cvn_mask, cvn_file);
     
+#ifndef USE_NEW_MATRIX
     obsMx = ReadHTKFeatures(file_name->mpPhysical, swap_features,
                             startFrmExt, endFrmExt, targetKind,
                             derivOrder, derivWinLengths, &header,
                             cmn_path, cvn_path, cvg_file, &rhfbuff);
+#else
+    ReadHTKFeatures(file_name->mpPhysical, swap_features,
+                    startFrmExt, endFrmExt, targetKind,
+                    derivOrder, derivWinLengths, &header,
+                    cmn_path, cvn_path, cvg_file, &rhfbuff, feature_matrix);
+#endif                            
 
 /*  lfp = fopen("xxx.fea", "w");
     header.mSampleKind = 9;
@@ -512,9 +524,13 @@ int main(int argc, char *argv[])
       net.PassTokenInNetwork = baum_welch ? &PassTokenSum : &PassTokenMax;
       net.PassTokenInModel   = baum_welch ? &PassTokenSum : &PassTokenMax;
 
-      for (i = 0; i < header.mNSamples; i++) {
-        //ViterbiStep(&net, obsMx + i * hset.mInputVectorSize);
+      for (i = 0; i < header.mNSamples; i++) 
+      {
+#ifndef USE_NEW_MATRIX    
         net.ViterbiStep(obsMx + i * hset.mInputVectorSize);
+#else
+        net.ViterbiStep(feature_matrix[i]);
+#endif
       }
       
       //like = ViterbiDone(&net, &labels);
@@ -540,7 +556,13 @@ int main(int argc, char *argv[])
       }
       TraceLog(" ==  [%d frames] %f", nFrames, like / nFrames);
     }
+
+#ifndef USE_NEW_MATRIX    
     free(obsMx);
+#else
+    feature_matrix.Destroy();
+#endif
+
     strcpy(label_file, file_name->logical);
     lfp = OpenOutputLabelFile(label_file, out_lbl_dir, out_lbl_ext, lfp, out_MLF);
 

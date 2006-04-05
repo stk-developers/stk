@@ -65,6 +65,24 @@
 #  define STK_MEMALIGN_MANUAL
 #endif
 
+/// Define this, if new matrix will be used instead of plain pointer array
+#define USE_NEW_MATRIX                                                  
+
+#ifdef USE_NEW_MATRIX
+#  define FEATURES_16_ALIGNED
+#endif
+
+// vector of four single floats
+typedef float v4sf __attribute__((vector_size(16))); 
+typedef double v4sd __attribute__((vector_size(16))); 
+
+
+typedef union 
+{
+  v4sf    v;
+  float   f[4];
+} f4vector; 
+
 
 #ifndef M_PI
 #  define M_PI 3.1415926535897932384626433832795
@@ -128,12 +146,31 @@
 
 using namespace STK;
 
+    
 //namespace STK
 //{
   /// This type will be used for flag passing
   typedef unsigned int    FlagType;
   
   
+  /** **************************************************************************
+   ** **************************************************************************
+   * @brief Aligns a number to a specified base
+   * @param n Number of type @c _T to align
+   * @return Aligned value of type @c _T
+   */
+  template<const size_t _align, typename _T>
+    inline _T 
+    align(const _T n)
+    {
+      const _T x(_align - 1); 
+      return (n + x) & ~(x);
+    }
+  
+  
+  /** **************************************************************************
+   ** **************************************************************************
+   */
   enum PropagDirectionType
   {
     FORWARD,
@@ -141,6 +178,9 @@ using namespace STK;
   };
   
   
+  /** **************************************************************************
+   ** **************************************************************************
+   */
   struct MyHSearchData 
   {
     ENTRY **            mpEntry;
@@ -151,13 +191,19 @@ using namespace STK;
   };
   
   
+  /** **************************************************************************
+   ** **************************************************************************
+   */
   struct ReadlineData 
   {
-    char *              buffer;
+    char*               buffer;
     int                 size;
   };
   
   
+  /** **************************************************************************
+   ** **************************************************************************
+   */
   class FileListElem
   {
     std::string         mLogical;     ///< Logical file name representation
@@ -179,18 +225,23 @@ using namespace STK;
   };
   
   
+  /** **************************************************************************
+   ** **************************************************************************
+   */
   typedef struct 
   {
     double logvalue; 
     unsigned negative:1;
   } FloatInLog;
   
+  
+  
   int     ReadParmKind(const char *str, bool checkBrackets);
   int     ParmKind2Str(unsigned parmKind, char *outstr);
   void    MakeFileName(char *outFileName, const char* inFileName,
                     const char *out_dir, const char *out_ext);
   
-  char *  strtoupper(char *str);
+  char*   strtoupper(char *str);
   int     qsstrcmp(const void *a, const void *b);
   int     qsptrcmp(const void *a, const void *b);
   
@@ -215,6 +266,9 @@ using namespace STK;
   
   void fast_softmax_vec(float *in, float *out, int size);
   void fast_sigmoid_vec(float *in, float *out, int size);
+  
+  void fast_softmax_vec(double *in, double *out, int size);
+  void fast_sigmoid_vec(double *in, double *out, int size);
   
   int my_hcreate_r(size_t nel,
                   MyHSearchData *tab);
@@ -286,11 +340,11 @@ using namespace STK;
     int pseudoModeule);
   
   int ParseOptions(
-    int argc,
-    char *argv[],
-    const char *optionMapping,
-    const char *toolName,
-    MyHSearchData *cfgHash);
+    int             argc,
+    char*           argv[],
+    const char*     optionMapping,
+    const char*     toolName,
+    MyHSearchData*  cfgHash);
   
   FileListElem **AddFileElem(FileListElem **last, char *fileElem);
   
@@ -346,13 +400,13 @@ using namespace STK;
   /// be HTK compatible.
   extern bool           gHtkCompatible;
   
-  extern const char *   gpFilterWldcrd;
-  extern const char *   gpHListOFilter;
-  extern const char *   gpMmfFilter;
-  extern const char *   gpMmfOFilter;
-  extern const char *   gpParmFilter;
-  extern const char *   gpParmOFilter;
-  extern const char *   gpScriptFilter;
+  extern const char*    gpFilterWldcrd;
+  extern const char*    gpHListOFilter;
+  extern const char*    gpMmfFilter;
+  extern const char*    gpMmfOFilter;
+  extern const char*    gpParmFilter;
+  extern const char*    gpParmOFilter;
+  extern const char*    gpScriptFilter;
   
 //}; //namespace STK
 

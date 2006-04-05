@@ -114,8 +114,10 @@ int main(int argc, char *argv[])
   Network             net;
   FILE*               sfp;
   FILE*               ilfp = NULL;
+#ifndef USE_NEW_MATRIX      
   FLOAT*              obsMx;
   FLOAT*              obsMx_alig;
+#endif
   FLOAT               sentWeight;
   HtkHeader           header;
   HtkHeader           header_alig;
@@ -232,6 +234,10 @@ int main(int argc, char *argv[])
   
   AccumType           accum_type;
   
+  Matrix<FLOAT>       feature_matrix;
+  Matrix<FLOAT>*      feature_matrix_alig = NULL;
+  
+  
   enum Update_Type {UT_ML=0, UT_MMI, UT_MPE} update_type;
   enum Update_Mode {UM_UPDATE=1, UM_DUMP=2, UM_BOTH=UM_UPDATE|UM_DUMP} update_mode;
   enum TranscriptionFormat {TF_HTK, TF_STK, TF_ERR} in_transc_fmt;
@@ -248,9 +254,10 @@ int main(int argc, char *argv[])
   LabelFormat             in_lbl_fmt        = {0};
   in_lbl_fmt.TIMES_OFF = 1;
 
+  // show help if no arguments specified
   if (argc == 1) usage(argv[0]);
 
-  //InitHMMSet(&hset, 1);
+  // initialize basic ModelSet
   hset.Init(MODEL_SET_WITH_ACCUM);
   
   if (!my_hcreate_r(100,  &dictHash)
@@ -403,6 +410,7 @@ int main(int argc, char *argv[])
   hset.mUpdateMask          = update_mask ? update_mask :
                              UM_TRANSITION | UM_MEAN    | UM_VARIANCE |
                              UM_WEIGHT     | UM_XFSTATS | UM_XFORM ;
+                             
   // ***************************************************************************
   // Cluster adaptive training update
   if (update_mask & UM_CWEIGHTS)
@@ -659,8 +667,8 @@ int main(int argc, char *argv[])
     else 
     {
       int     nFrames;
-      char *  phys_fn = (one_pass_reest ? file_name->mpNext : file_name)->mpPhysical;
-      char *  lgcl_fn = (one_pass_reest ? file_name->mpNext : file_name)->logical;
+      char*   phys_fn = (one_pass_reest ? file_name->mpNext : file_name)->mpPhysical;
+      char*   lgcl_fn = (one_pass_reest ? file_name->mpNext : file_name)->logical;
 
       // read sentence weight definition if any ( physical_file.fea[s,e]{weight} )
 
@@ -669,6 +677,7 @@ int main(int argc, char *argv[])
       if (cvn_mask) 
         process_mask(lgcl_fn, cvn_mask, cvn_file);
         
+#ifndef USE_NEW_MATRIX      
       obsMx = ReadHTKFeatures(
           phys_fn, 
           swap_features,
@@ -682,7 +691,25 @@ int main(int argc, char *argv[])
           cvn_path, 
           cvg_file, 
           &rhfbuff);
-                              
+      hset.mInputVectorStride = hset.mInputVectorSize*sizeof(FLOAT);
+#else  
+      ReadHTKFeatures(
+          phys_fn, 
+          swap_features,
+          startFrmExt, 
+          endFrmExt, 
+          targetKind,
+          derivOrder, 
+          derivWinLengths, 
+          &header,
+          cmn_path, 
+          cvn_path, 
+          cvg_file, 
+          &rhfbuff,
+          feature_matrix);
+      hset.mInputVectorStride = align<16>(hset.mInputVectorSize*sizeof(FLOAT));
+#endif                                  
+      
       if (hset.mInputVectorSize != static_cast<int>(header.mSampleSize / sizeof(float))) 
       {
         Error("Vector size [%d] in '%s' is incompatible with source HMM set [%d]",
@@ -707,6 +734,7 @@ int main(int argc, char *argv[])
         if (cvn_mask_alig) 
           process_mask(file_name->logical, cvn_mask_alig, cvn_file_alig);
         
+#ifndef USE_NEW_MATRIX      
         obsMx_alig = ReadHTKFeatures(
             file_name->mpPhysical, 
             swap_features_alig,
@@ -720,6 +748,25 @@ int main(int argc, char *argv[])
             cvn_path_alig, 
             cvg_file_alig, 
             &rhfbuff_alig);
+        hset_alig->mInputVectorStride = hset_alig->mInputVectorSize*sizeof(FLOAT);
+#else
+        feature_matrix_alig = new Matrix<FLOAT>;
+        ReadHTKFeatures(
+            file_name->mpPhysical, 
+            swap_features_alig,
+            startFrmExt_alig, 
+            endFrmExt_alig, 
+            targetKind_alig,
+            derivOrder_alig, 
+            derivWinLengths_alig, 
+            &header_alig,
+            cmn_path_alig, 
+            cvn_path_alig, 
+            cvg_file_alig, 
+            &rhfbuff_alig,
+            *feature_matrix_alig);
+        hset_alig->mInputVectorStride = hset_alig->mInputVectorSize*sizeof(FLOAT);
+#endif
         
         if (hset_alig->mInputVectorSize != static_cast<int>(header_alig.mSampleSize / sizeof(float))) 
         {
@@ -751,7 +798,12 @@ int main(int argc, char *argv[])
       else 
       {
         header_alig = header;
+
+#ifndef USE_NEW_MATRIX      
         obsMx_alig  = obsMx;
+#endif        
+        
+        feature_matrix_alig = &feature_matrix;
       }
       
       if(mmf_mask != NULL) 
@@ -858,13 +910,22 @@ int main(int argc, char *argv[])
         
         if (accum_type == AT_MCE || accum_type == AT_MMI) 
         {
+#ifndef USE_NEW_MATRIX      
           P = net.MCEReest(obsMx_alig, obsMx, nFrames, sentWeight, sig_slope);
+#else
+          P = net.MCEReest(*feature_matrix_alig, feature_matrix, nFrames, sentWeight, sig_slope);
+#endif          
         }
         else 
         {
           P = !viterbiTrain
+#ifndef USE_NEW_MATRIX      
             ? net.BaumWelchReest(obsMx_alig, obsMx, nFrames, sentWeight)
             : net.ViterbiReest  (obsMx_alig, obsMx, nFrames, sentWeight);
+#else
+            ? net.BaumWelchReest(*feature_matrix_alig, feature_matrix, nFrames, sentWeight)
+            : net.ViterbiReest  (*feature_matrix_alig, feature_matrix, nFrames, sentWeight);
+#endif            
         }
         
         if (P > LOG_MIN)
@@ -884,7 +945,7 @@ int main(int argc, char *argv[])
                 file_name->mpPhysical, net.mPruningThresh);
       }
       
-      ClusterWeightAccums cwa = {hset.mNClusterWeightVectors, hset.mpGw, hset.mpKw};
+      ClusterWeightAccumUserData cwa = {hset.mNClusterWeightVectors, hset.mpGw, hset.mpKw};
 
       // here
       if (hset.mUpdateMask  & UM_CWEIGHTS)
@@ -900,10 +961,15 @@ int main(int argc, char *argv[])
           TraceLog("[%d frames] %f", nFrames, P/nFrames);
       }
       
+#ifndef USE_NEW_MATRIX      
       free(obsMx);
-      
-      if (one_pass_reest) 
+      if (one_pass_reest)
         free(obsMx_alig);
+#else      
+      feature_matrix.Destroy();
+      if (one_pass_reest)
+        feature_matrix_alig->Destroy();
+#endif      
         
       if (!network_file)  
         net.Release();
@@ -1019,6 +1085,11 @@ int main(int argc, char *argv[])
 
   hset.Release();
 
+#ifndef USE_NEW_MATRIX      
+  if (one_pass_reest)
+    delete feature_matrix_alig;
+#endif
+    
 //  my_hdestroy_r(&labelHash, 0);
   my_hdestroy_r(&phoneHash, 0);
   my_hdestroy_r(&nonCDphHash, 0);

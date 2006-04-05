@@ -608,9 +608,9 @@ namespace STK
     FloatInLog    fil_from_like = {like, 0};
     int           ret = 0;
     
-  #ifdef TRACE_TOKENS
+#ifdef TRACE_TOKENS
     printf("(%.2f + %.2f -> %.2f = ", from->mLike, like, to->mLike);
-  #endif
+#endif
     
     if (to->IsActive()) 
     {
@@ -639,9 +639,9 @@ namespace STK
   
     to->mLike     = tl;
     to->mAccuracy = fe;
-  #ifdef TRACE_TOKENS
+#ifdef TRACE_TOKENS
     printf("%.2f)\n", to->mLike);
-  #endif
+#endif
     return ret;
   }
   
@@ -657,12 +657,12 @@ namespace STK
   
       if (wlr->mNReferences == 0) {
         FreeWordLinkRecords(wlr->mpNext);
-  #ifdef DEBUG_MSGS
+#ifdef DEBUG_MSGS
         assert(wlr->mIsFreed == false);
         wlr->mIsFreed = true;
-  #else
+#else
         free(wlr);
-  #endif
+#endif
       }
     }
   }
@@ -679,36 +679,130 @@ namespace STK
     token->mpTWlr = NULL;
   }
   
+
+#define OPTIMIZE_GAUSSIAN_COMPUTATION      
+  //***************************************************************************
+  //***************************************************************************
+  // The function does the gaussian dist exponent operations.
+  // It is declared inline as it is called from one place only
+  inline FLOAT 
+  compute_diag_c_gaussian_density(
+    const FLOAT*  pObs, 
+    const FLOAT   gConst,
+    const FLOAT*  pMean,
+    const FLOAT*  pVar,
+    const size_t  vSize)
+  {
+    FLOAT m_like = 0;
+    size_t j;
+    
+#ifdef OPTIMIZE_GAUSSIAN_COMPUTATION    
+    // this is a stric optimization
+    f4vector        l = {{0.0F}}; 
+    const f4vector* o = reinterpret_cast<const f4vector*>(pObs); 
+    const f4vector* m = reinterpret_cast<const f4vector*>(pMean);
+    const f4vector* v = reinterpret_cast<const f4vector*>(pVar);
+    
+    l.f[0] = l.f[1] = l.f[2] = l.f[3] = 0.0F;
+
+#  ifndef USE_NEW_MATRIX      
+    const size_t chunk(vSize & ~3);         
+#  else
+    const size_t chunk(align<4>(vSize));         
+#  endif        
+    
+    for (j = 0; j < chunk; j += 4) 
+    {
+      l.v += SQR(o->v - m->v) * v->v;
+      o++;
+      m++;
+      v++;
+    }
+    
+    m_like = l.f[0] + l.f[1] + l.f[2] + l.f[3];
+    
+#  ifndef USE_NEW_MATRIX      
+    for (; j < vSize; j++) 
+    {
+      m_like += SQR(pObs[j] - pMean[j]) * pVar[j];
+    }
+#  endif
+#else
+    // the original loop
+    for (j = 0; j < vSize; j++) 
+    {                   
+      m_like += SQR(pObs[j] - pMean[j]) * pVar[j];
+    }
+#endif
+    
+    m_like = -0.5 * (gConst + m_like);
+    return m_like;
+  } // compute_diag_c_gaussian_density(...)
+  
+  
   
   //***************************************************************************
   //***************************************************************************
   FLOAT 
-  DiagCGaussianDensity(Mixture* mix, FLOAT* obs, Network* net)
+  DiagCGaussianDensity(const Mixture* mix, const FLOAT* pObs, Network* net)  
   {
-    FLOAT mLike = 0.0;
-    size_t j;
-  
-    if (net && net->mpMixPCache[mix->mID].mTime == net->mTime) 
+    if (!net || net->mpMixPCache[mix->mID].mTime != net->mTime)
+    {
+      FLOAT m_like;
+      
+      // we call the computation
+      m_like = compute_diag_c_gaussian_density(
+        pObs,
+        mix->GConst(),
+        mix->mpMean->mVector.cpData(),
+        mix->mpVariance->mVector.cpData(),        
+        mix->mpMean->VectorSize());
+    
+      if (net)
+      {
+        net->mpMixPCache[mix->mID].mTime  = net->mTime;
+        net->mpMixPCache[mix->mID].mValue = m_like;
+      }
+      
+      return m_like;
+    }
+    else
     {
       return net->mpMixPCache[mix->mID].mValue;
     }
-  
-    for (j = 0; j < mix->mpMean->VectorSize(); j++) 
-    {
-      mLike += SQR(obs[j] - mix->mpMean->mpVectorO[j]) * mix->mpVariance->mpVectorO[j];
-    }
-  
-    mLike = -0.5 * (mix->GConst() + mLike);
-  
-    if (net) 
-    {
-      net->mpMixPCache[mix->mID].mTime  = net->mTime;
-      net->mpMixPCache[mix->mID].mValue = mLike;
-    }
-  
-    return mLike;
   }
+
   
+  //***************************************************************************
+  //***************************************************************************
+  FLOAT 
+  Network::
+  DiagCGaussianDensity(const Mixture* mix, const FLOAT* pObs)
+  {
+    if (mpMixPCache[mix->mID].mTime != mTime)
+    {
+      FLOAT m_like;
+      
+      // we call the computation
+      m_like = compute_diag_c_gaussian_density(
+        pObs,
+        mix->GConst(),
+        mix->mpMean->mVector.cpData(),
+        mix->mpVariance->mVector.cpData(),        
+        mix->mpMean->VectorSize());
+    
+      mpMixPCache[mix->mID].mTime  = mTime;
+      mpMixPCache[mix->mID].mValue = m_like;
+      
+      return m_like;
+    }
+    else
+    {
+      return mpMixPCache[mix->mID].mValue;
+    }
+  }
+
+      
 #ifdef DEBUG_MSGS
   int gaus_computaions = 0;
 #endif
@@ -717,43 +811,233 @@ namespace STK
   //***************************************************************************
   //***************************************************************************
   FLOAT 
-  DiagCGaussianMixtureDensity(State *state, FLOAT *obs, Network *net)
+  DiagCGaussianMixtureDensity(State* state, FLOAT* pObs, Network* net)
   {
     size_t  i;
-    FLOAT   mLike = LOG_0;
-  
+    FLOAT   m_like = LOG_0;
+    FLOAT*  l_obs;
     assert(state->mOutPdfKind == KID_DiagC);
   
+        
+    //if (!net || net->mpOutPCache[state->mID].mTime != net->mTime) 
     if (net && net->mpOutPCache[state->mID].mTime == net->mTime) 
     {
       return net->mpOutPCache[state->mID].mValue;
     }
-  
-    for (i = 0; i < state->mNumberOfMixtures; i++) 
+    else
     {
-      FLOAT glike;
-      Mixture *mix = state->mpMixture[i].mpEstimates;
-  
-      obs = XformPass(mix->mpInputXform, obs,
-                      net ? net->mTime : UNDEF_TIME,
-                      net ? net->mPropagDir : FORWARD);
-  
-      assert(obs != NULL);
-      glike = DiagCGaussianDensity(mix, obs, net);
-      mLike  = LogAdd(mLike, glike + state->mpMixture[i].mWeight);
+      for (i = 0; i < state->mNumberOfMixtures; i++) 
+      {
+        FLOAT    glike;
+        Mixture* mix = state->mpMixture[i].mpEstimates;
+    
+        l_obs = XformPass(mix->mpInputXform, pObs,
+                        net ? net->mTime : UNDEF_TIME,
+                        net ? net->mPropagDir : FORWARD);
+        
+        assert(l_obs != NULL);
+        glike = DiagCGaussianDensity(mix, l_obs, net);
+        m_like  = LogAdd(m_like, glike + state->mpMixture[i].mWeight);
+      }
+    
+  #ifdef DEBUG_MSGS
+      gaus_computaions++;
+  #endif
+    
+      if (net) 
+      {
+        net->mpOutPCache[state->mID].mTime = net->mTime;
+        net->mpOutPCache[state->mID].mValue = m_like;
+      }
+      return m_like;
     }
-  
+    
+    /*
+    if (net)
+    {
+      // compute which offset to use
+      const size_t cache_segment = state->mID * OUT_P_CACHES;
+      const size_t cache_offset  = net->mTime & (OUT_P_CACHES -1);
+      const size_t cache_index   = cache_segment + cache_offset;
+      const size_t stride        = net->mpModelSet->mInputVectorStride;      
+      
+      if (net->mpOutPCache[cache_index].mTime == net->mTime)
+      {
+        return net->mpOutPCache[cache_index].mValue;
+      }
+      else
+      {
+        long orig_time = net->mTime;
+        
+        for (size_t ci = cache_offset; ci < OUT_P_CACHES; ci++)
+        {
+          m_like = LOG_0;
+          for (i = 0; i < state->mNumberOfMixtures; i++) 
+          {
+            FLOAT    glike;
+            Mixture* mix = state->mpMixture[i].mpEstimates;
+        
+            l_obs = XformPass(mix->mpInputXform, pObs,
+                              net->mTime, net->mPropagDir);
+        
+            assert(l_obs != NULL);
+            glike = DiagCGaussianDensity(mix, l_obs, net);
+            m_like  = LogAdd(m_like, glike + state->mpMixture[i].mWeight);
+          }
+        
 #ifdef DEBUG_MSGS
-    gaus_computaions++;
+          gaus_computaions++;
 #endif
-  
-    if (net) {
-      net->mpOutPCache[state->mID].mTime = net->mTime;
-      net->mpOutPCache[state->mID].mValue = mLike;
+        
+          // store in cache
+          net->mpOutPCache[cache_index].mTime = net->mTime;
+          net->mpOutPCache[cache_index].mValue = m_like;
+          
+          // move one frame ahead
+          pObs += stride;
+          net->mTime ++;
+        }
+        
+        // restore the original network time
+        net->mTime =  orig_time;
+      }
+      
+      return net->mpOutPCache[cache_index].mValue;
     }
-    return mLike;
+    else
+    {
+      for (i = 0; i < state->mNumberOfMixtures; i++) 
+      {
+        FLOAT    glike;
+        Mixture* mix = state->mpMixture[i].mpEstimates;
+    
+        l_obs = XformPass(mix->mpInputXform, pObs,
+                        UNDEF_TIME, FORWARD);
+    
+        assert(l_obs != NULL);
+        glike = DiagCGaussianDensity(mix, l_obs, NULL);
+        m_like  = LogAdd(m_like, glike + state->mpMixture[i].mWeight);
+      }
+      return m_like;
+    }
+    */    
+  }
+
+  
+  //***************************************************************************
+  //***************************************************************************
+  FLOAT 
+  Network::
+  DiagCGaussianMixtureDensity(State* state, FLOAT* pObs)
+  {
+    size_t  i;
+    FLOAT   m_like = LOG_0;
+    FLOAT*  l_obs;
+    assert(state->mOutPdfKind == KID_DiagC);
+  
+        
+    //if (!net || net->mpOutPCache[state->mID].mTime != net->mTime) 
+    if (mpOutPCache[state->mID].mTime == mTime) 
+    {
+      return mpOutPCache[state->mID].mValue;
+    }
+    else
+    {
+      for (i = 0; i < state->mNumberOfMixtures; i++) 
+      {
+        FLOAT    g_like;
+        Mixture* mix = state->mpMixture[i].mpEstimates;
+    
+        l_obs = XformPass(mix->mpInputXform, pObs, mTime, mPropagDir);
+        
+        assert(l_obs != NULL);
+        g_like = DiagCGaussianDensity(mix, l_obs);
+        m_like  = LogAdd(m_like, g_like + state->mpMixture[i].mWeight);
+      }
+    
+  #ifdef DEBUG_MSGS
+      gaus_computaions++;
+  #endif
+    
+      mpOutPCache[state->mID].mTime = mTime;
+      mpOutPCache[state->mID].mValue = m_like;
+      
+      return m_like;
+    }
+    
+    /*
+    if (net)
+    {
+      // compute which offset to use
+      const size_t cache_segment = state->mID * OUT_P_CACHES;
+      const size_t cache_offset  = net->mTime & (OUT_P_CACHES -1);
+      const size_t cache_index   = cache_segment + cache_offset;
+      const size_t stride        = net->mpModelSet->mInputVectorStride;      
+      
+      if (net->mpOutPCache[cache_index].mTime == net->mTime)
+      {
+        return net->mpOutPCache[cache_index].mValue;
+      }
+      else
+      {
+        long orig_time = net->mTime;
+        
+        for (size_t ci = cache_offset; ci < OUT_P_CACHES; ci++)
+        {
+          m_like = LOG_0;
+          for (i = 0; i < state->mNumberOfMixtures; i++) 
+          {
+            FLOAT    glike;
+            Mixture* mix = state->mpMixture[i].mpEstimates;
+        
+            l_obs = XformPass(mix->mpInputXform, pObs,
+                              net->mTime, net->mPropagDir);
+        
+            assert(l_obs != NULL);
+            glike = DiagCGaussianDensity(mix, l_obs, net);
+            m_like  = LogAdd(m_like, glike + state->mpMixture[i].mWeight);
+          }
+        
+#ifdef DEBUG_MSGS
+          gaus_computaions++;
+#endif
+        
+          // store in cache
+          net->mpOutPCache[cache_index].mTime = net->mTime;
+          net->mpOutPCache[cache_index].mValue = m_like;
+          
+          // move one frame ahead
+          pObs += stride;
+          net->mTime ++;
+        }
+        
+        // restore the original network time
+        net->mTime =  orig_time;
+      }
+      
+      return net->mpOutPCache[cache_index].mValue;
+    }
+    else
+    {
+      for (i = 0; i < state->mNumberOfMixtures; i++) 
+      {
+        FLOAT    glike;
+        Mixture* mix = state->mpMixture[i].mpEstimates;
+    
+        l_obs = XformPass(mix->mpInputXform, pObs,
+                        UNDEF_TIME, FORWARD);
+    
+        assert(l_obs != NULL);
+        glike = DiagCGaussianDensity(mix, l_obs, NULL);
+        m_like  = LogAdd(m_like, glike + state->mpMixture[i].mWeight);
+      }
+      return m_like;
+    }
+    */    
   }
   
+  
+    
   
   //***************************************************************************
   //***************************************************************************
@@ -766,7 +1050,19 @@ namespace STK
     assert(obs != NULL);
     return obs[state->PDF_obs_coef];
   }
+
   
+  //***************************************************************************
+  //***************************************************************************
+  FLOAT 
+  Network::
+  FromObservationAtStateId(State* pState, FLOAT* pObs)
+  {
+    pObs = XformPass(mpModelSet->mpInputXform, pObs, mTime, mPropagDir);
+    assert(pObs != NULL);
+    return pObs[pState->PDF_obs_coef];
+  }
+    
   
   
   //***************************************************************************
@@ -806,13 +1102,14 @@ namespace STK
   //***************************************************************************
   //***************************************************************************
   void 
-  UpdateXformStatCache(XformStatCache * xfsc,
-                       Xform *          topXform, //to locate positions in input vector
-                       FLOAT *          input) 
+  UpdateXformStatCache(
+    XformStatCache*  xfsc,
+    Xform*           topXform, //to locate positions in input vector
+    FLOAT*           input) 
   {
-    size_t    i;
-    size_t    j;
-    size_t    size = xfsc->mpXform->mInSize;
+    size_t          i;
+    size_t          j;
+    const size_t    size(xfsc->mpXform->mInSize);
   
     if (topXform == NULL)
       return;
@@ -824,7 +1121,8 @@ namespace STK
         for (i=0; i < size; i++) 
         {
           xfsc->mpStats[i] += input[i];
-          for (j=0; j <= i; j++) {
+          for (j=0; j <= i; j++) 
+          {
             xfsc->mpStats[size + i*(i+1)/2 + j] += input[i] * input[j];
           }
         }
@@ -845,7 +1143,7 @@ namespace STK
     
     else if (topXform->mXformType == XT_COMPOSITE) 
     {
-      CompositeXform *cxf = (CompositeXform *) topXform;
+      CompositeXform* cxf = (CompositeXform *) topXform;
       for (i=0; i<cxf->mpLayer[0].mNBlocks; i++) 
       {
         UpdateXformStatCache(xfsc, cxf->mpLayer[0].mpBlock[i], input);
@@ -858,11 +1156,12 @@ namespace STK
   //***************************************************************************
   //***************************************************************************
   void 
-  UpdateXformInstanceStatCaches(XformInstance *xformInstance,
-                                FLOAT *observation, int time)
+  UpdateXformInstanceStatCaches(XformInstance* xformInstance,
+                                FLOAT* pObservation, int time)
   {
-    size_t i, j;
-    FLOAT *obs;
+    size_t  i;
+    size_t  j;
+    FLOAT*  obs;
   
     if (xformInstance == NULL || xformInstance->mStatCacheTime == time) return;
   
@@ -870,25 +1169,32 @@ namespace STK
   
     if (xformInstance->mNumberOfXformStatCaches == 0) return;
   
-    if (xformInstance->mpInput) {
-      UpdateXformInstanceStatCaches(xformInstance->mpInput, observation, time);
+    if (xformInstance->mpInput) 
+    {
+      UpdateXformInstanceStatCaches(xformInstance->mpInput, pObservation, time);
     }
   
-    for (i = 0; i < xformInstance->mNumberOfXformStatCaches; i++) {
-      XformStatCache *xfsc = &xformInstance->mpXformStatCache[i];
+    for (i = 0; i < xformInstance->mNumberOfXformStatCaches; i++) 
+    {
+      XformStatCache* xfsc = &xformInstance->mpXformStatCache[i];
   
-      if (xfsc->mpUpperLevelStats != NULL &&
-        xfsc->mpUpperLevelStats->mpStats == xfsc->mpStats) { //just link to upper level?
+      //just link to upper level?
+      if (xfsc->mpUpperLevelStats != NULL 
+      &&  xfsc->mpUpperLevelStats->mpStats == xfsc->mpStats) 
+      { 
         xfsc->mNorm = xfsc->mpUpperLevelStats->mNorm;
         continue;
       }
   
-      obs = XformPass(xformInstance->mpInput, observation, time, FORWARD);
+      obs = XformPass(xformInstance->mpInput, pObservation, time, FORWARD);
       xfsc->mNorm = 0;
       UpdateXformStatCache(xfsc, xformInstance->mpXform, obs);
-      if (xfsc->mpUpperLevelStats != NULL) {
+      
+      if (xfsc->mpUpperLevelStats != NULL) 
+      {
         size_t size = xfsc->mpXform->mInSize;
-        for (j = 0; j < size + size*(size+1)/2; j++) {
+        for (j = 0; j < size + size*(size+1)/2; j++) 
+        {
           xfsc->mpStats[j] += xfsc->mpUpperLevelStats->mpStats[j];
         }
         xfsc->mNorm += xfsc->mpUpperLevelStats->mNorm;
@@ -942,7 +1248,7 @@ namespace STK
         Mixture *mix  = state->mpMixture[m].mpEstimates;
         FLOAT  cjm    = state->mpMixture[m].mWeight;
         FLOAT* xobs   = XformPass(mix->mpInputXform, pObs, mTime, FORWARD);
-        FLOAT  bjmtO  = DiagCGaussianDensity(mix, xobs, this);
+        FLOAT  bjmtO  = ::DiagCGaussianDensity(mix, xobs, this);
         bjtO          = LogAdd(bjtO, cjm + bjmtO);
       }
     }
@@ -957,7 +1263,7 @@ namespace STK
         Mixture*  mix   = state->mpMixture[m].mpEstimates;
         FLOAT     cjm   = state->mpMixture[m].mWeight;
         FLOAT*    xobs  = XformPass(mix->mpInputXform, pObs, mTime, FORWARD);
-        FLOAT     bjmtO = DiagCGaussianDensity(mix, xobs, this);
+        FLOAT     bjmtO = ::DiagCGaussianDensity(mix, xobs, this);
         
         Lqjmt +=  -bjtO + cjm + bjmtO;
       }
@@ -966,10 +1272,16 @@ namespace STK
       {
         Mixture*  mix      = state2->mpMixture[m].mpEstimates;
         size_t    vec_size = mix->mpMean->VectorSize();
-        FLOAT*    mnvec    = mix->mpMean->mpVectorO;
-        FLOAT*    mnacc    = mix->mpMean->mpVectorO     +     vec_size;
-        FLOAT*    vvacc    = mix->mpVariance->mpVectorO +     vec_size;
-        FLOAT*    vmacc    = mix->mpVariance->mpVectorO + 2 * vec_size;
+        // old vector
+        //FLOAT*    mnvec    = mix->mpMean->mpVectorO;
+        //FLOAT*    mnacc    = mix->mpMean->mpVectorO     +     vec_size;
+        //FLOAT*    vvacc    = mix->mpVariance->mpVectorO +     vec_size;
+        //FLOAT*    vmacc    = mix->mpVariance->mpVectorO + 2 * vec_size;
+        FLOAT*    mnvec    = mix->mpMean->mVector.pData();
+        FLOAT*    mnacc    = mix->mpMean->mpAccums;
+        FLOAT*    vvacc    = mix->mpVariance->mpAccums;
+        FLOAT*    vmacc    = mix->mpVariance->mpAccums + vec_size;
+
         XformInstance* ixf = mix->mpInputXform;
         FLOAT*    xobs     = XformPass(ixf, pObs2, mTime, FORWARD);
   
@@ -986,14 +1298,14 @@ namespace STK
         for (i = 0; i < vec_size; i++) 
         {                 
           mnacc[i] += Lqjmt * xobs[i];                  // mean
-          if (mpModelSetToUpdate->mUpdateMask & UM_OLDMEANVAR) 
-          {
-            vvacc[i] += Lqjmt * SQR(xobs[i]-mnvec[i]);  // var
-          } 
-          else 
+          if (!(mpModelSetToUpdate->mUpdateMask & UM_OLDMEANVAR)) 
           {
             vvacc[i] += Lqjmt * SQR(xobs[i]);           // scatter
             vmacc[i] += Lqjmt * xobs[i];                // mean for var.
+          } 
+          else 
+          {
+            vvacc[i] += Lqjmt * SQR(xobs[i]-mnvec[i]);  // var
           }
         }
   
@@ -1018,7 +1330,7 @@ namespace STK
         if (0 < mix->mAccumG.Rows())
         {
           mix->mPartialAccumG += Lqjmt;
-          mix->mPartialAccumK.AddCVMul(Lqjmt, xobs, vec_size);
+          mix->mPartialAccumK.AddCVMul(Lqjmt, xobs);
           mix->mAccumL.AddCVVDotMul(Lqjmt, xobs, vec_size, xobs, vec_size);
         }
         
@@ -1256,32 +1568,38 @@ namespace STK
   TokenPropagationInit()
   {
     size_t  i;
-    Node *  node;
+    Node*   node;
   
     InitLogMath();
   
-    for (node = mpFirst; node != NULL; node = node->mpNext) {
+    for (node = mpFirst; node != NULL; node = node->mpNext) 
+    {
       size_t numOfTokens = (node->mType & NT_MODEL) ? node->mpHmm->mNStates : 1;
   
-      for (i=0; i < numOfTokens; i++) {
+      for (i=0; i < numOfTokens; i++) 
+      {
         node->mpTokens[i].mLike = LOG_0;
         node->mpTokens[i].mpWlr = NULL;
-  #ifdef bordel_staff
+#ifdef bordel_staff
         node->mpTokens[i].mpTWlr = NULL;
-  #endif // bordel_staff
+#endif // bordel_staff
       }
       node->mIsActive = 0;
       node->mIsActiveNode = 0;
     }
   
-    if (mpOutPCache != NULL) {
-      for (i = 0; i < mpModelSet->mNStates; i++) {
+    if (mpOutPCache != NULL) 
+    {
+      for (i = 0; i < mpModelSet->mNStates * OUT_P_CACHES; i++) 
+      {
         mpOutPCache[i].mTime = UNDEF_TIME;
       }
     }
   
-    if (mpMixPCache != NULL) {
-      for (i = 0; i < mpModelSet->mNMixtures; i++) {
+    if (mpMixPCache != NULL) 
+    {
+      for (i = 0; i < mpModelSet->mNMixtures * MIX_P_CACHES; i++) 
+      {
         mpMixPCache[i].mTime = UNDEF_TIME;
       }
     }
@@ -1291,16 +1609,16 @@ namespace STK
     mpActiveModels = NULL;
     mpActiveNodes = NULL;
     mActiveTokens = 0;
-  //  mTime = 0;
+    //  mTime = 0;
     node = InForwardPass() ? mpFirst : mpLast;
     node->mpTokens[0].mLike = 0;
     node->mpTokens[0].mAccuracy.logvalue = LOG_0;
     node->mpTokens[0].mAccuracy.negative = 0;
     node->mpTokens[0].mpWlr = NULL;
-  #ifdef bordel_staff
+#ifdef bordel_staff
     node->mpTokens[0].mpTWlr = NULL;
     node->mpTokens[0].mBestLike = 0;
-  #endif
+#endif
   
     if (mCollectAlphaBeta && InForwardPass()) 
     {
@@ -1350,8 +1668,8 @@ namespace STK
   Network::
   TokenPropagationInNetwork()
   {
-    Node *  node;
-    Link *  links;
+    Node*   node;
+    Link*   links;
     int     i;
     int     n_links;
   
@@ -1389,9 +1707,9 @@ namespace STK
         {   // after forward pass
           Hmm *hmm = node->mpHmm;
           FLOAT transP = hmm->mpTransition->mpMatrixO[hmm->mNStates - 1];
-    #ifdef TRACE_TOKENS
+#ifdef TRACE_TOKENS
           printf("Tee model State 0 -> Exit State ");
-    #endif
+#endif
           PassTokenInModel(&node->mpTokens[0], node->mpExitToken,
                                           transP * mTranScale);
         }
@@ -1452,9 +1770,9 @@ namespace STK
                       (node->mType & NT_TRUE)                   || 
                       !(links[i].mpNode->mType & NT_MODEL))) 
             {
-  #           ifdef TRACE_TOKENS
+#ifdef TRACE_TOKENS
               printf("Node %d -> Node %d ", node->mAux, links[i].mpNode->mAux);
-  #           endif
+#endif
               PassTokenInNetwork(node->mpExitToken,
                                       &links[i].mpNode->mpTokens[0], lmLike);
               if (links[i].mpNode->mType & NT_MODEL) 
@@ -1513,10 +1831,10 @@ namespace STK
   //***************************************************************************
   void
   Network::
-  TokenPropagationInModels(FLOAT *observation)
+  TokenPropagationInModels(FLOAT* pObservation)
   {
-    Node *  node;
-    Hmm *   hmm;
+    Node*   node;
+    Hmm*    hmm;
     size_t  winingToken = 0;
     size_t  i;
     size_t  j;
@@ -1528,10 +1846,11 @@ namespace STK
   
     mpBestToken = NULL;
   /*  if (mpThreshState) {
-      threshOutProb = OutputProbability(mpThreshState, observation, net);
+      threshOutProb = OutputProbability(mpThreshState, pObservation, net);
     } */
   
-    for (node = mpActiveModels; node != NULL; node = node->mpNextActiveModel) {
+    for (node = mpActiveModels; node != NULL; node = node->mpNextActiveModel) 
+    {
   //  for (node = mpFirst; node != NULL; node = node->mpNext) {
   //    if (!(node->mType & NT_MODEL)) continue;
   
@@ -1578,9 +1897,9 @@ namespace STK
       {
         state_idx = (InForwardPass() ? j : hmm->mNStates-1 - j);
   
-        if (mCollectAlphaBeta &&
-          !InForwardPass() &&
-          BackwardPruning(mTime, node, state_idx)) 
+        if (mCollectAlphaBeta 
+        && !InForwardPass() 
+        && BackwardPruning(mTime, node, state_idx)) 
         {
           continue; // backward pruning after forward pass
         }
@@ -1611,7 +1930,9 @@ namespace STK
         if (node->mpTokens[j].mLike > mBeamThresh) 
         {
           FLOAT outProb = OutputProbability(hmm->mpState[state_idx-1],
-                                                    observation, this);
+                                            pObservation, this);
+          //FLOAT outProb = OutputProbability(hmm->mpState[state_idx-1], pObservation);
+          
           outProb *= mOutpScale;
   
           /*if (outProb < threshOutProb) {
@@ -1988,8 +2309,8 @@ namespace STK
     SortNodes();  
     
     mpAuxTokens = (Token*) malloc((maxStatesInModel-1) * sizeof(Token));
-    mpOutPCache = (Cache*) malloc(pHmms->mNStates      * sizeof(Cache));
-    mpMixPCache = (Cache*) malloc(pHmms->mNMixtures    * sizeof(Cache));
+    mpOutPCache = (Cache*) malloc(pHmms->mNStates      * sizeof(Cache) * OUT_P_CACHES);
+    mpMixPCache = (Cache*) malloc(pHmms->mNMixtures    * sizeof(Cache) * MIX_P_CACHES);
   
     if (mpAuxTokens == NULL ||
         mpOutPCache == NULL || mpMixPCache == NULL) 
@@ -2012,8 +2333,12 @@ namespace STK
     mLmScale           = 1.0;
     
     OutputProbability =
-      pHmms->mOutPdfKind == KID_DiagC     ? &DiagCGaussianMixtureDensity :
-      pHmms->mOutPdfKind == KID_PDFObsVec ? &FromObservationAtStateId    : NULL;
+      pHmms->mOutPdfKind == KID_DiagC     ? &::DiagCGaussianMixtureDensity :
+      pHmms->mOutPdfKind == KID_PDFObsVec ? &::FromObservationAtStateId    : NULL;
+    
+    //this->mpOutputProbability =
+    //  pHmms->mOutPdfKind == KID_DiagC     ? &Network::DiagCGaussianMixtureDensity :
+    //  pHmms->mOutPdfKind == KID_PDFObsVec ? &Network::FromObservationAtStateIdX    : NULL;
   
     PassTokenInNetwork  = &PassTokenMax;
     PassTokenInModel    = &PassTokenMax;
@@ -2036,7 +2361,7 @@ namespace STK
   Network::
   Release()
   {
-    Node *node;
+    Node* node;
   
     for (node = mpFirst; node != NULL; node = node->mpNext) 
       free(node->mpTokens);
@@ -2047,6 +2372,7 @@ namespace STK
     free(mpOutPCache);
     free(mpMixPCache);
   }
+  
   
   //***************************************************************************
   //***************************************************************************
@@ -2067,19 +2393,20 @@ namespace STK
     mTime = -mpModelSet->mTotalDelay;
   }  
   
+  
   //***************************************************************************
   //***************************************************************************
   void
   Network:: 
-  ViterbiStep(FLOAT *observation)
+  ViterbiStep(FLOAT* pObservation)
   {
     mTime++;
-    mpModelSet->UpdateStacks(observation, mTime, mPropagDir);
+    mpModelSet->UpdateStacks(pObservation, mTime, mPropagDir);
   
     if (mTime <= 0)
       return;
   
-    TokenPropagationInModels(observation);
+    TokenPropagationInModels(pObservation);
     TokenPropagationInNetwork();
   #ifdef DEBUG_MSGS
     printf("Frame: %ld Nuberm of WordLinkRecord Active: ", mTime); PrintNumOfWLR();
@@ -2123,20 +2450,20 @@ namespace STK
   //***************************************************************************
   Network::FWBWRet
   Network::
-  ForwardBackward(FLOAT *obsMx, int nFrames)
+  ForwardBackward(FLOAT* obsMx, int nFrames)
   {
     int         i;
     Cache*      p_out_p_cache;
-    struct      FWBWRet ret;
+    FWBWRet     ret;
     ModelSet*   hmms = mpModelSet;
   
-    p_out_p_cache = (Cache*) malloc(nFrames * hmms->mNStates * sizeof(Cache));
+    p_out_p_cache = (Cache*) malloc(nFrames * hmms->mNStates * sizeof(Cache) * OUT_P_CACHES);
   
     if (p_out_p_cache == NULL) {
       Error("Insufficient memory");
     }
   
-    for (i = 0; i < static_cast<int>(nFrames * hmms->mNStates); i++) {
+    for (i = 0; i < static_cast<int>(nFrames * hmms->mNStates * OUT_P_CACHES); i++) {
       p_out_p_cache[i].mTime  = UNDEF_TIME;
       p_out_p_cache[i].mValue = LOG_0;
     }
@@ -2170,7 +2497,7 @@ namespace STK
     for (i = hmms->mTotalDelay; i < nFrames+hmms->mTotalDelay; i++) 
     {
       mTime++;
-      mpOutPCache = p_out_p_cache + hmms->mNStates * (mTime-1);
+      mpOutPCache = p_out_p_cache + hmms->mNStates * (mTime-1) * OUT_P_CACHES;
   
       mpModelSet->UpdateStacks(obsMx + hmms->mInputVectorSize * i,
                                 mTime, mPropagDir);
@@ -2191,7 +2518,8 @@ namespace STK
     ret.totLike = mpLast->mpExitToken->mLike; //  totalLikelihood;
     TokenPropagationDone();
   
-    //Backward Pass
+    //**************************************************************************
+    // Backward Pass
     mPropagDir = BACKWARD;
     mTime      = nFrames+hmms->mTotalDelay;
   
@@ -2207,7 +2535,7 @@ namespace STK
     TokenPropagationInit();
   
     for (i = nFrames-1; i >= 0; i--) {
-      mpOutPCache = p_out_p_cache + hmms->mNStates * (mTime-1);
+      mpOutPCache = p_out_p_cache + hmms->mNStates * (mTime-1) * OUT_P_CACHES;
   
 //  We do not need any features, in backward prop. All output probab. are cached.
 //  UpdateStacks(mpModelSet, obsMx + hmms->mInputVectorSize * i,     |
@@ -2253,7 +2581,152 @@ namespace STK
   
     return ret;
   }
+
   
+  //***************************************************************************
+  //***************************************************************************
+  Network::FWBWRet
+  Network::
+  ForwardBackward(const Matrix<FLOAT>& rFeatureMatrix, size_t nFrames)
+  {
+    int         i;
+    Cache*      p_out_p_cache;
+    FWBWRet     ret;
+    ModelSet*   hmms = mpModelSet;
+    
+    p_out_p_cache = (Cache*) malloc(nFrames * hmms->mNStates * sizeof(Cache) * OUT_P_CACHES);
+  
+    if (p_out_p_cache == NULL) 
+    {
+      Error("Insufficient memory");
+    }
+  
+    // clear the cache
+    for (i = 0; i < static_cast<int>(nFrames * hmms->mNStates * OUT_P_CACHES); i++) 
+    {
+      p_out_p_cache[i].mTime  = UNDEF_TIME;
+      p_out_p_cache[i].mValue = LOG_0;
+    }
+  
+    free(mpOutPCache);
+    mpOutPCache = NULL;
+  
+    PassTokenInModel    = &PassTokenSum;
+    PassTokenInNetwork  = &PassTokenSum;
+    mAlignment          = NO_ALIGNMENT;
+  
+    //Forward Pass
+    mPropagDir          = FORWARD;
+    mCollectAlphaBeta   = 1;
+    mTime               = -hmms->mTotalDelay;
+  
+    mpModelSet->ResetXformInstances();
+    
+    for (i = 0; i < hmms->mTotalDelay; i++) 
+    {
+      mTime++;
+      //hmms->UpdateStacks(obsMx + hmms->mInputVectorSize * i, mTime, FORWARD);
+      hmms->UpdateStacks(rFeatureMatrix[i], mTime, FORWARD);
+    }
+  
+    // tady nekde je chyba
+    // !!!!
+    TokenPropagationInit();
+  
+    for (i = hmms->mTotalDelay; 
+         i < static_cast<int>(nFrames) + hmms->mTotalDelay; 
+         i++) 
+    {
+      mTime++;
+      mpOutPCache = p_out_p_cache + hmms->mNStates * (mTime-1) * OUT_P_CACHES;
+  
+      mpModelSet->UpdateStacks(rFeatureMatrix[i], mTime, mPropagDir);
+  
+      TokenPropagationInModels(rFeatureMatrix[i]);
+      TokenPropagationInNetwork();
+    }
+  
+    if (!mpLast->mpExitToken->IsActive())  
+    { // No token survivered
+      TokenPropagationDone();
+      FreeFWBWRecords();
+      mpOutPCache = p_out_p_cache;
+      ret.totLike = LOG_0;
+      return ret;
+    }
+  
+    ret.totLike = mpLast->mpExitToken->mLike; //  totalLikelihood;
+    TokenPropagationDone();
+  
+    //Backward Pass
+    mPropagDir = BACKWARD;
+    mTime      = nFrames + hmms->mTotalDelay;
+                          
+    for (i = nFrames + hmms->mTotalDelay - 1; i >= static_cast<int>(nFrames); i--) 
+    {
+      //  We do not need any features, in backward prop. All output probab. are 
+      //  cached.
+      //  UpdateStacks(hmms, obsMx + hmms->mInputVectorSize * i,
+      //               mTime, BACKWARD);
+      mTime--;
+    }
+  
+    mpOutPCache = NULL;  // TokenPropagationInit would reset valid 1st frm cache
+    TokenPropagationInit();
+  
+    for (i = nFrames-1; i >= 0; i--) 
+    {
+      mpOutPCache = p_out_p_cache + hmms->mNStates * (mTime-1) * OUT_P_CACHES;
+  
+      //  We do not need any features, in backward prop. All output probab. are 
+      //  cached.
+      //  UpdateStacks(mpModelSet, obsMx + hmms->mInputVectorSize * i,     |
+      //                             mTime, mPropagDir);                   |
+      //                                                                   V
+      TokenPropagationInModels(NULL);   //obsMx + hmms->mInputVectorSize * i);
+      mTime--;
+      TokenPropagationInNetwork();
+    }
+  
+    mpOutPCache = p_out_p_cache;
+  
+    if (!mpFirst->mpExitToken->IsActive()) 
+    { // No token survivered
+      TokenPropagationDone();
+      FreeFWBWRecords();
+      ret.totLike = LOG_0;
+      return ret;
+    }
+  
+    ret.totLike = HIGHER_OF(ret.totLike, mpFirst->mpExitToken->mLike); //  totalLikelihood;
+    // Backward pass P can differ from forward pass P because of the precision
+    // problems. Take the higher one to decrease the possibility of getting
+    // an occupation probability (when normalizing by P) higher that one.
+  
+    FloatInLog fil_ret_totLike = {ret.totLike, 0};
+    ret.avgAccuracy  = FIL_Div(mpFirst->mpExitToken->mAccuracy, fil_ret_totLike);
+    TokenPropagationDone();
+  
+    // There may be remaining records in mpAlphaBetaListReverse unused in
+    // backward pass. Free them and set mpAlphaBetaListReverse's to NULLs;
+    Node* node;
+    for (node = mpFirst; node != NULL; node = node->mpNext) 
+    {
+      if (!(node->mType & NT_MODEL)) 
+        continue;
+  
+      while (node->mpAlphaBetaListReverse) 
+      {
+        FWBWR* fwbwr = node->mpAlphaBetaListReverse;
+        node->mpAlphaBetaListReverse = fwbwr->mpNext;
+        free(fwbwr);
+      }
+    }
+  
+    return ret;
+  }
+  
+    
   //***************************************************************************
   //***************************************************************************
   FLOAT 
@@ -2358,13 +2831,17 @@ namespace STK
     // mpMixPCache might be used to cache likelihoods of mixtures of target
     // models. Reallocate the cache to fit mixtures of both models and reset it.
     k = HIGHER_OF(p_hmms_upd->mNMixtures, p_hmms_alig->mNMixtures);
-    mpMixPCache = (Cache*) realloc(mpMixPCache, k * sizeof(Cache));
+    mpMixPCache = (Cache*) realloc(mpMixPCache, k * sizeof(Cache) * MIX_P_CACHES);
     if (mpMixPCache == NULL) Error("Insufficient memory");
   
-    for (i = 0; i < k; i++) mpMixPCache[i].mTime = UNDEF_TIME;
+    for (i = 0; i < k * MIX_P_CACHES; i++)
+    {
+      mpMixPCache[i].mTime = UNDEF_TIME;
+    }
   
-  // Update accumulators
-    for (mTime = 0; mTime < nFrames; mTime++) {//for every frame
+    // Update accumulators
+    for (mTime = 0; mTime < nFrames; mTime++) 
+    { // for every frame
       FLOAT *obs  =pObsMx +p_hmms_alig->mInputVectorSize*(mTime+p_hmms_alig->mTotalDelay);
       FLOAT *obs2 =pObsMx2+p_hmms_upd->mInputVectorSize*(mTime+p_hmms_upd->mTotalDelay);
       p_hmms_alig->UpdateStacks(obs, mTime, FORWARD);
@@ -2372,7 +2849,8 @@ namespace STK
         p_hmms_upd->UpdateStacks(obs2, mTime, FORWARD);
       }
   
-      for (node = mpFirst; node != NULL; node = node->mpNext) { //for every model
+      for (node = mpFirst; node != NULL; node = node->mpNext) 
+      { //for every model
   //    for (k=0; k < nnodes; k++) {
   //      Node *node = &mpNodes[k];
         if (node->mType & NT_MODEL &&
@@ -2448,10 +2926,10 @@ namespace STK
     // mpMixPCache might be used to cache likelihoods of mixtures of target
     // models. Reallocate the cache to fit mixtures of both models and reset it.
     k = HIGHER_OF(p_hmms_upd->mNMixtures, p_hmms_alig->mNMixtures);
-    mpMixPCache = (Cache *) realloc(mpMixPCache, k * sizeof(Cache));
+    mpMixPCache = (Cache *) realloc(mpMixPCache, k * sizeof(Cache) * MIX_P_CACHES);
     if (mpMixPCache == NULL) Error("Insufficient memory");
   
-    for (i = 0; i < k; i++) mpMixPCache[i].mTime = UNDEF_TIME;
+    for (i = 0; i < k * MIX_P_CACHES; i++) mpMixPCache[i].mTime = UNDEF_TIME;
   
   // Update accumulators
     for (mTime = 0; mTime < nFrames; mTime++) {//for every frame
@@ -2547,13 +3025,323 @@ namespace STK
     mAccumType = origAccumType;
     return TP;
   }
-  
+
   
   //***************************************************************************
   //***************************************************************************
   FLOAT 
   Network::
-  BaumWelchReest(FLOAT *pObsMx, FLOAT *pObsMx2, int nFrames, FLOAT weight)
+  MCEReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, 
+           int nFrames, FLOAT weight, FLOAT sigSlope)
+  {
+    struct FWBWRet    fwbw;
+    FLOAT             TP;
+    FLOAT             P;
+    FLOAT             F;
+    
+    int               i;
+    int               j;
+    int               k;
+    int               t;
+    
+    ModelSet*         p_hmms_alig = mpModelSet;
+    ModelSet*         p_hmms_upd = mpModelSetToUpdate;
+    Node*             node;
+  
+    AccumType origAccumType = mAccumType;
+    
+    mAccumType          = AT_ML;
+    mPropagDir          = FORWARD;
+    mAlignment          = NO_ALIGNMENT;
+    
+    // pointers to functions
+    PassTokenInModel    = &PassTokenSum;  
+    PassTokenInNetwork  = &PassTokenSum;
+  
+    mSearchPaths        = SP_TRUE_ONLY;
+    mpModelSet->ResetXformInstances();
+  
+    mTime = 0; // Must not be set to -mpModelSet->totalDelay yet
+               // otherwise token cannot enter first model node
+               // with start set to 0
+               
+    TokenPropagationInit();
+    
+    mTime = -mpModelSet->mTotalDelay;
+  
+    for (t = 0; t < nFrames + p_hmms_alig->mTotalDelay; t++) 
+    {
+      ViterbiStep(rObsMx[t]);
+    }
+  
+    TP = mpLast->mpExitToken->mLike;
+    
+    ViterbiDone(NULL);
+  
+    if (TP <= LOG_MIN) 
+      return LOG_0;
+  
+  
+    ////////////////// Denominator accumulation //////////////////
+    mSearchPaths = SP_ALL;
+  
+    fwbw = ForwardBackward(rObsMx, nFrames);
+    P = fwbw.totLike;
+  
+    assert(P >= TP);
+    if(sigSlope > 0.0) 
+    {
+      F = TP - LogSub(P, TP);
+      printf("MCE distance: %g; ", F);
+      F = exp(-sigSlope * F);
+      F = (sigSlope*F) / SQR(1+F);
+      printf("weight: %g\n", F);
+      weight *= F;
+    }
+
+    if (P < LOG_MIN) return LOG_0;
+  
+    for (node = mpFirst; node != NULL; node = node->mpNext) {
+      if (node->mType & NT_MODEL && node->mpAlphaBetaList != NULL &&
+        node->mpAlphaBetaList->mTime == 0) {
+        node->mpAlphaBetaListReverse = node->mpAlphaBetaList;
+        node->mpAlphaBetaList = node->mpAlphaBetaList->mpNext;
+      }
+    }
+  
+    p_hmms_alig->ResetXformInstances();
+  
+    if (p_hmms_alig != p_hmms_upd) {
+      p_hmms_upd->ResetXformInstances();
+    }
+  
+    for (i = 0; i < p_hmms_alig->mTotalDelay; i++) 
+    {
+      p_hmms_alig->UpdateStacks(rObsMx[i],
+                  i-p_hmms_alig->mTotalDelay, FORWARD);
+    }
+  
+    if (p_hmms_alig != p_hmms_upd) 
+    {
+      for (i = 0; i < p_hmms_upd->mTotalDelay; i++) 
+      {
+        p_hmms_upd->UpdateStacks(rObsMx2[i],
+                    i - p_hmms_upd->mTotalDelay, FORWARD);
+      }
+    }
+  
+  
+    // mpMixPCache might be used to cache likelihoods of mixtures of target
+    // models. Reallocate the cache to fit mixtures of both models and reset it.
+    k = HIGHER_OF(p_hmms_upd->mNMixtures, p_hmms_alig->mNMixtures);
+    mpMixPCache = (Cache*) realloc(mpMixPCache, k * sizeof(Cache) * MIX_P_CACHES);
+    if (mpMixPCache == NULL) Error("Insufficient memory");
+  
+    for (i = 0; i < k * MIX_P_CACHES; i++)
+    {
+      mpMixPCache[i].mTime = UNDEF_TIME;
+    }
+  
+    // Update accumulators
+    for (mTime = 0; mTime < nFrames; mTime++) 
+    { // for every frame
+      FLOAT* obs  =rObsMx[mTime+p_hmms_alig->mTotalDelay];
+      FLOAT* obs2 =rObsMx2[mTime+p_hmms_upd->mTotalDelay];
+      
+      p_hmms_alig->UpdateStacks(obs, mTime, FORWARD);
+      
+      if (p_hmms_alig != p_hmms_upd) {
+        p_hmms_upd->UpdateStacks(obs2, mTime, FORWARD);
+      }
+  
+      for (node = mpFirst; node != NULL; node = node->mpNext) 
+      { //for every model
+  //    for (k=0; k < nnodes; k++) {
+  //      Node *node = &mpNodes[k];
+        if (node->mType & NT_MODEL &&
+          node->mpAlphaBetaList != NULL &&
+          node->mpAlphaBetaList->mTime == mTime+1) {
+  
+          struct AlphaBeta *st;
+          int Nq       = node->mpHmm->mNStates;
+          st = node->mpAlphaBetaList->mpState;
+  
+          for (j = 1; j < Nq - 1; j++) {                   //for every emitting state
+            if (st[j].mAlpha + st[j].mBeta - P > MIN_LOG_WEGIHT) {
+              assert(node->mpAlphaBetaListReverse->mTime == mTime);
+  
+              ReestState(
+                  node,
+                  j-1,
+                  (st[j].mAlpha + st[j].mBeta - P)  * mOcpScale,
+                  -weight,
+                  obs,
+                  obs2);
+            }
+          }
+          
+          if (node->mpAlphaBetaListReverse) 
+            free(node->mpAlphaBetaListReverse);
+          
+          node->mpAlphaBetaListReverse = node->mpAlphaBetaList;
+          node->mpAlphaBetaList = node->mpAlphaBetaList->mpNext;
+        }
+      }
+    }
+  
+    for (node = mpFirst; node != NULL; node = node->mpNext) {
+      if (node->mpAlphaBetaListReverse != NULL)
+        free(node->mpAlphaBetaListReverse);
+    }
+  
+  
+    ////////////////// Numerator accumulation //////////////////
+    mSearchPaths = SP_TRUE_ONLY;
+  
+  
+    ForwardBackward(rObsMx, nFrames);
+  
+    for (node = mpFirst; node != NULL; node = node->mpNext) {
+      if (node->mType & NT_MODEL && node->mpAlphaBetaList != NULL &&
+        node->mpAlphaBetaList->mTime == 0) {
+        node->mpAlphaBetaListReverse = node->mpAlphaBetaList;
+        node->mpAlphaBetaList = node->mpAlphaBetaList->mpNext;
+      }
+    }
+  
+    p_hmms_alig->ResetXformInstances();
+  
+    if (p_hmms_alig != p_hmms_upd) 
+    {
+      p_hmms_upd->ResetXformInstances();
+    }
+  
+    for (i = 0; i < p_hmms_alig->mTotalDelay; i++) 
+    {
+      p_hmms_alig->UpdateStacks(rObsMx[i],
+                  i-p_hmms_alig->mTotalDelay, FORWARD);
+    }
+  
+    if (p_hmms_alig != p_hmms_upd) 
+    {
+      for (i = 0; i < p_hmms_upd->mTotalDelay; i++) 
+      {
+        p_hmms_upd->UpdateStacks(rObsMx2[i], i-p_hmms_upd->mTotalDelay, FORWARD);
+      }
+    }  
+  
+    // mpMixPCache might be used to cache likelihoods of mixtures of target
+    // models. Reallocate the cache to fit mixtures of both models and reset it.
+    k = HIGHER_OF(p_hmms_upd->mNMixtures, p_hmms_alig->mNMixtures);
+    mpMixPCache = (Cache *) realloc(mpMixPCache, k * sizeof(Cache) * MIX_P_CACHES);
+    if (mpMixPCache == NULL) Error("Insufficient memory");
+  
+    for (i = 0; i < k * MIX_P_CACHES; i++) mpMixPCache[i].mTime = UNDEF_TIME;
+  
+  // Update accumulators
+    for (mTime = 0; mTime < nFrames; mTime++) 
+    {//for every frame
+      FLOAT* obs  = rObsMx [mTime+p_hmms_alig->mTotalDelay];
+      FLOAT* obs2 = rObsMx2[mTime+p_hmms_upd->mTotalDelay];
+      
+      p_hmms_alig->UpdateStacks(obs, mTime, FORWARD);
+      
+      if (p_hmms_alig != p_hmms_upd) 
+      {
+        p_hmms_upd->UpdateStacks(obs2, mTime, FORWARD);
+      }
+  
+      for (node = mpFirst; node != NULL; node = node->mpNext) 
+      { //for every model
+        if (node->mType & NT_MODEL 
+        && node->mpAlphaBetaList != NULL 
+        && node->mpAlphaBetaList->mTime == mTime+1) 
+        {
+  
+          struct AlphaBeta *st;
+          int Nq       = node->mpHmm->mNStates;
+          FLOAT *aq    = node->mpHmm->        mpTransition->mpMatrixO;
+          FLOAT *aqacc = node->mpHmmToUpdate->mpTransition->mpMatrixO + SQR(Nq);
+  //        int qt_1 = (mNumberOfNetStates * mTime) + node->mEmittingStateId;
+  //        int qt = qt_1 + mNumberOfNetStates;
+  
+          st = node->mpAlphaBetaList->mpState;
+  
+          if (//!mmi_den_pass &&
+            st[Nq-1].mAlpha + st[Nq-1].mBeta - TP > MIN_LOG_WEGIHT) 
+          {
+            for (i = 0; i < Nq - 1; i++) 
+            {
+              LOG_INC(aqacc[i * Nq + Nq-1], aq[i * Nq + Nq-1]  * mTranScale +
+                 (st[i].mAlpha + st[Nq-1].mBeta - TP) * mOcpScale);
+            }
+          }
+  
+          for (j = 1; j < Nq - 1; j++) 
+          {                   //for every emitting state
+            if (st[j].mAlpha + st[j].mBeta - TP > MIN_LOG_WEGIHT) {
+              FLOAT bjtO =mpOutPCache[p_hmms_alig->mNStates * mTime +
+                                        node->mpHmm->mpState[j-1]->mID].mValue;
+              // ForwardBackward() set mpOutPCache to contain out prob. for all frames
+  
+              assert(node->mpAlphaBetaListReverse->mTime == mTime);
+  
+  //            if (!mmi_den_pass) {
+              for (i = 0; i < Nq - 1; i++) {
+                LOG_INC(aqacc[i * Nq + j],
+                        aq[i * Nq + j]    * mTranScale +
+                        (node->mpAlphaBetaListReverse->mpState[i].mAlpha +
+                        bjtO              * mOutpScale +
+                        st[j].mBeta - TP)   * mOcpScale);
+              }
+  //            }
+  
+              if (origAccumType == AT_MMI)
+              {
+                ReestState(
+                    node,
+                    j-1,
+                    (st[j].mAlpha + st[j].mBeta - TP)  * mOcpScale,
+                    weight, 
+                    obs, 
+                    obs2);
+              }
+              else // origAccumType == AT_MCE
+              {
+                ReestState(node, j-1,
+                    (st[j].mAlpha + st[j].mBeta - TP + LogAdd(TP,P) - P)  * mOcpScale,
+                    weight, 
+                    obs, 
+                    obs2);
+              }
+            }
+          }
+          
+          if (node->mpAlphaBetaListReverse) 
+            free(node->mpAlphaBetaListReverse);
+            
+          node->mpAlphaBetaListReverse = node->mpAlphaBetaList;
+          node->mpAlphaBetaList = node->mpAlphaBetaList->mpNext;
+        }
+      }
+    }
+  
+    for (node = mpFirst; node != NULL; node = node->mpNext) 
+    {
+      if (node->mpAlphaBetaListReverse != NULL)
+        free(node->mpAlphaBetaListReverse);
+    }
+  
+    mAccumType = origAccumType;
+    return TP;
+  } // MCEReest
+    
+  
+  //***************************************************************************
+  //***************************************************************************
+  FLOAT 
+  Network::
+  BaumWelchReest(FLOAT* pObsMx, FLOAT* pObsMx2, int nFrames, FLOAT weight)
   {
     struct FWBWRet          fwbw;
     FLOAT                   P;
@@ -2610,14 +3398,14 @@ namespace STK
     // mpMixPCache might be used to cache likelihoods of mixtures of target
     // models. Reallocate the cache to fit mixtures of both models and reset it.
     k = HIGHER_OF(p_hmms_upd->mNMixtures, p_hmms_alig->mNMixtures);
-    mpMixPCache = (Cache *) realloc(mpMixPCache, k * sizeof(Cache));
+    mpMixPCache = (Cache *) realloc(mpMixPCache, k * sizeof(Cache) * MIX_P_CACHES);
     
     if (mpMixPCache == NULL)
     { 
       Error("Insufficient memory");
     }
     
-    for (i = 0; i < k; i++)
+    for (i = 0; i < k * MIX_P_CACHES; i++)
     { 
       mpMixPCache[i].mTime = UNDEF_TIME;
     }
@@ -2754,7 +3542,217 @@ namespace STK
   
     return P;
   }
+
   
+  //***************************************************************************
+  //***************************************************************************
+  FLOAT 
+  Network::
+  BaumWelchReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, int nFrames, FLOAT weight)
+  {
+    struct FWBWRet          fwbw;
+    FLOAT                   P;
+    FLOAT                   update_dir;
+    int                     i;
+    int                     j;
+    int                     k;
+    ModelSet*               p_hmms_alig = mpModelSet;
+    ModelSet*               p_hmms_upd = mpModelSetToUpdate;
+    Node*                   node;
+  
+    fwbw = ForwardBackward(rObsMx, nFrames);
+    P    = fwbw.totLike;
+    
+    if (P < LOG_MIN) 
+      return LOG_0;
+  
+#ifdef MOTIF
+    FLOAT* ocprob = (FLOAT*) malloc(mNumberOfNetStates * (nFrames+1) * sizeof(FLOAT));
+    for (i=0; i<mNumberOfNetStates * (nFrames+1); i++) ocprob[i] = 0;
+#endif
+  
+    for (node = mpFirst; node != NULL; node = node->mpNext) 
+    {
+      if (node->mType & NT_MODEL && node->mpAlphaBetaList != NULL &&
+        node->mpAlphaBetaList->mTime == 0) 
+      {
+        node->mpAlphaBetaListReverse = node->mpAlphaBetaList;
+        node->mpAlphaBetaList = node->mpAlphaBetaList->mpNext;
+      }
+    }
+  
+    p_hmms_alig->ResetXformInstances();
+  
+    if (p_hmms_alig != p_hmms_upd) 
+      p_hmms_upd->ResetXformInstances();
+  
+    for (i = 0; i < p_hmms_alig->mTotalDelay; i++) 
+    {
+      p_hmms_alig->UpdateStacks(rObsMx[i],
+                                i-p_hmms_alig->mTotalDelay, FORWARD);
+    }
+  
+    if (p_hmms_alig != p_hmms_upd) 
+    {
+      for (i = 0; i < p_hmms_upd->mTotalDelay; i++) 
+      {
+        p_hmms_upd->UpdateStacks(rObsMx2[i],
+                    i-p_hmms_upd->mTotalDelay, FORWARD);
+      }
+    }
+  
+  
+    // mpMixPCache might be used to cache likelihoods of mixtures of target
+    // models. Reallocate the cache to fit mixtures of both models and reset it.
+    k = HIGHER_OF(p_hmms_upd->mNMixtures, p_hmms_alig->mNMixtures);
+    mpMixPCache = (Cache *) realloc(mpMixPCache, k * sizeof(Cache) * MIX_P_CACHES);
+    
+    if (mpMixPCache == NULL)
+    { 
+      Error("Insufficient memory");
+    }
+    
+    for (i = 0; i < k * MIX_P_CACHES; i++)
+    { 
+      mpMixPCache[i].mTime = UNDEF_TIME;
+    }
+    
+  // Update accumulators
+    for (mTime = 0; mTime < nFrames; mTime++) 
+    { //for every frame
+      //FLOAT* obs  = pObsMx +p_hmms_alig->mInputVectorSize*(mTime+p_hmms_alig->mTotalDelay);
+      //FLOAT* obs2 = pObsMx2+p_hmms_upd->mInputVectorSize*(mTime+p_hmms_upd->mTotalDelay);
+      
+      FLOAT* obs  = rObsMx [mTime + p_hmms_alig->mTotalDelay];
+      FLOAT* obs2 = rObsMx2[mTime + p_hmms_upd->mTotalDelay];
+      
+      p_hmms_alig->UpdateStacks(obs, mTime, FORWARD);
+      
+      if (p_hmms_alig != p_hmms_upd)
+        p_hmms_upd->UpdateStacks(obs2, mTime, FORWARD);
+  
+      for (node = mpFirst; node != NULL; node = node->mpNext) 
+      { //for every model
+  //    for (k=0; k < nnodes; k++) {
+  //      Node *node = &mpNodes[k];
+        if (node->mType & NT_MODEL &&
+          node->mpAlphaBetaList != NULL &&
+          node->mpAlphaBetaList->mTime == mTime+1) 
+        {
+          struct AlphaBeta *st;
+          int Nq       = node->mpHmm->mNStates;
+          FLOAT* aq    = node->mpHmm->        mpTransition->mpMatrixO;
+          FLOAT* aqacc = node->mpHmmToUpdate->mpTransition->mpMatrixO + SQR(Nq);
+//        int qt_1 = (mNumberOfNetStates * mTime) + node->mEmittingStateId;
+//        int qt = qt_1 + mNumberOfNetStates;
+  
+          st = node->mpAlphaBetaList->mpState;
+  
+          if (//!mmi_den_pass &&
+            st[Nq-1].mAlpha + st[Nq-1].mBeta - P > MIN_LOG_WEGIHT) 
+          {
+            for (i = 0; i < Nq - 1; i++) 
+            {
+              LOG_INC(aqacc[i * Nq + Nq-1], aq[i * Nq + Nq-1]  * mTranScale +
+                                          (st[i].mAlpha + st[Nq-1].mBeta - P) * mOcpScale);
+            }
+          }
+  
+          for (j = 1; j < Nq - 1; j++) 
+          { //for every emitting state
+            if (st[j].mAlpha + st[j].mBeta - P > MIN_LOG_WEGIHT) 
+            {
+#ifdef MOTIF
+            ocprob[mNumberOfNetStates * (mTime+1) + node->mEmittingStateId + j]
+//            = node->mPhoneAccuracy;
+              = exp(st[j].mAlpha+st[j].mBeta-P) *
+                ((1-2*static_cast<int>(st[j].mAlphaAccuracy.negative)) * exp(st[j].mAlphaAccuracy.logvalue - st[j].mAlpha) +
+                (1-2*static_cast<int>(st[j].mBetaAccuracy.negative))  * exp(st[j].mBetaAccuracy.logvalue  - st[j].mBeta)
+                - (1-2*static_cast<int>(fwbw.avgAccuracy.negative)) * exp(fwbw.avgAccuracy.logvalue)
+                );
+  
+#endif
+//            int qt_1   = qt - mNumberOfNetStates;
+              FLOAT bjtO =mpOutPCache[p_hmms_alig->mNStates * mTime +
+                                        node->mpHmm->mpState[j-1]->mID].mValue;
+              // ForwardBackward() set mpOutPCache to contain out prob. for all frames
+  
+              assert(node->mpAlphaBetaListReverse->mTime == mTime);
+  
+//            if (!mmi_den_pass) {
+              for (i = 0; i < Nq - 1; i++) 
+              {
+                LOG_INC(aqacc[i * Nq + j],
+                        aq[i * Nq + j] * mTranScale +
+                        (node->mpAlphaBetaListReverse->mpState[i].mAlpha +
+                        bjtO * mOutpScale + st[j].mBeta - P) * mOcpScale);
+              }
+//            }
+  
+              if (mAccumType == AT_MFE || mAccumType == AT_MPE) 
+              {
+                update_dir = (1-2*static_cast<int>(st[j].mAlphaAccuracy.negative)) * exp(st[j].mAlphaAccuracy.logvalue - st[j].mAlpha) +
+                             (1-2*static_cast<int>(st[j].mBetaAccuracy.negative))  * exp(st[j].mBetaAccuracy.logvalue  - st[j].mBeta)  -
+                             (1-2*static_cast<int>(fwbw.avgAccuracy.negative))     * exp(fwbw.avgAccuracy.logvalue);
+              } 
+              else 
+              {
+                update_dir = 1.0;
+              }
+  
+              ReestState(
+                node, 
+                j - 1,
+                (st[j].mAlpha + st[j].mBeta - P)  * mOcpScale,
+                update_dir*weight, 
+                obs, 
+                obs2);
+            }
+          }
+          
+          if (node->mpAlphaBetaListReverse) 
+            free(node->mpAlphaBetaListReverse);
+            
+          node->mpAlphaBetaListReverse = node->mpAlphaBetaList;
+          node->mpAlphaBetaList = node->mpAlphaBetaList->mpNext;
+        }
+      }
+    }
+  
+    for (node = mpFirst; node != NULL; node = node->mpNext) 
+    {
+      if (node->mpAlphaBetaListReverse != NULL)
+        free(node->mpAlphaBetaListReverse);
+    }
+  
+#ifdef MOTIF
+    FLOAT max = LOG_0;
+    printf("mTranScale: %f\noutpScale: %f\n",mTranScale, mOutpScale);
+    for (i = 0; i < mNumberOfNetStates * (nFrames+1); i++) 
+      max = HIGHER_OF(max, ocprob[i]);
+  
+    imagesc(ocprob, mNumberOfNetStates, (nFrames+1),
+            sizeof(FLOAT) == 4 ? "float" : "double",
+            NULL,  cm_color, "OccProb");
+  
+    for (j=0; j<nFrames+1; j++) 
+    {
+      for (i=0; i<mNumberOfNetStates; i++) 
+      {
+        printf("%6.3g ", (ocprob[mNumberOfNetStates * j + i]));
+      }
+      printf("\n");
+    }
+//  for (i = 0; i < mNumberOfNetStates * (nFrames+1); i++) {
+//    if (ocprob[i] < LOG_MIN) ocprob[i] = max;
+//  }
+//  imagesc(ocprob, mNumberOfNetStates, (nFrames+1), STR(FLOAT), NULL, cm_color, "Log OccProb");
+    free(ocprob);
+#endif
+  
+    return P;
+  }
+    
   
   //***************************************************************************
   //***************************************************************************
@@ -2771,12 +3769,12 @@ namespace STK
     ModelSet *              p_hmms_upd =    mpModelSetToUpdate;
   
     p_out_p_cache = 
-      (Cache *) malloc(nFrames * p_hmms_alig->mNStates * sizeof(Cache));
+      (Cache *) malloc(nFrames * p_hmms_alig->mNStates * sizeof(Cache) * OUT_P_CACHES);
       
     if (p_out_p_cache == NULL) 
       Error("Insufficient memory");
   
-    for (t = 0; t < static_cast<int>(nFrames * p_hmms_alig->mNStates); t++) 
+    for (t = 0; t < static_cast<int>(nFrames * p_hmms_alig->mNStates * OUT_P_CACHES); t++) 
     {
       p_out_p_cache[t].mTime  = UNDEF_TIME;
       p_out_p_cache[t].mValue = LOG_0;
@@ -2794,7 +3792,7 @@ namespace STK
     for (t = 0; t < nFrames; t++) 
     {
       if (t >= p_hmms_alig->mTotalDelay)
-        mpOutPCache = p_out_p_cache + p_hmms_alig->mNStates*(t-p_hmms_alig->mTotalDelay);
+        mpOutPCache = p_out_p_cache + p_hmms_alig->mNStates*(t-p_hmms_alig->mTotalDelay) * OUT_P_CACHES;
       
       ViterbiStep(pObsMx + p_hmms_alig->mInputVectorSize * t);
     }
@@ -2884,6 +3882,142 @@ namespace STK
   }
   
   
+  //***************************************************************************
+  //***************************************************************************
+  FLOAT 
+  Network::
+  ViterbiReest(
+    const Matrix<FLOAT>&  rObsMx, 
+    const Matrix<FLOAT>&  rObsMx2, 
+    int                   nFrames, 
+    FLOAT                 weight)
+  {
+    int                     t;
+    WordLinkRecord *        wlr;
+    Node *prevnode =        NULL;
+    FLOAT                   P;
+    Cache *                 p_out_p_cache;
+    ModelSet *              p_hmms_alig =   mpModelSet;
+    ModelSet *              p_hmms_upd =    mpModelSetToUpdate;
+  
+    p_out_p_cache = 
+      (Cache *) malloc(nFrames * p_hmms_alig->mNStates * sizeof(Cache) * OUT_P_CACHES);
+      
+    if (p_out_p_cache == NULL) 
+      Error("Insufficient memory");
+  
+    for (t = 0; t < static_cast<int>(nFrames * p_hmms_alig->mNStates * OUT_P_CACHES); t++) 
+    {
+      p_out_p_cache[t].mTime  = UNDEF_TIME;
+      p_out_p_cache[t].mValue = LOG_0;
+    }
+  
+    free(mpOutPCache);
+    
+    mpOutPCache = NULL;
+    mAlignment = STATE_ALIGNMENT;
+    
+    ViterbiInit();
+    
+    nFrames += p_hmms_alig->mTotalDelay;
+  
+    for (t = 0; t < nFrames; t++) 
+    {
+      if (t >= p_hmms_alig->mTotalDelay)
+        mpOutPCache = p_out_p_cache + p_hmms_alig->mNStates*(t-p_hmms_alig->mTotalDelay) * OUT_P_CACHES;
+      
+      ViterbiStep(rObsMx[t]);
+    }
+  
+    mpOutPCache = p_out_p_cache;
+  
+    if (!mpLast->mpExitToken->IsActive()) 
+    {
+      ViterbiDone(NULL);
+      return LOG_0;
+    }
+  
+    p_hmms_alig->ResetXformInstances();
+  
+    if (p_hmms_alig != p_hmms_upd)
+      p_hmms_upd->ResetXformInstances();
+  
+    // invert order of WRLs
+    wlr = mpLast->mpExitToken->mpWlr;
+    
+    while (wlr->mpNext != NULL) 
+    {
+      WordLinkRecord *tmp = wlr->mpNext->mpNext;
+      wlr->mpNext->mpNext = mpLast->mpExitToken->mpWlr;
+      mpLast->mpExitToken->mpWlr = wlr->mpNext;
+      wlr->mpNext = tmp;
+    }
+  
+    for (mTime = -p_hmms_alig->mTotalDelay; mTime < 0; mTime++) 
+    {
+      //FLOAT *obs = rObsMx+p_hmms_alig->mInputVectorSize*(mTime+p_hmms_alig->mTotalDelay);
+      FLOAT *obs = rObsMx[mTime+p_hmms_alig->mTotalDelay];
+      p_hmms_alig->UpdateStacks(obs, mTime, FORWARD);
+    }
+  
+    if (p_hmms_alig != p_hmms_upd) 
+    {
+      //FLOAT *obs2 = pObsMx2+p_hmms_upd->mInputVectorSize*(mTime+p_hmms_upd->mTotalDelay);
+      FLOAT *obs2 = rObsMx2[mTime+p_hmms_upd->mTotalDelay];
+      
+      for (mTime = -p_hmms_upd->mTotalDelay; mTime < 0; mTime++) 
+      {
+        p_hmms_upd->UpdateStacks(obs2, mTime, FORWARD);
+      }
+    }
+  
+  // Update accumulators
+    for (wlr = mpLast->mpExitToken->mpWlr; wlr != NULL; wlr = wlr->mpNext) 
+    {
+      Node *node   = wlr->mpNode;
+      int Nq       = node->mpHmmToUpdate->mNStates;
+      FLOAT *aqacc = node->mpHmmToUpdate->mpTransition->mpMatrixO + SQR(Nq);
+      int currstate = wlr->mStateIdx+1;
+      int nextstate = (wlr->mpNext && node == wlr->mpNext->mpNode)
+                      ? wlr->mpNext->mStateIdx+1 : Nq-1;
+      int duration  = wlr->mTime - mTime;
+  
+  
+  
+      if (prevnode != node) {
+  //      if (!mmi_den_pass)
+        LOG_INC(aqacc[currstate], 0 /*ln(1)*/);
+        prevnode = node;
+      }
+  
+  //    if (!mmi_den_pass) { // So far we dont do any MMI estimation of trasitions
+      LOG_INC(aqacc[currstate * Nq + currstate], log(duration-1));
+      LOG_INC(aqacc[currstate * Nq + nextstate], 0 /*ln(1)*/);
+  //    }
+  
+      for (; mTime < wlr->mTime; mTime++) 
+      {
+        //for every frame of segment
+        //FLOAT *obs  = pObsMx  + p_hmms_alig->mInputVectorSize*(mTime+p_hmms_alig->mTotalDelay);
+        //FLOAT *obs2 = pObsMx2 + p_hmms_upd->mInputVectorSize*(mTime+p_hmms_upd->mTotalDelay);
+        FLOAT *obs  = rObsMx [mTime+p_hmms_alig->mTotalDelay];
+        FLOAT *obs2 = rObsMx2[mTime+p_hmms_upd->mTotalDelay];
+        
+  
+        p_hmms_alig->UpdateStacks(obs, mTime, FORWARD);
+        
+        if (p_hmms_alig != p_hmms_upd)
+          p_hmms_upd->UpdateStacks(obs2, mTime, FORWARD);
+        
+        ReestState(node, currstate-1, 0.0, 1.0*weight, obs, obs2);
+      }
+    }
+  
+    P = mpLast->mpExitToken->mpWlr->mLike;
+    //ViterbiDone(net, NULL);
+    ViterbiDone(NULL);
+    return P;
+  }
     
     
     

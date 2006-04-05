@@ -369,10 +369,17 @@ int main(int argc, char *argv[]) {
 
       for (i = 0; i < hset.varFloor->VectorSize(); i++) {
         if (macro) {
-          hset.varFloor->mpVectorO[i] =
+          
+          hset.varFloor->mVector[i] =
              tmpvar && ((float) min_variance <= 0.0 ||
-                        tmpvar->mpVectorO[i] < 1/min_variance)
-             ? tmpvar->mpVectorO[i] : 1 / min_variance;
+                        tmpvar->mVector[i] < 1/min_variance)
+             ? tmpvar->mVector[i] : 1 / min_variance;
+          
+          // old vector
+          //hset.varFloor->mpVectorO[i] =
+          //   tmpvar && ((float) min_variance <= 0.0 ||
+          //              tmpvar->mpVectorO[i] < 1/min_variance)
+          //   ? tmpvar->mpVectorO[i] : 1 / min_variance;
         }
       }
     }

@@ -72,14 +72,20 @@ char *optionStr =
 int main(int argc, char *argv[]) 
 {
   ModelSet                hset;
-  FILE *                  sfp;
-  FILE *                  ofp = NULL;
-  FLOAT *                 obs_mx;
-  FLOAT *                 obs;
-  HtkHeader              header;
+  FILE*                   sfp;
+  FILE*                   ofp = NULL;
+  
+#ifndef USE_NEW_MATRIX  
+  FLOAT*                  obs_mx;
+#else
+  Matrix<FLOAT>           feature_matrix;
+#endif
+  
+  FLOAT*                  obs;
+  HtkHeader               header;
   int                     i;
   int                     fcnt = 0;
-  XformInstance *         p_input = NULL;
+  XformInstance*          p_input = NULL;
   char                    p_line[1024];
   char                    p_out_file[1024];
   MyHSearchData  cfg_hash;
@@ -227,11 +233,18 @@ int main(int argc, char *argv[])
     if(cvn_mask) 
       process_mask(file_name->logical, cvn_mask, cvn_file);
       
+#ifndef USE_NEW_MATRIX  
     obs_mx = ReadHTKFeatures(file_name->mpPhysical, swap_features,
                             startFrmExt, endFrmExt, targetKind,
                             derivOrder, derivWinLengths, &header,
                             cmn_path, cvn_path, cvg_file, &rhfbuff);
-
+#else
+    ReadHTKFeatures(file_name->mpPhysical, swap_features,
+                    startFrmExt, endFrmExt, targetKind,
+                    derivOrder, derivWinLengths, &header,
+                    cmn_path, cvn_path, cvg_file, &rhfbuff, feature_matrix);
+#endif
+                            
     vec_size = header.mSampleSize / sizeof(float);
     out_size = p_input ? p_input->OutSize() : vec_size;
 
@@ -270,12 +283,19 @@ int main(int argc, char *argv[])
 
     for(i = 0; i < header.mNSamples + hset.mTotalDelay; i++) 
     {
+#ifndef USE_NEW_MATRIX      
       hset.UpdateStacks(obs_mx + i * vec_size, ++time, FORWARD);
-      
+#else      
+      hset.UpdateStacks(feature_matrix[i], ++time, FORWARD);
+#endif      
       if (time <= 0) 
         continue;
 
+#ifndef USE_NEW_MATRIX      
       obs = XformPass(p_input, obs_mx + i * vec_size, time, FORWARD);
+#else
+      obs = XformPass(p_input, feature_matrix[i], time, FORWARD);
+#endif
 
       if (WriteHTKFeature (ofp, obs, out_size, swap_fea_out)) 
         Error("Cannot write to output feature file: '%s'", p_out_file);      
@@ -287,7 +307,11 @@ int main(int argc, char *argv[])
       TraceLog("[%d frames]", header.mNSamples);
       
     fclose(ofp);
+#ifndef USE_NEW_MATRIX      
     free(obs_mx);
+#else
+    feature_matrix.Destroy();
+#endif
   }
   
   if (trace_flag & 2) 

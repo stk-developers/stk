@@ -80,6 +80,24 @@ namespace STK
     }
   } //
   
+  //****************************************************************************
+  //****************************************************************************
+  // The destructor
+  template<typename _ElemT>
+    void
+    Matrix<_ElemT>::
+    Destroy()
+    {
+      // we need to free the data block if it was defined
+#ifndef STK_MEMALIGN_MANUAL
+      if (NULL != mpData) free(mpData);
+#else
+      if (NULL != mpFreeData) free(mpFreeData);
+#endif
+
+      mpData = NULL;
+      mMRows = mMCols = 0;
+    }
 
   //****************************************************************************
   //****************************************************************************
@@ -130,12 +148,13 @@ namespace STK
     }
 
 
+  
   //****************************************************************************
   //****************************************************************************
   // The destructor
   template<typename _ElemT>
     Matrix<_ElemT>::
-    ~Matrix<_ElemT> ()
+    ~Matrix()
     {
       // we need to free the data block if it was defined
 #ifndef STK_MEMALIGN_MANUAL
@@ -366,6 +385,29 @@ namespace STK
       return *this;
     }
 
+
+  //***************************************************************************
+  //***************************************************************************
+  template<typename _ElemT>
+    Matrix<_ElemT>&
+    Matrix<_ElemT>::
+    DiagScale(BasicVector<_ElemT>& rDiagVector)
+    {
+      // :TODO: 
+      // optimize this
+      _ElemT* data = mpData;
+      for (size_t i=0; i < Rows(); i++)
+      {
+        for (size_t j=0; j < Cols(); j++)
+        {
+          data[j] *= rDiagVector[j];
+        }
+        data += mStride;
+      }
+      
+      return *this;
+    }
+        
       
   //****************************************************************************
   //****************************************************************************
@@ -481,12 +523,9 @@ namespace STK
     std::ostream &
     operator << (std::ostream & rOut, Matrix<_ElemT> & rM)
     {
-      /*rOut << "Rows: " << rM.Rows() << "\n";
-      rOut << "Cols: " << rM.Cols() << "\n";
-      if(rM.Storage() == STORAGE_TRANSPOSED) rOut << "Transposed \n ";
-      else rOut << "Regular \n ";*/
       
-      /////
+      //
+      ///
       for(int i=0; i<10; i++){
         rOut << rM.mpData[i] << " ";
       }
@@ -501,21 +540,6 @@ namespace STK
         }
         rOut << std::endl;
       }
-      
-      // go through all rows
-/*      for (rcount = 0; rcount < rM.Rows(); rcount++)
-      {
-        // go through all columns
-        for (ccount = 0; ccount < rM.Cols(); ccount++)
-        {
-          rOut << static_cast<_ElemT>( rM(rcount, ccount)) << " ";
-
-        }
-
-        //data += rM.mMSkip;
-
-        rOut << std::endl;
-      }*/
       return rOut;
     }
 

@@ -208,8 +208,16 @@ int main(int argc, char *argv[]) {
   HtkHeader header;
   ModelSet hset;
   Network net;
-  FILE *sfp, *lfp = NULL, *ilfp = NULL;
-  FLOAT  *obsMx;
+  FILE*           sfp;
+  FILE*           lfp = NULL;
+  FILE*           ilfp = NULL;
+  
+#ifndef USE_NEW_MATRIX
+  FLOAT*          obsMx;
+#else
+  Matrix<FLOAT>   feature_matrix;
+#endif
+
   int i, fcnt = 0;
   char line[1024];
   char label_file[1024];
@@ -442,10 +450,18 @@ int main(int argc, char *argv[]) {
     }
     if (cmn_mask) process_mask(file_name->logical, cmn_mask, cmn_file);
     if (cvn_mask) process_mask(file_name->logical, cvn_mask, cvn_file);
+    
+#ifndef USE_NEW_MATRIX  
     obsMx = ReadHTKFeatures(file_name->mpPhysical, swap_features,
                             startFrmExt, endFrmExt, targetKind,
                             derivOrder, derivWinLengths, &header,
                             cmn_path, cvn_path, cvg_file, &rhfbuff);
+#else
+    ReadHTKFeatures(file_name->mpPhysical, swap_features,
+                    startFrmExt, endFrmExt, targetKind,
+                    derivOrder, derivWinLengths, &header,
+                    cmn_path, cvn_path, cvg_file, &rhfbuff, feature_matrix);
+#endif
 
     if (hset.mInputVectorSize != static_cast<int>(header.mSampleSize / sizeof(float))) {
       Error("Vector size [%d] in '%s' is incompatible with HMM set [%d]",
@@ -506,9 +522,13 @@ int main(int argc, char *argv[]) {
       }
       puts("");
     }
-    for (i = 0; i < header.mNSamples; i++) {
-      //ViterbiStep(&net, obsMx + i * hset.mInputVectorSize);
+    for (i = 0; i < header.mNSamples; i++) 
+    {
+#ifndef USE_NEW_MATRIX
       net.ViterbiStep(obsMx + i * hset.mInputVectorSize);
+#else
+      net.ViterbiStep(feature_matrix[i]);
+#endif
 
       if (trace_flag & 2) {
         printf("      %13e", filler_end->mLike);
@@ -563,7 +583,12 @@ int main(int argc, char *argv[]) {
     //ViterbiDone(&net, NULL);
     net.ViterbiDone(NULL);
     
+#ifndef USE_NEW_MATRIX
     free(obsMx);
+#else
+    feature_matrix.Destroy();
+#endif    
+    
     CloseOutputLabelFile(lfp, out_MLF);
 
     if (trace_flag & 1) {

@@ -86,7 +86,16 @@ namespace STK
       Init(const size_t r,
            const size_t c);
       
-      
+      /**
+       * @brief Dealocates the matrix from memory and resets the dimensions to (0, 0)
+       */
+      void
+      Destroy();
+           
+      const bool
+      IsInitialized() const
+      { return mpData != NULL; }            
+            
       /// Returns number of rows in the matrix
       const size_t
       Rows() const
@@ -111,14 +120,26 @@ namespace STK
       
       /**
        *  @brief Gives access to a specified matrix row without range check
-       *  @return pointer to the first field of the row
+       *  @return Pointer to the const array
        */
-      const _ElemT*      
+      const _ElemT* const
+      cpData () const
+      {
+        return mpData;
+      }
+      
+      
+      /**
+       *  @brief Gives access to a specified matrix row without range check
+       *  @return Pointer to the non-const data array
+       */
+      _ElemT*      
       pData () const
       {
         return mpData;
       }
 
+      
       /// Returns size of matrix in memory
       const size_t
       MSize() const
@@ -137,6 +158,9 @@ namespace STK
        */
       ThisType&
       DiagScale(_ElemT* pDiagVector);
+      
+      ThisType&
+      DiagScale(BasicVector<_ElemT>& rDiagVector);
       
       /**
        *  @brief Performs vector multiplication on a and b and and adds the
@@ -195,6 +219,8 @@ namespace STK
       ThisType &
       Invert();
       
+      
+      
 
       ThisType &
       Clear();
@@ -204,7 +230,7 @@ namespace STK
        *  @return pointer to the first field of the row
        */
       _ElemT*      
-      operator []  (size_t i)
+      operator []  (size_t i) const
       {
         return mpData + (i * mStride);
       }
@@ -380,9 +406,16 @@ namespace STK
   template<>
     Matrix<float> &
     Matrix<float>::
+    DiagScale(BasicVector<float>& rDiagVector);
+  
+  
+  template<>
+    Matrix<float> &
+    Matrix<float>::
     DiagScale(float* pDiagVector);
     
-  
+
+      
   template<>
     Matrix<float> &
     Matrix<float>::

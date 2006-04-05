@@ -4,13 +4,15 @@ AR = ar
 
 ##############################################################################
 # compiler options
-CFLAGS = -Wall -g -DDOUBLEPRECISION=0 -D_REENTRANT -DUSE_BLAS -O2
+#CFLAGS = -Wall -g -O3 -DDOUBLEPRECISION=0 -D_REENTRANT  -DUSE_BLAS -msse -msse2 -mmmx -mfpmath=sse
+CFLAGS = -Wall  -g -O3 -DDOUBLEPRECISION=0   -D_REENTRANT  -DUSE_BLAS -msse -msse2 -mfpmath=sse -march=pentium3
+
 CXXFLAGS = $(CFLAGS)
 
 ###############################################################################
 # linker options
 LDLIBS = -lm -latlas -lpthread
-#LDFLAGS = pg -g
+#LDFLAGS =
 #LDFLAGS = -a -g -L. -pg
 
 ###############################################################################
@@ -70,31 +72,36 @@ depend:
 # DO NOT DELETE
 
 common.o: common.h Error.h StkMath.h filmatch.h
-dict.o: dict.h Models.h Matrix.h common.h Error.h StkMath.h Matrix.tcc
-dict.o: stkstream.h stkstream.tcc
-fileio.o: fileio.h common.h Error.h StkMath.h stkstream.h stkstream.tcc
+dict.o: dict.h Models.h Matrix.h common.h Error.h StkMath.h BasicVector.h
+dict.o: BasicVector.tcc Matrix.tcc stkstream.h stkstream.tcc
+fileio.o: fileio.h Matrix.h common.h Error.h StkMath.h BasicVector.h
+fileio.o: BasicVector.tcc Matrix.tcc stkstream.h stkstream.tcc
 filmatch.o: filmatch.h common.h Error.h StkMath.h
 getopt.o: getopt.h
 imagesc.o: imagesc.h
-labels.o: Viterbi.h Models.h Matrix.h common.h Error.h StkMath.h Matrix.tcc
-labels.o: stkstream.h stkstream.tcc labels.h dict.h Net.h
+labels.o: Viterbi.h Models.h Matrix.h common.h Error.h StkMath.h
+labels.o: BasicVector.h BasicVector.tcc Matrix.tcc stkstream.h stkstream.tcc
+labels.o: labels.h dict.h Net.h
+BasicVector.o: Matrix.h common.h Error.h StkMath.h BasicVector.h
+BasicVector.o: BasicVector.tcc Matrix.tcc
 Buffer.o: Buffer.h
 Error.o: Error.h
-Features.o: Features.h common.h Error.h StkMath.h Matrix.h Matrix.tcc
-Features.o: stkstream.h stkstream.tcc
+Features.o: Features.h common.h Error.h StkMath.h Matrix.h BasicVector.h
+Features.o: BasicVector.tcc Matrix.tcc stkstream.h stkstream.tcc
 labelreader.o: labelreader.h stkstream.h common.h Error.h StkMath.h
 labelreader.o: stkstream.tcc
-Matrix.o: Matrix.h common.h Error.h StkMath.h Matrix.tcc
-Models.o: Models.h Matrix.h common.h Error.h StkMath.h Matrix.tcc stkstream.h
-Models.o: stkstream.tcc
-Models_IO.o: Models.h Matrix.h common.h Error.h StkMath.h Matrix.tcc
-Models_IO.o: stkstream.h stkstream.tcc
-Net.o: Models.h Matrix.h common.h Error.h StkMath.h Matrix.tcc stkstream.h
-Net.o: stkstream.tcc labels.h dict.h Net.h
+Matrix.o: Matrix.h common.h Error.h StkMath.h BasicVector.h BasicVector.tcc
+Matrix.o: Matrix.tcc
+Models.o: Models.h Matrix.h common.h Error.h StkMath.h BasicVector.h
+Models.o: BasicVector.tcc Matrix.tcc stkstream.h stkstream.tcc
+Models_IO.o: Models.h Matrix.h common.h Error.h StkMath.h BasicVector.h
+Models_IO.o: BasicVector.tcc Matrix.tcc stkstream.h stkstream.tcc
+Net.o: Models.h Matrix.h common.h Error.h StkMath.h BasicVector.h
+Net.o: BasicVector.tcc Matrix.tcc stkstream.h stkstream.tcc labels.h dict.h
+Net.o: Net.h
 Net_IO.o: labels.h common.h Error.h StkMath.h Net.h Models.h Matrix.h
-Net_IO.o: Matrix.tcc stkstream.h stkstream.tcc dict.h
-StkInterface.o: StkInterface.h fileio.h common.h Error.h StkMath.h Models.h
-StkInterface.o: Matrix.h Matrix.tcc stkstream.h stkstream.tcc Viterbi.h
-StkInterface.o: labels.h dict.h Net.h
-Viterbi.o: Viterbi.h Models.h Matrix.h common.h Error.h StkMath.h Matrix.tcc
-Viterbi.o: stkstream.h stkstream.tcc labels.h dict.h Net.h
+Net_IO.o: BasicVector.h BasicVector.tcc Matrix.tcc stkstream.h stkstream.tcc
+Net_IO.o: dict.h
+Viterbi.o: Viterbi.h Models.h Matrix.h common.h Error.h StkMath.h
+Viterbi.o: BasicVector.h BasicVector.tcc Matrix.tcc stkstream.h stkstream.tcc
+Viterbi.o: labels.h dict.h Net.h

@@ -314,6 +314,7 @@ namespace STK
     MyHSearchData             mXformHash;
     
     int                       mInputVectorSize;
+    int                       mInputVectorStride;
     int                       mParamKind;
     size_t                    mNMixtures;
     size_t                    mNStates;
@@ -499,6 +500,9 @@ namespace STK
     void
     UpdateStacks(FLOAT* obs, int time,  PropagDirectionType dir);
     
+    void
+    UpdateStacks(const FLOAT* obs, int time,  PropagDirectionType dir);
+    
     /**
      * @brief Creates a macro object and adds it into the hash
      * @param type Type of macro
@@ -678,9 +682,6 @@ namespace STK
    */
   class Mixture : public MacroData 
   {
-  private:
-    FLOAT                     mGConst;
-    
   public:
     /// The (empty) constructor
     Mixture(): mID(0), mpMean(NULL), mpVariance(NULL), mpInputXform(NULL), 
@@ -703,7 +704,6 @@ namespace STK
     Matrix<FLOAT>             mAccumG;
     Matrix<FLOAT>             mAccumK;
     BasicVector<FLOAT>        mAccumL;
-    //FLOAT                   mAccumGamma;         // this accumulator is now in mpVectorO[mVectorSize*3]
     FLOAT                     mPartialAccumG;
     BasicVector<FLOAT>        mPartialAccumK;
     
@@ -717,16 +717,10 @@ namespace STK
     void 
     UpdateClusterParametersAccums();
     
-    /**
-     * @brief Updates the mean vectors and covariance matrix
-     * @param pModelSet 
-     */
-    void
-    UpdateClusterParametersFromAccums(const ModelSet * pModelSet);
     
   
     /// Returns the GConst constant
-    const FLOAT &
+    inline const FLOAT&
     GConst() const { return mGConst; }
     
     /// Gives full access to the GConst
@@ -780,6 +774,16 @@ namespace STK
           HMMSetNodeName  nodeNameBuffer,
           ScanAction      action, 
           void *          pUserData);
+  
+  private:
+    FLOAT                     mGConst;
+    
+    /**
+     * @brief Updates the mean vectors and covariance matrix
+     * @param pModelSet 
+     */
+    void
+    UpdateClusterParametersFromAccums(const ModelSet * pModelSet);
   };
 
   
@@ -814,7 +818,8 @@ namespace STK
     virtual
     ~Mean();
     
-    
+    BasicVector<FLOAT>      mVector;
+    FLOAT*                  mpAccums;
     XformStatAccum*         mpXformStatAccum;
     size_t                  mNumberOfXformStatAccums;
     bool                    mUpdatableFromStatAccums;
@@ -826,25 +831,13 @@ namespace STK
     FLOAT*                  mpOccProbAccums;           ///< Occupation probability accumulators
     Matrix<FLOAT>           mCwvAccum;                 ///< Cluster weight vector accumulators (\sum \gamma_m(\tau) o(\tau))
     
-    FLOAT*                  mpVectorO;                 ///< Matrix of cluster mean vectors (with CAT)
-#ifdef STK_MEMALIGN_MANUAL
-    FLOAT*                  mpVectorOFree;
-#endif
     
     /**
      * @brief Returns mean vector size
      */
     const size_t
     VectorSize() const 
-    {return mVectorSize;}
-    
-    /**
-     * @brief Accumulator array accessor
-     * @return Pointer to the array of accumulators
-     */
-    FLOAT*
-    pAccums()
-    { return mpVectorO + mVectorSize; }
+    { return mVector.Length(); } 
     
     /**
      * @brief Updates the object from the accumulators
@@ -875,7 +868,9 @@ namespace STK
     
     
   private:
-    size_t                  mVectorSize;
+#ifdef STK_MEMALIGN_MANUAL
+    FLOAT*                  mpAccumsFree;
+#endif
   };
 
   
@@ -898,36 +893,28 @@ namespace STK
     ~Variance();
   
     //  BOOL         diagonal;
+    BasicVector<FLOAT>      mVector;
+    FLOAT*                  mpAccums;
+    
     XformStatAccum *        mpXformStatAccum;
     size_t                  mNumberOfXformStatAccums;
     bool                    mUpdatableFromStatAccums;
-    FLOAT*                  mpVectorO;
+    
     Variance*               mpPrior;
-#ifdef STK_MEMALIGN_MANUAL
-    FLOAT*                  mpVectorOFree;
-#endif
     
     /**
      * @brief Returns mean vector size
      */
     const size_t
     VectorSize() const 
-    {return mVectorSize;}
-    
-    /**
-     * @brief Accumulator array accessor
-     * @return Pointer to the array of accumulators
-     */
-    FLOAT*
-    pAccums()
-    { return mpVectorO + mVectorSize; }
+    { return mVector.Length(); }
     
     void
     /**
      * @brief Updates the object from the accumulators
      * @param rModelSet ModelSet object which holds the accumulator configuration
      */
-    UpdateFromAccums(const ModelSet * pModelSet);
+    UpdateFromAccums(const ModelSet* pModelSet);
 
     /**
      * 
@@ -940,7 +927,9 @@ namespace STK
 
   
   private:
-    size_t                  mVectorSize;
+#ifdef STK_MEMALIGN_MANUAL
+    FLOAT*                  mpAccumsFree;
+#endif
   };
 
   
@@ -1029,6 +1018,8 @@ namespace STK
     ~XformInstance();
     
   
+    /// Output vector declaration
+    BasicVector<FLOAT>    mOutputVector;
     XformInstance*        mpInput;
     Xform*                mpXform;
     int                   mTime;
@@ -1055,9 +1046,9 @@ namespace STK
      * @brief Gives access to the output data vector
      * @return Pointer to the const data array
      */
-    const FLOAT*
-    pOutputData() const
-    { return mOutputVector.pData(); }
+    const FLOAT* const
+    cpOutputData() const
+    { return mOutputVector.cpData(); }
     
 
     /**
@@ -1065,7 +1056,7 @@ namespace STK
      * @return Pointer to the data array
      */
     FLOAT*
-    pOutputData()
+    pOutputData() const
     { return mOutputVector.pData(); }
     
     
@@ -1100,8 +1091,6 @@ namespace STK
                PropagDirectionType    dir);
                
   private:
-    /// Output vector declaration
-    BasicVector<FLOAT>    mOutputVector;
   };
 
   
@@ -1167,9 +1156,9 @@ namespace STK
   class XformLayer
   {
   public:
-    FLOAT *             mpOutputVector;
+    FLOAT*              mpOutputVector;
     size_t              mNBlocks;
-    Xform **            mpBlock;
+    Xform**             mpBlock;
     
     /// The (empty) constructor
     XformLayer();
@@ -1177,7 +1166,7 @@ namespace STK
     /// The destructor
     ~XformLayer();
     
-    Xform **
+    Xform**
     /**
      * @brief Inits (creates) the blocks
      * @param nBlocks number of blocks in the layer
@@ -1207,7 +1196,7 @@ namespace STK
     ~CompositeXform();    
     
     size_t              mNLayers;    
-    XformLayer *        mpLayer;
+    XformLayer*         mpLayer;
     
     /**
      * @brief Composite Xform evaluation 
@@ -1244,7 +1233,7 @@ namespace STK
   
     
     Matrix<FLOAT>       mMatrix;
-    FLOAT*              mpMatrixO;
+    //FLOAT*              mpMatrixO;
     
     /**
      * @brief Linear Xform evaluation 
@@ -1253,10 +1242,10 @@ namespace STK
      * @param pMemory pointer to the extra memory needed by the operation
      * @param direction propagation direction (forward/backward)
      */
-    virtual FLOAT * 
-    Evaluate(FLOAT *    pInputVector, 
-             FLOAT *    pOutputVector,
-             char *     pMemory,
+    virtual FLOAT* 
+    Evaluate(FLOAT*     pInputVector, 
+             FLOAT*     pOutputVector,
+             char*      pMemory,
              PropagDirectionType  direction);
   };
   
@@ -1347,7 +1336,7 @@ namespace STK
     virtual
     ~CopyXform();
     
-    int *               mpIndices;  
+    int*                mpIndices;  
   
     /**
      * @brief Copy Xform evaluation 
@@ -1356,10 +1345,10 @@ namespace STK
      * @param pMemory pointer to the extra memory needed by the operation
      * @param direction propagation direction (forward/backward)
      */
-    virtual FLOAT * 
-    Evaluate(FLOAT *    pInputVector, 
-             FLOAT *    pOutputVector,
-             char *     pMemory,
+    virtual FLOAT* 
+    Evaluate(FLOAT*     pInputVector, 
+             FLOAT*     pOutputVector,
+             char*      pMemory,
              PropagDirectionType  direction);  
   };
   
@@ -1391,10 +1380,10 @@ namespace STK
      * @param pMemory pointer to the extra memory needed by the operation
      * @param direction propagation direction (forward/backward)
      */
-    virtual FLOAT * 
-    Evaluate(FLOAT *    pInputVector, 
-             FLOAT *    pOutputVector,
-             char *     pMemory,
+    virtual FLOAT* 
+    Evaluate(FLOAT*     pInputVector, 
+             FLOAT*     pOutputVector,
+             char*      pMemory,
              PropagDirectionType  direction);
   };
   
@@ -1428,19 +1417,12 @@ namespace STK
     int           mMmi;
   };
 
-  class ClusterWeightAccums
+  class ClusterWeightAccumUserData
   {
   public:
     int                   mNClusterWeightVectors;
     Matrix<FLOAT>*        mpGw;
     BasicVector<FLOAT>*   mpKw;
-  };
-  
-  class ClusterParametersAccums
-  {
-  public:
-    Matrix<FLOAT>* mpGPartial;
-    Matrix<FLOAT>* mpLPartial;
   };
   
   class ReplaceItemUserData

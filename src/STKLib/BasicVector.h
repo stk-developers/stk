@@ -51,7 +51,7 @@ namespace STK
     class BasicVector
     {
     public:
-      BasicVector(): mLength(0), mpData(NULL)
+      BasicVector(): mpData(NULL), mLength(0)
 #ifdef STK_MEMALIGN_MANUAL
         ,mpFreeData(NULL)
 #endif
@@ -64,6 +64,8 @@ namespace STK
       BasicVector(const BasicVector<_ElemT>& rV);
       
       BasicVector(const size_t s);
+      
+      BasicVector(const _ElemT* pData, const size_t s);
       
       ~BasicVector();
       
@@ -95,15 +97,15 @@ namespace STK
        *  @return pointer to the first field
        */
       _ElemT*
-      pData()
+      pData() const
       { return mpData; }
       
       /**
        *  @brief Gives access to the vector memory area
        *  @return pointer to the first field
        */
-      const _ElemT*
-      pData() const
+      const _ElemT* const 
+      cpData() const
       { return mpData; }
       
       /**
@@ -111,7 +113,7 @@ namespace STK
        *  @return pointer to the first field of the row
        */
       _ElemT&      
-      operator [] (size_t i)
+      operator [] (size_t i) const
       { return *(mpData + i);}
       
       
@@ -121,7 +123,7 @@ namespace STK
       AddCVMul(const _ElemT c, const BasicVector<_ElemT>& rV);
       
       BasicVector<_ElemT>&
-      AddCVMul(const _ElemT c, const _ElemT* pV, const size_t nV);
+      AddCVMul(const _ElemT c, const _ElemT* pV);
 
       BasicVector<_ElemT>&
       AddCVVDotMul(const _ElemT c, const _ElemT* pV, const size_t nV, 
@@ -134,7 +136,14 @@ namespace STK
       BasicVector<_ElemT>&
       AddCMVMul(const _ElemT c, const Matrix<_ElemT>& rM, 
                 const _ElemT* pV);
-                      
+                
+      _ElemT
+      Dot(const BasicVector<_ElemT>& rV);
+      
+      _ElemT
+      Dot(const _ElemT* pV);
+      
+      
       //########################################################################
       //########################################################################
       
@@ -143,18 +152,22 @@ namespace STK
         std::ostream& rOut, 
         BasicVector<_ElemT>& rV);
     
-    
+      //operator _ElemT* ()
+      //{
+      //  return mpData;
+      //}
+      
     //##########################################################################
     //##########################################################################        
-    protected:
-      size_t  mLength;      ///< Number of elements
-      
+    //protected:
+    public:
       /// data memory area
       _ElemT*   mpData;
 #ifdef STK_MEMALIGN_MANUAL
       /// data to be freed (in case of manual memalignment use, see common.h)
       _ElemT*   mpFreeData;
 #endif
+      size_t  mLength;      ///< Number of elements
     }; // class BasicVector
 
 }; // namespace STK
@@ -190,12 +203,12 @@ namespace STK
   template<>
     BasicVector<float>&
     BasicVector<float>::
-    AddCVMul(const float c, const float* pV, const size_t nV);
+    AddCVMul(const float c, const float* pV);
 
   template<>
     BasicVector<double>&
     BasicVector<double>::
-    AddCVMul(const double c, const double* pV, const size_t nV);
+    AddCVMul(const double c, const double* pV);
     
   
   template<>
@@ -207,6 +220,17 @@ namespace STK
     BasicVector<double>&
     BasicVector<double>::
     AddCMVMul(const double c, const Matrix<double>& rV, const BasicVector<double>& rV);
+    
+
+  template<>
+    float
+    BasicVector<float>::
+    Dot(const float* pV);
+
+  template<>
+    double
+    BasicVector<double>::
+    Dot(const double* pV);
     
 } // namespace STK
 

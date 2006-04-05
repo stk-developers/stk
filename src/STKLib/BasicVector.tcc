@@ -28,17 +28,11 @@ namespace STK
     BasicVector<_ElemT>::
     Init(const size_t length)
     {
-      size_t skip;
-      size_t stride;      // leading dimension
       size_t size;
       void*  data;
       void*  free_data;
       
-      // compute the size in memory
-      skip   = ((16 / sizeof(_ElemT)) - length % (16 / sizeof(_ElemT))) 
-             % (16 / sizeof(_ElemT));
-      stride = length + skip;
-      size   =  stride * sizeof(_ElemT);
+      size = align<16>(length * sizeof(_ElemT));
       
       if (NULL != (data = stk_memalign(16, size, &free_data)))
       {
@@ -47,7 +41,6 @@ namespace STK
         mpFreeData    = static_cast<_ElemT*> (free_data);
 #endif
         mLength = length;
-        //mStride = stride;
         
         // set all bytes to 0
         memset(mpData, 0, size);
@@ -82,9 +75,9 @@ namespace STK
       size   =  rV.MSize();
 
 #ifdef STK_MEMALIGN_MANUAL
-      if (NULL != mpFreeData) free(mpData);
+//      if (NULL != mpFreeData) free(mpData);
 #else
-      if (NULL != mpData) free(mpData);
+//      if (NULL != mpData) free(mpData);
 #endif 
 
 
@@ -107,6 +100,41 @@ namespace STK
         throw std::bad_alloc();
       }
     }
+  
+  
+  //******************************************************************************    
+  //******************************************************************************    
+  template<typename _ElemT>
+    BasicVector<_ElemT>::
+    BasicVector(const _ElemT* pData, const size_t s)
+    {
+      size_t size(align<16>(s*sizeof(_ElemT)));
+      void*  data;
+      void*  free_data;
+
+      if (NULL != (data = stk_memalign(16, size, &free_data)))
+      {
+        mpData        = static_cast<_ElemT*> (data);
+#ifdef STK_MEMALIGN_MANUAL
+        mpFreeData    = static_cast<_ElemT*> (free_data);
+#endif
+        mLength = s;
+        
+        // set all bytes to 0
+        memset(mpData, 0, size);
+        // copy the memory block
+        memcpy(this->mpData, pData, s);
+      }
+      else
+      {
+        mpData      = NULL;
+#ifdef STK_MEMALIGN_MANUAL
+        mpFreeData  = NULL;
+#endif        
+        throw std::bad_alloc();
+      }
+    }
+    
   
   //****************************************************************************
   //****************************************************************************
@@ -140,7 +168,7 @@ namespace STK
   template<typename _ElemT>
     BasicVector<_ElemT>&
     BasicVector<_ElemT>::
-    AddCVMul(const _ElemT c, const _ElemT* pV, const size_t nV)
+    AddCVMul(const _ElemT c, const _ElemT* pV)
     {
       Error("BasicMatrix::AddCVMul(const _ElemT,const _ElemT*,const size_t) not implemented");
       return *this;

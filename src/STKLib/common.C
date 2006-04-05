@@ -42,39 +42,96 @@ static union
 //#define EXP2(y) (qn_d2i.n.j = (int) (QN_EXP_A*(y)) + (1072693248 - QN_EXP_C), qn_d2i.d)
 #define FAST_EXP(y) (qn_d2i.n.i = (int) (QN_EXP_A*(y)) + (1072693248 - QN_EXP_C), qn_d2i.d)
 
-void fast_sigmoid_vec(FLOAT *in, FLOAT *out, int size)
+//***************************************************************************
+//***************************************************************************
+void fast_sigmoid_vec(float* in, float* out, int size)
 {
   while(size--) *out++ = 1.0/(1.0 + FAST_EXP(-*in++));
 }
 
-FLOAT i_max_double (FLOAT *a, int len) {
-	int i;
-	FLOAT max;
-	max = a[0];
-	for (i=1; i<len; i++) {
-		if (a[i] > max) {
-			max = a[i];
-		}
-	}
-	return max;
+
+//***************************************************************************
+//***************************************************************************
+void fast_sigmoid_vec(double* in, double* out, int size)
+{
+  while(size--) *out++ = 1.0/(1.0 + FAST_EXP(-*in++));
 }
 
-void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
+
+//***************************************************************************
+//***************************************************************************
+float i_max_double (float *a, int len) 
 {
-	int i;
-	FLOAT maxa,sum;
-	// first find the max
-	maxa = i_max_double (in, size);
-	// normalize, exp and get the sum
-	sum = 0.0;
-	for (i=0; i<size; i++) {
-		out[i] = FAST_EXP(in[i] - maxa);
-		sum += out[i];
-	}
-	// now normalize bu the sum
-	for (i=0; i<size; i++) {
-		out[i] /= sum;
-	}
+  int i;
+  float max;
+  max = a[0];
+  for (i=1; i<len; i++) 
+  {
+    if (a[i] > max) 
+    {
+      max = a[i];
+    }
+  }
+  return max;
+}
+
+
+//***************************************************************************
+//***************************************************************************
+double i_max_double (double *a, int len) 
+{
+  int i;
+  double max;
+  max = a[0];
+  for (i=1; i<len; i++) 
+  {
+    if (a[i] > max) 
+    {
+      max = a[i];
+    }
+  }
+  return max;
+}
+
+
+//***************************************************************************
+//***************************************************************************
+void fast_softmax_vec(float *in, float *out, int size)
+{
+  int i;
+  float maxa,sum;
+  // first find the max
+  maxa = i_max_double (in, size);
+  // normalize, exp and get the sum
+  sum = 0.0;
+  for (i=0; i<size; i++) {
+    out[i] = FAST_EXP(in[i] - maxa);
+    sum += out[i];
+  }
+  // now normalize bu the sum
+  for (i=0; i<size; i++) {
+    out[i] /= sum;
+  }
+}
+
+//***************************************************************************
+//***************************************************************************
+void fast_softmax_vec(double *in, double *out, int size)
+{
+  int i;
+  double maxa,sum;
+  // first find the max
+  maxa = i_max_double (in, size);
+  // normalize, exp and get the sum
+  sum = 0.0;
+  for (i=0; i<size; i++) {
+    out[i] = FAST_EXP(in[i] - maxa);
+    sum += out[i];
+  }
+  // now normalize bu the sum
+  for (i=0; i<size; i++) {
+    out[i] /= sum;
+  }
 }
 
 
@@ -824,9 +881,7 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
   
   //***************************************************************************
   //***************************************************************************
-  ENTRY *GetParam(
-    MyHSearchData *pConfigHash,
-    const char *pParamName)
+  ENTRY* GetParam(MyHSearchData *pConfigHash, const char *pParamName)
   {
     ENTRY e={0}; // {0} is just to make compiler happy
     ENTRY *ep;
@@ -893,7 +948,7 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
   //***************************************************************************
   FLOAT 
   GetParamFlt(
-    MyHSearchData *   pConfigHash,
+    MyHSearchData*    pConfigHash,
     const char *      pParamName,
     FLOAT             default_value)
   {

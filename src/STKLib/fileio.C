@@ -12,6 +12,7 @@
 
 #include "fileio.h"
 #include "stkstream.h"
+#include "Matrix.h"
 #include "common.h"
 
 
@@ -40,9 +41,9 @@ namespace STK
   //***************************************************************************
   //***************************************************************************
   void ReadCepsNormFile(
-    const char *  pFileName, 
-    char **       last_file, 
-    FLOAT **      vec_buff,
+    const char*   pFileName, 
+    char**        lastFile, 
+    FLOAT**       vecBuff,
     int           sampleKind, 
     CNFileType    type, 
     int           coefs);
@@ -141,21 +142,21 @@ namespace STK
   //***************************************************************************
   int 
   ReadHTKFeature(
-      FILE *    pInFp, 
-      FLOAT *   pIn, 
+      FILE*     pInFp, 
+      FLOAT*    pIn, 
       size_t    feaLen, 
       bool      swap,
       bool      decompress, 
-      FLOAT *   pScale, 
-      FLOAT *   pBias)
+      FLOAT*    pScale, 
+      FLOAT*    pBias)
   {
     size_t i;
     
     if (decompress) 
     {
       INT_16 s;
-  //    FLOAT pScale = (xmax - xmin) / (2*32767);
-  //    FLOAT pBias  = (xmax + xmin) / 2;
+//    FLOAT pScale = (xmax - xmin) / (2*32767);
+//    FLOAT pBias  = (xmax + xmin) / 2;
   
       for (i = 0; i < feaLen; i++) 
       {
@@ -169,14 +170,18 @@ namespace STK
       return 0;
     }
   
-  #if !DOUBLEPRECISION
+#if !DOUBLEPRECISION
     if (fread(pIn, sizeof(FLOAT_32), feaLen, pInFp) != feaLen) 
       return -1;
     
-    if (swap) 
+    if (swap)
+    {
       for (i = 0; i < feaLen; i++) 
+      {
         swap4(pIn[i]);
-  #else
+      }
+    }
+#else
     FLOAT_32 f;
   
     for (i = 0; i < feaLen; i++) 
@@ -189,7 +194,7 @@ namespace STK
         
       pIn[i] = f;
     }
-  #endif
+#endif
     return 0;
   }  // int ReadHTKFeature
   
@@ -200,7 +205,7 @@ namespace STK
   {
     struct stat   stat_buff;
     char          dir_name[260];
-    char *        chptr;
+    char*         chptr;
   
     if ((chptr=strrchr(pFileName, '/')) == NULL)
       return 0;
@@ -350,7 +355,7 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  FLOAT *ReadHTKFeatures(
+  FLOAT* ReadHTKFeatures(
     char *                pFileName,
     bool                  swap,
     int                   extLeft,
@@ -717,7 +722,417 @@ namespace STK
     
     return fea_mx;
   }
+
   
+  //***************************************************************************
+  //***************************************************************************
+  bool ReadHTKFeatures(
+    char*                 pFileName,
+    bool                  swap,
+    int                   extLeft,
+    int                   extRight,
+    int                   targetKind,
+    int                   derivOrder,
+    int*                  derivWinLen,
+    HtkHeader*            pHeader,
+    const char*           pCmnFile,
+    const char*           pCvnFile,
+    const char*           pCvgFile,
+    RHFBuffer*            pBuff,
+    Matrix<FLOAT>&        rFeatureMatrix)
+  {
+    //FLOAT*                fea_mx;
+    int                   from_frame;
+    int                   to_frame;
+    int                   tot_frames;
+    int                   trg_vec_size;
+    int                   src_vec_size;
+    int                   src_deriv_order;
+    int                   lo_src_tgz_deriv_order;
+    int                   i;
+    int                   j;
+    int                   k;
+    int                   e;
+    int                   coefs;
+    int                   trg_E;
+    int                   trg_0;
+    int                   trg_N;
+    int                   src_E;
+    int                   src_0;
+    int                   src_N;
+    int                   comp;
+    int                   coef_size;
+    char*                 chptr;
+    //IStkStream            istr;
+  
+    // remove final spaces from file name
+    for (i = strlen(pFileName) - 1; i >= 0 && isspace(pFileName[i]); i--)
+    { 
+      pFileName[i] = '\0';
+    }
+      
+   
+    // read frame range definition if any ( physical_file.fea[s,e] )
+    if ((chptr = strrchr(pFileName, '[')) == NULL ||
+        ((i=0), sscanf(chptr, "[%d,%d]%n", &from_frame, &to_frame, &i), chptr[i] != '\0')) 
+    {
+      chptr = NULL;
+    }
+    
+    if (chptr != NULL) 
+      *chptr = '\0';
+  
+    if ((strcmp(pFileName, "-"))
+    &&  (pBuff->mpLastFileName != NULL) 
+    &&  (!strcmp(pBuff->mpLastFileName, pFileName))) 
+    {
+      *pHeader = pBuff->last_header;
+    } 
+    else 
+    {
+      if (pBuff->mpLastFileName) 
+      {
+        if (pBuff->mpFp != stdin) 
+          fclose(pBuff->mpFp);
+        
+        free(pBuff->mpLastFileName);
+        pBuff->mpLastFileName = NULL;
+      }
+      
+      
+      if (!strcmp(pFileName, "-")) 
+        pBuff->mpFp = stdin;
+      else 
+        pBuff->mpFp = fopen(pFileName, "rb");
+      
+      if (pBuff->mpFp == NULL) 
+        Error("Cannot open feature file: '%s'", pFileName);
+      
+      /*
+      istr.open(pFileName, ios::binary);
+      if (!istr.good())
+        Error("Cannot open feature file: '%s'", pFileName);
+      pBuff->mpFp = istr.file();  
+      */
+      
+      if (ReadHTKHeader(pBuff->mpFp, pHeader, swap)) 
+        Error("Invalid HTK header in feature file: '%s'", pFileName);
+      
+      if (pHeader->mSampleKind & PARAMKIND_C) 
+      {
+        // File is in compressed form, scale and pBias vectors
+        // are appended after HTK header.
+  
+        int coefs = pHeader->mSampleSize/sizeof(INT_16);
+        pBuff->A = (FLOAT*) realloc(pBuff->A, coefs * sizeof(FLOAT_32));
+        pBuff->B = (FLOAT*) realloc(pBuff->B, coefs * sizeof(FLOAT_32));
+        if (pBuff->A == NULL || pBuff->B == NULL) Error("Insufficient memory");
+  
+        e  = ReadHTKFeature(pBuff->mpFp, pBuff->A, coefs, swap, 0, 0, 0);
+        e |= ReadHTKFeature(pBuff->mpFp, pBuff->B, coefs, swap, 0, 0, 0);
+        
+        if (e) 
+          Error("Cannot read feature file: '%s'", pFileName);
+        
+        pHeader->mNSamples -= 2 * sizeof(FLOAT_32) / sizeof(INT_16);
+      }
+      
+      if ((pBuff->mpLastFileName = strdup(pFileName)) == NULL) 
+        Error("Insufficient memory");
+      
+      pBuff->last_header = * pHeader;
+    }
+    
+    if (chptr != NULL) 
+      *chptr = '[';
+  
+    if (chptr == NULL) 
+    { // Range [s,e] was not specified
+      from_frame = 0;
+      to_frame   = pHeader->mNSamples-1;
+    }
+    
+    src_deriv_order = PARAMKIND_T & pHeader->mSampleKind ? 3 :
+                      PARAMKIND_A & pHeader->mSampleKind ? 2 :
+                      PARAMKIND_D & pHeader->mSampleKind ? 1 : 0;
+    src_E =  (PARAMKIND_E & pHeader->mSampleKind) != 0;
+    src_0 =  (PARAMKIND_0 & pHeader->mSampleKind) != 0;
+    src_N = ((PARAMKIND_N & pHeader->mSampleKind) != 0) * (src_E + src_0);
+    comp =    PARAMKIND_C & pHeader->mSampleKind;
+    
+    pHeader->mSampleKind &= ~PARAMKIND_C;
+  
+    if (targetKind == PARAMKIND_ANON) 
+    {
+      targetKind = pHeader->mSampleKind;
+    } 
+    else if ((targetKind & 077) == PARAMKIND_ANON) 
+    {
+      targetKind &= ~077;
+      targetKind |= pHeader->mSampleKind & 077;
+    }
+    
+    trg_E = (PARAMKIND_E & targetKind) != 0;
+    trg_0 = (PARAMKIND_0 & targetKind) != 0;
+    trg_N =((PARAMKIND_N & targetKind) != 0) * (trg_E + trg_0);
+  
+    coef_size     = comp ? sizeof(INT_16) : sizeof(FLOAT_32);
+    coefs         = (pHeader->mSampleSize/coef_size + src_N) / 
+                    (src_deriv_order+1) - src_E - src_0;
+    src_vec_size  = (coefs + src_E + src_0) * (src_deriv_order+1) - src_N;
+  
+    //Is coefs dividable by 1 + number of derivatives specified in header
+    if (src_vec_size * coef_size != pHeader->mSampleSize) 
+    {
+      Error("Invalid HTK header in feature file: '%s'. "
+            "mSampleSize do not match with parmKind", pFileName);
+    }
+    
+    if (derivOrder < 0) 
+      derivOrder = src_deriv_order;
+  
+  
+    if ((!src_E && trg_E) || (!src_0 && trg_0) || (src_N && !trg_N) ||
+        (trg_N && !trg_E && !trg_0) || (trg_N && !derivOrder) ||
+        (src_N && !src_deriv_order && derivOrder) ||
+        ((pHeader->mSampleKind & 077) != (targetKind & 077) &&
+         (pHeader->mSampleKind & 077) != PARAMKIND_ANON)) 
+    {
+      char srcParmKind[64];
+      char trgParmKind[64];
+      
+      ParmKind2Str(pHeader->mSampleKind, srcParmKind);
+      ParmKind2Str(targetKind,       trgParmKind);
+      Error("Cannot convert %s to %s", srcParmKind, trgParmKind);
+    }
+  
+    lo_src_tgz_deriv_order = LOWER_OF(src_deriv_order, derivOrder);
+    trg_vec_size  = (coefs + trg_E + trg_0) * (derivOrder+1) - trg_N;
+    
+    i =  LOWER_OF(from_frame, extLeft);
+    from_frame  -= i;
+    extLeft     -= i;
+  
+    i =  LOWER_OF(pHeader->mNSamples-to_frame-1, extRight);
+    to_frame    += i;
+    extRight    -= i;
+  
+    if (from_frame > to_frame || from_frame >= pHeader->mNSamples || to_frame < 0)
+      Error("Invalid frame range for feature file: '%s'", pFileName);
+    
+    tot_frames = to_frame - from_frame + 1 + extLeft + extRight;
+    
+    // + 1 needed for safe reading unwanted _E and _0
+    //fea_mx = (FLOAT *) malloc((trg_vec_size * tot_frames + 1) * sizeof(FLOAT));
+    //if (fea_mx == NULL) 
+    //{
+    //  Error("Insufficient memory");
+    //}
+    
+    // initialize matrix instead
+    rFeatureMatrix.Init(tot_frames, trg_vec_size);
+        
+    
+    for (i = 0; i <= to_frame - from_frame; i++) 
+    {
+      FLOAT* A      = pBuff->A;
+      FLOAT* B      = pBuff->B;
+      FLOAT* mxPtr  = rFeatureMatrix[i+extLeft];
+      //FLOAT *mxPtr = fea_mx + trg_vec_size * (i+extLeft);
+      
+      fseek(
+          pBuff->mpFp, 
+          sizeof(HtkHeader) + (comp ? src_vec_size * 2 * sizeof(FLOAT_32) : 0)
+          + (from_frame + i) * src_vec_size * coef_size, 
+          SEEK_SET);
+  
+      e  = ReadHTKFeature(pBuff->mpFp, mxPtr, coefs, swap, comp, A, B);
+      
+      mxPtr += coefs; 
+      A     += coefs; 
+      B     += coefs;
+        
+      if (src_0 && !src_N) e |= ReadHTKFeature(pBuff->mpFp, mxPtr, 1, swap, comp, A++, B++);
+      if (trg_0 && !trg_N) mxPtr++;
+      if (src_E && !src_N) e |= ReadHTKFeature(pBuff->mpFp, mxPtr, 1, swap, comp, A++, B++);
+      if (trg_E && !trg_N) mxPtr++;
+  
+      for (j = 0; j < lo_src_tgz_deriv_order; j++) 
+      {
+        e |= ReadHTKFeature(pBuff->mpFp, mxPtr, coefs, swap, comp, A, B);
+        mxPtr += coefs; 
+        A     += coefs; 
+        B     += coefs;
+        
+        if (src_0) e |= ReadHTKFeature(pBuff->mpFp, mxPtr, 1, swap, comp, A++, B++);
+        if (trg_0) mxPtr++;
+        if (src_E) e |= ReadHTKFeature(pBuff->mpFp, mxPtr, 1, swap, comp, A++, B++);
+        if (trg_E) mxPtr++;
+      }
+      
+      if (e) 
+        Error("Cannot read feature file: '%s' frame %d/%d", pFileName, i, to_frame - from_frame + 1);
+    }
+  
+    // From now, coefs includes also trg_0 + trg_E !
+    coefs += trg_0 + trg_E; 
+  
+    /*
+    for (i = 0; i < extLeft; i++) 
+    {
+      memcpy(fea_mx + trg_vec_size * i,
+            fea_mx + trg_vec_size * extLeft,
+            (coefs * (1+lo_src_tgz_deriv_order) - trg_N) * sizeof(FLOAT));
+    }
+    
+    for (i = tot_frames - extRight; i < tot_frames; i++) 
+    {
+      memcpy(fea_mx + trg_vec_size * i,
+            fea_mx + trg_vec_size * (tot_frames - extRight - 1),
+            (coefs * (1+lo_src_tgz_deriv_order) - trg_N) * sizeof(FLOAT));
+    }
+    */
+    
+    for (i = 0; i < extLeft; i++) 
+    {
+      memcpy(rFeatureMatrix[i],
+             rFeatureMatrix[extLeft],
+             (coefs * (1+lo_src_tgz_deriv_order) - trg_N) * sizeof(FLOAT));
+    }
+    
+    for (i = tot_frames - extRight; i < tot_frames; i++) 
+    {
+      memcpy(rFeatureMatrix[i],
+             rFeatureMatrix[tot_frames - extRight - 1],
+             (coefs * (1+lo_src_tgz_deriv_order) - trg_N) * sizeof(FLOAT));
+    }
+
+        
+    // Sentence cepstral mean normalization
+    if( (pCmnFile == NULL)
+    && !(PARAMKIND_Z & pHeader->mSampleKind) 
+    &&  (PARAMKIND_Z & targetKind)) 
+    {
+      // for each coefficient
+      for(j=0; j < coefs; j++) 
+      {          
+        FLOAT norm = 0.0;
+        for(i=0; i < tot_frames; i++)      // for each frame
+        {
+          norm += rFeatureMatrix[i][j - trg_N];
+          //norm += fea_mx[i*trg_vec_size - trg_N + j];
+        }
+        
+        norm /= tot_frames;
+  
+        for(i=0; i < tot_frames; i++)      // for each frame
+          rFeatureMatrix[i][j - trg_N] -= norm;
+          //fea_mx[i*trg_vec_size - trg_N + j] -= norm;
+      }
+    }
+    
+    // Compute missing derivatives
+    for (; src_deriv_order < derivOrder; src_deriv_order++) 
+    { 
+      int winLen = derivWinLen[src_deriv_order];
+      FLOAT norm = 0.0;
+      
+      for (k = 1; k <= winLen; k++) 
+      {
+        norm += 2 * k * k;
+      }
+      
+      // for each frame
+      for (i=0; i < tot_frames; i++) 
+      {        
+        // for each coefficient
+        for (j=0; j < coefs; j++) 
+        {          
+          //FLOAT* src = fea_mx + i*trg_vec_size + src_deriv_order*coefs - trg_N + j;
+          FLOAT* src = &rFeatureMatrix[i][src_deriv_order*coefs - trg_N + j];
+          
+          *(src + coefs) = 0.0;
+          
+          if (i < winLen || i >= tot_frames-winLen) 
+          { // boundaries need special treatment
+            for (k = 1; k <= winLen; k++) 
+            {  
+              *(src+coefs) += k*(src[ LOWER_OF(tot_frames-1-i,k)*rFeatureMatrix.Stride()]
+                                -src[-LOWER_OF(i,             k)*rFeatureMatrix.Stride()]);
+            }
+          } 
+          else 
+          { // otherwice use more efficient code
+            for (k = 1; k <= winLen; k++) 
+            {  
+              *(src+coefs) += k*(src[ k * rFeatureMatrix.Stride()]
+                                -src[-k * rFeatureMatrix.Stride()]);
+            }
+          }
+          *(src + coefs) /= norm;
+        }
+      }
+    }
+    
+    pHeader->mNSamples    = tot_frames;
+    pHeader->mSampleSize  = trg_vec_size * sizeof(FLOAT_32);
+    pHeader->mSampleKind  = targetKind & ~(PARAMKIND_D | PARAMKIND_A | PARAMKIND_T);
+  
+    /////////////// Cepstral mean and variance normalization ///////////////////
+  
+    if (pCmnFile != NULL) 
+    {
+      ReadCepsNormFile(pCmnFile, &pBuff->mpLastCmnFile, &pBuff->cmn,
+                      pHeader->mSampleKind & ~PARAMKIND_Z, CNF_Mean, coefs);
+                      
+      for (i=0; i < tot_frames; i++) 
+      {
+        for (j=trg_N; j < coefs; j++) 
+        {
+          //fea_mx[i*trg_vec_size + j - trg_N] -= pBuff->cmn[j];
+          rFeatureMatrix[i][j - trg_N] -= pBuff->cmn[j];
+        }
+      }
+    }
+  
+    pHeader->mSampleKind |= derivOrder==3 ? PARAMKIND_D | PARAMKIND_A | PARAMKIND_T :
+                            derivOrder==2 ? PARAMKIND_D | PARAMKIND_A :
+                            derivOrder==1 ? PARAMKIND_D : 0;
+  
+    if (pCvnFile != NULL) 
+    {
+      ReadCepsNormFile(pCvnFile, &pBuff->mpLastCvnFile, &pBuff->cvn,
+                      pHeader->mSampleKind, CNF_Variance, trg_vec_size);
+                      
+      for (i=0; i < tot_frames; i++) 
+      {
+        for (j=trg_N; j < trg_vec_size; j++) 
+        {
+          //fea_mx[i*trg_vec_size + j - trg_N] *= pBuff->cvn[j];
+          rFeatureMatrix[i][j - trg_N] *= pBuff->cvn[j];
+        }
+      }
+    }
+    
+    if (pCvgFile != NULL) 
+    {
+      ReadCepsNormFile(pCvgFile, &pBuff->mpLastCvgFile, &pBuff->cvg,
+                      -1, CNF_VarScale, trg_vec_size);
+                      
+      for (i=0; i < tot_frames; i++) 
+      {
+        for (j=trg_N; j < trg_vec_size; j++) 
+        {
+          //fea_mx[i*trg_vec_size + j - trg_N] *= pBuff->cvg[j];
+          rFeatureMatrix[i][j - trg_N] *= pBuff->cvg[j];
+        }
+      }
+    }
+    
+    return true;
+  }
+  
+    
   //***************************************************************************
   //***************************************************************************
   void ReadCepsNormFile(
@@ -728,14 +1143,14 @@ namespace STK
     CNFileType    type, 
     int           coefs)
   {
-    FILE *  fp;
+    FILE*   fp;
     int     i;
     char    s1[9];
     char    s2[64];
-    char *  typeStr = (char*) (type == CNF_Mean     ? "MEAN" :
+    char*   typeStr = (char*) (type == CNF_Mean     ? "MEAN" :
                     type == CNF_Variance ? "VARIANCE" : "VARSCALE");
   
-    char *  typeStr2 = (char*) (type == CNF_Mean     ? "CMN" :
+    char*   typeStr2 = (char*) (type == CNF_Mean     ? "CMN" :
                     type == CNF_Variance ? "CVN" : "VarScale");
   
     if (*pLastFileName != NULL && !strcmp(*pLastFileName, pFileName)) {

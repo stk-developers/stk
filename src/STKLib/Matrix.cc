@@ -35,7 +35,7 @@ namespace STK
       assert(rB.Length() == this->mMCols);
       
 #ifdef USE_BLAS
-      cblas_sger(CblasRowMajor, rA.Length(), rB.Length(), c, rA.pData(), 1,
+      cblas_sger(CblasRowMajor, rA.Length(), rB.Length(), c, rA.cpData(), 1,
                  rB.pData(), 1, this->mpData, this->mStride);
 #else
       Error("Method not implemented without BLAS");
@@ -54,8 +54,8 @@ namespace STK
       assert(rB.Length() == this->mMCols);
       
 #ifdef USE_BLAS
-      cblas_dger(CblasRowMajor, rA.Length(), rB.Length(), c, rA.pData(), 1,
-                 rB.pData(), 1, this->mpData, this->mStride);
+      cblas_dger(CblasRowMajor, rA.Length(), rB.Length(), c, rA.cpData(), 1,
+                   rB.cpData(), 1, this->mpData, this->mStride);
 #else
       Error("Method not implemented without BLAS");
 #endif
@@ -104,6 +104,27 @@ namespace STK
 #endif
       return *this;
     }; // AddMatMult(const ThisType & a, const ThisType & b)    
+    
+  
+  template<>
+    Matrix<float> &
+    Matrix<float>::
+    DiagScale(BasicVector<float>& rDiagVector)
+    {
+      // :TODO: 
+      // optimize this
+      float*  data = mpData;
+      for (size_t i=0; i < Rows(); i++)
+      {
+        for (size_t j=0; j < Cols(); j++)
+        {
+          data[j] *= rDiagVector[j];
+        }
+        data += mStride;
+      }
+      
+      return *this;
+    }
     
   
   //***************************************************************************
@@ -239,6 +260,26 @@ namespace STK
 #endif
       return *this;
     }; 
+  
+  //***************************************************************************
+  //***************************************************************************
+  template<>
+    Matrix<double> &
+    Matrix<double>::
+    Invert()
+    { 
+      assert(Rows() == Cols());
+      
+#ifdef USE_BLAS
+      int* pivot = new int[mMRows];
+      clapack_dgetrf(CblasColMajor, Rows(), Cols(), mpData, mStride, pivot);
+      clapack_dgetri(CblasColMajor, Rows(), mpData, mStride, pivot);
+      delete [] pivot;
+#else
+      Error("Method not implemented without BLAS");
+#endif
+      return *this;
+    }; 
 
 /*  
     STK::Matrix<FLOAT> x(5, 5);
@@ -319,6 +360,7 @@ namespace STK
       
       return *this;
     }; 
+  
   
   //***************************************************************************
   //***************************************************************************
