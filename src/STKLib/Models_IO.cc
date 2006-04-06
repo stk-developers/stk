@@ -1992,6 +1992,11 @@ namespace STK
   WriteGlobalOptions(FILE *fp, bool binary)
   {
     char parmkindstr[64];
+
+    if(mSaveGlobOpts == false)
+    {
+      return;
+    }
   
     fputs("~o ", fp);
     PutKwd(fp, binary, KID_VecSize);

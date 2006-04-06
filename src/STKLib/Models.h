@@ -338,6 +338,7 @@ namespace STK
     size_t                    mNumberOfXformsToUpdate;
     int                       mGaussLvl2ModelReest;
     int                       mMmiUpdate;
+    bool                      mSaveGlobOpts;
     FLOAT                     MMI_E;
     FLOAT                     MMI_h;
     FLOAT                     MMI_tauI;

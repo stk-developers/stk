@@ -1466,14 +1466,14 @@ namespace STK
     {
       // !!! MAP update should not be here !!!
       int vec_size    = mpVariance->VectorSize();
-      FLOAT *mean_vec = mpMean->mVector.pData();
-      FLOAT *var_vec  = mpVariance->mVector.pData();
+//      FLOAT *mean_vec = mpMean->mVector.pData();
+//      FLOAT *var_vec  = mpVariance->mVector.pData();
   
-      FLOAT *mmac  = mean_vec + 1 * vec_size;
-      FLOAT *mnrm  = mean_vec + 2 * vec_size;
-      FLOAT *vvac  = var_vec  + 1 * vec_size;
-      FLOAT *vmac  = var_vec  + 2 * vec_size;
-      FLOAT *vnrm  = var_vec  + 3 * vec_size;
+      FLOAT *mmac  = mpMean->mpAccums;
+      FLOAT *mnrm  = mpMean->mpAccums + 1 * vec_size;
+      FLOAT *vvac  = mpVariance->mpAccums;
+      FLOAT *vmac  = mpVariance->mpAccums + 1 * vec_size;
+      FLOAT *vnrm  = mpVariance->mpAccums + 2 * vec_size;
   
       FLOAT *var_pri  = mpVariance->mpPrior->mVector.pData();
       FLOAT *mean_pri = mpMean    ->mpPrior->mVector.pData();

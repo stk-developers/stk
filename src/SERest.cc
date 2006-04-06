@@ -226,6 +226,7 @@ int main(int argc, char *argv[])
   bool                viterbiTrain;
   bool                xfStatsBin;
   bool                hmms_binary;
+  bool                save_glob_opt;
   bool                alg_mixtures;
   bool                one_pass_reest;
   bool                swap_features;
@@ -345,6 +346,7 @@ int main(int argc, char *argv[])
   min_variance = GetParamFlt(&cfgHash, SNAME":MINVAR",          0.0);
   min_mix_wght = GetParamFlt(&cfgHash, SNAME":MIXWEIGHTFLOOR",  1.0);
   hmms_binary  = GetParamBool(&cfgHash,SNAME":SAVEBINARY",      false);
+  save_glob_opt= GetParamBool(&cfgHash,SNAME":SAVEGLOBOPTS",    true);
   script =(char*)GetParamStr(&cfgHash, SNAME":SCRIPT",          NULL);
   src_hmm_list = GetParamStr(&cfgHash, SNAME":SOURCEHMMLIST",   NULL);
   src_hmm_dir  = GetParamStr(&cfgHash, SNAME":SOURCEMODELDIR",  NULL);
@@ -407,10 +409,12 @@ int main(int argc, char *argv[])
     }
   }
   
-  hset.mUpdateMask          = update_mask ? update_mask :
-                             UM_TRANSITION | UM_MEAN    | UM_VARIANCE |
-                             UM_WEIGHT     | UM_XFSTATS | UM_XFORM ;
-                             
+  if(update_mask == 0)
+  {
+    update_mask = UM_TRANSITION | UM_MEAN    | UM_VARIANCE |
+                  UM_WEIGHT     | UM_XFSTATS | UM_XFORM ;
+  }
+
   // ***************************************************************************
   // Cluster adaptive training update
   if (update_mask & UM_CWEIGHTS)
@@ -540,22 +544,53 @@ int main(int argc, char *argv[])
 
   if (network_file) 
   { // Unsupervised training
-    //!!! Currently, it is not possible to get here !!!
-
-    ilfp = fopen(network_file, "rt");
+    Node *node = NULL;
+    IStkStream    input_stream;    
     
-    if (ilfp  == NULL) 
+    input_stream.open(network_file, ios::in, transc_filter ? transc_filter : "");
+    
+    if (!input_stream.good())
+    {
       Error("Cannot open network file: %s", network_file);
-
-    Node *node = ReadSTKNetwork(
-        ilfp, 
-        &dictHash, 
-        &phoneHash, 
-        notInDictAction, 
-        in_lbl_fmt,
-        header.mSamplePeriod, 
-        network_file, 
-        NULL);
+    }
+    
+    ilfp = input_stream.file();
+//    ilfp = my_fopen(network_file, "rt", transc_filter);
+    
+    if (in_transc_fmt == TF_HTK) 
+    {
+          labels = ReadLabels(
+              ilfp, 
+              dictionary ? &dictHash : &phoneHash,
+              dictionary ? UL_ERROR : UL_INSERT, 
+              in_lbl_fmt,
+              header.mSamplePeriod, 
+              network_file, 
+              NULL, 
+              NULL);
+              
+          node = MakeNetworkFromLabels(
+                   labels, 
+                   dictionary ? NT_WORD : NT_PHONE);
+              
+          ReleaseLabels(labels);
+    }
+    else if (in_transc_fmt == TF_STK) 
+    {
+      node = ReadSTKNetwork(
+         ilfp, 
+         &dictHash,
+         &phoneHash, 
+         notInDictAction, 
+         in_lbl_fmt,
+         header.mSamplePeriod, 
+         network_file, 
+         NULL);
+    }
+    else 
+    {
+      Error("Too bad. What did you do ?!?");
+    }
                                 
     NetworkExpansionsAndOptimizations(
         node, 
@@ -570,21 +605,17 @@ int main(int argc, char *argv[])
         hset_alig, 
         &hset);
     
-    fclose(ilfp);
+//    my_fclose(ilfp);
     min_examples = 0;
   } 
   else 
   {
     ilfp = OpenInputMLF(src_mlf);
   }
-
   
   //
-  
     
   hset.mMmiUpdate           = update_type;
-  hset.ResetAccums();
-  
   hset.mMinVariance         = min_variance;    ///< global minimum variance floor
   hset.MMI_E                = E_constant;
   hset.MMI_h                = h_constant;
@@ -593,9 +624,10 @@ int main(int argc, char *argv[])
   hset.mGaussLvl2ModelReest = alg_mixtures;
   hset.mMinOccurances       = min_examples;
   hset.mMinMixWeight        = min_mix_wght * MIN_WEGIHT;
-  hset.mUpdateMask          = update_mask ? update_mask :
-                             UM_TRANSITION | UM_MEAN    | UM_VARIANCE |
-                             UM_WEIGHT     | UM_XFSTATS | UM_XFORM ;
+  hset.mUpdateMask          = update_mask;
+  hset.mSaveGlobOpts        = save_glob_opt;
+  hset.ResetAccums();  
+
 
   if ((hset.mUpdateMask & (UM_MEAN | UM_VARIANCE)) &&
      !hset.mAllMixuresUpdatableFromStatAccums) 
