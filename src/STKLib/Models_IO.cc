@@ -1105,6 +1105,7 @@ namespace STK
           {
             ret->mCwvAccum.Init(n_xforms, vec_size);
             ret->mpOccProbAccums = new FLOAT[n_xforms];
+            memset(ret->mpOccProbAccums, 0, n_xforms * sizeof(FLOAT));
           }
         }
         
