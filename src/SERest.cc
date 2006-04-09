@@ -397,9 +397,9 @@ int main(int argc, char *argv[])
 
   cchrptr      = GetParamStr(&cfgHash, SNAME":UPDATE",  "");
   
-  while (*cchrptr) 
+  for (; *cchrptr; cchrptr++)
   {
-    switch (*cchrptr++) 
+    switch (*cchrptr) 
     {
       case 't': update_mask |= UM_TRANSITION; break;
       case 'm': update_mask |= UM_MEAN;       break;
@@ -419,6 +419,8 @@ int main(int argc, char *argv[])
     update_mask = UM_TRANSITION | UM_MEAN    | UM_VARIANCE |
                   UM_WEIGHT     | UM_XFSTATS | UM_XFORM ;
   }
+
+  hset.mUpdateMask          = update_mask;
 
   // ***************************************************************************
   // Cluster adaptive training update

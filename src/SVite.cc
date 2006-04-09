@@ -407,25 +407,76 @@ int main(int argc, char *argv[])
     out_lbl_fmt.WORDS_OFF = 1;
   }
   
-  if (!network_file) 
-  {
-    ilfp = OpenInputMLF(in_MLF);
-  } else {
-    ilfp = fopen(network_file, "rt");
-    if (ilfp  == NULL) Error("Cannot open network file: %s", network_file);
-
+  if (network_file) 
+  { // Unsupervised training
+    Node *node = NULL;
+    IStkStream input_stream;    
+    
+    input_stream.open(network_file, ios::in, transc_filter ? transc_filter : "");
+    
+    if (!input_stream.good())
+    {
+      Error("Cannot open network file: %s", network_file);
+    }
+    
+    ilfp = input_stream.file();
+//    ilfp = my_fopen(network_file, "rt", transc_filter);
+    
+    if (in_transc_fmt == TF_HTK) 
+    {
     //:TODO:
     // header.mSamplePeriod not initialized yet... 
-    
-    Node *node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash,
-                                notInDictAction, in_lbl_fmt,
-                                header.mSamplePeriod, network_file, NULL);
-    NetworkExpansionsAndOptimizations(node, expOptions, in_net_fmt, &dictHash,
-                                      &nonCDphHash, &phoneHash);
-    //InitNetwork(&net, node, &hset, NULL);
+      labels = ReadLabels(
+              ilfp, 
+              dictionary ? &dictHash : &phoneHash,
+              dictionary ? UL_ERROR : UL_INSERT, 
+              in_lbl_fmt,
+              header.mSamplePeriod, 
+              network_file, 
+              NULL, 
+              NULL);
+              
+      node = MakeNetworkFromLabels(
+               labels, 
+               dictionary ? NT_WORD : NT_PHONE);
+              
+      ReleaseLabels(labels);
+    }
+    else if (in_transc_fmt == TF_STK) 
+    {
+    //:TODO:
+    // header.mSamplePeriod not initialized yet... 
+
+      node = ReadSTKNetwork(
+         ilfp, 
+         &dictHash,
+         &phoneHash, 
+         notInDictAction, 
+         in_lbl_fmt,
+         header.mSamplePeriod, 
+         network_file, 
+         NULL);
+    }
+    else 
+    {
+      Error("Too bad. What did you do ?!?");
+    }
+                                
+    NetworkExpansionsAndOptimizations(
+        node, 
+        expOptions, 
+        in_net_fmt, 
+        &dictHash,
+        &nonCDphHash, 
+        &phoneHash);
+                                      
     net.Init(node, &hset, NULL);
-    fclose(ilfp);
+  } 
+  else 
+  {
+    ilfp = OpenInputMLF(in_MLF);
   }
+
   lfp = OpenOutputMLF(out_MLF);
 
   for (file_name = feature_files; file_name; file_name = file_name->mpNext) 
