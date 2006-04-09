@@ -81,8 +81,14 @@ int main(int argc, char *argv[])
   ModelSet        hset;
   FILE *          sfp;
   FILE *          ilfp;
+#ifndef USE_NEW_MATRIX  
   FLOAT *         obsMx     = NULL;
   FLOAT *         obsMx_out = NULL;
+#else
+  Matrix<FLOAT>   feature_matrix;
+  Matrix<FLOAT>   feature_matrix_out;
+#
+
   FLOAT *         obs_out   = NULL;
   HtkHeader       header, 
                   header_out;
@@ -340,10 +346,18 @@ int main(int argc, char *argv[])
     }
     if (cmn_mask) process_mask(lgcl_fn, cmn_mask, cmn_file);
     if (cvn_mask) process_mask(lgcl_fn, cvn_mask, cvn_file);
+
+#ifndef USE_NEW_MATRIX  
     obsMx = ReadHTKFeatures(phys_fn, swap_features,
                             startFrmExt, endFrmExt, target_kind,
                             derivOrder, derivWinLengths, &header,
                             cmn_path, cvn_path, cvg_file, &rhfbuff);
+#else
+    ReadHTKFeatures(phys_fn, swap_features,
+                    startFrmExt, endFrmExt, target_kind,
+                    derivOrder, derivWinLengths, &header,
+                    cmn_path, cvn_path, cvg_file, &rhfbuff,feature_matrix);
+#endif
 
     if ((size_t) hset.mInputVectorSize != header.mSampleSize / sizeof(float)) {
       Error("Vector size [%d] in '%s' is incompatible with source HMM set [%d]",
@@ -355,10 +369,19 @@ int main(int argc, char *argv[])
                          
       if (cmn_mask_out) process_mask(file_name->logical, cmn_mask_out, cmn_file_out);
       if (cvn_mask_out) process_mask(file_name->logical, cvn_mask_out, cvn_file_out);
+      
+#ifndef USE_NEW_MATRIX  
       obsMx_out = ReadHTKFeatures(file_name->mpPhysical, swap_features_out,
                                   startFrmExt_out, endFrmExt_out, target_kind_out,
                                   derivOrder_out, derivWinLengths_out, &header_out,
                                   cmn_path_out, cvn_path_out, cvg_file_out, &rhfbuff_out);
+#else
+      ReadHTKFeatures(file_name->mpPhysical, swap_features_out,
+                      startFrmExt_out, endFrmExt_out, target_kind_out,
+                      derivOrder_out, derivWinLengths_out, &header_out,
+                      cmn_path_out, cvn_path_out, cvg_file_out, &rhfbuff_out,
+                      feature_matrix_out);
+#endif
 
       if (nFrames != header_out.mNSamples) {
         Error("Mismatch in number of frames in input/output feature file pair: "
@@ -379,14 +402,20 @@ int main(int argc, char *argv[])
     Label  *lbl_ptr = labels;
     time = 1;
     if (NNet_input) time -= NNet_input->mTotalDelay;
+    
     // Loop over all feature frames.
-    for (i = 0; i < header.mNSamples; i++, time++) {
+    for (i = 0; i < header.mNSamples; i++, time++) 
+    {
       size_t j;
+#ifndef USE_NEW_MATRIX  
       FLOAT *obs = obsMx + i * hset.mInputVectorSize;
-
+#else
+      FLOAT* obs = feature_matrix[i];
+#endif
       //Get next NN input vector by propagating vector from feature file
       //through NNet_input transformation.
       obs = XformPass(NNet_input, obs, time, FORWARD);
+      
       //Input of NN is not yet read because of NNet_input delay
       if (time <= 0) continue;
 
@@ -397,7 +426,11 @@ int main(int argc, char *argv[])
         if (lbl_ptr && lbl_ptr->mStart <= time) obs_out[(int) lbl_ptr->mpData - 1] = 1;
       } else {
         //Get NN output example vector from obsMx_out matrix
+#ifndef USE_NEW_MATRIX  
         obs_out = obsMx_out + (time-1) * NNet_instance->OutSize();
+#else
+        obs_out = feature_matrix_out[time-1];
+#endif
       }
       
 ///*****************************************************************************************************************************
@@ -410,10 +443,14 @@ int main(int argc, char *argv[])
 
     totFrames  += nFrames;
     //TraceLog("[%d frames]", nFrames);
+#ifndef USE_NEW_MATRIX  
     free(obsMx);
-
+#endif
+    
     if (!outlabel_map) {
+#ifndef USE_NEW_MATRIX  
       free(obsMx_out);
+#endif
     } else {
       ReleaseLabels(labels);
     }
@@ -440,6 +477,7 @@ int main(int argc, char *argv[])
 
   free(derivWinLengths);
   if (src_mlf) fclose(ilfp);
+  
   if (outlabel_map) 
   {
     my_hdestroy_r(&labelHash, 1);

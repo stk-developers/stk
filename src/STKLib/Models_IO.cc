@@ -950,7 +950,7 @@ namespace STK
       
       // per-speaker partial accumulators
       ret->mPartialAccumG = 0;
-      ret->mPartialAccumK.Init(ret->mpMean->mClusterMatrixT.Rows());
+      ret->mPartialAccumK.Init(ret->mpMean->mClusterMatrixT.Cols());
     }
     
     //
@@ -1090,7 +1090,6 @@ namespace STK
           Error("Keyword <Mean> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
       
         vec_size = GetInt(fp);
-        
         // maybe we haven't created any Mean object yet
         if (NULL == ret)
         {

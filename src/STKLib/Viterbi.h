@@ -145,7 +145,7 @@ namespace STK
      *         accuracy
      */
     Network::FWBWRet
-    ForwardBackward(FLOAT * pObsMx, int nFrames);
+    ForwardBackward(FLOAT* pObsMx, int nFrames);
     
     Network::FWBWRet
     ForwardBackward(const Matrix<FLOAT>& rFeatureMatrix, size_t nFrames);
@@ -163,7 +163,7 @@ namespace STK
     const bool
     InForwardPass() const {return mPropagDir == FORWARD;}
     
-    Node *
+    Node*
     pActivateWordNodesLeadingFrom(Node* pNode);
     
     void
@@ -204,24 +204,24 @@ namespace STK
     
   public:
     //Subnet part
-    Node  *                 mpFirst;
-    Node  *                 mpLast;
+    Node*                   mpFirst;
+    Node*                   mpLast;
   
-    Node  *                 mpActiveModels;
-    Node  *                 mpActiveNodes;
+    Node*                   mpActiveModels;
+    Node*                   mpActiveNodes;
     int                     mActiveTokens;
                             
     int                     mNumberOfNetStates;
-    Token *                 mpAuxTokens;
-    Cache *                 mpOutPCache;
-    Cache *                 mpMixPCache;
+    Token*                  mpAuxTokens;
+    Cache*                  mpOutPCache;
+    Cache*                  mpMixPCache;
   
     long                    mTime;
-    Token *                 mpBestToken;
-    Node  *                 mpBestNode;
+    Token*                  mpBestToken;
+    Node*                   mpBestNode;
     
     // Passing parameters
-    State *                 mpThreshState;
+    State*                  mpThreshState;
     FLOAT                   mBeamThresh;
     FLOAT                   mWordThresh;
                             
@@ -247,8 +247,8 @@ namespace STK
     
   //  int                     mmi_den_pass;
     AccumType               mAccumType;
-    ModelSet *              mpModelSet;
-    ModelSet *              mpModelSetToUpdate;
+    ModelSet*               mpModelSet;
+    ModelSet*               mpModelSetToUpdate;
     
     
     //*************************************************************************

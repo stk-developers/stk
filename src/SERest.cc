@@ -207,6 +207,8 @@ int main(int argc, char *argv[])
   const char*         cvg_file_alig;
   const char*         mmf_dir;
   const char*         mmf_mask;
+  const char*         mmf_dir_alig;
+  const char*         mmf_mask_alig;
   const char*         mmf_karkulka;
   bool                karkulka;
   
@@ -367,6 +369,9 @@ int main(int argc, char *argv[])
   
   mmf_dir      = GetParamStr(&cfgHash, SNAME":MMFDIR",          ".");
   mmf_mask     = GetParamStr(&cfgHash, SNAME":MMFMASK",         NULL);
+  mmf_dir_alig = GetParamStr(&cfgHash, SNAME":ALIGNMMFDIR",          ".");
+  mmf_mask_alig= GetParamStr(&cfgHash, SNAME":ALIGNMMFMASK",         NULL);
+  
   mmf_karkulka = GetParamStr(&cfgHash, SNAME":CWOUTDIR",        ".");
   karkulka     = GetParamBool(&cfgHash,SNAME":CWUPDATE",        false);
   
@@ -838,6 +843,20 @@ int main(int argc, char *argv[])
         feature_matrix_alig = &feature_matrix;
       }
       
+      if(mmf_mask_alig != NULL) 
+      {
+        static string lastSpeakerMMF;
+        string speakerMMF;
+        ProcessMask(file_name->logical, mmf_mask_alig, speakerMMF);
+        
+        if(lastSpeakerMMF != speakerMMF) 
+        {
+          
+          hset_alig->ParseMmf((string(mmf_dir_alig) + "/" + speakerMMF).c_str(), NULL);
+          lastSpeakerMMF = speakerMMF;
+        }
+      }
+      
       if(mmf_mask != NULL) 
       {
         static string lastSpeakerMMF;
@@ -847,7 +866,7 @@ int main(int argc, char *argv[])
         if(lastSpeakerMMF != speakerMMF) 
         {
           
-          hset_alig->ParseMmf((string(mmf_dir) + "/" + speakerMMF).c_str(), NULL);
+          hset.ParseMmf((string(mmf_dir) + "/" + speakerMMF).c_str(), NULL);
           lastSpeakerMMF = speakerMMF;
         }
       }

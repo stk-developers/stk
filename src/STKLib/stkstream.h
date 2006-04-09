@@ -152,6 +152,7 @@ namespace STK
        */
       __filebuf_type *
       open(const string & fName, ios_base::openmode m, const string & filter="");
+      
       /**
        *  @brief  Closes the currently associated file.
        *  @return  @c this on success, NULL on failure

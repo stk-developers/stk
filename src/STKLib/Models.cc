@@ -894,91 +894,6 @@ namespace STK
     }
   }
   
-  
-  
-/*  
-<<<<<<< .mine
-=======
-    if (macro_type == mt_mean || macro_type == mt_variance) 
-    {
-      XformStatAccum*     xfsa = NULL;
-      UINT_32             nxfsa = 0;
-  
-      if (macro_type == mt_mean) 
-      {
-        xfsa   = ((Mean*)pData)->mpXformStatAccum;
-        nxfsa  = ((Mean*)pData)->mNumberOfXformStatAccums;
-        size   = ((Mean*)pData)->VectorSize();
-        vector = ((Mean*)pData)->mpVectorO+size;
-        size   = size + 1;
-      } 
-      else if (macro_type == mt_variance) 
-      {
-        xfsa   = ((Variance*)pData)->mpXformStatAccum;
-        nxfsa  = ((Variance*)pData)->mNumberOfXformStatAccums;
-        size   = ((Variance*)pData)->VectorSize();
-        vector = ((Variance*)pData)->mpVectorO+size;
-        size   = size * 2 + 1;
-      }
-  
-  //    if (ud->mMmi) vector += size; // Move to MMI accums, which follows ML accums
-  
-      if (fwrite(vector, sizeof(FLOAT), size, ud->mpFp) != size ||
-          fwrite(&nxfsa, sizeof(nxfsa),    1, ud->mpFp) != 1) 
-      {
-        Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
-      }
-  
-  //    if (!ud->mMmi) { // MMI estimation of Xform statistics has not been implemented yet
-      for (i = 0; i < nxfsa; i++) 
-      {
-        size = xfsa[i].mpXform->mInSize;
-        size = (macro_type == mt_mean) ? size : size+size*(size+1)/2;
-        assert(xfsa[i].mpXform->mpMacro != NULL);
-        if (fprintf(ud->mpFp, "\"%s\"", xfsa[i].mpXform->mpMacro->mpName) < 0 ||
-          fwrite(&size,           sizeof(size),        1, ud->mpFp) != 1    ||
-          fwrite(xfsa[i].mpStats, sizeof(FLOAT), size, ud->mpFp) != size ||
-          fwrite(&xfsa[i].mNorm,  sizeof(FLOAT),    1, ud->mpFp) != 1) 
-        {
-          Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
-        }
-      }
-  //    }
-    }
-    
-    else if (macro_type == mt_state) 
-    {
-      State *state = (State *) pData;
-      if (state->mOutPdfKind == KID_DiagC) 
-      {
-        for (i = 0; i < state->mNumberOfMixtures; i++) 
-        {
-          if (fwrite(&state->mpMixture[i].mWeightAccum,
-                    sizeof(FLOAT), 1, ud->mpFp) != 1 ||
-              fwrite(&state->mpMixture[i].mWeightAccumDen,
-                    sizeof(FLOAT), 1, ud->mpFp) != 1) 
-          {
-            Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
-          }
-        }
-      }
-    } 
-    
-    else if (macro_type == mt_transition) 
-    {
-      size   = SQR(((Transition *) pData)->mNStates);
-      vector = ((Transition *) pData)->mpMatrixO + size;
-  
-      if (fwrite(vector, sizeof(FLOAT), size, ud->mpFp) != size) 
-      {
-        Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
-      }
-    }
-  }
-  
-  
->>>>>>> .r110
-*/
 
   //*****************************************************************************
   //*****************************************************************************
@@ -1181,7 +1096,7 @@ namespace STK
     }
     mGConst = cov_det + M_LOG_2PI * mpVariance->VectorSize();
   }  
-
+  
   //***************************************************************************
   //***************************************************************************
   Variance *
@@ -1283,23 +1198,6 @@ namespace STK
   
       Djm = 0.0;
       
-/*
-<<<<<<< .mine
-      // Find minimum Djm leading to positive update of variances
-      for (i = 0; i < vec_size; i++) 
-      {
-        double macn_macd = mac_num[i]-mac_den[i];
-        double vacn_vacd = vac_num[i]-vac_den[i];
-        double nrmn_nrmd = *nrm_num - *nrm_den;
-        double a  = 1/var_vec[i];
-        double b  = vacn_vacd + nrmn_nrmd * (1/var_vec[i] + SQR(mean_vec[i])) -
-                  2 * macn_macd * mean_vec[i];
-        double c  = nrmn_nrmd * vacn_vacd - SQR(macn_macd);
-        double Dd = (- b + sqrt(SQR(b) - 4 * a * c)) / (2 * a);
-  
-        Djm = HIGHER_OF(Djm, Dd);
-=======
-*/
       if (pModelSet->mUpdateMask & UM_VARIANCE) 
       {
         // Find minimum Djm leading to positive update of variances
@@ -1469,14 +1367,14 @@ namespace STK
 //      FLOAT *mean_vec = mpMean->mVector.pData();
 //      FLOAT *var_vec  = mpVariance->mVector.pData();
   
-      FLOAT *mmac  = mpMean->mpAccums;
-      FLOAT *mnrm  = mpMean->mpAccums + 1 * vec_size;
-      FLOAT *vvac  = mpVariance->mpAccums;
-      FLOAT *vmac  = mpVariance->mpAccums + 1 * vec_size;
-      FLOAT *vnrm  = mpVariance->mpAccums + 2 * vec_size;
+      FLOAT* mmac  = mpMean->mpAccums;
+      FLOAT* mnrm  = mpMean->mpAccums + 1 * vec_size;
+      FLOAT* vvac  = mpVariance->mpAccums;
+      FLOAT* vmac  = mpVariance->mpAccums + 1 * vec_size;
+      FLOAT* vnrm  = mpVariance->mpAccums + 2 * vec_size;
   
-      FLOAT *var_pri  = mpVariance->mpPrior->mVector.pData();
-      FLOAT *mean_pri = mpMean    ->mpPrior->mVector.pData();
+      FLOAT* var_pri  = mpVariance->mpPrior->mVector.pData();
+      FLOAT* mean_pri = mpMean    ->mpPrior->mVector.pData();
       
       if (pModelSet->mUpdateMask & UM_MAP)
       {
@@ -1557,10 +1455,14 @@ namespace STK
   {
     //:KLUDGE:
     // compute this once for each speaker
+    
+    // create a helping weight vector which is a concatenation of all elementary
+    // weight vectors
     BasicVector<FLOAT> aux_vec(mAccumG.Rows());
     CatClusterWeightPartialVectors(aux_vec, mpMean->mpClusterWeightVectors, 
       mpMean->mNClusterWeightVectors);
     
+    // add const * vec * vec^T
     mAccumG.AddCVVtMul(mPartialAccumG, aux_vec, aux_vec);
     mAccumK.AddCVVtMul(1, aux_vec, mPartialAccumK);
     

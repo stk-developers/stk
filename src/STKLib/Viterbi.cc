@@ -807,15 +807,17 @@ namespace STK
   int gaus_computaions = 0;
 #endif
   
-  
+/*  
   //***************************************************************************
   //***************************************************************************
   FLOAT 
   DiagCGaussianMixtureDensity(State* state, FLOAT* pObs, Network* net)
   {
     size_t  i;
+    size_t  c; // cache counter
     FLOAT   m_like = LOG_0;
     FLOAT*  l_obs;
+    
     assert(state->mOutPdfKind == KID_DiagC);
   
         
@@ -826,6 +828,8 @@ namespace STK
     }
     else
     {
+      for (c = 0; c < OUT_P_CACHES; c++)
+      {
       for (i = 0; i < state->mNumberOfMixtures; i++) 
       {
         FLOAT    glike;
@@ -840,9 +844,10 @@ namespace STK
         m_like  = LogAdd(m_like, glike + state->mpMixture[i].mWeight);
       }
     
-  #ifdef DEBUG_MSGS
+      
+#ifdef DEBUG_MSGS
       gaus_computaions++;
-  #endif
+#endif
     
       if (net) 
       {
@@ -852,75 +857,73 @@ namespace STK
       return m_like;
     }
     
-    /*
-    if (net)
+    
+  }
+*/
+  
+  
+  //***************************************************************************
+  //***************************************************************************
+  FLOAT 
+  DiagCGaussianMixtureDensity(State* state, FLOAT* pObs, Network* net)
+  {
+    size_t  i;
+    size_t  c; // cache counter
+    FLOAT   m_like = LOG_0;
+    FLOAT*  l_obs;
+    
+    assert(state->mOutPdfKind == KID_DiagC);
+  
+        
+    //if (!net || net->mpOutPCache[state->mID].mTime != net->mTime) 
+    if (net && net->mpOutPCache[state->mID].mTime == net->mTime) 
     {
-      // compute which offset to use
-      const size_t cache_segment = state->mID * OUT_P_CACHES;
-      const size_t cache_offset  = net->mTime & (OUT_P_CACHES -1);
-      const size_t cache_index   = cache_segment + cache_offset;
-      const size_t stride        = net->mpModelSet->mInputVectorStride;      
-      
-      if (net->mpOutPCache[cache_index].mTime == net->mTime)
-      {
-        return net->mpOutPCache[cache_index].mValue;
-      }
-      else
-      {
-        long orig_time = net->mTime;
-        
-        for (size_t ci = cache_offset; ci < OUT_P_CACHES; ci++)
-        {
-          m_like = LOG_0;
-          for (i = 0; i < state->mNumberOfMixtures; i++) 
-          {
-            FLOAT    glike;
-            Mixture* mix = state->mpMixture[i].mpEstimates;
-        
-            l_obs = XformPass(mix->mpInputXform, pObs,
-                              net->mTime, net->mPropagDir);
-        
-            assert(l_obs != NULL);
-            glike = DiagCGaussianDensity(mix, l_obs, net);
-            m_like  = LogAdd(m_like, glike + state->mpMixture[i].mWeight);
-          }
-        
-#ifdef DEBUG_MSGS
-          gaus_computaions++;
-#endif
-        
-          // store in cache
-          net->mpOutPCache[cache_index].mTime = net->mTime;
-          net->mpOutPCache[cache_index].mValue = m_like;
-          
-          // move one frame ahead
-          pObs += stride;
-          net->mTime ++;
-        }
-        
-        // restore the original network time
-        net->mTime =  orig_time;
-      }
-      
-      return net->mpOutPCache[cache_index].mValue;
+      return net->mpOutPCache[state->mID].mValue;
     }
     else
     {
-      for (i = 0; i < state->mNumberOfMixtures; i++) 
+      const size_t cache_offset  = net->mTime % OUT_P_CACHES;
+      const size_t states        = net->mpModelSet->mNStates;
+      const long   orig_time     = net->mTime;
+      
+      // precount probs
+      for (c = 0; c < OUT_P_CACHES - cache_offset; c++)
       {
-        FLOAT    glike;
-        Mixture* mix = state->mpMixture[i].mpEstimates;
-    
-        l_obs = XformPass(mix->mpInputXform, pObs,
-                        UNDEF_TIME, FORWARD);
-    
-        assert(l_obs != NULL);
-        glike = DiagCGaussianDensity(mix, l_obs, NULL);
-        m_like  = LogAdd(m_like, glike + state->mpMixture[i].mWeight);
+        for (i = 0; i < state->mNumberOfMixtures; i++) 
+        {
+          FLOAT    glike;
+          Mixture* mix = state->mpMixture[i].mpEstimates;
+      
+          l_obs   = XformPass(mix->mpInputXform, pObs,
+                          net ? net->mTime : UNDEF_TIME,
+                          net ? net->mPropagDir : FORWARD);
+          
+          assert(l_obs != NULL);
+          
+          glike   = DiagCGaussianDensity(mix, l_obs, net);
+          m_like  = LogAdd(m_like, glike + state->mpMixture[i].mWeight);
+        }
+        
+#ifdef DEBUG_MSGS
+        gaus_computaions++;
+#endif
+      
+        if (net)
+        {
+          net->mpOutPCache[state->mID + c * states].mTime = net->mTime;
+          net->mpOutPCache[state->mID + c * states].mValue = m_like;
+        }
+        else
+        {        
+          return m_like;
+        }
+        
+        net->mTime++;
       }
-      return m_like;
+      
+      net->mTime = orig_time;
+      return  net->mpOutPCache[state->mID].mValue = m_like;
     }
-    */    
   }
 
   
@@ -2311,7 +2314,7 @@ namespace STK
     mpAuxTokens = (Token*) malloc((maxStatesInModel-1) * sizeof(Token));
     mpOutPCache = (Cache*) malloc(pHmms->mNStates      * sizeof(Cache) * OUT_P_CACHES);
     mpMixPCache = (Cache*) malloc(pHmms->mNMixtures    * sizeof(Cache) * MIX_P_CACHES);
-  
+    
     if (mpAuxTokens == NULL ||
         mpOutPCache == NULL || mpMixPCache == NULL) 
     {
@@ -2497,7 +2500,7 @@ namespace STK
     for (i = hmms->mTotalDelay; i < nFrames+hmms->mTotalDelay; i++) 
     {
       mTime++;
-      mpOutPCache = p_out_p_cache + hmms->mNStates * (mTime-1) * OUT_P_CACHES;
+      mpOutPCache = p_out_p_cache + hmms->mNStates * (mTime-1);
   
       mpModelSet->UpdateStacks(obsMx + hmms->mInputVectorSize * i,
                                 mTime, mPropagDir);
