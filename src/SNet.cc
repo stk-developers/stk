@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
 #else
   Matrix<FLOAT>   feature_matrix;
   Matrix<FLOAT>   feature_matrix_out;
-#
+#endif
 
   FLOAT *         obs_out   = NULL;
   HtkHeader       header, 

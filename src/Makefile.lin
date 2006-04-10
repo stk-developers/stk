@@ -6,7 +6,7 @@ ARCH = lin
 ###############################################################################
 # compiler options
 #CFLAGS = -Wall -g -O3 -DDOUBLEPRECISION=0 -D_REENTRANT -DUSE_BLAS -msse -msse2 -mmmx -mfpmath=sse
-CFLAGS = -Wall -g -DDOUBLEPRECISION=0 -D_REENTRANT -DUSE_BLAS -msse -msse2 -mfpmath=sse -march=pentium3
+CFLAGS = -Wall -g -DDOUBLEPRECISION=0 -D_REENTRANT -DUSE_BLAS -msse -msse2 -mfpmath=sse -march=pentium3 -O3
 CXXFLAGS = $(CFLAGS)
 
 ###############################################################################
@@ -18,7 +18,7 @@ LDLIBS = -lm -latlas -lpthread -lSTKLib
 
 ###############################################################################
 # -DEXPANDNET_ONLY
-XFLAGS = -DMOTIF -L/usr/X11R6/lib -I/usr/X11R6/include -lXm -lXt -lX11 -lXpm -O2
+XFLAGS = -DMOTIF -L/usr/X11R6/lib -I/usr/X11R6/include -lXm -lXt -lX11 -lXpm -O3
 
 ###############################################################################
 # compiler binary

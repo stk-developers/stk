@@ -5,7 +5,7 @@ AR = ar
 ##############################################################################
 # compiler options
 #CFLAGS = -Wall -g -O3 -DDOUBLEPRECISION=0 -D_REENTRANT  -DUSE_BLAS -msse -msse2 -mmmx -mfpmath=sse
-CFLAGS = -Wall  -g -DDOUBLEPRECISION=0   -D_REENTRANT  -DUSE_BLAS -msse -msse2 -mfpmath=sse -march=pentium3
+CFLAGS = -Wall  -g -DDOUBLEPRECISION=0   -D_REENTRANT  -DUSE_BLAS -msse -msse2 -mfpmath=sse -march=pentium3 -O3
 
 CXXFLAGS = $(CFLAGS)
 
