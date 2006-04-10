@@ -1,8 +1,8 @@
 #include"progobj.h"
 
 SNet::ProgObj::ProgObj(XformInstance *NNetInstance, int cacheSize, int bunchSize, bool crossValidation, 
-                       std::string version, float learningRate, int clients, char* ip, bool randomize, bool sync){
-  mPort = 2020;
+                       std::string version, float learningRate, int clients, char* ip, bool randomize, bool sync, int port){
+  mPort = port;
   mNoClients = clients;
   mRandomize = randomize;
   mSync = sync;

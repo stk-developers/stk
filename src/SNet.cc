@@ -54,7 +54,7 @@ void usage(char *progname)
 " -X ext     Set input label (or netwokr) file ext           lab (net)\n"
 " -o s       Extension for new hmm files                     As src\n"
 "\n"
-" %s is Copyright (C) 2004-2005 Lukas Burget et al. and\n"
+" %s is Copyright (C) 2004-2005 Stanislav Kontar, Lukas Burget, Ondrej Glembek et al. and\n"
 " licensed under the GNU General Public License, version 2.\n"
 " Bug reports, feedback, etc, to: burget@fit.vutbr.cz\n"
 "\n", progname, progname);
@@ -156,6 +156,7 @@ int main(int argc, char *argv[])
   char *ip;
   bool randomize;
   bool sync;
+  int port;
 
   if (argc == 1) usage(argv[0]);
 
@@ -235,6 +236,7 @@ int main(int argc, char *argv[])
   ip = (char*)GetParamStr(&cfgHash, SNAME":JOINIP",       NULL);
   randomize =  GetParamBool(&cfgHash,SNAME":RANDOMIZE", true);
   sync = GetParamBool(&cfgHash,SNAME":SYNCHRONIZE", true);
+  port   = GetParamInt(&cfgHash, SNAME":PORT",            2020);
   
   if(clients != 0 && script != NULL) Error("Server should not have input data.");
   
@@ -309,7 +311,7 @@ int main(int argc, char *argv[])
   
 ///************************************************************************************************
   /// INITIALIZE SNET
-  ProgObj *prog_obj = new ProgObj(NNet_instance, cache_size, bunch_size, cross_validation, VERSION, learning_rate, clients, ip, randomize, sync); 
+  ProgObj *prog_obj = new ProgObj(NNet_instance, cache_size, bunch_size, cross_validation, VERSION, learning_rate, clients, ip, randomize, sync, port); 
   if(prog_obj->Server()){
     prog_obj->RunServer();
   }
