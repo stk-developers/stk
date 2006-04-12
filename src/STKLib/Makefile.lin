@@ -1,21 +1,47 @@
-##############################################################################
+################################################################################
 # archiver binary
 AR = ar
 
-##############################################################################
+
+################################################################################
+# Matlab specific stuff
+USE_MATLAB_ENGINE = TRUE
+#USE_MATLAB_ENGINE = FALSE
+
+# Specify matlab root path in MATLAB_PATH
+MATLAB_PATH       = /usr/local/share/Matlab-R14SP3
+
+ifeq ($(USE_MATLAB_ENGINE), TRUE)
+  MATLAB_CFLAGS   = -I$(MATLAB_PATH)/extern/include \
+                    -I$(MATLAB_PATH)/simulink/include \
+                    -DMATLAB_MEX_FILE \
+                    -DMATLAB_ENGINE
+                    
+  MATLAB_LDFLAGS  = -Wl,-rpath-link,$(MATLAB_PATH)/bin/glnx86 \
+                    -Wl,-rpath,$(MATLAB_PATH)/bin/glnx86 \
+                    -L$(MATLAB_PATH)/bin/glnx86
+                    
+  MATLAB_LDLIBS   = -leng -lmx
+else
+  MATLAB_CFLAGS   = 
+  MATLAB_LDFLAGS  = 
+  MATLAB_LDLIBS   = 
+endif
+
+
+################################################################################
 # compiler options
 #CFLAGS = -Wall -g -O3 -DDOUBLEPRECISION=0 -D_REENTRANT  -DUSE_BLAS -msse -msse2 -mmmx -mfpmath=sse
-CFLAGS = -Wall  -g -DDOUBLEPRECISION=0   -D_REENTRANT  -DUSE_BLAS -msse -msse2 -mfpmath=sse -march=pentium3 -O3
-
+CFLAGS = -Wall  -g -DDOUBLEPRECISION=0 -D_REENTRANT  -DUSE_BLAS -msse -msse2 -mfpmath=sse $(MATLAB_CFLAGS)
 CXXFLAGS = $(CFLAGS)
 
-###############################################################################
+################################################################################
 # linker options
-LDLIBS = -lm -latlas -lpthread
-#LDFLAGS =
+LDLIBS = -lm -latlas -lpthread $(MATLAB_LDLIBS)
+LDFLAGS = $(MATLAB_LDFLAGS)
 #LDFLAGS = -a -g -L. -pg
 
-###############################################################################
+################################################################################
 # compiler binary
 # CROSS_COMPILE ?= x86_64-linux-
 
@@ -23,11 +49,11 @@ CC  := $(CROSS_COMPILE)g++-4.1
 CXX := $(CROSS_COMPILE)g++-4.1
 
 
-###############################################################################
+################################################################################
 # library name
 LIBNAME = libSTKLib.a
 
-###############################################################################
+################################################################################
 # library-specific modules
 OBJFILES = 	common.o \
 			dict.o	\

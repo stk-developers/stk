@@ -376,6 +376,7 @@ namespace STK
   
   void              KillToken(Token *token);
   
+  FLOAT             DiagCGaussianDensity(const Mixture* mix, const FLOAT* pObs, Network* net);  
   FLOAT             DiagCGaussianMixtureDensity(State *state, FLOAT *obs, Network *network);
   FLOAT             FromObservationAtStateId(State *state, FLOAT *obs, Network *network);
   int               PassTokenMax(Token *from, Token *to, FLOAT addLogLike);

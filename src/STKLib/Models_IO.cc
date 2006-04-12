@@ -55,6 +55,9 @@ namespace STK
     gpKwds[KID_NumLayers  ] = "NumLayers";   gpKwds[KID_NumBlocks  ] = "NumBlocks";
     gpKwds[KID_Layer      ] = "Layer";       gpKwds[KID_Copy       ] = "Copy";
     gpKwds[KID_Stacking   ] = "Stacking";
+    
+    gpKwds[KID_ExtendedXform    ] = "ExtendedXform";
+    
     /* Numeric functions - FuncXform*/
     gpKwds[KID_Sigmoid    ] = "Sigmoid";     gpKwds[KID_Log        ] = "Log";
     gpKwds[KID_Exp        ] = "Exp";         gpKwds[KID_Sqrt       ] = "Sqrt";
@@ -764,9 +767,9 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  State *
+  State*
   ModelSet::
-  ReadState(FILE * fp, Macro * macro)
+  ReadState(FILE* fp, Macro* macro)
   {
     State *     ret;
     char *      keyword;
@@ -1177,20 +1180,10 @@ namespace STK
   
     vec_size = GetInt(fp);
   
-    //***
-    // old malloc
-    //if (mAllocAccums) accum_size = (2 * vec_size + 1) * 2; // * 2 for MMI accums
-    //
-    //ret = (Variance *) malloc(sizeof(Variance) + (vec_size+accum_size-1) * sizeof(FLOAT));
-    //if (ret == NULL) Error("Insufficient memory");
-    //
-    //ret->VectorSize() = vec_size;
-    
     ret = new Variance(vec_size, mAllocAccums);
   
-    for (i=0; i < vec_size; i++) {
-      // old vector
-      //ret->mpVectorO[i] = 1.0 / GetFloat(fp);
+    for (i=0; i < vec_size; i++) 
+    {
       ret->mVector[i] = 1.0 / GetFloat(fp);
     }
   
@@ -1256,13 +1249,6 @@ namespace STK
   
     out_vec_size = GetInt(fp);
   
-    //***
-    // old malloc
-    // ret = (XformInstance *) malloc(sizeof(*ret)+(out_vec_size-1)*sizeof(FLOAT));
-    // if (ret == NULL) Error("Insufficient memory");
-    //   
-    // 
-    
     // create new instance
     ret = new XformInstance(out_vec_size);
 
@@ -1293,15 +1279,10 @@ namespace STK
   
     ret->mpMemory = NULL;
     
-    //***
-    // old malloc
-    //if (ret->mpXform->mMemorySize > 0 &&
-    //  ((ret->mpMemory = (char *) calloc(1, ret->mpXform->mMemorySize)) == NULL)) {
-    //  Error("Insufficient memory");
-    //}
     if (ret->mpXform->mMemorySize > 0)
       ret->mpMemory = new char[ret->mpXform->mMemorySize];
-      memset(ret->mpMemory, 0, ret->mpXform->mMemorySize);
+    
+    memset(ret->mpMemory, 0, ret->mpXform->mMemorySize);
   
     ret->mpNext = mpXformInstances;
     mpXformInstances = ret;
@@ -1348,7 +1329,7 @@ namespace STK
     if (CheckKwd(keyword, KID_Copy)) {
       return (Xform *) ReadCopyXform(fp, macro);
     }
-  
+    
     if (CheckKwd(keyword, KID_Stacking)) {
       return (Xform *) ReadStackingXform(fp, macro);
     }
@@ -1368,7 +1349,34 @@ namespace STK
       }
     }
   
-    Error("Invalid Xform definition; unexpected keyword %s (%s:%d)", keyword, gpCurrentMmfName, gCurrentMmfLine);
+    // check for XForm extension
+    if (CheckKwd(keyword, KID_ExtendedXform))
+    {
+      // what extension???
+      keyword = GetString(fp, 1);
+      
+      if (!strcmp(keyword, "FeatureMapping"))
+      {
+        return (Xform *) ReadFeatureMappingXform(fp, macro);
+      }
+      
+      if (!strcmp(keyword, "FrantaProduct"))
+      {
+        return static_cast<Xform*>(ReadFrantaProductXform(fp, macro));
+      }
+      
+      if (!strcmp(keyword, "Matlab"))
+      {
+        return static_cast<Xform*>(ReadMatlabXform(fp, macro));
+      }
+      
+      Error("Invalid Extended Xform definition; unexpected keyword %s (%s:%d)", 
+        keyword, gpCurrentMmfName, gCurrentMmfLine);
+    }
+    
+    Error("Invalid Xform definition; unexpected keyword %s (%s:%d)", 
+      keyword, gpCurrentMmfName, gCurrentMmfLine);
+      
     return NULL;
   }; //ReadXform(FILE *fp, Macro *macro) 
   
@@ -1536,7 +1544,8 @@ namespace STK
         //  Error("Insufficient memory");
         //}
         
-        ret->mpLayer[i-1].mpOutputVector = new FLOAT[prev_out_size];
+        //ret->mpLayer[i-1].mpOutputVector = new FLOAT[prev_out_size];
+        ret->mpLayer[i-1].mOutputVector.Init(prev_out_size);
       }
   
       prev_out_size = layer_out_size;
@@ -1590,6 +1599,7 @@ namespace STK
   
 
   //***************************************************************************  
+  //***************************************************************************  
   BiasXform *
   ModelSet::
   ReadBiasXform(FILE *fp, Macro *macro)
@@ -1632,6 +1642,7 @@ namespace STK
     ret->mpMacro  = macro;
     return ret;
   }; // ReadFuncXform(FILE *fp, Macro *macro, int funcId)
+  
   
   //***************************************************************************
   //***************************************************************************
@@ -1686,8 +1697,139 @@ namespace STK
     ret->mpMacro      = macro;
     return ret;
   }; //ReadCopyXform(FILE *fp, Macro *macro)
+
+  
+  //***************************************************************************
+  //***************************************************************************
+  FeatureMappingXform*
+  ModelSet::
+  ReadFeatureMappingXform(FILE* fp, Macro* macro)
+  {
+    FeatureMappingXform*    ret;
+    int           in_size;
+    int           in_size_orig;
+    char*         keyword;
+    int           state_id;
+    
+    in_size = GetInt(fp);
+  
+    // create new object
+    ret = new FeatureMappingXform(in_size);
+    
+    // we need to tell the model set to ignore the original input vector size
+    // as the transform can have different dimensiion. The value needs to be 
+    // later restored
+    in_size_orig     = mInputVectorSize;
+    mInputVectorSize = in_size;
+    
+    // read working states
+    keyword = GetString(fp, 1);
+    
+    if (!CheckKwd(keyword, KID_State)) 
+      Error("Keyword <State> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+  
+    state_id = GetInt(fp);
+ 
+    if (state_id !=1) 
+      Error("State number should be 1 (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+  
+    ret->mpStateFrom = ReadState(fp, NULL);
+    
+    
+    keyword = GetString(fp, 1);
+    
+    if (!CheckKwd(keyword, KID_State)) 
+      Error("Keyword <State> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+  
+    state_id = GetInt(fp);
+ 
+    if (state_id != 2) 
+      Error("State number should be 2 (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+    
+    ret->mpStateTo   = ReadState(fp, NULL);
+  
+    
+    // check for alike number of mixtures in both states
+    if (ret->mpStateFrom->mNumberOfMixtures != ret->mpStateTo->mNumberOfMixtures)
+    {
+      Error("Number of mixtures must match in the Xform states (%s:%d)", 
+        gpCurrentMmfName, gCurrentMmfLine);
+    }
+    
+    // restore the original input vector size value
+    mInputVectorSize  = in_size_orig;
+    
+    ret->mpMacro      = macro;
+    return ret;
+  }; //ReadCopyXform(FILE *fp, Macro *macro)
   
   
+  //***************************************************************************
+  //***************************************************************************
+  FrantaProductXform*
+  ModelSet::
+  ReadFrantaProductXform(FILE* fp, Macro* macro)
+  {
+    FrantaProductXform*   ret;
+    int                   in_size;
+    int                   n_parts;
+      
+    in_size = GetInt(fp);
+    n_parts = GetInt(fp);
+    
+    if (in_size % n_parts)
+    {
+      Error("Vector size has to be divisible by %d (%s:%d)", 
+        n_parts, gpCurrentMmfName, gCurrentMmfLine);
+    }  
+    
+    // create new object
+    ret = new FrantaProductXform(in_size, n_parts);
+    
+    ret->mpMacro      = macro;
+    return ret;
+  }; //ReadCopyXform(FILE *fp, Macro *macro)
+  
+  
+  //***************************************************************************
+  //***************************************************************************
+  MatlabXform*
+  ModelSet::
+  ReadMatlabXform(FILE* fp, Macro* macro)
+  {
+#ifndef MATLAB_ENGINE
+    Warning("Matlab engine not available, transform will have unexpected results");    
+#endif    
+    
+    MatlabXform*          ret;
+    int                   in_rows;
+    int                   in_cols;
+    int                   out_size;
+    ReadlineData          rld = {0};
+    char*                 line;
+          
+    in_rows   = GetInt(fp);
+    in_cols   = GetInt(fp);
+    out_size  = GetInt(fp);
+    
+    // create new object
+    ret = new MatlabXform(in_rows, in_cols, out_size);
+    
+    while ((line = readline(fp, &rld)) != NULL)
+    {
+      if (!strcmp(line, "%%%% END %%%%"))
+        break;
+        
+      ret->mProgram += line;
+      ret->mProgram += '\n';
+    }
+  
+    ret->mpMacro      = macro;
+    return ret;
+  }; //ReadCopyXform(FILE *fp, Macro *macro)
+  
+  
+  //***************************************************************************
   //***************************************************************************
   StackingXform *
   ModelSet::
@@ -1700,16 +1842,14 @@ namespace STK
     stack_size = GetInt(fp);
     in_size    = GetInt(fp);
   
-    //***
-    // old malloc
-    //ret = (StackingXform *) malloc(sizeof(StackingXform));
-    //if (ret == NULL) Error("Insufficient memory");
     ret = new StackingXform(stack_size, in_size);
   
     ret->mpMacro      = macro;
     return ret;
   }; //ReadStackingXform(FILE *fp, Macro *macro)
   
+  
+  //***************************************************************************
   //***************************************************************************
   int 
   ModelSet::
@@ -2070,7 +2210,7 @@ namespace STK
   //*****************************************************************************  
   void 
   ModelSet::
-  WriteState(FILE *fp, bool binary, State *state)
+  WriteState(FILE* fp, bool binary, State* state)
   {
     size_t i;
   
@@ -2348,6 +2488,8 @@ namespace STK
     {
       case XT_LINEAR    : WriteLinearXform   (fp, binary, static_cast<LinearXform *>(xform)); break;
       case XT_COPY      : WriteCopyXform     (fp, binary, static_cast<CopyXform *>(xform)); break;
+      case XT_FEATURE_MAPPING: WriteFeatureMappingXform     (fp, binary, static_cast<FeatureMappingXform *>(xform)); break;
+      case XT_FRANTA_PRODUCT : WriteFrantaProductXform      (fp, binary, static_cast<FrantaProductXform  *>(xform)); break;
       case XT_FUNC      : WriteFuncXform     (fp, binary, static_cast<FuncXform *>(xform)); break;
       case XT_BIAS      : WriteBiasXform     (fp, binary, static_cast<BiasXform *>(xform)); break;
       case XT_STACKING  : WriteStackingXform (fp, binary, static_cast<StackingXform *>(xform)); break;
@@ -2553,7 +2695,37 @@ namespace STK
   } //WriteCopyXform(FILE *fp, bool binary, CopyXform *xform)
 
   
+  //*****************************************************************************
+  //*****************************************************************************  
+  void
+  ModelSet::
+  WriteFeatureMappingXform(FILE* fp, bool binary, FeatureMappingXform* xform)
+  {
+    fprintf(fp, "<ExtendedXform> FeatureMapping %d\n", (int) xform->mInSize);
+    
+    fprintf(fp, "<State> 1\n");
+    WriteState(fp, binary, xform->mpStateFrom);
+    fputs("\n", fp);
+    
+    fprintf(fp, "<State> 2\n");
+    WriteState(fp, binary, xform->mpStateTo);
+    fputs("\n", fp);
+  } //WriteCopyXform(FILE *fp, bool binary, CopyXform *xform)
 
+  
+  //*****************************************************************************
+  //*****************************************************************************  
+  void
+  ModelSet::
+  WriteFrantaProductXform(FILE* fp, bool binary, FrantaProductXform* xform)
+  {
+    fprintf(fp, "<ExtendedXform> FrantaProduct %d %d\n", 
+      (int) xform->mInSize, (int) xform->NParts());
+  
+    fputs("\n", fp);
+  } //WriteFrantaProductXform(FILE *fp, bool binary, CopyXform *xform)
+
+  
   //###########################################################################################################
   
   //###########################################################################
@@ -3003,16 +3175,12 @@ namespace STK
         continue;
       }
   
-      std::cerr << t << " " << std::endl;
-      
       skip_accum = 0;
       if (fread(&occurances, sizeof(occurances), 1, fp) != 1) 
       {
         Error("Invalid accumulator file: '%s'", pFileName);
       }
       
-      std::cerr << t << " " << std::endl;
-  
       if (!mmiDenominatorAccums) macro->mOccurances += occurances;
       switch (t) 
       {

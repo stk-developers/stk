@@ -680,7 +680,7 @@ namespace STK
   }
   
 
-#define OPTIMIZE_GAUSSIAN_COMPUTATION      
+//#define OPTIMIZE_GAUSSIAN_COMPUTATION      
   //***************************************************************************
   //***************************************************************************
   // The function does the gaussian dist exponent operations.
@@ -807,19 +807,17 @@ namespace STK
   int gaus_computaions = 0;
 #endif
   
-/*  
+  
   //***************************************************************************
   //***************************************************************************
   FLOAT 
   DiagCGaussianMixtureDensity(State* state, FLOAT* pObs, Network* net)
   {
     size_t  i;
-    size_t  c; // cache counter
     FLOAT   m_like = LOG_0;
     FLOAT*  l_obs;
     
     assert(state->mOutPdfKind == KID_DiagC);
-  
         
     //if (!net || net->mpOutPCache[state->mID].mTime != net->mTime) 
     if (net && net->mpOutPCache[state->mID].mTime == net->mTime) 
@@ -828,8 +826,6 @@ namespace STK
     }
     else
     {
-      for (c = 0; c < OUT_P_CACHES; c++)
-      {
       for (i = 0; i < state->mNumberOfMixtures; i++) 
       {
         FLOAT    glike;
@@ -856,12 +852,10 @@ namespace STK
       }
       return m_like;
     }
-    
-    
   }
-*/
+
   
-  
+/*  
   //***************************************************************************
   //***************************************************************************
   FLOAT 
@@ -925,7 +919,7 @@ namespace STK
       return  net->mpOutPCache[state->mID].mValue = m_like;
     }
   }
-
+*/
   
   //***************************************************************************
   //***************************************************************************

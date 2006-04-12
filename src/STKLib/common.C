@@ -33,14 +33,14 @@ static union
         double d;
         struct
         {
-                int j,i;
+                int j,i;      // LITTLE ENDIAN
+                // int i,j;   // BIG ENDIAN
         } n;
-} qn_d2i;
+} sn_d2i;
 
-#define QN_EXP_A (1048576/M_LN2)
-#define QN_EXP_C 60801
-//#define EXP2(y) (qn_d2i.n.j = (int) (QN_EXP_A*(y)) + (1072693248 - QN_EXP_C), qn_d2i.d)
-#define FAST_EXP(y) (qn_d2i.n.i = (int) (QN_EXP_A*(y)) + (1072693248 - QN_EXP_C), qn_d2i.d)
+#define SN_EXP_A (1048576/M_LN2)
+#define SN_EXP_C 60801
+#define FAST_EXP(y) (sn_d2i.n.i = (int) (SN_EXP_A*(y)) + (1072693248 - SN_EXP_C), sn_d2i.d)  
 
 //***************************************************************************
 //***************************************************************************
@@ -295,6 +295,7 @@ void fast_softmax_vec(double *in, double *out, int size)
   {
     gMinLogDiff = log(DBL_EPSILON);
   }
+  
   
   //***************************************************************************
   //***************************************************************************

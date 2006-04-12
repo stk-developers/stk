@@ -11,8 +11,14 @@
  ***************************************************************************/
 
 #include "Models.h"
+#include "Viterbi.h"
 #include "stkstream.h"
 #include "common.h"
+
+// MATLAB Engine
+#ifdef MATLAB_ENGINE
+#  include "engine.h"
+#endif
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -2253,7 +2259,7 @@ namespace STK
   //**************************************************************************  
   //**************************************************************************  
   XformLayer::
-  XformLayer() : mpOutputVector(NULL), mNBlocks(0), mpBlock(NULL) 
+  XformLayer() : mOutputVector(), mNBlocks(0), mpBlock(NULL) 
   {
     // we don't do anything here, all is done by the consructor call
   }
@@ -2264,7 +2270,7 @@ namespace STK
   ~XformLayer()
   {
     // delete the pointers
-    delete [] mpOutputVector;
+    //delete [] mpOutputVector;
     delete [] mpBlock;
   }
 
@@ -2314,9 +2320,9 @@ namespace STK
   //virtual 
   FLOAT *
   CompositeXform::
-  Evaluate(FLOAT *    pInputVector, 
-           FLOAT *    pOutputVector,
-           char *     pMemory,
+  Evaluate(FLOAT*     pInputVector, 
+           FLOAT*     pOutputVector,
+           char*      pMemory,
            PropagDirectionType  direction)
   {
     size_t  i;
@@ -2324,8 +2330,10 @@ namespace STK
   
     for (i = 0; i < mNLayers; i++) 
     {
-      FLOAT* in  = (i == 0)          ? pInputVector  : mpLayer[i-1].mpOutputVector;
-      FLOAT* out = (i == mNLayers-1) ? pOutputVector : mpLayer[i].mpOutputVector;
+      //FLOAT* in  = (i == 0)          ? pInputVector  : mpLayer[i-1].mpOutputVector;
+      //FLOAT* out = (i == mNLayers-1) ? pOutputVector : mpLayer[i].mpOutputVector;
+      FLOAT* in  = (i == 0)          ? pInputVector  : mpLayer[i-1].mOutputVector.pData();
+      FLOAT* out = (i == mNLayers-1) ? pOutputVector : mpLayer[i].mOutputVector.pData();
       
       for (j = 0; j < mpLayer[i].mNBlocks; j++) 
       {
@@ -2518,7 +2526,246 @@ namespace STK
     }
     return pOutputVector;
   }; //Evaluate(...)
+
   
+  //**************************************************************************  
+  //**************************************************************************  
+  // FeatureMappingXform section
+  //**************************************************************************  
+  //**************************************************************************  
+  FeatureMappingXform::
+  FeatureMappingXform(size_t inSize)
+  {
+    mOutSize      = inSize;
+    mInSize       = inSize;
+    mMemorySize   = 0;
+    mDelay        = 0;
+    mXformType    = XT_FEATURE_MAPPING;
+    mpStateFrom   = NULL;
+    mpStateTo     = NULL;
+  }
+  
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  FeatureMappingXform::
+  ~ FeatureMappingXform()
+  {
+    if (NULL != mpStateFrom) delete mpStateFrom;
+    if (NULL != mpStateTo)   delete mpStateTo;
+  }
+  
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  //virtual 
+  FLOAT *
+  FeatureMappingXform::
+  Evaluate(FLOAT*     pInputVector, 
+           FLOAT*     pOutputVector,
+           char*      pMemory,
+           PropagDirectionType  direction)
+  {
+    State*  state_from = mpStateFrom;
+    State*  state_to   = mpStateTo;
+    size_t  i;
+    size_t  max_i;
+    FLOAT   g_like;
+    FLOAT   max_g_like = LOG_0;
+    
+    // find best input mixture
+    for (i = 0; i < state_from->mNumberOfMixtures; i++)
+    {
+      g_like = ::DiagCGaussianDensity(state_from->mpMixture[i].mpEstimates, 
+        pInputVector, NULL) + state_from->mpMixture[i].mWeight;
+        
+      if (g_like > max_g_like)
+      {
+        max_i      = i;
+        max_g_like = g_like;
+      }
+    }
+    
+    // retrieve matching output mixture
+    const FLOAT*  m_from  = state_from->mpMixture[max_i].mpEstimates->mpMean->mVector.cpData();
+    const FLOAT*  v_from  = state_from->mpMixture[max_i].mpEstimates->mpVariance->mVector.cpData();
+    const FLOAT*  m_to    = state_to->mpMixture[max_i].mpEstimates->mpMean->mVector.cpData();
+    const FLOAT*  v_to    = state_to->mpMixture[max_i].mpEstimates->mpVariance->mVector.cpData();    
+    
+    // compute new feature vector
+    // compute each element separately
+#ifndef OPTIMIZE_LOOPS_FOR_SSE    
+    for (i = 0; i < mInSize; i++)
+    {
+      pOutputVector[i] = (pInputVector[i] - m_from[i]) * v_to[i] / v_from[i] + m_to[i];
+    }
+#else
+          f4vector* pov      = reinterpret_cast<f4vector*>(pOutputVector);
+    const f4vector* piv      = reinterpret_cast<const f4vector*>(pInputVector);
+    const f4vector* pm_from  = reinterpret_cast<const f4vector*>(m_from);
+    const f4vector* pv_from  = reinterpret_cast<const f4vector*>(v_from);
+    const f4vector* pm_to    = reinterpret_cast<const f4vector*>(m_to);
+    const f4vector* pv_to    = reinterpret_cast<const f4vector*>(v_to);
+    
+    for (i = 0; i < mInputVectorSize; i += 4)
+    {
+      pov->v = (piv->v - pm_from->v) * pv_to->v / pv_from->v + pm_to->v;
+
+      pov     ++;
+      piv     ++;
+      pm_from ++;
+      pv_from ++;
+      pm_to   ++;
+      pv_to   ++;      
+    }
+#endif
+    
+    return pOutputVector;
+  }; //Evaluate(...)
+    
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  // FeatureMappingXform section
+  //**************************************************************************  
+  //**************************************************************************  
+  FrantaProductXform::
+  FrantaProductXform(size_t inSize, size_t n_parts)
+  {
+    mOutSize      = inSize / n_parts;
+    mInSize       = inSize;
+    mMemorySize   = 0;
+    mDelay        = 0;
+    mNParts       = n_parts;
+    mXformType    = XT_FRANTA_PRODUCT;
+  }
+  
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  FrantaProductXform::
+  ~ FrantaProductXform()
+  {
+  }
+  
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  //virtual 
+  FLOAT*
+  FrantaProductXform::
+  Evaluate(FLOAT*     pInputVector, 
+           FLOAT*     pOutputVector,
+           char*      pMemory,
+           PropagDirectionType  direction)
+  {
+    size_t i;
+    size_t j;
+    
+    for (i = 0; i < mOutSize; i++)
+    {
+      pOutputVector[i] = 1.0;
+      
+      for (j = 0; j < mNParts; j++)
+      {
+        pOutputVector[i] *= pInputVector[j * mOutSize + i];
+      }
+    }
+    
+    return pOutputVector;
+  }; //Evaluate(...)
+
+  
+  //template<typename _T>
+  //  inline void
+  //  copy_to_mx_array(const _T* pFrom, mxArray* pTo);
+
+
+    
+    
+
+  //**************************************************************************  
+  //**************************************************************************  
+  // MatlabXform section
+  //**************************************************************************  
+  //**************************************************************************  
+  MatlabXform::
+  MatlabXform(size_t inRows, size_t inCols, size_t outSize)
+  {
+    mOutSize      = outSize;
+    mInSize       = inCols;
+    mMemorySize   = 0;
+    mDelay        = inRows;
+    mXformType    = XT_MATLAB;
+#ifdef MATLAB_ENGINE
+#  ifdef DOUBLEPRECISION    
+    mpInput       = mxCreateNumericMatrix(inRows, inCols,  mxSINGLE_CLASS, mxREAL);
+#  else
+    mpInput       = mxCreateNumericMatrix(inRows, inCols,  mxDOUBLE_CLASS, mxREAL);
+#  endif
+    mpOutput      = NULL; //mxCreateDoubleMatrix(1, outSize, mxREAL);
+    mpEp          = NULL;
+#endif
+  }
+  
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  MatlabXform::
+  ~ MatlabXform()
+  {
+#ifdef MATLAB_ENGINE
+    if (NULL != mpInput)  mxDestroyArray(mpInput);
+    if (NULL != mpOutput) mxDestroyArray(mpOutput);
+    if (NULL != mpEp)     engClose(mpEp);
+#endif  
+  }
+  
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  //virtual 
+  FLOAT*
+  MatlabXform::
+  Evaluate(FLOAT*     pInputVector, 
+           FLOAT*     pOutputVector,
+           char*      pMemory,
+           PropagDirectionType  direction)
+  {
+#ifdef MATLAB_ENGINE
+    size_t  i;
+    FLOAT* data;
+    
+    // check whether we have a running instance of Matlab. If not, create one
+    if (NULL == mpEp)
+    {
+      if (!(mpEp = engOpen("\0"))) 
+      {
+        Error("Can't start MATLAB Engine");
+      }      
+    }
+    
+    // copy our data to the MATLAB Matrix struct
+    mxSetData(mpInput, static_cast<void*>(pInputVector));
+    
+    engPutVariable(mpEp, "STKInput", mpInput);
+    
+    // run the program
+    engEvalString(mpEp, mProgram.c_str());
+    
+    if (NULL == (mpOutput = engGetVariable(mpEp, "STKOutput")))
+      Error("Cannot retrieve STKOutput (perhaps an error in Matlab script)");
+    
+    // copy result to pOutputVector
+    memcpy(static_cast<void*>(pOutputVector), mxGetData(mpOutput), 
+      mOutSize * sizeof(FLOAT));
+      
+    mxFree(mpOutput);
+    
+#endif    
+
+    return pOutputVector;
+  }; //Evaluate(...)
   
   //**************************************************************************  
   //**************************************************************************  
@@ -2549,12 +2796,12 @@ namespace STK
   //virtual 
   FLOAT *
   StackingXform::
-  Evaluate(FLOAT *    pInputVector, 
-           FLOAT *    pOutputVector,
-           char *     pMemory,
+  Evaluate(FLOAT*     pInputVector, 
+           FLOAT*     pOutputVector,
+           char*      pMemory,
            PropagDirectionType  direction)
   {
-    FLOAT *stack = reinterpret_cast <FLOAT *> (pMemory);
+    FLOAT* stack = reinterpret_cast <FLOAT*> (pMemory);
   
     memmove(stack + (direction == BACKWARD ? mInSize : 0),
             stack + (direction ==  FORWARD ? mInSize : 0),

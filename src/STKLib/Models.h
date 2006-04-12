@@ -17,6 +17,10 @@
 #include "common.h"
 #include "stkstream.h"
 
+#ifdef MATLAB_ENGINE
+#  include "engine.h"
+#endif
+
 
 #define SQR(x) ((x) * (x))
 
@@ -43,15 +47,20 @@ namespace STK
   class Transition;
   class XformInstance;
   class Xform;
+  
+  class BiasXform;
   class CompositeXform;
   class CopyXform;
-  class LinearXform;
-  class BiasXform;
+  class FeatureMappingXform;
+  class FrantaProductXform;
   class FuncXform;
+  class LinearXform;
+  class MatlabXform;
   class StackingXform;
   class XformStatCache;
   class XformStatAccum;
 
+  
   enum MacroType 
   {
     mt_hmm             = 'h',
@@ -224,6 +233,8 @@ namespace STK
     /* Numeric functions - FuncXform*/
     KID_Sigmoid,     KID_Log,        KID_Exp,        KID_Sqrt,     KID_SoftMax,
     
+    KID_ExtendedXform, 
+    
     KID_Weights = 253,
   
     KID_MaxKwdID
@@ -264,37 +275,42 @@ namespace STK
     
     /// This group of methods does exactly what their names state
     /// @{ 
-    Hmm *           ReadHMM           (FILE * fp, Macro * macro);
-    State *         ReadState         (FILE * fp, Macro * macro);
-    Mixture *       ReadMixture       (FILE * fp, Macro * macro);
-    Mean *          ReadMean          (FILE * fp, Macro * macro);
-    Variance *      ReadVariance      (FILE * fp, Macro * macro);
-    Transition *    ReadTransition    (FILE * fp, Macro * macro);
-    XformInstance * ReadXformInstance (FILE * fp, Macro * macro);
-    Xform *         ReadXform         (FILE * fp, Macro * macro);
-    CompositeXform *ReadCompositeXform(FILE * fp, Macro * macro);
-    LinearXform *   ReadLinearXform   (FILE * fp, Macro * macro);
-    CopyXform *     ReadCopyXform     (FILE * fp, Macro * macro);
-    BiasXform *     ReadBiasXform     (FILE * fp, Macro * macro);
-    FuncXform *     ReadFuncXform     (FILE * fp, Macro * macro, int funcId);
-    StackingXform * ReadStackingXform (FILE * fp, Macro * macro);
-    int             ReadGlobalOptions (FILE * fp);
+    Hmm*            ReadHMM           (FILE* fp, Macro* macro);
+    State*          ReadState         (FILE* fp, Macro* macro);
+    Mixture*        ReadMixture       (FILE* fp, Macro* macro);
+    Mean*           ReadMean          (FILE* fp, Macro* macro);
+    Variance*       ReadVariance      (FILE* fp, Macro* macro);
+    Transition*     ReadTransition    (FILE* fp, Macro* macro);
+    XformInstance*  ReadXformInstance (FILE* fp, Macro* macro);
+    Xform*          ReadXform         (FILE* fp, Macro* macro);
+    CompositeXform* ReadCompositeXform(FILE* fp, Macro* macro);
+    LinearXform*    ReadLinearXform   (FILE* fp, Macro* macro);
+    CopyXform*      ReadCopyXform     (FILE* fp, Macro* macro);
+    FeatureMappingXform*    ReadFeatureMappingXform     (FILE* fp, Macro* macro);
+    FrantaProductXform*     ReadFrantaProductXform      (FILE* fp, Macro* macro);
+    MatlabXform*    ReadMatlabXform(FILE* fp, Macro* macro);
+    BiasXform*      ReadBiasXform     (FILE* fp, Macro* macro);
+    FuncXform*      ReadFuncXform     (FILE* fp, Macro* macro, int funcId);
+    StackingXform*  ReadStackingXform (FILE* fp, Macro* macro);
+    int             ReadGlobalOptions (FILE* fp);
     
-    void   WriteHMM          (FILE * fp, bool binary, Hmm * hmm);
-    void   WriteState        (FILE * fp, bool binary, State * state);
-    void   WriteMixture      (FILE * fp, bool binary, Mixture * mixture);
-    void   WriteMean         (FILE * fp, bool binary, Mean * mean);
-    void   WriteVariance     (FILE * fp, bool binary, Variance * variance);
-    void   WriteTransition   (FILE * fp, bool binary, Transition * transition);
-    void   WriteXformInstance(FILE * fp, bool binary, XformInstance * xformInstance);
-    void   WriteXform        (FILE * fp, bool binary,          Xform * xform);
-    void   WriteCompositeXform(FILE *fp, bool binary, CompositeXform * xform);
-    void   WriteLinearXform  (FILE * fp, bool binary,    LinearXform * xform);
-    void   WriteCopyXform    (FILE * fp, bool binary,      CopyXform * xform);
-    void   WriteFuncXform    (FILE * fp, bool binary,      FuncXform * xform);
-    void   WriteBiasXform    (FILE * fp, bool binary,      BiasXform * xform);
-    void   WriteStackingXform(FILE * fp, bool binary,  StackingXform * xform);
-    void   WriteGlobalOptions(FILE * fp, bool binary);  
+    void   WriteHMM          (FILE* fp, bool binary, Hmm*             hmm);
+    void   WriteState        (FILE* fp, bool binary, State*           state);
+    void   WriteMixture      (FILE* fp, bool binary, Mixture*         mixture);
+    void   WriteMean         (FILE* fp, bool binary, Mean*            mean);
+    void   WriteVariance     (FILE* fp, bool binary, Variance*        variance);
+    void   WriteTransition   (FILE* fp, bool binary, Transition*      transition);
+    void   WriteXformInstance(FILE* fp, bool binary, XformInstance*   xformInstance);
+    void   WriteXform        (FILE* fp, bool binary,          Xform*  xform);
+    void   WriteCompositeXform(FILE*fp, bool binary, CompositeXform*  xform);
+    void   WriteLinearXform  (FILE* fp, bool binary,    LinearXform*  xform);
+    void   WriteCopyXform    (FILE* fp, bool binary,      CopyXform*  xform);
+    void   WriteFeatureMappingXform (FILE* fp, bool binary, FeatureMappingXform* xform);
+    void   WriteFrantaProductXform  (FILE* fp, bool binary, FrantaProductXform* xform);
+    void   WriteFuncXform    (FILE* fp, bool binary,      FuncXform*  xform);
+    void   WriteBiasXform    (FILE* fp, bool binary,      BiasXform*  xform);
+    void   WriteStackingXform(FILE* fp, bool binary,  StackingXform*  xform);
+    void   WriteGlobalOptions(FILE* fp, bool binary);  
     
     
     /// @}
@@ -325,16 +341,16 @@ namespace STK
     
     KeywordID                 mOutPdfKind;
     KeywordID                 mDurKind;
-    XformInstance *           mpInputXform;
-    XformInstance *           mpXformInstances;
+    XformInstance*            mpInputXform;
+    XformInstance*            mpXformInstances;
     
     //Reestimation params
     int                       mUpdateMask;
     FLOAT                     mMinMixWeight;
-    Variance *                mpVarFloor;
+    Variance*                 mpVarFloor;
     double                    mMinVariance;            ///< global minimum variance floor
     long                      mMinOccurances;
-    MakeXformCommand *        mpXformToUpdate;
+    MakeXformCommand*         mpXformToUpdate;
     size_t                    mNumberOfXformsToUpdate;
     int                       mGaussLvl2ModelReest;
     int                       mMmiUpdate;
@@ -601,7 +617,6 @@ namespace STK
   };
   
   
-  
   /** *************************************************************************
    ** *************************************************************************
    *  @brief Defines HMM State representation
@@ -641,7 +656,7 @@ namespace STK
       FLOAT                   mWeightAccumDen;
     }*                        mpMixture;
     
-    State *                   mpPrior;
+    State*                    mpPrior;
     
     void
     /**
@@ -1103,6 +1118,9 @@ namespace STK
     XT_FUNC,
     XT_STACKING,
     XT_COMPOSITE,
+    XT_FEATURE_MAPPING,
+    XT_FRANTA_PRODUCT,
+    XT_MATLAB
   } XformType;
 
   
@@ -1126,10 +1144,10 @@ namespace STK
      * @param pMemory pointer to the extra memory needed by the operation
      * @param direction propagation direction (forward/backward)
      */
-    virtual FLOAT * 
-    Evaluate(FLOAT *    pInputVector, 
-             FLOAT *    pOutputVector,
-             char *     pMemory,
+    virtual FLOAT*  
+    Evaluate(FLOAT*     pInputVector, 
+             FLOAT*     pOutputVector,
+             char*      pMemory,
              PropagDirectionType  direction) = 0;
   
     void
@@ -1143,7 +1161,7 @@ namespace STK
     Scan( int             mask,
           HMMSetNodeName  nodeNameBuffer,
           ScanAction      action, 
-          void *          pUserData);
+          void*           pUserData);
   };
 
   
@@ -1157,7 +1175,7 @@ namespace STK
   class XformLayer
   {
   public:
-    FLOAT*              mpOutputVector;
+    BasicVector<FLOAT>  mOutputVector;
     size_t              mNBlocks;
     Xform**             mpBlock;
     
@@ -1206,10 +1224,10 @@ namespace STK
      * @param pMemory pointer to the extra memory needed by the operation
      * @param direction propagation direction (forward/backward)
      */
-    virtual FLOAT * 
-    Evaluate(FLOAT *    pInputVector, 
-             FLOAT *    pOutputVector,
-             char *     pMemory,
+    virtual FLOAT* 
+    Evaluate(FLOAT*    pInputVector, 
+             FLOAT*    pOutputVector,
+             char*     pMemory,
              PropagDirectionType  direction);
   };
   
@@ -1232,9 +1250,7 @@ namespace STK
     virtual
     ~LinearXform();
   
-    
     Matrix<FLOAT>       mMatrix;
-    //FLOAT*              mpMatrixO;
     
     /**
      * @brief Linear Xform evaluation 
@@ -1268,8 +1284,6 @@ namespace STK
     ~BiasXform();
     
     Matrix<FLOAT>       mVector;
-    //FLOAT *           mpVectorO;
-    
     
     /**
      * @brief Bias Xform evaluation 
@@ -1312,10 +1326,10 @@ namespace STK
      * @param pMemory pointer to the extra memory needed by the operation
      * @param direction propagation direction (forward/backward)
      */
-    virtual FLOAT * 
-    Evaluate(FLOAT *    pInputVector, 
-             FLOAT *    pOutputVector,
-             char *     pMemory,
+    virtual FLOAT* 
+    Evaluate(FLOAT*    pInputVector, 
+             FLOAT*    pOutputVector,
+             char*     pMemory,
              PropagDirectionType  direction);
   };
   
@@ -1351,6 +1365,128 @@ namespace STK
              FLOAT*     pOutputVector,
              char*      pMemory,
              PropagDirectionType  direction);  
+  };
+  
+  
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Feature Mapping Xform representation
+   */
+  class FeatureMappingXform : public Xform 
+  {
+  public:
+    /**
+     * @brief The constructor
+     * @param inSize size of input vector
+     * @param outSize size of output vector
+     */
+    FeatureMappingXform(size_t inSize);
+    
+    virtual
+    ~FeatureMappingXform();
+  
+    /**
+     * @brief Copy Xform evaluation 
+     * @param pInputVector pointer to the input vector
+     * @param pOutputVector pointer to the output vector
+     * @param pMemory pointer to the extra memory needed by the operation
+     * @param direction propagation direction (forward/backward)
+     */
+    virtual FLOAT* 
+    Evaluate(FLOAT*     pInputVector, 
+             FLOAT*     pOutputVector,
+             char*      pMemory,
+             PropagDirectionType  direction);  
+             
+    State*              mpStateFrom;
+    State*              mpStateTo;    
+  };
+  
+  
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Feature Mapping Xform representation
+   */
+  class FrantaProductXform : public Xform 
+  {
+  public:
+    /**
+     * @brief The constructor
+     * @param inSize size of input vector
+     * @param outSize size of output vector
+     */
+    FrantaProductXform(size_t inSize, size_t nParts);
+    
+    virtual
+    ~FrantaProductXform();
+    
+    size_t NParts() const
+    { return mNParts; }
+    
+    /**
+     * @brief Copy Xform evaluation 
+     * @param pInputVector pointer to the input vector
+     * @param pOutputVector pointer to the output vector
+     * @param pMemory pointer to the extra memory needed by the operation
+     * @param direction propagation direction (forward/backward)
+     */
+    virtual FLOAT* 
+    Evaluate(FLOAT*     pInputVector, 
+             FLOAT*     pOutputVector,
+             char*      pMemory,
+             PropagDirectionType  direction);  
+             
+  private:
+    size_t        mNParts;           
+  };
+  
+  
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Matlab Xform representation
+   * 
+   *  Matlab Xform runs a matlab program. The program has predefined variables
+   *  STKInput and STKOutput for IO operations
+   */
+  class MatlabXform : public Xform 
+  {
+  public:
+    /**
+     * @brief The constructor
+     * @param inSize size of input vector
+     * @param outSize size of output vector
+     */
+    MatlabXform(size_t inRows, size_t inCols, size_t outSize);
+    
+    virtual
+    ~MatlabXform();
+    
+    std::string         mProgram;
+    
+    /**
+     * @brief Copy Xform evaluation 
+     * @param pInputVector pointer to the input vector
+     * @param pOutputVector pointer to the output vector
+     * @param pMemory pointer to the extra memory needed by the operation
+     * @param direction propagation direction (forward/backward)
+     */
+    virtual FLOAT* 
+    Evaluate(FLOAT*     pInputVector, 
+             FLOAT*     pOutputVector,
+             char*      pMemory,
+             PropagDirectionType  direction);  
+             
+  private:
+    
+#ifdef MATLAB_ENGINE
+    /// interface
+    mxArray*            mpInput;
+    mxArray*            mpOutput;
+    
+    /// The MATLAB Engine instance
+    Engine*             mpEp;
+#endif    
+    
   };
   
   
@@ -1449,7 +1585,6 @@ namespace STK
     bool                      mBinary;
   };
   /// @}
-
     
   
   extern const char *   gpCurrentMmfName;
@@ -1459,33 +1594,32 @@ namespace STK
   extern FunctionTable  gFuncTable[];                         ///< FuncXform table (keyword Id to function mapping)
   extern size_t         gFuncTableSize;                       ///< Number of records in gFuncTable
   extern char *         gpKwds[KID_MaxKwdID];                 ///< MMF keyword table
-                                                           
 
                   
   /**
    * @brief Passes the vector through XformInstance
    */
-  FLOAT *     XformPass(XformInstance *xformInstance, FLOAT *in_vec, int time, PropagDirectionType dir);
+  FLOAT*      XformPass(XformInstance* xformInstance, FLOAT* in_vec, int time, PropagDirectionType dir);
 
-  void        ReleaseMacroHash(MyHSearchData *macro_hash);
-  Macro *     FindMacro(MyHSearchData *macro_hash, const char *name);
+  void        ReleaseMacroHash(MyHSearchData* macro_hash);
+  Macro*      FindMacro(MyHSearchData* macro_hash, const char *name);
   
-  void        PutFlt(FILE *fp, bool binary, FLOAT f);
-  void        PutInt(FILE *fp, bool binary, int i);
-  void        PutKwd(FILE *fp, bool binary, KeywordID kwdID);
-  void        PutNLn(FILE *fp, bool binary);
+  void        PutFlt(FILE* fp, bool binary, FLOAT f);
+  void        PutInt(FILE* fp, bool binary, int i);
+  void        PutKwd(FILE* fp, bool binary, KeywordID kwdID);
+  void        PutNLn(FILE* fp, bool binary);
   
-  FLOAT       GetFloat(FILE *fp);
-  int         GetInt(FILE *fp);
-  char *      GetString(FILE *fp, int eofNotExpected);
-  void        RemoveSpaces(FILE *fp);
+  FLOAT       GetFloat(FILE* fp);
+  int         GetInt(FILE* fp);
+  char*       GetString(FILE* fp, int eofNotExpected);
+  void        RemoveSpaces(FILE* fp);
   void        UngetString(void);
   
   
-  int         CheckKwd(const char *str, KeywordID kwdID);
+  int         CheckKwd(const char* str, KeywordID kwdID);
   void        InitKwdTable();
-  KeywordID   ReadDurKind(char *str);
-  KeywordID   ReadOutPDFKind(char *str);
+  KeywordID   ReadDurKind(char* str);
+  KeywordID   ReadOutPDFKind(char* str);
   
   /// Action procedures
   /// @{
