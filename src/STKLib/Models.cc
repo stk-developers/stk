@@ -1944,8 +1944,10 @@ namespace STK
   State::
   ~State()
   {
-    if (mpMixture != NULL)
+    if (NULL != mpMixture)
       delete [] mpMixture;
+    
+    //std::cerr << "State destructor" << std::endl;      
   }
 
   
@@ -2241,6 +2243,12 @@ namespace STK
         }
       }
     }
+    
+    if (mXformType == XT_FEATURE_MAPPING)
+    {
+      static_cast<FeatureMappingXform*>(this)->mpStateTo->Scan(mask, nodeName, action, pUserData);
+      static_cast<FeatureMappingXform*>(this)->mpStateFrom->Scan(mask, nodeName, action, pUserData);
+    }
   
     if (!(mask & MTM_PRESCAN)) 
     {
@@ -2269,7 +2277,7 @@ namespace STK
   XformLayer::
   ~XformLayer()
   {
-    // delete the pointers
+    //delete the pointers
     //delete [] mpOutputVector;
     delete [] mpBlock;
   }
@@ -2312,7 +2320,7 @@ namespace STK
   CompositeXform::
   ~CompositeXform()
   {
-    
+    delete [] mpLayer;
   }
   
   //**************************************************************************  
@@ -2548,11 +2556,11 @@ namespace STK
   
   //**************************************************************************  
   //**************************************************************************  
+  // virutal
   FeatureMappingXform::
-  ~ FeatureMappingXform()
+  ~FeatureMappingXform()
   {
-    if (NULL != mpStateFrom) delete mpStateFrom;
-    if (NULL != mpStateTo)   delete mpStateTo;
+    //std::cerr << "FeatureMappingXform destructor" << std::endl;
   }
   
   
@@ -2569,7 +2577,7 @@ namespace STK
     State*  state_from = mpStateFrom;
     State*  state_to   = mpStateTo;
     size_t  i;
-    size_t  max_i;
+    size_t  max_i      = 0;
     FLOAT   g_like;
     FLOAT   max_g_like = LOG_0;
     
@@ -2676,12 +2684,6 @@ namespace STK
   }; //Evaluate(...)
 
   
-  //template<typename _T>
-  //  inline void
-  //  copy_to_mx_array(const _T* pFrom, mxArray* pTo);
-
-
-    
     
 
   //**************************************************************************  
@@ -2690,20 +2692,20 @@ namespace STK
   //**************************************************************************  
   //**************************************************************************  
   MatlabXform::
-  MatlabXform(size_t inRows, size_t inCols, size_t outSize)
+  MatlabXform(size_t inSize, size_t outSize, size_t delay)
   {
     mOutSize      = outSize;
-    mInSize       = inCols;
+    mInSize       = inSize;
     mMemorySize   = 0;
-    mDelay        = inRows;
+    mDelay        = delay;
     mXformType    = XT_MATLAB;
 #ifdef MATLAB_ENGINE
 #  ifdef DOUBLEPRECISION    
-    mpInput       = mxCreateNumericMatrix(inRows, inCols,  mxSINGLE_CLASS, mxREAL);
+    mpInput       = mxCreateNumericMatrix(1, inSize,  mxSINGLE_CLASS, mxREAL);
 #  else
-    mpInput       = mxCreateNumericMatrix(inRows, inCols,  mxDOUBLE_CLASS, mxREAL);
+    mpInput       = mxCreateNumericMatrix(1, inSize,  mxDOUBLE_CLASS, mxREAL);
 #  endif
-    mpOutput      = NULL; //mxCreateDoubleMatrix(1, outSize, mxREAL);
+    mpOutput      = NULL;
     mpEp          = NULL;
 #endif
   }
@@ -2716,7 +2718,6 @@ namespace STK
   {
 #ifdef MATLAB_ENGINE
     if (NULL != mpInput)  mxDestroyArray(mpInput);
-    if (NULL != mpOutput) mxDestroyArray(mpOutput);
     if (NULL != mpEp)     engClose(mpEp);
 #endif  
   }
@@ -2733,9 +2734,6 @@ namespace STK
            PropagDirectionType  direction)
   {
 #ifdef MATLAB_ENGINE
-    size_t  i;
-    FLOAT* data;
-    
     // check whether we have a running instance of Matlab. If not, create one
     if (NULL == mpEp)
     {
@@ -2746,7 +2744,9 @@ namespace STK
     }
     
     // copy our data to the MATLAB Matrix struct
-    mxSetData(mpInput, static_cast<void*>(pInputVector));
+    //mxSetData(mpInput, static_cast<void*>(pInputVector));
+    memcpy(mxGetData(mpInput), static_cast<void*>(pInputVector), 
+      mInSize * sizeof(FLOAT));
     
     engPutVariable(mpEp, "STKInput", mpInput);
     
@@ -2760,12 +2760,12 @@ namespace STK
     memcpy(static_cast<void*>(pOutputVector), mxGetData(mpOutput), 
       mOutSize * sizeof(FLOAT));
       
-    mxFree(mpOutput);
-    
+    mxDestroyArray(mpOutput);
 #endif    
 
     return pOutputVector;
   }; //Evaluate(...)
+  
   
   //**************************************************************************  
   //**************************************************************************  

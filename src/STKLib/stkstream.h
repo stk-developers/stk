@@ -150,8 +150,8 @@ namespace STK
        *  [Table 92 gives the relation between openmode combinations and the
        *  equivalent fopen() flags, but the table has not been copied yet.]
        */
-      __filebuf_type *
-      open(const string & fName, ios_base::openmode m, const string & filter="");
+      __filebuf_type*
+      open(const char* pFName, ios_base::openmode m, const char* pFilter="");
       
       /**
        *  @brief  Closes the currently associated file.
@@ -164,7 +164,7 @@ namespace STK
        *
        *  If any operations fail, this function also fails.
        */
-      __filebuf_type *
+      __filebuf_type*
       close();
 
       /**
@@ -243,8 +243,8 @@ namespace STK
      *  Tip:  When using std::string to hold the filename, you must use
      *  .c_str() before passing it to this constructor.
     */
-    IStkStream(const string& fName, ios::openmode m=ios::out, const string & filter=""):
-      stkios() {this->open(fName, ios::in, filter);}
+    IStkStream(const char* pFName, ios::openmode m=ios::out, const char* pFilter=""):
+      stkios() {this->open(pFName, ios::in, pFilter);}
 
     ~IStkStream() 
     {
@@ -263,9 +263,9 @@ namespace STK
     *  Tip:  When using std::string to hold the filename, you must use
     *  .c_str() before passing it to this constructor.
     */
-    void open(const string & fName, ios::openmode m=ios::in, const string & filter = "")
+    void open(const char* pFName, ios::openmode m=ios::in, const char* pFilter = "")
     {
-      if (!buf.open(fName, m | ios_base::in, filter))
+      if (!buf.open(pFName, m | ios_base::in, pFilter))
         this->setstate(ios_base::failbit);
       else
       // Closing an fstream should clear error state
@@ -352,9 +352,9 @@ namespace STK
     *  Tip:  When using std::string to hold the filename, you must use
     *  .c_str() before passing it to this constructor.
     */
-    void open(const string & fName, ios::openmode m=ios::out, const string & filter="")
+    void open(const char* pFName, ios::openmode m=ios::out, const char* pFilter="")
     {
-      if (!buf.open(fName, m | ios_base::out, filter))
+      if (!buf.open(pFName, m | ios_base::out, pFilter))
         this->setstate(ios_base::failbit);
       else
       // Closing an fstream should clear error state

@@ -378,7 +378,7 @@ namespace STK
               const char * pInMmfDir, 
               const char * pInMmfExt)
   {
-    struct ReadlineData      rld = {0};
+    struct ReadlineData       rld = {0};
     char *                    lhmm;
     char *                    fhmm;
     char *                    chptr;
@@ -468,14 +468,17 @@ namespace STK
     char*         keyword;
     Macro*        macro;
     MacroData*    data = NULL;
+    std::string   filter;
     
     gCurrentMmfLine = 1;
-    gpCurrentMmfName = pFileName;//mmFileName;
-  
+    gpCurrentMmfName = pFileName;
+    
     try
     {
+      filter = (NULL != gpMmfFilter) ? gpMmfFilter : "";
+      
       // try to open the stream
-      input_stream.open(pFileName, ios::in|ios::binary);
+      input_stream.open(pFileName, ios::in|ios::binary, gpMmfFilter);
       if (!input_stream.good())
       {
         Error("Cannot open input MMF %s", pFileName);
@@ -540,8 +543,7 @@ namespace STK
               // the old one (vector sizes, delays, memory sizes) All references to
               // old item must be replaced and old item must be released
               // !!! How about AllocateAccumulatorsForXformStats() and ResetAccumsForHMMSet()
-              // !!! Replacing HMM will not work correctly after attaching network nodes to models
-    
+              // !!! Replacing HMM will not work correctly after attaching network nodes to models    
     
               unsigned int i;
               MyHSearchData *hash = NULL;
@@ -586,7 +588,7 @@ namespace STK
                 hash = &mXformInstanceHash;
                 break;
               case 'x':
-                //:KLUDGE:
+                //:TODO:
                 // Fix this
                 if (mUpdateMask & UM_CWEIGHTS
                 &&  XT_BIAS == static_cast<Xform*>(ud.mpNewData)->mXformType)
@@ -604,14 +606,11 @@ namespace STK
                       mpKw[i].Clear();
                       mpClusterWeightVectors[i] = static_cast<BiasXform*>(ud.mpNewData);
                       
-                      //delete [] ud.mpOldData;
-                      
                       free(ud.mpNewData->mpMacro->mpFileName);
                       if ((ud.mpNewData->mpMacro->mpFileName = strdup(gpCurrentMmfName)) == NULL)
                       {
                         Error("Insufficient memory");
-                      } 
-
+                      }
                     }
                   }
                 }              
@@ -715,11 +714,6 @@ namespace STK
       Error("Keyword <NumStates> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
   
     nstates = GetInt(fp);
-    //***
-    // old malloc
-    // if ((ret = (Hmm *) malloc(sizeof(Hmm) + (nstates-3) * sizeof(State *))) == NULL) 
-    //   Error("Insufficient memory");
-    // ret->mNStates = nstates;
     
     if (nstates < 3)
       Error("HMM must have at least 3 states (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
@@ -904,12 +898,12 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  Mixture *
+  Mixture*
   ModelSet::
   ReadMixture(FILE *fp, Macro *macro)
   {
-    Mixture * ret;
-    char *    keyword;
+    Mixture* ret = NULL;
+    char*    keyword;
   
   //  puts("ReadMixture");
     keyword = GetString(fp, 1);
@@ -1024,7 +1018,7 @@ namespace STK
       Macro*        tmp_macro;
       FLOAT         tmp_val;  // temporary read value
       int           n_xforms; // number of xform refferences
-      BiasXform**   xforms;   // temporary storage of xform refferences
+      BiasXform**   xforms = NULL; // temporary storage of xform refferences
       int           total_means = 0; 
       bool          init_Gwkw = false;
       ret = NULL;
@@ -1705,7 +1699,7 @@ namespace STK
   ModelSet::
   ReadFeatureMappingXform(FILE* fp, Macro* macro)
   {
-    FeatureMappingXform*    ret;
+    FeatureMappingXform*    ret=NULL;
     int           in_size;
     int           in_size_orig;
     char*         keyword;
@@ -1824,6 +1818,8 @@ namespace STK
       ret->mProgram += '\n';
     }
   
+    free(rld.buffer);
+    
     ret->mpMacro      = macro;
     return ret;
   }; //ReadCopyXform(FILE *fp, Macro *macro)
@@ -2048,14 +2044,15 @@ namespace STK
   //***************************************************************************
   void 
   ModelSet::
-  WriteMmf(const char * pFileName, const char * pOutputDir,
-           const char * pOutputExt, bool binary)
+  WriteMmf(const char* pFileName, const char* pOutputDir,
+           const char* pOutputExt, bool binary)
   {
-    FILE*     fp = NULL;
-    Macro*    macro;
-    char      mmfile[1024];
-    char*     lastFileName = NULL;
-    int       waitingForNonXform = 1;
+    FILE*       fp = NULL;
+    Macro*      macro;
+    char        mmfile[1024];
+    char*       lastFileName = NULL;
+    int         waitingForNonXform = 1;
+    OStkStream  output_stream;
   
     for (macro = mpFirstMacro; macro != NULL; macro = macro->nextAll) 
     {
@@ -2067,9 +2064,10 @@ namespace STK
         // New macro file
         lastFileName = macro->mpFileName;
         
+        /*
         if (fp && fp != stdout) 
           fclose(fp);
-  
+        
         if (!strcmp(pFileName ? pFileName : macro->mpFileName, "-")) 
         {
           fp = stdout;
@@ -2083,7 +2081,25 @@ namespace STK
             Error("Cannot open output MMF %s", mmfile);
           }
         }
+        */
         
+        if (output_stream.is_open())
+          output_stream.close();
+  
+        MakeFileName(mmfile, pFileName ? pFileName : macro->mpFileName, pOutputDir, pOutputExt);
+          
+        std::cout << "--begin--" << std::endl;
+        std::cout << mmfile << std::endl;
+        std::cout << gpMmfOFilter << std::endl;
+        std::cout << "--end--" << std::endl;
+        
+        output_stream.open(mmfile, ios::binary, gpMmfOFilter);
+        if (!output_stream.good())
+        { 
+          Error("Cannot open output MMF %s", mmfile);
+        }
+        fp = output_stream.file();
+          
         waitingForNonXform = 1;
         WriteGlobalOptions(fp, binary);
       }
@@ -2121,7 +2137,9 @@ namespace STK
         }
       }
     }
-    if (fp && fp != stdout) fclose(fp);
+    //if (fp && fp != stdout) fclose(fp);
+    if (output_stream.is_open())
+      output_stream.close();
   }
 
 
@@ -2259,9 +2277,14 @@ namespace STK
   ModelSet::
   WriteMixture(FILE *fp, bool binary, Mixture *mixture)
   {
-    if (mixture->mpInputXform != mpInputXform) 
+    //:BUG:
+    // The mixture->mpInputXform should never be null, however with feature
+    // mapping, it is. Temporary solution is to test it for NULL...
+    if (mixture->mpInputXform != mpInputXform
+    &&  NULL != mixture->mpInputXform) 
     {
       PutKwd(fp, binary, KID_InputXform);
+      
       if (mixture->mpInputXform->mpMacro) 
       {
         fprintf(fp, "~j \"%s\"", mixture->mpInputXform->mpMacro->mpName);
@@ -2883,7 +2906,7 @@ namespace STK
     unsigned int        size   = 0;
     FLOAT*              vector = NULL;
     Macro*              macro;
-    ReadAccumUserData * ud = (ReadAccumUserData *) pUserData;
+    ReadAccumUserData*  ud = (ReadAccumUserData *) pUserData;
     //  FILE *fp =        ((ReadAccumUserData *) pUserData)->fp;
     //  char *fn =        ((ReadAccumUserData *) pUserData)->fn;
     //  ModelSet *hmm_set = ((ReadAccumUserData *) pUserData)->hmm_set;

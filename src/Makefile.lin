@@ -32,12 +32,12 @@ endif
 ###############################################################################
 # compiler options
 #CFLAGS = -Wall -g -O3 -DDOUBLEPRECISION=0 -D_REENTRANT -DUSE_BLAS -msse -msse2 -mmmx -mfpmath=sse
-CFLAGS    = -Wall -g -DDOUBLEPRECISION=0 -D_REENTRANT -DUSE_BLAS -msse -msse2 -mfpmath=sse $(MATLAB_CFLAGS)
+CFLAGS    = -Wall -O3 -g -DDOUBLEPRECISION=0 -D_REENTRANT -DUSE_BLAS -msse -msse2 -mfpmath=sse $(MATLAB_CFLAGS)
 CXXFLAGS  = $(CFLAGS)
 
 ###############################################################################
 # linker options
-LDFLAGS = -L./STKLib $(MATLAB_LDFLAGS)
+LDFLAGS = -g -L./STKLib $(MATLAB_LDFLAGS)
 LDLIBS = -lm -latlas -lpthread -lSTKLib $(MATLAB_LDLIBS)
 #LDLIBS = -lm -lSTKLib
 #LDFLAGS = -a -g -L. -pg

@@ -138,20 +138,20 @@ void fast_softmax_vec(double *in, double *out, int size)
 //namespace STK
 //{
   
-  const char *    gpFilterWldcrd;
+  const char*     gpFilterWldcrd;
   // :WARNING: default HTK compatibility is set to false
   bool            gHtkCompatible = false;
   FLOAT           gMinLogDiff;
   
-  const char *    gpScriptFilter;
-  const char *    gpParmFilter;
-  const char *    gpMmfFilter;
-  const char *    gpHListOFilter;
-  const char *    gpMmfOFilter;
-  const char *    gpParmOFilter;
+  const char*     gpScriptFilter;
+  const char*     gpParmFilter;
+  const char*     gpMmfFilter;
+  const char*     gpHListOFilter;
+  const char*     gpMmfOFilter;
+  const char*     gpParmOFilter;
 
     
-  static char *   gpParmKindNames[] = 
+  static char*    gpParmKindNames[] = 
   {
     "WAVEFORM",
     "LPC",
@@ -219,7 +219,15 @@ void fast_softmax_vec(double *in, double *out, int size)
     const char* chrptr;
   
     //  if (*inFileName == '*' && *++inFileName == '/') ++inFileName;
-  
+    
+    // we don't do anything if file is stdin/out
+    if (!strcmp(inFileName, "-"))
+    {
+      pOutFileName[0] = '-';
+      pOutFileName[1] = '\0';
+      return;
+    }    
+    
     base_name = strrchr(inFileName, '/');
     base_name = base_name != NULL ? base_name + 1 : inFileName;
     
@@ -392,7 +400,7 @@ void fast_softmax_vec(double *in, double *out, int size)
   //***************************************************************************
   //***************************************************************************
   void 
-  sigmoid_vec(FLOAT * pIn, FLOAT * pOut, int size)
+  sigmoid_vec(FLOAT* pIn, FLOAT* pOut, int size)
   {
     while (size--) *pOut++ = 1.0/(1.0 + _EXP(-*pIn++));
   }
@@ -400,7 +408,7 @@ void fast_softmax_vec(double *in, double *out, int size)
   //***************************************************************************
   //***************************************************************************
   void 
-  exp_vec(FLOAT *pIn, FLOAT *pOut, int size)
+  exp_vec(FLOAT* pIn, FLOAT* pOut, int size)
   {
     while (size--) *pOut++ = _EXP(*pIn++);
   }
@@ -408,21 +416,21 @@ void fast_softmax_vec(double *in, double *out, int size)
   //***************************************************************************
   //***************************************************************************
   void 
-  log_vec(FLOAT *pIn, FLOAT *pOut, int size)
+  log_vec(FLOAT* pIn, FLOAT* pOut, int size)
   {
     while (size--) *pOut++ = _LOG(*pIn++);
   }
   
   //***************************************************************************
   //***************************************************************************
-  void sqrt_vec(FLOAT *pIn, FLOAT *pOut, int size)
+  void sqrt_vec(FLOAT* pIn, FLOAT* pOut, int size)
   {
     while (size--) *pOut++ = _SQRT(*pIn++);
   }
   
   //***************************************************************************
   //***************************************************************************
-  void softmax_vec(FLOAT *pIn, FLOAT *pOut, int size)
+  void softmax_vec(FLOAT* pIn, FLOAT* pOut, int size)
   {
     int i;
     FLOAT sum = 0.0;
@@ -433,7 +441,7 @@ void fast_softmax_vec(double *in, double *out, int size)
   
   //***************************************************************************
   //***************************************************************************
-  int ParmKind2Str(unsigned parmKind, char * pOutString) 
+  int ParmKind2Str(unsigned parmKind, char* pOutString) 
   {
     // :KLUDGE: Absolutely no idea what this is...
       if ((parmKind & 0x003F) >= sizeof(gpParmKindNames)/sizeof(gpParmKindNames[0])) 
@@ -689,7 +697,7 @@ void fast_softmax_vec(double *in, double *out, int size)
   
     if (data->size == 0) {
       data->size = LINEBUFF_INIT_SIZE;
-      data->buffer = (char *) malloc(data->size);
+      data->buffer = (char*) malloc(data->size);
       if (data->buffer == NULL) Error("Insufficient memory");
     } else if (data->size == -1) { // EOF reached in previous call
       data->size = 0;

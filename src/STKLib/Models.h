@@ -161,7 +161,7 @@ namespace STK
   class MacroData
   {
   public:
-    Macro *                     mpMacro;
+    Macro*                     mpMacro;
   
   public:  
     /// Default constructor
@@ -1137,6 +1137,11 @@ namespace STK
     size_t              mMemorySize;
     int                 mDelay;
     
+    Xform() : MacroData() {}
+    
+    virtual 
+    ~Xform() {}
+    
     /**
      * @brief Interface to the evaluation procedure of a concrete Xform
      * @param pInputVector pointer to the input vector
@@ -1565,8 +1570,8 @@ namespace STK
   class ReplaceItemUserData
   {
   public:
-    MacroData *         mpOldData;
-    MacroData *         mpNewData;
+    MacroData*          mpOldData;
+    MacroData*          mpNewData;
     int                 mType;
   };
 

@@ -106,7 +106,7 @@ char *optionStr =
 " -V n   PRINTVERSION=TRUE"
 " -X r   SOURCETRANSCEXT";
 
-int main(int argc, char *argv[]) 
+int main(int argc, char* argv[]) 
 {
   ModelSet            hset;
   ModelSet*           hset_alig  = NULL;
@@ -271,6 +271,7 @@ int main(int argc, char *argv[])
   }
   
   i = ParseOptions(argc, argv, optionStr, SNAME, &cfgHash);
+  
   htk_compat   = GetParamBool(&cfgHash,SNAME":HTKCOMPAT", false);
 
   if (htk_compat) 
@@ -1162,14 +1163,20 @@ int main(int argc, char *argv[])
   
   if (src_mlf) 
     fclose(ilfp);
+                                                              
+  if (NULL != rhfbuff.mpFp)
+    fclose(rhfbuff.mpFp);
   
+  if (NULL != rhfbuff_alig.mpFp)
+    fclose(rhfbuff_alig.mpFp);
+    
+    
   while (feature_files) 
   {
     file_name = feature_files;
     feature_files = feature_files->mpNext;
     free(file_name);
   }
-    
   return 0;
 }
 
