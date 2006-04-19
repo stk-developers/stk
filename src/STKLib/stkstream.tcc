@@ -108,7 +108,6 @@ namespace STK
   open(const char* pFName, ios::openmode m, const char* pFilter)
   {
     basic_stkbuf<_CharT, _Traits>* _ret = NULL;
-    //std::string                    f_name; 
 
     if (NULL == pFName)
       return NULL;

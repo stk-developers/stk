@@ -2088,11 +2088,6 @@ namespace STK
   
         MakeFileName(mmfile, pFileName ? pFileName : macro->mpFileName, pOutputDir, pOutputExt);
           
-        std::cout << "--begin--" << std::endl;
-        std::cout << mmfile << std::endl;
-        std::cout << gpMmfOFilter << std::endl;
-        std::cout << "--end--" << std::endl;
-        
         output_stream.open(mmfile, ios::binary, gpMmfOFilter);
         if (!output_stream.good())
         { 
