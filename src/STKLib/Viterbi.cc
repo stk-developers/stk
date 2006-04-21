@@ -1329,6 +1329,12 @@ namespace STK
           mix->mPartialAccumG += Lqjmt;
           mix->mPartialAccumK.AddCVMul(Lqjmt, xobs);
           mix->mAccumL.AddCVVDotMul(Lqjmt, xobs, vec_size, xobs, vec_size);
+          
+          // in case of discriminative training, we collect positive Lqjmt
+          if (Lqjmt > 0.0)
+          {
+            mix->mPartialAccumGd += Lqjmt;
+          } 
         }
         
 //      if (mmi_den_pass) {

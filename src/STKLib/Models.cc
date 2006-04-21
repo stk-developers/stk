@@ -1361,21 +1361,49 @@ namespace STK
     // Cluster parameters update
     else if (0 < mAccumK.Rows())
     {
-/*      if ((pModelSet->mMmiUpdate == 2 || pModelSet->mMmiUpdate == -2)
-       {
-        D = pModelSet->MMI_E * gWeightAccumDen
-        gamma_n = mpVariance->mpAccums[mpVariance->VectorSize()*2] + gWeightAccumDen
-        G_D = G_n / gamma_n
-        K_D = G_D * M_old'
-        L_D = 1/invVar_old + M_old * G_D * M_old'
+
+      // update accumulators from partial simplified accumulators
+      UpdateClusterParametersAccums();
+
+      // if discriminative training:
+      if (pModelSet->mMmiUpdate == 2 || pModelSet->mMmiUpdate == -2)
+      {
+        FLOAT D       = pModelSet->MMI_E * gWeightAccumDen;
+        FLOAT gamma_n = mpVariance->mpAccums[mpVariance->VectorSize()*2] + gWeightAccumDen;
         
-        #KLUDGE^2
-        mpVariance->mpAccums[mpVariance->VectorSize()*2] += D
-        G += D * G_D
-        K += D * K_D
-        L += D * L_D        
+        // G_D = G / gamma_n
+        Matrix<FLOAT>      G_D(mAccumG);
+        G_D.DivC(gamma_n);
+        
+        // K_D = G_D * M^T
+        Matrix<FLOAT>      K_D;
+        K_D.AddMMMul(G_D, mpMean->mClusterMatrixT);
+                
+        // L_D = 1/invVar_old + M_old * G_D * M_old' =
+        //       1/invVar_old + MG_D * M_old'
+        BasicVector<FLOAT> L_D(mpVariance->mVector);
+        Matrix<FLOAT>      MG_D(mpMean->mClusterMatrixT.Cols(),
+                                mpMean->mClusterMatrixT.Rows());
+        
+        // :TODO:
+        // Test these procedures, they are new...
+        MG_D.AddCMtMMul(1.0, mpMean->mClusterMatrixT, G_D);
+        L_D.AddDiagCMMMul(1.0, MG_D, mpMean->mClusterMatrixT);
+                
+        //G += D * G_D
+        //K += D * K_D
+        //L += D * L_D        
+        mAccumG.AddMCMul(G_D, D);
+        mAccumK.AddMCMul(K_D, D);
+        // :TODO: unify these names
+        mAccumL.AddCVMul(D, L_D);
+        
+        //:KLUDGE^2:
+        // this is a total mess
+        mpVariance->mpAccums[mpVariance->VectorSize()*2] += D;
       }
-*/
+      
+      // perform update of parameters from accumulators
       UpdateClusterParametersFromAccums(pModelSet);
     }
     
@@ -1474,9 +1502,6 @@ namespace STK
   Mixture::
   UpdateClusterParametersAccums()
   {
-    //:KLUDGE:
-    // compute this once for each speaker
-    
     // create a helping weight vector which is a concatenation of all elementary
     // weight vectors
     BasicVector<FLOAT> aux_vec(mAccumG.Rows());
@@ -1488,8 +1513,15 @@ namespace STK
     mAccumK.AddCVVtMul(1, aux_vec, mPartialAccumK);
     
     // clear the partial accumulator as they are strictly speaker dependent
-    mPartialAccumG = 0;
+    mPartialAccumG = 0.0;
     mPartialAccumK.Clear();
+    
+    // for discriminative training:
+    //if (mAccumGd.IsInitialized())
+    //{
+    //  mAccumGd.AddCVVtMul(mPartialAccumGd, aux_vec, aux_vec);      
+    //  mPartialAccumGd = 0.0;
+    //}
   }    
           
 
@@ -1499,8 +1531,6 @@ namespace STK
   Mixture::
   UpdateClusterParametersFromAccums(const ModelSet * pModelSet)
   {
-    UpdateClusterParametersAccums();
-    
     if (pModelSet->mUpdateMask & UM_MEAN)
     {
       // update the mean matrix
@@ -1552,10 +1582,6 @@ namespace STK
       
       mpAccums = static_cast<FLOAT*>
         (stk_memalign(16, accum_size, &free_vec));
-        
-#ifdef STK_MEMALIGN_MANUAL
-      mpVectorOFree = static_cast<FLOAT*>(free_vec);
-#endif
     }
     else
     {
@@ -1708,15 +1734,6 @@ namespace STK
     mVector(vectorSize)
   {
     void* free_vec;
-    //size_t size;
-    
-    //size = align<16>((vectorSize) * sizeof(FLOAT));
-    
-//    mpVectorO = static_cast<FLOAT*>
-//      (stk_memalign(16, size, &free_vec));
-#ifdef STK_MEMALIGN_MANUAL
-//    mpVectorOFree = static_cast<FLOAT*>(free_vec);
-#endif
     
     if (allocateAccums) 
     {

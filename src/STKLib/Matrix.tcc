@@ -164,7 +164,23 @@ namespace STK
 #endif
     }
 
-  
+
+  //****************************************************************************
+  //****************************************************************************
+  template<typename _ElemT>
+    Matrix<_ElemT> &
+    Matrix<_ElemT>::
+    DivC(_ElemT c)
+    {
+      for (size_t i = 0; i < mMRows * mStride; i++)
+      {
+        mpData[i] = mpData[i] / c;
+      }
+      
+      return *this;
+    }
+    
+      
   //****************************************************************************
   //****************************************************************************
   template<typename _ElemT>
@@ -208,19 +224,23 @@ namespace STK
       return *this;
     }; // AddMatMult(const ThisType & a, const ThisType & b)
   
-  //******************************************************************************
-  template<typename _ElemT>
-  Matrix<_ElemT> &
-  Matrix<_ElemT>::
-  RepMMMul(ThisType & a, ThisType & b)
-  { 
-    Clear();
-    AddMMMul(a, b);
-    
-    return *this;
-  }; // AddMatMult(const ThisType & a, const ThisType & b)
   
-//******************************************************************************
+  //****************************************************************************
+  //****************************************************************************
+  template<typename _ElemT>
+    Matrix<_ElemT> &
+    Matrix<_ElemT>::
+    RepMMMul(ThisType & a, ThisType & b)
+    { 
+      Clear();
+      AddMMMul(a, b);
+      
+      return *this;
+    }; // AddMatMult(const ThisType & a, const ThisType & b)
+  
+  
+  //****************************************************************************
+  //****************************************************************************
   template<typename _ElemT>
     Matrix<_ElemT> &
     Matrix<_ElemT>::

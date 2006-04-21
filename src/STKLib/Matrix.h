@@ -92,6 +92,9 @@ namespace STK
       void
       Destroy();
            
+      /**
+       * @brief Returns @c true if matrix is initialized
+       */
       const bool
       IsInitialized() const
       { return mpData != NULL; }            
@@ -167,6 +170,9 @@ namespace STK
        *         result to this (elem by elem)
        */
       ThisType &
+      AddCMtMMul(_ElemT c, ThisType& a, ThisType& b);
+      
+      ThisType &
       AddMMMul(ThisType & a, ThisType & b);
       
       ThisType &
@@ -185,7 +191,7 @@ namespace STK
       RepMMMul(ThisType & a, ThisType & b);
       
       ThisType &
-      RepMTMMul(ThisType & a, ThisType & b);
+      RepMtMMul(ThisType & a, ThisType & b);
       
       ThisType &
       AddCVVtMul(_ElemT c, BasicVector<_ElemT>& rA, BasicVector<_ElemT>& rB);
@@ -195,6 +201,10 @@ namespace STK
 
       ThisType &
       AddCVVt(_ElemT c, BasicVector<_ElemT>& rA, _ElemT* pB);
+      
+      ThisType &
+      DivC(_ElemT c);
+      
       
       //########################################################################
       //########################################################################
@@ -422,6 +432,17 @@ namespace STK
     FastRowSoftmax();
   
   
+  template<>
+    Matrix<float> &
+    Matrix<float>::
+    AddCMtMMul(float c, Matrix<float> & a, Matrix<float> & b);
+  
+  template<>
+    Matrix<double> &
+    Matrix<double>::
+    AddCMtMMul(double c, Matrix<double> & a, Matrix<double> & b);
+
+      
   template<>
     Matrix<float> &
     Matrix<float>::

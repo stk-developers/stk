@@ -81,7 +81,7 @@ void SNet::NLayer::DerivateError(){
 
 void SNet::NLayer::ComputeLayerUpdates(){
   // Matrix computation -- CW = E^T * I  
-  mpChangesWeights->RepMTMMul(*mpErr, *mpIn);
+  mpChangesWeights->RepMtMMul(*mpErr, *mpIn);
   
   mpChangesBiases->Clear();
   FLOAT *pChangesBiases = NULL;

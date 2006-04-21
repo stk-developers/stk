@@ -105,6 +105,32 @@ namespace STK
   //******************************************************************************    
   //******************************************************************************    
   template<typename _ElemT>
+    BasicVector<_ElemT>&
+    BasicVector<_ElemT>::
+    AddDiagCMMMul(const _ElemT c, const Matrix<_ElemT>& rMa, 
+                  const Matrix<_ElemT>& rMb)
+    {
+      _ElemT tmp_val;
+      
+      for (size_t i = 0; i < mLength; i++)
+      {
+        tmp_val = 0.0;
+        
+        for (size_t j = 0; j < rMa.Cols(); j++)
+        {
+          tmp_val += rMa[i][j] * rMb[j][i];
+        }
+        
+        mpData[i] += tmp_val * c;
+      }
+      
+      return *this;
+    }
+    
+  
+  //******************************************************************************    
+  //******************************************************************************    
+  template<typename _ElemT>
     BasicVector<_ElemT>::
     BasicVector(const _ElemT* pData, const size_t s)
     {

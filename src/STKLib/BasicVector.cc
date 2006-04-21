@@ -9,6 +9,30 @@ namespace STK
   template<>
     BasicVector<float>&
     BasicVector<float>::
+    AddCVMul(const float c, const BasicVector<float>& rV)
+    {
+      cblas_saxpy(mLength, c, rV.mpData, 1, mpData, 1);
+      return *this;
+    }
+  
+  
+  //****************************************************************************
+  //****************************************************************************
+  template<>
+    BasicVector<double>&
+    BasicVector<double>::
+    AddCVMul(const double c, const BasicVector<double>& rV)
+    {
+      cblas_daxpy(mLength, c, rV.mpData, 1, mpData, 1);
+      return *this;
+    }
+  
+  
+  //****************************************************************************
+  //****************************************************************************
+  template<>
+    BasicVector<float>&
+    BasicVector<float>::
     AddCVMul(const float c, const float* pV)
     {
       cblas_saxpy(mLength, c, pV, 1, mpData, 1);

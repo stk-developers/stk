@@ -702,7 +702,7 @@ namespace STK
     /// The (empty) constructor
     Mixture(): mID(0), mpMean(NULL), mpVariance(NULL), mpInputXform(NULL), 
       mAccumG(), mAccumK(), mAccumL(), mPartialAccumG(0), 
-      mPartialAccumK()
+      mPartialAccumK(), mPartialAccumGd(0)
     {};
     
     /// The (empty) destructor
@@ -722,6 +722,10 @@ namespace STK
     BasicVector<FLOAT>        mAccumL;
     FLOAT                     mPartialAccumG;
     BasicVector<FLOAT>        mPartialAccumK;
+    
+    // Discriminative CAT accumulators
+    FLOAT                     mPartialAccumGd;
+    //Matrix<FLOAT>             mAccumGd;
     
     /**
      * @brief Updates the G, K, L accumulators from partial accums and lambdas
@@ -1410,15 +1414,18 @@ namespace STK
   
   /** *************************************************************************
    ** *************************************************************************
-   *  @brief Feature Mapping Xform representation
+   *  @brief FrantaProduct Xform representation
+   *
+   *  This transform splits the input vector of size @a s into @a n vectors of 
+   *  size @a s / @a n and performs product element by element 
    */
   class FrantaProductXform : public Xform 
-  {
+  {                                     
   public:
     /**
      * @brief The constructor
      * @param inSize size of input vector
-     * @param outSize size of output vector
+     * @param nParts number of parts to use
      */
     FrantaProductXform(size_t inSize, size_t nParts);
     

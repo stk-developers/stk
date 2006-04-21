@@ -946,8 +946,16 @@ namespace STK
       ret->mAccumL.Init(ret->mpMean->mClusterMatrixT.Cols());
       
       // per-speaker partial accumulators
-      ret->mPartialAccumG = 0;
+      ret->mPartialAccumG = 0.0;
       ret->mPartialAccumK.Init(ret->mpMean->mClusterMatrixT.Cols());
+      
+      // for discriminative training
+      if (mMmiUpdate == 2 || mMmiUpdate == -2)
+      {
+        ret->mPartialAccumGd = 0.0;
+        //ret->mAccumGd.Init(ret->mpMean->mClusterMatrixT.Rows(),
+        //                   ret->mpMean->mClusterMatrixT.Rows());        
+      }
     }
     
     //
@@ -2363,8 +2371,6 @@ namespace STK
     
       for (i=0; i < mean->VectorSize(); i++) 
       {
-        // old vector
-        //PutFlt(fp, binary, mean->mpVectorO[i]);
         PutFlt(fp, binary, mean->mVector[i]);
       }
     
@@ -2385,9 +2391,8 @@ namespace STK
     PutInt(fp, binary, variance->VectorSize());
     PutNLn(fp, binary);
   
-    for (i=0; i < variance->VectorSize(); i++) {
-      // old vector
-      //PutFlt(fp, binary, 1/variance->mpVectorO[i]);
+    for (i=0; i < variance->VectorSize(); i++) 
+    {
       PutFlt(fp, binary, 1/variance->mVector[i]);
     }
   
@@ -2768,12 +2773,12 @@ namespace STK
   
     while (fgets(line, sizeof(line), fp)) 
     {
-      char *            xformName;
-      char *            makeXformShellCommand = NULL;
+      char*             xformName;
+      char*             makeXformShellCommand = NULL;
       char              termChar = '\0';
       size_t            i = strlen(line);
-      Macro *           macro;
-      MakeXformCommand *mxfc;
+      Macro*            macro;
+      MakeXformCommand* mxfc;
   
       nlines++;
       
@@ -2831,7 +2836,8 @@ namespace STK
         realloc(mpXformToUpdate,
                 sizeof(MakeXformCommand) * ++mNumberOfXformsToUpdate);
   
-      if (mpXformToUpdate == NULL) {
+      if (mpXformToUpdate == NULL) 
+      {
         Error("ReadXformList: Insufficient memory");
       }
   
@@ -2839,8 +2845,10 @@ namespace STK
       mxfc->mpXform = (Xform *) macro->mpData;
       mxfc->mpShellCommand = NULL;
   
-      if (makeXformShellCommand) {
-        if ((mxfc->mpShellCommand = strdup(makeXformShellCommand)) == NULL) {
+      if (makeXformShellCommand) 
+      {
+        if ((mxfc->mpShellCommand = strdup(makeXformShellCommand)) == NULL) 
+        {
           Error("ReadXformList: Insufficient memory");
         }
       }
@@ -2962,20 +2970,20 @@ namespace STK
   
       if (macro_type == mt_mean) 
       {
-        xfsa   = ((Mean *)pData)->mpXformStatAccum;
-        nxfsa  = ((Mean *)pData)->mNumberOfXformStatAccums;
-        size   = ((Mean *)pData)->VectorSize();
+        xfsa   = ((Mean*)pData)->mpXformStatAccum;
+        nxfsa  = ((Mean*)pData)->mNumberOfXformStatAccums;
+        size   = ((Mean*)pData)->VectorSize();
         //vector = ((Mean *)pData)->mpVectorO+size;
-        vector = ((Mean *)pData)->mpAccums;
+        vector = ((Mean*)pData)->mpAccums;
         size   = size + 1;
       } 
       else if (macro_type == mt_variance) 
       {
-        xfsa   = ((Variance *)pData)->mpXformStatAccum;
-        nxfsa  = ((Variance *)pData)->mNumberOfXformStatAccums;
-        size   = ((Variance *)pData)->VectorSize();
+        xfsa   = ((Variance*)pData)->mpXformStatAccum;
+        nxfsa  = ((Variance*)pData)->mNumberOfXformStatAccums;
+        size   = ((Variance*)pData)->VectorSize();
         //vector = ((Variance *)pData)->mpVectorO+size;
-        vector = ((Variance *)pData)->mpAccums;
+        vector = ((Variance*)pData)->mpAccums;
         size   = size * 2 + 1;
       }
   
@@ -2988,7 +2996,8 @@ namespace STK
         Error("Incompatible accumulator file: '%s'", ud->mpFileName);
       }
   
-      if (!ud->mMmi) { // MMI estimation of Xform statistics has not been implemented yet
+      if (!ud->mMmi) 
+      { // MMI estimation of Xform statistics has not been implemented yet
         for (i = 0; i < nxfsa_inf; i++) 
         {
           if (getc(ud->mpFp) != '"') 
@@ -3016,7 +3025,7 @@ namespace STK
               Error("Incompatible accumulator file: '%s'", ud->mpFileName);
   
             for (j = 0; j < nxfsa && xfsa[j].mpXform != macro->mpData; j++)
-              ;
+            {}
             
             if (j < nxfsa) 
             {
@@ -3041,7 +3050,10 @@ namespace STK
           }
         }
       }
-    } else if (macro_type == mt_state) {
+    } 
+    
+    else if (macro_type == mt_state) 
+    {
       State *state = (State *) pData;
       if (state->mOutPdfKind == KID_DiagC) {
         FLOAT junk;

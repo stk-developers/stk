@@ -137,6 +137,11 @@ namespace STK
       AddCMVMul(const _ElemT c, const Matrix<_ElemT>& rM, 
                 const _ElemT* pV);
                 
+      /// Adds a diagonal after Matrix-Matrix Multiplication
+      BasicVector<_ElemT>&
+      AddDiagCMMMul(const _ElemT c, const Matrix<_ElemT>& rMa, 
+                    const Matrix<_ElemT>& rMb);
+      
       _ElemT
       Dot(const BasicVector<_ElemT>& rV);
       
