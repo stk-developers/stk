@@ -1361,20 +1361,21 @@ namespace STK
     // Cluster parameters update
     else if (0 < mAccumK.Rows())
     {
-#      if ((pModelSet->mMmiUpdate == 2 || pModelSet->mMmiUpdate == -2)
-#      {
-#        D = pModelSet->MMI_E * gWeightAccumDen
-#        gamma_n = mpVariance->mpAccums[mpVariance->VectorSize()*2] + gWeightAccumDen
-#        G_D = G_n / gamma_n
-#        K_D = G_D * M_old'
-#        L_D = 1/invVar_old + M_old * G_D * M_old'
-#        
-#        #KLUDGE^2
-#        mpVariance->mpAccums[mpVariance->VectorSize()*2] += D
-#        G += D * G_D
-#        K += D * K_D
-#        L += D * L_D        
+/*      if ((pModelSet->mMmiUpdate == 2 || pModelSet->mMmiUpdate == -2)
+       {
+        D = pModelSet->MMI_E * gWeightAccumDen
+        gamma_n = mpVariance->mpAccums[mpVariance->VectorSize()*2] + gWeightAccumDen
+        G_D = G_n / gamma_n
+        K_D = G_D * M_old'
+        L_D = 1/invVar_old + M_old * G_D * M_old'
+        
+        #KLUDGE^2
+        mpVariance->mpAccums[mpVariance->VectorSize()*2] += D
+        G += D * G_D
+        K += D * K_D
+        L += D * L_D        
       }
+*/
       UpdateClusterParametersFromAccums(pModelSet);
     }
     
