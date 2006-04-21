@@ -1267,7 +1267,7 @@ namespace STK
     
     // //////////
     // MPE update
-    else if (pModelSet->mMmiUpdate == 2 || pModelSet->mMmiUpdate == -2 ) 
+    else if ((pModelSet->mMmiUpdate == 2 || pModelSet->mMmiUpdate == -2) && 0 == mAccumK.Rows()) 
     { 
       int    vec_size = mpVariance->VectorSize();
       FLOAT* mean_vec = mpMean->mVector.pData();
@@ -1361,6 +1361,20 @@ namespace STK
     // Cluster parameters update
     else if (0 < mAccumK.Rows())
     {
+#      if ((pModelSet->mMmiUpdate == 2 || pModelSet->mMmiUpdate == -2)
+#      {
+#        D = pModelSet->MMI_E * gWeightAccumDen
+#        gamma_n = mpVariance->mpAccums[mpVariance->VectorSize()*2] + gWeightAccumDen
+#        G_D = G_n / gamma_n
+#        K_D = G_D * M_old'
+#        L_D = 1/invVar_old + M_old * G_D * M_old'
+#        
+#        #KLUDGE^2
+#        mpVariance->mpAccums[mpVariance->VectorSize()*2] += D
+#        G += D * G_D
+#        K += D * K_D
+#        L += D * L_D        
+      }
       UpdateClusterParametersFromAccums(pModelSet);
     }
     
