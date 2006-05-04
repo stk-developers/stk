@@ -220,10 +220,13 @@ int main(int argc, char *argv[])
     if (argc == i) Error("HMM list file name expected");
     InsertConfigParam(&cfgHash, SNAME":SOURCEHMMLIST",    argv[i++], '-');
   }
- for (; i < argc; i++) {
+  
+  for (; i < argc; i++) 
+  {
     last_file = AddFileElem(last_file, argv[i]);
     nfeature_files++;
   }
+  
   targetKind =   GetDerivParams(&cfgHash, &derivOrder, &derivWinLengths,
                                 &startFrmExt, &endFrmExt,
                                 &cmn_path, &cmn_file, &cmn_mask,

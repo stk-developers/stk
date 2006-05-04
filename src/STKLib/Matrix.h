@@ -160,50 +160,51 @@ namespace STK
        * @return Refference to this
        */
       ThisType&
-      DiagScale(_ElemT* pDiagVector);
+      DiagScale(const _ElemT* pDiagVector);
       
       ThisType&
-      DiagScale(BasicVector<_ElemT>& rDiagVector);
+      DiagScale(const BasicVector<_ElemT>& rDiagVector);
       
       /**
        *  @brief Performs vector multiplication on a and b and and adds the
        *         result to this (elem by elem)
        */
       ThisType &
-      AddCMtMMul(_ElemT c, ThisType& a, ThisType& b);
+      AddCMtMMul(const _ElemT& c, const ThisType& a, const ThisType& b);
       
       ThisType &
-      AddMMMul(ThisType & a, ThisType & b);
+      AddMMMul(const ThisType& a, const ThisType& b);
       
       ThisType &
-      AddMMTMul(ThisType & a, ThisType & b);
+      AddMMTMul(const ThisType& a, const ThisType& b);
 
       ThisType &
-      AddCMMtMul(_ElemT c, ThisType & a, ThisType & b);
+      AddCMMtMul(const _ElemT& c, const ThisType& a, const ThisType& b);
             
       ThisType &
-      AddMCMul(ThisType & a, _ElemT c);
+      AddCMMul(const _ElemT& c, const ThisType& a);
       
       ThisType &
-      RepMMSub(ThisType & a, ThisType & b);
+      RepMMSub(const ThisType& a, const ThisType& b);
       
       ThisType &
-      RepMMMul(ThisType & a, ThisType & b);
+      RepMMMul(const ThisType& a, const ThisType& b);
       
       ThisType &
-      RepMtMMul(ThisType & a, ThisType & b);
+      RepMtMMul(const ThisType& a, const ThisType& b);
       
       ThisType &
-      AddCVVtMul(_ElemT c, BasicVector<_ElemT>& rA, BasicVector<_ElemT>& rB);
+      AddCVVtMul(const _ElemT& c, const BasicVector<_ElemT>& rA, 
+                 const BasicVector<_ElemT>& rB);
       
       ThisType &
-      AddCVVtMul(_ElemT c, _ElemT* pA, _ElemT* pB);
+      AddCVVtMul(const _ElemT& c, const _ElemT* pA, const _ElemT* pB);
 
       ThisType &
-      AddCVVt(_ElemT c, BasicVector<_ElemT>& rA, _ElemT* pB);
+      AddCVVt(const _ElemT& c, const BasicVector<_ElemT>& rA, const _ElemT* pB);
       
       ThisType &
-      DivC(_ElemT c);
+      DivC(const _ElemT& c);
       
       
       //########################################################################
@@ -416,13 +417,13 @@ namespace STK
   template<>
     Matrix<float> &
     Matrix<float>::
-    DiagScale(BasicVector<float>& rDiagVector);
+    DiagScale(const BasicVector<float>& rDiagVector);
   
   
   template<>
     Matrix<float> &
     Matrix<float>::
-    DiagScale(float* pDiagVector);
+    DiagScale(const float* pDiagVector);
     
 
       
@@ -435,45 +436,51 @@ namespace STK
   template<>
     Matrix<float> &
     Matrix<float>::
-    AddCMtMMul(float c, Matrix<float> & a, Matrix<float> & b);
+    AddCMtMMul(const float& c, const Matrix<float>& a, 
+                               const Matrix<float>& b);
   
   template<>
     Matrix<double> &
     Matrix<double>::
-    AddCMtMMul(double c, Matrix<double> & a, Matrix<double> & b);
+    AddCMtMMul(const double& c, const Matrix<double>& a, 
+                                const Matrix<double>& b);
 
       
   template<>
     Matrix<float> &
     Matrix<float>::
-    AddMMMul(Matrix<float> & a, Matrix<float>& b);
+    AddMMMul(const Matrix<float>& a, const Matrix<float>& b);
   
   template<>
     Matrix<double> &
     Matrix<double>::
-    AddMMMul(Matrix<double> & a, Matrix<double>& b);
+    AddMMMul(const Matrix<double> & a, const Matrix<double>& b);
 
     
   template<>
     Matrix<float> &
     Matrix<float>::
-    AddCMMtMul(float c, Matrix<float>& a, Matrix<float>& b);
+    AddCMMtMul(const float& c, const Matrix<float>& a, 
+                               const Matrix<float>& b);
 
   template<>
     Matrix<double> &
     Matrix<double>::
-    AddCMMtMul(double c, Matrix<double>& a, Matrix<double>& b);
+    AddCMMtMul(const double& c, const Matrix<double>& a, 
+                                const Matrix<double>& b);
 
       
   template<>
     Matrix<float> &
     Matrix<float>::
-    AddCVVtMul(float c, BasicVector<float>& rA, BasicVector<float>& rB);
+    AddCVVtMul(const float& c, const BasicVector<float>& rA, 
+                               const BasicVector<float>& rB);
 
   template<>
     Matrix<double> &
     Matrix<double>::
-    AddCVVtMul(double c, BasicVector<double>& rA, BasicVector<double>& rB);
+    AddCVVtMul(const double& c, const BasicVector<double>& rA, 
+                                const BasicVector<double>& rB);
     
 } // namespace STK
     

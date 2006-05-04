@@ -177,7 +177,7 @@ namespace STK
       if (state->mOutPdfKind != KID_PDFObsVec) 
       {
 //!!! Test for macro_type == 'm'
-        for (i = 0; i < state->mNumberOfMixtures; i++) 
+        for (i = 0; i < state->mNMixtures; i++) 
         {
           if (state->mpMixture[i].mpEstimates == ud->mpOldData) 
           {
@@ -373,7 +373,7 @@ namespace STK
       State *state = (State *) pData;
       if (state->mOutPdfKind == KID_DiagC) 
       {
-        for (i = 0; i < state->mNumberOfMixtures; i++) 
+        for (i = 0; i < state->mNMixtures; i++) 
         {
           state->mpMixture[i].mWeightAccum     = 0;
           state->mpMixture[i].mWeightAccumDen  = 0;
@@ -409,7 +409,7 @@ namespace STK
       
       if (state->mOutPdfKind == KID_DiagC) 
       {
-        for (i = 0; i < state->mNumberOfMixtures; i++) 
+        for (i = 0; i < state->mNMixtures; i++) 
         {
           state->mpMixture[i].mWeightAccum += 1;
         }
@@ -958,12 +958,12 @@ namespace STK
       {
         FLOAT accum_sum = 0.0;
   
-        for (i = 0; i < state->mNumberOfMixtures; i++)
+        for (i = 0; i < state->mNMixtures; i++)
           accum_sum += state->mpMixture[i].mWeightAccum;
   
         if (accum_sum > 0.0) 
         {
-          for (i = 0; i < state->mNumberOfMixtures; i++)
+          for (i = 0; i < state->mNMixtures; i++)
             state->mpMixture[i].mWeightAccum /= accum_sum;
         }
       }
@@ -1372,7 +1372,7 @@ namespace STK
         FLOAT gamma_n = mpVariance->mpAccums[mpVariance->VectorSize()*2] + gWeightAccumDen;
         
         // G_D = G / gamma_n
-        Matrix<FLOAT>      G_D(mAccumG);
+        Matrix<FLOAT>&      G_D(mAccumGd);
         G_D.DivC(gamma_n);
         
         // K_D = G_D * M^T
@@ -1393,9 +1393,8 @@ namespace STK
         //G += D * G_D
         //K += D * K_D
         //L += D * L_D        
-        mAccumG.AddMCMul(G_D, D);
-        mAccumK.AddMCMul(K_D, D);
-        // :TODO: unify these names
+        mAccumG.AddCMMul(D, G_D);
+        mAccumK.AddCMMul(D, K_D);
         mAccumL.AddCVMul(D, L_D);
         
         //:KLUDGE^2:
@@ -1517,11 +1516,11 @@ namespace STK
     mPartialAccumK.Clear();
     
     // for discriminative training:
-    //if (mAccumGd.IsInitialized())
-    //{
-    //  mAccumGd.AddCVVtMul(mPartialAccumGd, aux_vec, aux_vec);      
-    //  mPartialAccumGd = 0.0;
-    //}
+    if (mAccumGd.IsInitialized())
+    {
+      mAccumGd.AddCVVtMul(mPartialAccumGd, aux_vec, aux_vec);      
+      mPartialAccumGd = 0.0;
+    }
   }    
           
 
@@ -1996,7 +1995,7 @@ namespace STK
       FLOAT accum_sum = 0;
   
 //    if (hmm_set->mUpdateMask & UM_WEIGHT) {
-      for (i = 0; i < mNumberOfMixtures; i++) 
+      for (i = 0; i < mNMixtures; i++) 
       {
         if(pModelSet->mMmiUpdate == 2 || pModelSet->mMmiUpdate == -2)
         {
@@ -2036,7 +2035,7 @@ namespace STK
         // Remove mixtures with low weight
       if (pModelSet->mUpdateMask & UM_WEIGHT) 
       {
-        for (i = 0; i < mNumberOfMixtures; i++) 
+        for (i = 0; i < mNMixtures; i++) 
         {
           if (mpMixture[i].mWeightAccum / accum_sum < pModelSet->mMinMixWeight) 
           {
@@ -2061,13 +2060,13 @@ namespace STK
               mpMixture[i].mpEstimates->Scan(MTM_ALL,NULL,ReleaseItem,NULL);
             }
   
-            mpMixture[i--] = mpMixture[--mNumberOfMixtures];
+            mpMixture[i--] = mpMixture[--mNMixtures];
             continue;
           }
         }
       }
   
-      for (i = 0; i < mNumberOfMixtures; i++) 
+      for (i = 0; i < mNMixtures; i++) 
       {
   //      printf("Weight Acc: %f\n", (float) state->mpMixture[i].mWeightAccum);
         if (pModelSet->mUpdateMask & UM_WEIGHT) 
@@ -2112,7 +2111,7 @@ namespace STK
     if (mOutPdfKind != KID_PDFObsVec &&
       mask & (MTM_ALL & ~(MTM_STATE | MTM_HMM | MTM_TRANSITION))) 
     {
-      for (i=0; i < mNumberOfMixtures; i++) 
+      for (i=0; i < mNMixtures; i++) 
       {
         if (!mpMixture[i].mpEstimates->mpMacro) 
         {
@@ -2614,7 +2613,7 @@ namespace STK
     FLOAT   max_g_like = LOG_0;
     
     // find best input mixture
-    for (i = 0; i < state_from->mNumberOfMixtures; i++)
+    for (i = 0; i < state_from->mNMixtures; i++)
     {
       g_like = ::DiagCGaussianDensity(state_from->mpMixture[i].mpEstimates, 
         pInputVector, NULL) + state_from->mpMixture[i].mWeight;
@@ -3089,7 +3088,7 @@ namespace STK
   
         if (state->mOutPdfKind == KID_DiagC) 
         {
-          for (j = 0; j < state->mNumberOfMixtures; j++) 
+          for (j = 0; j < state->mNMixtures; j++) 
           {
             Mixture *mixture = state->mpMixture[j].mpEstimates;
   
@@ -3641,7 +3640,7 @@ namespace STK
       {
         State *state = hmm->mpState[j];
         FLOAT stOccP = 0;
-        for (k = 0; k < state->mNumberOfMixtures; k++) 
+        for (k = 0; k < state->mNMixtures; k++) 
         {
           stOccP += state->mpMixture[k].mWeightAccum;
         }
@@ -3941,12 +3940,12 @@ namespace STK
       Error("Mismatch in OutPdfKind of target and prior states '%s'", nodeName);
     }
     
-    if (mNumberOfMixtures != pPriorState->mNumberOfMixtures)
+    if (mNMixtures != pPriorState->mNMixtures)
     {
       Error("Mismatch in number of mixtures in target and prior states '%s'", nodeName);
     }
     
-    for (i=0; i < mNumberOfMixtures; i++)
+    for (i=0; i < mNMixtures; i++)
     {
       if (!mpMixture[i].mpEstimates->mpMacro)
       {

@@ -830,7 +830,7 @@ namespace STK
     } 
     else 
     {
-      ret->mNumberOfMixtures = num_mixes;
+      ret->mNMixtures = num_mixes;
     //  printf("ptr: %x num_mixes: %d\n", ret, num_mixes);
   
       for (i=0; i<num_mixes; i++) 
@@ -953,8 +953,8 @@ namespace STK
       if (mMmiUpdate == 2 || mMmiUpdate == -2)
       {
         ret->mPartialAccumGd = 0.0;
-        //ret->mAccumGd.Init(ret->mpMean->mClusterMatrixT.Rows(),
-        //                   ret->mpMean->mClusterMatrixT.Rows());        
+        ret->mAccumGd.Init(ret->mpMean->mClusterMatrixT.Rows(),
+                           ret->mpMean->mClusterMatrixT.Rows());        
       }
     }
     
@@ -1752,7 +1752,7 @@ namespace STK
   
     
     // check for alike number of mixtures in both states
-    if (ret->mpStateFrom->mNumberOfMixtures != ret->mpStateTo->mNumberOfMixtures)
+    if (ret->mpStateFrom->mNMixtures != ret->mpStateTo->mNMixtures)
     {
       Error("Number of mixtures must match in the Xform states (%s:%d)", 
         gpCurrentMmfName, gCurrentMmfLine);
@@ -2243,16 +2243,16 @@ namespace STK
     } 
     else 
     {
-      if (state->mNumberOfMixtures > 1) 
+      if (state->mNMixtures > 1) 
       {
         PutKwd(fp, binary, KID_NumMixes);
-        PutInt(fp, binary, state->mNumberOfMixtures);
+        PutInt(fp, binary, state->mNMixtures);
         PutNLn(fp, binary);
       }
   
-      for (i=0; i < state->mNumberOfMixtures; i++) 
+      for (i=0; i < state->mNMixtures; i++) 
       {
-        if (state->mNumberOfMixtures > 1) 
+        if (state->mNMixtures > 1) 
         {
           PutKwd(fp, binary, KID_Mixture);
           PutInt(fp, binary, i+1);
@@ -3057,7 +3057,7 @@ namespace STK
       State *state = (State *) pData;
       if (state->mOutPdfKind == KID_DiagC) {
         FLOAT junk;
-        for (i = 0; i < state->mNumberOfMixtures; i++) {
+        for (i = 0; i < state->mNMixtures; i++) {
           if (ud->mMmi == 1) {
             if (faddfloat(&state->mpMixture[i].mWeightAccumDen, 1, ud->mWeight, ud->mpFp) != 1 ||
                 faddfloat(&junk,                                1, ud->mWeight, ud->mpFp) != 1) {
@@ -3347,7 +3347,7 @@ namespace STK
       State *state = (State *) pData;
       if (state->mOutPdfKind == KID_DiagC) 
       {
-        for (i = 0; i < state->mNumberOfMixtures; i++) 
+        for (i = 0; i < state->mNMixtures; i++) 
         {
           if (fwrite(&state->mpMixture[i].mWeightAccum,
                     sizeof(FLOAT), 1, ud->mpFp) != 1 ||

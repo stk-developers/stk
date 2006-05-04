@@ -64,7 +64,7 @@ void SNet::Element::Add(Element *element, float c){
   for(int i=0; i < mNLayers; i++){
     assert(mpWeights[i] != NULL);
     assert(mpBiases[i] != NULL);
-    mpWeights[i]->AddMCMul(*(element->mpWeights[i]), c);
-    mpBiases[i]->AddMCMul(*(element->mpBiases[i]), c);
+    mpWeights[i]->AddCMMul(c, *(element->mpWeights[i]));
+    mpBiases[i]->AddCMMul(c, *(element->mpBiases[i]));
   }
 }

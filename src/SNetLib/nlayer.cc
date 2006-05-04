@@ -44,9 +44,9 @@ void SNet::NLayer::BunchNonLinear(){
 
 void SNet::NLayer::ChangeLayerWeights(FLOAT learnRate){
   // Matrix computation -- W += CW * l 
-  mpWeights->AddMCMul(*mpChangesWeights, (FLOAT)-1.0*learnRate);
+  mpWeights->AddCMMul((FLOAT)-1.0*learnRate, *mpChangesWeights);
   // Matrix computation -- B += CB * l
-  mpBiases->AddMCMul(*mpChangesBiases, (FLOAT)-1.0*learnRate);
+  mpBiases->AddCMMul((FLOAT)-1.0*learnRate, *mpChangesBiases);
 }
 
 void SNet::NLayer::ErrorPropagation(){

@@ -67,7 +67,8 @@ OBJFILES = 	common.o \
 			Net_IO.o  \
 			Net.o  \
 			Viterbi.o \
-			BasicVector.o      
+			BasicVector.o \
+			Score.o
 
 
 ###############################################################################
@@ -119,7 +120,8 @@ labelreader.o: stkstream.tcc
 Matrix.o: Matrix.h common.h Error.h StkMath.h BasicVector.h BasicVector.tcc
 Matrix.o: Matrix.tcc
 Models.o: Models.h Matrix.h common.h Error.h StkMath.h BasicVector.h
-Models.o: BasicVector.tcc Matrix.tcc stkstream.h stkstream.tcc
+Models.o: BasicVector.tcc Matrix.tcc stkstream.h stkstream.tcc Viterbi.h
+Models.o: labels.h dict.h Net.h
 Models_IO.o: Models.h Matrix.h common.h Error.h StkMath.h BasicVector.h
 Models_IO.o: BasicVector.tcc Matrix.tcc stkstream.h stkstream.tcc
 Net.o: Models.h Matrix.h common.h Error.h StkMath.h BasicVector.h
@@ -128,6 +130,9 @@ Net.o: Net.h
 Net_IO.o: labels.h common.h Error.h StkMath.h Net.h Models.h Matrix.h
 Net_IO.o: BasicVector.h BasicVector.tcc Matrix.tcc stkstream.h stkstream.tcc
 Net_IO.o: dict.h
+Score.o: Models.h Matrix.h common.h Error.h StkMath.h BasicVector.h
+Score.o: BasicVector.tcc Matrix.tcc stkstream.h stkstream.tcc Viterbi.h
+Score.o: labels.h dict.h Net.h
 Viterbi.o: Viterbi.h Models.h Matrix.h common.h Error.h StkMath.h
 Viterbi.o: BasicVector.h BasicVector.tcc Matrix.tcc stkstream.h stkstream.tcc
 Viterbi.o: labels.h dict.h Net.h

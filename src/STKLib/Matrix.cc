@@ -29,7 +29,8 @@ namespace STK
   template<>
     Matrix<float> &
     Matrix<float>::
-    AddCVVtMul(float c, BasicVector<float>& rA, BasicVector<float>& rB)
+    AddCVVtMul(const float& c, const BasicVector<float>& rA, 
+                               const BasicVector<float>& rB)
     {
       assert(rA.Length() == this->mMRows);
       assert(rB.Length() == this->mMCols);
@@ -48,7 +49,8 @@ namespace STK
   template<>
     Matrix<double> &
     Matrix<double>::
-    AddCVVtMul(double c, BasicVector<double>& rA, BasicVector<double>& rB)
+    AddCVVtMul(const double& c, const BasicVector<double>& rA, 
+                                const BasicVector<double>& rB)
     {
       assert(rA.Length() == this->mMRows);
       assert(rB.Length() == this->mMCols);
@@ -69,7 +71,7 @@ namespace STK
   template<>
     Matrix<float> &
     Matrix<float>::
-    AddMMMul(Matrix<float> & a, Matrix<float> & b)
+    AddMMMul(const Matrix<float>& a, const Matrix<float>& b)
     { 
       assert(a.Cols() == b.Rows());
       assert(this->Rows() == a.Rows());
@@ -90,7 +92,7 @@ namespace STK
   template<>
     Matrix<double> &
     Matrix<double>::
-    AddMMMul(Matrix<double> & a, Matrix<double> & b)
+    AddMMMul(const Matrix<double>& a, const Matrix<double>& b)
     { 
       assert(a.Cols() == b.Rows());
       assert(this->Rows() == a.Rows());
@@ -109,7 +111,7 @@ namespace STK
   template<>
     Matrix<float> &
     Matrix<float>::
-    DiagScale(BasicVector<float>& rDiagVector)
+    DiagScale(const BasicVector<float>& rDiagVector)
     {
       // :TODO: 
       // optimize this
@@ -132,7 +134,7 @@ namespace STK
   template<>
     Matrix<float> &
     Matrix<float>::
-    DiagScale(float* pDiagVector)
+    DiagScale(const float* pDiagVector)
     {
       // :TODO: 
       // optimize this
@@ -156,7 +158,7 @@ namespace STK
   template<>
     Matrix<float> &
     Matrix<float>::
-    AddMMTMul(Matrix<float> & a, Matrix<float> & b)
+    AddMMTMul(const Matrix<float>& a, const Matrix<float>& b)
     { 
       assert(a.Rows() == this->Rows());
       assert(b.Rows() == this->Cols());
@@ -177,7 +179,8 @@ namespace STK
   template<>
     Matrix<float> &
     Matrix<float>::
-    AddCMMtMul(float c, Matrix<float> & a, Matrix<float> & b)
+    AddCMMtMul(const float& c, const Matrix<float>& a, 
+                               const Matrix<float>& b)
     { 
       assert(a.Rows() == this->Rows());
       assert(b.Rows() == this->Cols());
@@ -197,7 +200,8 @@ namespace STK
   template<>
     Matrix<double> &
     Matrix<double>::
-    AddCMMtMul(double c, Matrix<double> & a, Matrix<double> & b)
+    AddCMMtMul(const double& c, const Matrix<double>& a, 
+                                const Matrix<double>& b)
     { 
       assert(a.Rows() == this->Rows());
       assert(b.Rows() == this->Cols());
@@ -218,7 +222,7 @@ namespace STK
   template<>
     Matrix<float> &
     Matrix<float>::
-    RepMMMul(Matrix<float> & a, Matrix<float> & b)
+    RepMMMul(const Matrix<float>& a, const Matrix<float>& b)
     { 
     //fprintf(stderr, "A %d %d B %d %d C %d %d \n", a.Rows(), a.Cols(), b.Rows(), b.Cols(), Rows(), Cols());
       assert(a.Rows() == this->Rows());
@@ -339,7 +343,7 @@ namespace STK
   template<>
     Matrix<float> &
     Matrix<float>::
-    RepMtMMul(Matrix<float> & a, Matrix<float> & b)
+    RepMtMMul(const Matrix<float> & a, const Matrix<float> & b)
     { 
       /*assert(a.Rows() == this->Rows());
       assert(b.Rows() == this->Cols());
@@ -366,7 +370,8 @@ namespace STK
   template<>
     Matrix<float> &
     Matrix<float>::
-    AddCMtMMul(float c, Matrix<float> & a, Matrix<float> & b)
+    AddCMtMMul(const float& c, const Matrix<float>& a, 
+                               const Matrix<float>& b)
     { 
       /*assert(a.Rows() == this->Rows());
       assert(b.Rows() == this->Cols());
@@ -391,7 +396,8 @@ namespace STK
   template<>
     Matrix<double> &
     Matrix<double>::
-    AddCMtMMul(double c, Matrix<double> & a, Matrix<double> & b)
+    AddCMtMMul(const double& c, const Matrix<double>& a, 
+                                const Matrix<double>& b)
     { 
       /*assert(a.Rows() == this->Rows());
       assert(b.Rows() == this->Cols());

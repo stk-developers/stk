@@ -826,7 +826,7 @@ namespace STK
     }
     else
     {
-      for (i = 0; i < state->mNumberOfMixtures; i++) 
+      for (i = 0; i < state->mNMixtures; i++) 
       {
         FLOAT    glike;
         Mixture* mix = state->mpMixture[i].mpEstimates;
@@ -883,7 +883,7 @@ namespace STK
       // precount probs
       for (c = 0; c < OUT_P_CACHES - cache_offset; c++)
       {
-        for (i = 0; i < state->mNumberOfMixtures; i++) 
+        for (i = 0; i < state->mNMixtures; i++) 
         {
           FLOAT    glike;
           Mixture* mix = state->mpMixture[i].mpEstimates;
@@ -940,7 +940,7 @@ namespace STK
     }
     else
     {
-      for (i = 0; i < state->mNumberOfMixtures; i++) 
+      for (i = 0; i < state->mNMixtures; i++) 
       {
         FLOAT    g_like;
         Mixture* mix = state->mpMixture[i].mpEstimates;
@@ -982,7 +982,7 @@ namespace STK
         for (size_t ci = cache_offset; ci < OUT_P_CACHES; ci++)
         {
           m_like = LOG_0;
-          for (i = 0; i < state->mNumberOfMixtures; i++) 
+          for (i = 0; i < state->mNMixtures; i++) 
           {
             FLOAT    glike;
             Mixture* mix = state->mpMixture[i].mpEstimates;
@@ -1016,7 +1016,7 @@ namespace STK
     }
     else
     {
-      for (i = 0; i < state->mNumberOfMixtures; i++) 
+      for (i = 0; i < state->mNMixtures; i++) 
       {
         FLOAT    glike;
         Mixture* mix = state->mpMixture[i].mpEstimates;
@@ -1227,12 +1227,12 @@ namespace STK
       // Occupation probabilities of mixtures are computed using target model
       state = state2; pObs = pObs2;
     } 
-    else if (state->mNumberOfMixtures <= state2->mNumberOfMixtures) 
+    else if (state->mNMixtures <= state2->mNMixtures) 
     {
       bjtO = mpOutPCache[mpModelSet->mNStates * mTime + state->mID].mValue;
     }
   
-    n_mixtures = LOWER_OF(state->mNumberOfMixtures, state2->mNumberOfMixtures);
+    n_mixtures = LOWER_OF(state->mNMixtures, state2->mNMixtures);
   
     if (bjtO < LOG_MIN && n_mixtures > 1)
     {
@@ -1269,11 +1269,6 @@ namespace STK
       {
         Mixture*  mix      = state2->mpMixture[m].mpEstimates;
         size_t    vec_size = mix->mpMean->VectorSize();
-        // old vector
-        //FLOAT*    mnvec    = mix->mpMean->mpVectorO;
-        //FLOAT*    mnacc    = mix->mpMean->mpVectorO     +     vec_size;
-        //FLOAT*    vvacc    = mix->mpVariance->mpVectorO +     vec_size;
-        //FLOAT*    vmacc    = mix->mpVariance->mpVectorO + 2 * vec_size;
         FLOAT*    mnvec    = mix->mpMean->mVector.pData();
         FLOAT*    mnacc    = mix->mpMean->mpAccums;
         FLOAT*    vvacc    = mix->mpVariance->mpAccums;
@@ -1919,9 +1914,9 @@ namespace STK
           {
             FLOAT transP = hmm->mpTransition->mpMatrixO[from * hmm->mNStates + to];
   
-  #ifdef TRACE_TOKENS
+#ifdef TRACE_TOKENS
             printf("Model %d State %d -> State %d ",  node->mAux, (int) i, (int) j);
-  #endif
+#endif
             if (PassTokenInModel(&mpAuxTokens[i], &node->mpTokens[j],
                                     transP * mTranScale)) {
               winingToken = i;
@@ -2013,9 +2008,9 @@ namespace STK
           if (hmm->mpTransition->mpMatrixO[from * hmm->mNStates + to] > LOG_MIN) 
           {
             FLOAT transP = hmm->mpTransition->mpMatrixO[from * hmm->mNStates + to];
-  #ifdef TRACE_TOKENS
+#ifdef TRACE_TOKENS
             printf("Model %d State %d -> Exit State ",  node->mAux, (int) i);
-  #endif
+#endif
             if (PassTokenInModel(&node->mpTokens[i],
                                     &node->mpTokens[hmm->mNStates - 1],
                                     transP * mTranScale)) 

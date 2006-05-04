@@ -170,7 +170,7 @@ namespace STK
   template<typename _ElemT>
     Matrix<_ElemT> &
     Matrix<_ElemT>::
-    DivC(_ElemT c)
+    DivC(const _ElemT& c)
     {
       for (size_t i = 0; i < mMRows * mStride; i++)
       {
@@ -186,7 +186,8 @@ namespace STK
   template<typename _ElemT>
     Matrix<_ElemT> &
     Matrix<_ElemT>::
-    AddCVVtMul(_ElemT c, BasicVector<_ElemT>& rA, BasicVector<_ElemT>& rB)
+    AddCVVtMul(const _ElemT& c, const BasicVector<_ElemT>& rA, 
+               const BasicVector<_ElemT>& rB)
     {
       for (size_t i = 0; i < rA.Length(); i++)
       {
@@ -203,7 +204,7 @@ namespace STK
   template<typename _ElemT>
     Matrix<_ElemT> &
     Matrix<_ElemT>::
-    AddMMMul(ThisType & a, ThisType & b)
+    AddMMMul(const ThisType& a, const ThisType& b)
     { 
       if(!(a.Cols() == b.Rows() && this->Rows() == a.Rows() &&  this->Cols() == b.Cols()))
         STK::Error("Matrix multiply: bad matrix sizes (%d %d)*(%d %d) -> (%d %d)", a.Rows(), a.Cols(), b.Rows(), b.Cols(), this->Rows(), this->Cols());
@@ -230,7 +231,7 @@ namespace STK
   template<typename _ElemT>
     Matrix<_ElemT> &
     Matrix<_ElemT>::
-    RepMMMul(ThisType & a, ThisType & b)
+    RepMMMul(const ThisType& a, const ThisType& b)
     { 
       Clear();
       AddMMMul(a, b);
@@ -244,7 +245,7 @@ namespace STK
   template<typename _ElemT>
     Matrix<_ElemT> &
     Matrix<_ElemT>::
-    AddMCMul(ThisType& a, _ElemT c) 
+    AddCMMul(const _ElemT& c, const Matrix<_ElemT>& a) 
     { 
       assert(this->Cols() == a.Cols());
       assert(this->Rows() == a.Rows());
@@ -274,7 +275,7 @@ namespace STK
   template<typename _ElemT>
     Matrix<_ElemT> &
     Matrix<_ElemT>::
-    AddCVVtMul(_ElemT c, _ElemT* pA, _ElemT* pB)
+    AddCVVtMul(const _ElemT& c, const _ElemT* pA, const _ElemT* pB)
     {
       for (size_t i= 0; i < Rows(); i++)
       {
@@ -293,7 +294,7 @@ namespace STK
   template<typename _ElemT>
     Matrix<_ElemT> &
     Matrix<_ElemT>::
-    RepMMSub(ThisType & a, ThisType & b)
+    RepMMSub(const ThisType& a, const ThisType& b)
     { 
       assert(this->Cols() == a.Cols());
       assert(this->Rows() == a.Rows());
@@ -388,7 +389,7 @@ namespace STK
   template<typename _ElemT>
     Matrix<_ElemT> &
     Matrix<_ElemT>::
-    DiagScale(_ElemT* pDiagVector)
+    DiagScale(const _ElemT* pDiagVector)
     {
       // :TODO: 
       // optimize this
@@ -411,7 +412,7 @@ namespace STK
   template<typename _ElemT>
     Matrix<_ElemT>&
     Matrix<_ElemT>::
-    DiagScale(BasicVector<_ElemT>& rDiagVector)
+    DiagScale(const BasicVector<_ElemT>& rDiagVector)
     {
       // :TODO: 
       // optimize this
@@ -543,15 +544,6 @@ namespace STK
     std::ostream &
     operator << (std::ostream & rOut, Matrix<_ElemT> & rM)
     {
-      
-      //
-      ///
-      for(int i=0; i<10; i++){
-        rOut << rM.mpData[i] << " ";
-      }
-      rOut << "\n";
-      /////
-      
       for (size_t i = 0; i < rM.Rows(); i++)
       {
         for (size_t j = 0; j < rM.Cols(); j++)

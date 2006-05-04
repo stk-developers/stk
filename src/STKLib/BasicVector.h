@@ -48,7 +48,7 @@ namespace STK
    *
    */
   template<typename _ElemT>
-    class BasicVector
+      class BasicVector
     {
     public:
       BasicVector(): mpData(NULL), mLength(0)
@@ -147,6 +147,11 @@ namespace STK
       
       _ElemT
       Dot(const _ElemT* pV);
+      
+      
+      /// Performs a row stack of the matrix rMa
+      BasicVector<_ElemT>&
+      MatrixRowStack(const Matrix<_ElemT>& rMa);
       
       
       //########################################################################

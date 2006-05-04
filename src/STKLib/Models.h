@@ -643,7 +643,7 @@ namespace STK
     KeywordID                 mOutPdfKind;
     union 
     {
-      size_t                  mNumberOfMixtures;
+      size_t                  mNMixtures;
       int                     PDF_obs_coef;
     };
   
@@ -702,7 +702,7 @@ namespace STK
     /// The (empty) constructor
     Mixture(): mID(0), mpMean(NULL), mpVariance(NULL), mpInputXform(NULL), 
       mAccumG(), mAccumK(), mAccumL(), mPartialAccumG(0), 
-      mPartialAccumK(), mPartialAccumGd(0)
+      mPartialAccumK(), mPartialAccumGd(0), mAccumGd()
     {};
     
     /// The (empty) destructor
@@ -725,7 +725,7 @@ namespace STK
     
     // Discriminative CAT accumulators
     FLOAT                     mPartialAccumGd;
-    //Matrix<FLOAT>             mAccumGd;
+    Matrix<FLOAT>             mAccumGd;
     
     /**
      * @brief Updates the G, K, L accumulators from partial accums and lambdas

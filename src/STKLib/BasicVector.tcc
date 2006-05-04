@@ -221,6 +221,29 @@ namespace STK
   //****************************************************************************
   //****************************************************************************
   template<typename _ElemT>
+    BasicVector<_ElemT>&
+    BasicVector<_ElemT>::
+    MatrixRowStack(const Matrix<_ElemT>& rMa)
+    {
+      assert(mLength == rMa.Cols() * rMa.Rows());
+      
+      _ElemT*       inc_data = mpData;
+      const size_t  cols     = rMa.Cols();
+      
+      for (size_t i = 0; i < rMa.Rows(); i++)
+      {
+        // copy the data to the propper position
+        memcpy(inc_data, rMa[i], cols * sizeof(_ElemT));
+        
+        // set new copy position
+        inc_data += cols;
+      }
+    }
+    
+    
+  //****************************************************************************
+  //****************************************************************************
+  template<typename _ElemT>
     std::ostream &
     operator << (std::ostream& rOut, BasicVector<_ElemT>& rV)
     {
