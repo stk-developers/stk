@@ -37,7 +37,7 @@ namespace STK
   
   // declare the class so the header knows about it
   template<typename _ElemT> class Matrix;
-
+  template<typename _ElemT> class MatrixRange;
   
   // we need to declare the friend << operator here
   template<typename _ElemT>
@@ -78,6 +78,7 @@ namespace STK
                       const size_t c);
 
       /// Destructor
+      virtual
       ~Matrix<_ElemT> ();
 
 
@@ -240,7 +241,7 @@ namespace STK
        *  @brief Gives access to a specified matrix row without range check
        *  @return pointer to the first field of the row
        */
-      _ElemT*      
+      inline _ElemT*      
       operator []  (size_t i) const
       {
         return mpData + (i * mStride);
@@ -278,6 +279,19 @@ namespace STK
 
             
       void PrintOut(char *file);
+
+      /**
+       * @brief Returns a matrix sub-range
+       * @param ro Row offset
+       * @param r  Rows in range
+       * @param co Column offset
+       * @param c  Coluns in range
+       * See @c MatrixRange class for details
+       */
+      MatrixRange<_ElemT>
+      Range(const size_t    ro, const size_t    r, 
+            const size_t    co, const size_t    c)
+      { return MatrixRange<_ElemT>(*this, ro, r, co, c); }
 
     
     protected:
@@ -342,7 +356,7 @@ namespace STK
       WindowMatrix(const ThisType & rT);
 
       /// Basic constructor
-      WindowMatrix(const size_t r, const size_t c):                            
+      WindowMatrix(const size_t r, const size_t c):
         Matrix<_ElemT>(r, c), // create the base class
         mOrigMRows    (Matrix<_ElemT>::mMRows),
         mOrigMCols    (Matrix<_ElemT>::mMCols),
@@ -388,6 +402,33 @@ namespace STK
       }
     };
 
+    
+    
+    
+  /** **************************************************************************
+   ** **************************************************************************
+   *  @brief Sub-matrix representation
+   *
+   *  This class provides a way to work with matrix cutouts in STK.
+   *  
+   *
+   */
+  template<typename _ElemT>
+    class MatrixRange : public Matrix<_ElemT>
+    {
+    public:
+      /// Constructor
+      MatrixRange(const Matrix<_ElemT>& rT, 
+                  const size_t    ro,
+                  const size_t    r,
+                  const size_t    co,
+                  const size_t    c);
+
+      /// The destructor
+      virtual
+      ~MatrixRange<_ElemT>()
+      { }
+    };
 } // namespace STK
 
 

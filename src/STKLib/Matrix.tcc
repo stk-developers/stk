@@ -523,7 +523,8 @@ namespace STK
     }
 
 
-//******************************************************************************
+  //****************************************************************************
+  //****************************************************************************
   template<typename _ElemT>
     void
     WindowMatrix<_ElemT>::
@@ -554,6 +555,29 @@ namespace STK
       }
       return rOut;
     }
+    
+    
+
+    
+  //****************************************************************************
+  //****************************************************************************
+  // Constructor
+  template<typename _ElemT>
+    MatrixRange<_ElemT>::
+    MatrixRange(const Matrix<_ElemT>& rT, 
+                const size_t    ro,
+                const size_t    r,
+                const size_t    co,
+                const size_t    c)
+    {
+      // point to the begining of window
+      Matrix<_ElemT>::mMRows = r;
+      Matrix<_ElemT>::mMCols = c;
+      Matrix<_ElemT>::mMStride = rT.Stride;
+      Matrix<_ElemT>::mpData = rT.mpData + co + ro * rT.mMStride;
+    }
+        
+    
 
 }// namespace STK
 
