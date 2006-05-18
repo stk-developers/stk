@@ -28,6 +28,7 @@ SNet::NNet::NNet(CompositeXform* nn, int cacheSize, int bunchSize, bool crossVal
   mDiscarded = 0;
   mGood = 0;
   mNCache = 0;  
+  mpUpdateElement = NULL;
   
   // Create cache
   int in_cols =  (static_cast<LinearXform*>(nn->mpLayer[0].mpBlock[0]))->mMatrix.Cols();              // get number of columns

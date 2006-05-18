@@ -10,7 +10,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#define VERSION "2.0.2"
+#define VERSION "2.0.3"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
