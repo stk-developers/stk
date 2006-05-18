@@ -10,7 +10,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#define VERSION "2.0.0b"
+#define VERSION "2.0.2"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -51,8 +51,22 @@ void usage(char *progname)
 " -S f       Set script file to f                            None\n"
 " -T N       Set trace flags to N                            0\n"
 " -V         Print version information                       Off\n"
-" -X ext     Set input label (or netwokr) file ext           lab (net)\n"
+" -X ext     Set input label (or network) file ext           lab (net)\n"
 " -o s       Extension for new hmm files                     As src\n"
+"\n"
+"\n"
+"SNet based parameters:\n"
+"--CROSSVALIDATION                                           false\n"
+"--CACHESIZE                                                 12000\n"
+"--BUNCHSIZE                                                 1000\n"
+"--LEARNINGRATE                                              0.008\n"
+"--CLIENTS                                                   0\n"
+"--JOINIP                                                    NULL\n"
+"--RANDOMIZE                                                 true\n"
+"--SYNCHRONIZE                                               true\n"
+"--PORT                                                      2020\n"
+"--SEED                                                      0 (means random)\n"
+"--NCUMRBU                                                   CLIENTS\n"
 "\n"
 " %s is Copyright (C) 2004-2005 Stanislav Kontar, Lukas Burget, Ondrej Glembek et al. and\n"
 " licensed under the GNU General Public License, version 2.\n"
@@ -157,6 +171,8 @@ int main(int argc, char *argv[])
   bool randomize;
   bool sync;
   int port;
+  int seed;
+  int ncumrbu;
 
   if (argc == 1) usage(argv[0]);
 
@@ -236,7 +252,10 @@ int main(int argc, char *argv[])
   ip = (char*)GetParamStr(&cfgHash, SNAME":JOINIP",       NULL);
   randomize =  GetParamBool(&cfgHash,SNAME":RANDOMIZE", true);
   sync = GetParamBool(&cfgHash,SNAME":SYNCHRONIZE", true);
-  port   = GetParamInt(&cfgHash, SNAME":PORT",            2020);
+  port = GetParamInt(&cfgHash, SNAME":PORT",            2020);
+  seed = GetParamInt(&cfgHash, SNAME":SEED",            0);
+  ncumrbu = GetParamInt(&cfgHash, SNAME":NCUMRBU",            clients);
+  // NCUMRBU == number of client update matrixes received before update in async version
   
   if(clients != 0 && script != NULL) Error("Server should not have input data.");
   
@@ -311,7 +330,7 @@ int main(int argc, char *argv[])
   
 ///************************************************************************************************
   /// INITIALIZE SNET
-  ProgObj *prog_obj = new ProgObj(NNet_instance, cache_size, bunch_size, cross_validation, VERSION, learning_rate, clients, ip, randomize, sync, port); 
+  ProgObj *prog_obj = new ProgObj(NNet_instance, cache_size, bunch_size, cross_validation, VERSION, learning_rate, clients, ip, randomize, sync, port, seed, ncumrbu); 
   if(prog_obj->Server()){
     prog_obj->RunServer();
   }

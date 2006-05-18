@@ -1,7 +1,8 @@
 #include"progobj.h"
 
 SNet::ProgObj::ProgObj(XformInstance *NNetInstance, int cacheSize, int bunchSize, bool crossValidation, 
-                       std::string version, float learningRate, int clients, char* ip, bool randomize, bool sync, int port){
+                       std::string version, float learningRate, int clients, char* ip, bool randomize, bool sync, int port, int seed,
+                       int ncumrbu){
   mPort = port;
   mNoClients = clients;
   mRandomize = randomize;
@@ -25,6 +26,7 @@ SNet::ProgObj::ProgObj(XformInstance *NNetInstance, int cacheSize, int bunchSize
   mpThreads = NULL; 
   mpServer = NULL;
   mpClient = NULL;  
+  mNcumrbu = ncumrbu;
 
   if(NNetInstance->mpXform->mXformType !=  XT_COMPOSITE)
     Error("NN has to be CompositeXform");
@@ -36,7 +38,7 @@ SNet::ProgObj::ProgObj(XformInstance *NNetInstance, int cacheSize, int bunchSize
   
   std::cout << "===== SNET v" << version << " " << (crossValidation ? "CROSS-VALIDATION" : "TRAINING") << " STARTED ===== \n";  
       
-  srand48(GiveMeSeed());
+  srand48((seed == 0) ? GiveMeSeed() : seed);
   
   // Create sync mechanisms
   mpFreeMutex = new pthread_mutex_t;
@@ -200,7 +202,10 @@ void SNet::ProgObj::RunServer(){
     pthread_mutex_lock(mpReceivedMutex);
      size = mReceivedElements.size();
     pthread_mutex_unlock(mpReceivedMutex);
-    if( (mSync) ?(size >= ActiveClients()) :(size >= mNoClients || Finished(mNoClients))){ // if there is enough received elements to make update
+    // if( (mSync) ?(size >= ActiveClients()) :(size >= mNoClients || Finished(mNoClients))){ 
+    // Changed for mNcumrbu
+    if( (mSync) ?(size >= ActiveClients()) :(size >= mNcumrbu || Finished(mNoClients))){ 
+      // if there is enough received elements to make update
       if(DEBUG_PROG) std::cerr << "Have enough " << size << "\n";
       element_add->Clear();
       for(int i=0; i < size; i++){

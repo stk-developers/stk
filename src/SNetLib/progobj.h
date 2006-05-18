@@ -24,7 +24,8 @@ namespace SNet{
       std::string mIp;                        ///< Client only - IP adress where client should join
       int mNoClients;                         ///< Server only - Number of clients
       bool mClientShouldFinish;               ///< Client only - 
-      bool mSync;                             ///< Client only - True if parallel synchronzation, false for asynchronous parallelization
+      bool mSync;                             ///< Client only - True if parallel synchronization, false for asynchronous parallelization
+      int mNcumrbu;                          ///< Number of client update matrixes received before update in async version
       std::queue<Element*> mFreeElements;     ///< Queue of free elements
       std::queue<Element*> mReceivedElements; ///< Queue of received elements
       
@@ -51,7 +52,7 @@ namespace SNet{
     public:
       ProgObj(XformInstance *NNetInstance, int cacheSize, int bunchSize, bool crossValidation, ///< Constructor
               std::string version, float learningRate, int clients, char* ip, bool randomize, 
-              bool sync, int port); 
+              bool sync, int port, int seed, int nocumrbu); 
       ~ProgObj();                                                                              ///< Destructor
       
       void NewVector(FLOAT *inVector, FLOAT *outVector, int inSize, int outSize, bool last);   ///< Work with new input vector
