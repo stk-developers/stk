@@ -119,8 +119,8 @@ void SNet::NNet::ComputeCache(bool last){
   mDiscarded += mActualCache % mBunchSize;     // remains will be discarded
   
   if(mpUpdateElement != NULL){
-    if(mActualNOfBunch == 0){
-      // std::cerr << "Problem SOLVED - cache with 0 bunches - should write only in Parallel version!";
+    if(mActualNOfBunch == 0){ 
+      if(DEBUG_PROG) std::cerr << "Problem SOLVED - cache with 0 bunches - should write only in Parallel version!";
       mpUpdateElement->mLast = 1;
       mpClient->SendElement(mpUpdateElement);
       if(DEBUG_PROG) if(*mpSync) std::cerr << "Waiting on barrier\n";
@@ -144,6 +144,7 @@ void SNet::NNet::ComputeCache(bool last){
         mpClient->SendElement(mpUpdateElement);
         if(mpUpdateElement->mLast == 1){
           *mpSync = false;
+          if(DEBUG_PROG) if(mpBarrier->counter == 1) std::cerr << "Waiting on barrier\n";
           if(mpBarrier->counter == 1) barrier_wait(mpBarrier);
         }
         mpTimers->Count(1);
@@ -315,5 +316,5 @@ void SNet::NNet::WaitForStartingWeights(){
       pthread_mutex_unlock(mpFreeMutex);
     }
   } while (size == 0);
-  
+  if(DEBUG_PROG) std::cerr << "End of waiting for first weights\n";
 }

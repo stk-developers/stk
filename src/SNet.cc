@@ -490,7 +490,7 @@ int main(int argc, char *argv[])
   if(!cross_validation)  
     hset.WriteMmf(trg_mmf, trg_hmm_dir, trg_hmm_ext, hmms_binary);
     
-  // :KLUDGE: Some bug in STK
+  // :KLUDGE: Some bug in STK - maybe solved?!
   /// hset.Release();
 
   for (size_t i = 0; i < cfgHash.mNEntries; i++) free(cfgHash.mpEntry[i]->data);

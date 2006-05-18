@@ -190,8 +190,8 @@ void SNet::ProgObj::RunServer(){
   Element *element;
   int size = 0;
   
-  if(DEBUG_PROG) std::cerr << "Sending first weights " << size << "\n";
   for(int i=0; i < mNoClients; i++){
+    if(DEBUG_PROG) std::cerr << "Sending first weights " << i << "\n";
     mpServer->SendElement(element_nn, i); // at start send First Weights
   }
   
@@ -305,9 +305,12 @@ void SNet::ProgObj::RunClient(){
   mpNNet->ReceivedElements(&mReceivedElements);
   mpNNet->FreeElements(&mFreeElements);
   mpNNet->Mutexes(mpFreeMutex, mpReceivedMutex, mpBarrier, &mSync);
-
   
   mpNNet->WaitForStartingWeights(); // wait for first weights
+  
+  if(DEBUG_PROG) if(mSync) std::cerr << "THREAD: Waiting on barrier\n";
+  if(mSync) barrier_wait(mpBarrier); // to destroy barrier in receiving thread
+  
   TimersGet()->Start(0);
   // Do nothing, return to program
 }
