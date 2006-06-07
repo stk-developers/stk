@@ -427,7 +427,13 @@ namespace STK
       /// The destructor
       virtual
       ~MatrixRange<_ElemT>()
-      { }
+      { 
+#ifndef STK_MEMALIGN_MANUAL
+        Matrix<_ElemT>::mpData = NULL;
+#else
+        Matrix<_ElemT>::mpFreeData = NULL;
+#endif
+      }
     };
 } // namespace STK
 

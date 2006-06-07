@@ -32,7 +32,7 @@ endif
 ################################################################################
 # compiler options
 #CFLAGS = -Wall -g -O3 -DDOUBLEPRECISION=0 -D_REENTRANT  -DUSE_BLAS -msse -msse2 -mmmx -mfpmath=sse
-CFLAGS    = -Wall -O3 -g -DDOUBLEPRECISION=0 -D_REENTRANT -DUSE_BLAS -msse -msse2 -mfpmath=sse $(MATLAB_CFLAGS)
+CFLAGS    = -Wall -g -O3 -DDOUBLEPRECISION=0 -D_REENTRANT -DUSE_BLAS -msse -msse2 -mfpmath=sse $(MATLAB_CFLAGS)
 CXXFLAGS  = $(CFLAGS)
 
 ################################################################################

@@ -44,7 +44,7 @@ LDLIBS = -lm -latlas -lpthread -lSTKLib $(MATLAB_LDLIBS)
 
 ###############################################################################
 # -DEXPANDNET_ONLY
-XFLAGS = -DMOTIF -L/usr/X11R6/lib -I/usr/X11R6/include -lXm -lXt -lX11 -lXpm -O3
+XFLAGS = -DMOTIF -L/usr/X11R6/lib -I/usr/X11R6/include -lXm -lXt -lX11 -lXpm 
 
 ###############################################################################
 # compiler binary
@@ -60,9 +60,7 @@ TOOLS =     SERest \
             SResults \
             SExpand \
             SFeaCat \
-            SLRatio \
-            SScore \
-            dscore
+            SLRatio
 
 
 ###############################################################################
@@ -116,14 +114,16 @@ FORCE:
 # tools-specific rules
 SFea2OutP   : $(STKLIB)
 SVite       : $(STKLIB)
+SWE         : $(STKLIB)
+SWEChCo     : $(STKLIB)
+SWEChCoFast : $(STKLIB)
+SWEChCoFastOPS : $(STKLIB)
 SLRatio     : $(STKLIB)
 SERest      : $(STKLIB) 
 SFeaCat     : $(STKLIB)
 SRover      : $(STKLIB)
 SResults    : $(STKLIB)
 SExpand     : $(STKLIB)
-SScore      : $(STKLIB)
-dscore      : $(STKLIB)
 SNet        : $(STKLIB) $(SNETLIB)
 SNetStats   : $(STKLIB) $(SNETLIB)
 
@@ -141,12 +141,6 @@ SFea2OutP.o: STKLib/StkMath.h STKLib/BasicVector.h STKLib/BasicVector.tcc
 SFea2OutP.o: STKLib/Matrix.tcc STKLib/common.h STKLib/Models.h
 SFea2OutP.o: STKLib/stkstream.h STKLib/stkstream.tcc STKLib/Viterbi.h
 SFea2OutP.o: STKLib/Models.h STKLib/labels.h STKLib/dict.h STKLib/Net.h
-dscore.o: STKLib/fileio.h STKLib/Matrix.h STKLib/common.h STKLib/Error.h
-dscore.o: STKLib/StkMath.h STKLib/BasicVector.h STKLib/BasicVector.tcc
-dscore.o: STKLib/Matrix.tcc STKLib/common.h STKLib/Models.h
-dscore.o: STKLib/stkstream.h STKLib/stkstream.tcc STKLib/Viterbi.h
-dscore.o: STKLib/Models.h STKLib/labels.h STKLib/dict.h STKLib/Net.h
-dscore.o: STKLib/Score.h
 SERest.o: STKLib/fileio.h STKLib/Matrix.h STKLib/common.h STKLib/Error.h
 SERest.o: STKLib/StkMath.h STKLib/BasicVector.h STKLib/BasicVector.tcc
 SERest.o: STKLib/Matrix.tcc STKLib/common.h STKLib/Models.h
@@ -156,16 +150,16 @@ SERest.o: STKLib/labels.h STKLib/stkstream.h
 SExpand.o: STKLib/Net.h STKLib/Models.h STKLib/labels.h STKLib/common.h
 SExpand.o: STKLib/Error.h STKLib/StkMath.h STKLib/dict.h STKLib/labels.h
 SExpand.o: STKLib/common.h
-SFea2OutP.o: STKLib/fileio.h STKLib/Matrix.h STKLib/common.h STKLib/Error.h
-SFea2OutP.o: STKLib/StkMath.h STKLib/BasicVector.h STKLib/BasicVector.tcc
-SFea2OutP.o: STKLib/Matrix.tcc STKLib/common.h STKLib/Models.h
-SFea2OutP.o: STKLib/stkstream.h STKLib/stkstream.tcc STKLib/Viterbi.h
-SFea2OutP.o: STKLib/Models.h STKLib/labels.h STKLib/dict.h STKLib/Net.h
 SFeaCat.o: STKLib/fileio.h STKLib/Matrix.h STKLib/common.h STKLib/Error.h
 SFeaCat.o: STKLib/StkMath.h STKLib/BasicVector.h STKLib/BasicVector.tcc
 SFeaCat.o: STKLib/Matrix.tcc STKLib/common.h STKLib/Models.h
 SFeaCat.o: STKLib/stkstream.h STKLib/stkstream.tcc STKLib/Viterbi.h
 SFeaCat.o: STKLib/Models.h STKLib/labels.h STKLib/dict.h STKLib/Net.h
+SFea2OutP.o: STKLib/fileio.h STKLib/Matrix.h STKLib/common.h STKLib/Error.h
+SFea2OutP.o: STKLib/StkMath.h STKLib/BasicVector.h STKLib/BasicVector.tcc
+SFea2OutP.o: STKLib/Matrix.tcc STKLib/common.h STKLib/Models.h
+SFea2OutP.o: STKLib/stkstream.h STKLib/stkstream.tcc STKLib/Viterbi.h
+SFea2OutP.o: STKLib/Models.h STKLib/labels.h STKLib/dict.h STKLib/Net.h
 SLRatio.o: STKLib/Viterbi.h STKLib/Models.h STKLib/labels.h STKLib/common.h
 SLRatio.o: STKLib/Error.h STKLib/StkMath.h STKLib/dict.h STKLib/Net.h
 SLRatio.o: STKLib/Models.h STKLib/Matrix.h STKLib/BasicVector.h
@@ -182,12 +176,6 @@ SNet.o: STKLib/Viterbi.h STKLib/Matrix.h SNetLib/timers.h SNetLib/socketobj.h
 SNet.o: STKLib/Error.h SNetLib/element.h SNetLib/barrier.h
 SResults.o: STKLib/labels.h STKLib/common.h
 SRover.o: STKLib/labels.h STKLib/common.h
-SScore.o: STKLib/fileio.h STKLib/Matrix.h STKLib/common.h STKLib/Error.h
-SScore.o: STKLib/StkMath.h STKLib/BasicVector.h STKLib/BasicVector.tcc
-SScore.o: STKLib/Matrix.tcc STKLib/common.h STKLib/Models.h
-SScore.o: STKLib/stkstream.h STKLib/stkstream.tcc STKLib/Viterbi.h
-SScore.o: STKLib/Models.h STKLib/labels.h STKLib/dict.h STKLib/Net.h
-SScore.o: STKLib/Score.h
 SVite.o: STKLib/Viterbi.h STKLib/Models.h STKLib/labels.h STKLib/common.h
 SVite.o: STKLib/Error.h STKLib/StkMath.h STKLib/dict.h STKLib/Net.h
 SVite.o: STKLib/Models.h STKLib/Matrix.h STKLib/BasicVector.h
@@ -223,18 +211,13 @@ STKLib/labelreader.o: STKLib/Error.h STKLib/StkMath.h STKLib/stkstream.tcc
 STKLib/Matrix.o: STKLib/Matrix.h STKLib/common.h STKLib/Error.h
 STKLib/Matrix.o: STKLib/StkMath.h STKLib/BasicVector.h STKLib/BasicVector.tcc
 STKLib/Matrix.o: STKLib/Matrix.tcc
-STKLib/Models.o: STKLib/Models.h STKLib/Viterbi.h STKLib/labels.h
-STKLib/Models.o: STKLib/common.h STKLib/Error.h STKLib/StkMath.h
-STKLib/Models.o: STKLib/dict.h STKLib/Net.h STKLib/stkstream.h
-STKLib/Models.o: STKLib/stkstream.tcc
+STKLib/Models.o: STKLib/Models.h STKLib/stkstream.h STKLib/common.h
+STKLib/Models.o: STKLib/Error.h STKLib/StkMath.h STKLib/stkstream.tcc
 STKLib/Models_IO.o: STKLib/Models.h
 STKLib/Net.o: STKLib/Models.h STKLib/labels.h STKLib/common.h STKLib/Error.h
 STKLib/Net.o: STKLib/StkMath.h STKLib/dict.h STKLib/Net.h
 STKLib/Net_IO.o: STKLib/labels.h STKLib/common.h STKLib/Error.h
 STKLib/Net_IO.o: STKLib/StkMath.h STKLib/Net.h STKLib/Models.h STKLib/dict.h
-STKLib/Score.o: STKLib/Models.h STKLib/Viterbi.h STKLib/labels.h
-STKLib/Score.o: STKLib/common.h STKLib/Error.h STKLib/StkMath.h STKLib/dict.h
-STKLib/Score.o: STKLib/Net.h
 STKLib/Viterbi.o: STKLib/Viterbi.h STKLib/Models.h STKLib/labels.h
 STKLib/Viterbi.o: STKLib/common.h STKLib/Error.h STKLib/StkMath.h
 STKLib/Viterbi.o: STKLib/dict.h STKLib/Net.h

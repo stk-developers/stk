@@ -573,8 +573,8 @@ namespace STK
       // point to the begining of window
       Matrix<_ElemT>::mMRows = r;
       Matrix<_ElemT>::mMCols = c;
-      Matrix<_ElemT>::mMStride = rT.Stride;
-      Matrix<_ElemT>::mpData = rT.mpData + co + ro * rT.mMStride;
+      Matrix<_ElemT>::mStride = rT.Stride();
+      Matrix<_ElemT>::mpData = rT.pData() + co + ro * rT.Stride();
     }
         
     

@@ -173,6 +173,26 @@ namespace STK
       return *this;
     }; 
 
+  //***************************************************************************
+  //***************************************************************************
+  template<>
+    Matrix<double> &
+    Matrix<double>::
+    AddMMTMul(const Matrix<double>& a, const Matrix<double>& b)
+    { 
+      assert(a.Rows() == this->Rows());
+      assert(b.Rows() == this->Cols());
+      assert(a.Cols() == b.Cols());
+#ifdef USE_BLAS
+      cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, a.Rows(), b.Rows(), b.Cols(),
+                    1.0f, a.mpData, a.mStride, b.mpData, b.mStride, 1.0f, this->mpData, this->mStride);
+#else
+      Error("Method not implemented without BLAS");
+#endif
+  
+      return *this;
+    }; 
+
   
   //***************************************************************************
   //***************************************************************************
@@ -356,6 +376,32 @@ namespace STK
       //printf("%d %d %d %d %d %d\n", a.Cols(), b.Cols(), b.Rows(), a.mStride, b.mStride, this->mStride);
 #ifdef USE_BLAS
       cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, a.Cols(), b.Cols(), b.Rows(),
+                  1.0f, a.mpData, a.mStride, b.mpData, b.mStride, 1.0f, this->mpData, this->mStride);
+#else
+      Error("Method not implemented without BLAS");
+#endif
+      
+      return *this;
+    }; 
+
+  //***************************************************************************
+  //***************************************************************************
+  template<>
+    Matrix<double> &
+    Matrix<double>::
+    RepMtMMul(const Matrix<double> & a, const Matrix<double> & b)
+    { 
+      /*assert(a.Rows() == this->Rows());
+      assert(b.Rows() == this->Cols());
+      assert(a.Cols() == b.Cols());
+      */
+      Clear();
+            
+      //cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, this->Rows(), this->Cols(), b.Rows(),
+      //          1.0f, a.mpData, a.mStride, b.mpData, b.mStride, 1.0f, this->mpData, this->mStride);
+      //printf("%d %d %d %d %d %d\n", a.Cols(), b.Cols(), b.Rows(), a.mStride, b.mStride, this->mStride);
+#ifdef USE_BLAS
+      cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, a.Cols(), b.Cols(), b.Rows(),
                   1.0f, a.mpData, a.mStride, b.mpData, b.mStride, 1.0f, this->mpData, this->mStride);
 #else
       Error("Method not implemented without BLAS");

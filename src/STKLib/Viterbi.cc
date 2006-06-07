@@ -832,8 +832,8 @@ namespace STK
         Mixture* mix = state->mpMixture[i].mpEstimates;
     
         l_obs = XformPass(mix->mpInputXform, pObs,
-                        net ? net->mTime : UNDEF_TIME,
-                        net ? net->mPropagDir : FORWARD);
+                          net ? net->mTime : UNDEF_TIME,
+                          net ? net->mPropagDir : FORWARD);
         
         assert(l_obs != NULL);
         glike = DiagCGaussianDensity(mix, l_obs, net);
@@ -856,8 +856,8 @@ namespace STK
 
   
 /*  
-  //***************************************************************************
-  //***************************************************************************
+  // ***************************************************************************
+  // ***************************************************************************
   FLOAT 
   DiagCGaussianMixtureDensity(State* state, FLOAT* pObs, Network* net)
   {
