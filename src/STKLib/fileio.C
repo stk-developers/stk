@@ -1212,6 +1212,8 @@ namespace STK
       Error("End of file expected but '%s' found in %s file %s",
             s2, typeStr2, pFileName);
     }
+    
+    fclose(fp);
   } // ReadCepsNormFile(...)
   
 } // namespace STK
