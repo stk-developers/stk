@@ -466,6 +466,29 @@ namespace STK
       fclose(f);
     }
 
+      template<typename _ElemT>
+    void 
+    Matrix<_ElemT>::
+    ReadIn(char* file)
+    {
+      FILE* f = fopen(file, "r");
+      int  i = 0;
+      int j = 0;
+      fscanf(f, "%dx%d\n", &i,&j);
+      fprintf(stderr, "%dx%d\n", i,j);
+      
+      for(i=0; i<this->mMRows; i++)
+      {
+        _ElemT*   row = (*this)[i];
+        
+        for(j=0; j<this->mStride; j++){
+          fscanf(f, "%f ",&row[j]);
+        }
+        //fprintf(f, "\n");
+      }
+      
+      fclose(f);
+    }
   
   //****************************************************************************
   //****************************************************************************

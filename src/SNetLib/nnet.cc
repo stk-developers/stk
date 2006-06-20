@@ -224,7 +224,7 @@ void SNet::NNet::ChangeWeights(){
     }  
   }
   else{ // server-client, not 1 CPU
-    Element *element;
+    Element *element = NULL;
     int size = 0;
     pthread_mutex_lock(mpReceivedMutex);
      size = mpReceivedElements->size();

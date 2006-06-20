@@ -279,6 +279,7 @@ namespace STK
 
             
       void PrintOut(char *file);
+      void ReadIn(char *file);
 
       /**
        * @brief Returns a matrix sub-range

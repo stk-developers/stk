@@ -2154,11 +2154,13 @@ namespace STK
   {
     char parmkindstr[64];
 
+    // :KLUDGE: Conditional jump or move depends on uninitialised value(s)
+    /*
     if(mSaveGlobOpts == false)
     {
       return;
     }
-  
+    */
     fputs("~o ", fp);
     PutKwd(fp, binary, KID_VecSize);
     PutInt(fp, binary, mInputVectorSize);
