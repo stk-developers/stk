@@ -24,6 +24,7 @@ namespace SNet{
       void Reference(NNet *nnet);          ///< References element to main matrixes of NN
       void Clear();                        ///< Sets all matrixes to zeros
       void Add(Element *element, float c); ///< Adds element * constant
+      void SubByLearningRate(Element *element, float *c);  ///< Subs element * constant[layer]
   };
 } // namespace
 #endif

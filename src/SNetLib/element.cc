@@ -68,3 +68,14 @@ void SNet::Element::Add(Element *element, float c){
     mpBiases[i]->AddCMMul(c, *(element->mpBiases[i]));
   }
 }
+
+void SNet::Element::SubByLearningRate(Element *element, float *c){
+  assert(element != NULL);
+  assert(this->mNLayers == element->mNLayers);
+  for(int i=0; i < mNLayers; i++){
+    assert(mpWeights[i] != NULL);
+    assert(mpBiases[i] != NULL);
+    mpWeights[i]->AddCMMul(-c[i], *(element->mpWeights[i]));
+    mpBiases[i]->AddCMMul(-c[i], *(element->mpBiases[i]));
+  }
+}

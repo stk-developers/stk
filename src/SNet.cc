@@ -10,7 +10,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#define VERSION "2.0.3"
+#define VERSION "2.0.4"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -37,6 +37,7 @@ void usage(char *progname)
   if ((tchrptr = strrchr(progname, '\\')) != NULL) progname = tchrptr+1;
   if ((tchrptr = strrchr(progname, '/')) != NULL) progname = tchrptr+1;
   fprintf(stderr,
+"\nSNet version " VERSION "\n"
 "\nUSAGE: %s [options] DataFiles...\n\n"
 " Option                                                     Default\n\n"
 " -A         Print command line arguments                    Off\n"
@@ -50,7 +51,6 @@ void usage(char *progname)
 " -M dir     Dir to write HMM macro files                    Current\n"
 " -S f       Set script file to f                            None\n"
 " -T N       Set trace flags to N                            0\n"
-" -V         Print version information                       Off\n"
 " -X ext     Set input label (or network) file ext           lab (net)\n"
 " -o s       Extension for new hmm files                     As src\n"
 "\n"
@@ -60,6 +60,7 @@ void usage(char *progname)
 "--CACHESIZE                                                 12000\n"
 "--BUNCHSIZE                                                 1000\n"
 "--LEARNINGRATE                                              0.008\n"
+"--LEARNINGRATELISTMUL (like \"1.0,0.5\")                      NULL\n"
 "--CLIENTS                                                   0\n"
 "--JOINIP                                                    NULL\n"
 "--RANDOMIZE                                                 true\n"
@@ -86,7 +87,6 @@ char *optionStr =
 " -M r   TARGETMODELDIR"
 " -S l   SCRIPT"
 " -T r   TRACE"
-" -V n   PRINTVERSION=TRUE"
 " -X r   SOURCETRANSCEXT";
 
 
@@ -166,6 +166,7 @@ int main(int argc, char *argv[])
   int cache_size;
   int bunch_size;
   float learning_rate;
+  char *learning_rate_list;
   int clients;
   char *ip;
   bool randomize;
@@ -248,6 +249,7 @@ int main(int argc, char *argv[])
   cache_size   = GetParamInt(&cfgHash, SNAME":CACHESIZE",            12000);
   bunch_size   = GetParamInt(&cfgHash, SNAME":BUNCHSIZE",            1000);
   learning_rate   = GetParamFlt(&cfgHash, SNAME":LEARNINGRATE",      0.008);
+  learning_rate_list =(char*)GetParamStr(&cfgHash, SNAME":LEARNINGRATELISTMUL",          NULL);
   clients   = GetParamInt(&cfgHash, SNAME":CLIENTS",            0);
   ip = (char*)GetParamStr(&cfgHash, SNAME":JOINIP",       NULL);
   randomize =  GetParamBool(&cfgHash,SNAME":RANDOMIZE", true);
@@ -266,9 +268,6 @@ int main(int argc, char *argv[])
 
   if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", false)) {
     PrintConfig(&cfgHash);
-  }
-  if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", false)) {
-    puts("Version: "VERSION"\n");
   }
 
   if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", false)) {
@@ -330,7 +329,7 @@ int main(int argc, char *argv[])
   
 ///************************************************************************************************
   /// INITIALIZE SNET
-  ProgObj *prog_obj = new ProgObj(NNet_instance, cache_size, bunch_size, cross_validation, VERSION, learning_rate, clients, ip, randomize, sync, port, seed, ncumrbu); 
+  ProgObj *prog_obj = new ProgObj(NNet_instance, cache_size, bunch_size, cross_validation, VERSION, learning_rate, clients, ip, randomize, sync, port, seed, ncumrbu, learning_rate_list); 
   if(prog_obj->Server()){
     prog_obj->RunServer();
   }
@@ -481,6 +480,7 @@ int main(int argc, char *argv[])
 ///************************************************************************************************     
   /// DELETE SNET
   delete prog_obj;  
+  std::cout << "SNet is Deleted...\n" << std::flush;
   
   if (trace_flag & 2) {
     TraceLog("Total number of frames: %d", totFrames);

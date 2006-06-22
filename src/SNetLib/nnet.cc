@@ -1,6 +1,6 @@
 #include"nnet.h"
 
-SNet::NNet::NNet(CompositeXform* nn, int cacheSize, int bunchSize, bool crossValidation, float learningRate){
+SNet::NNet::NNet(CompositeXform* nn, int cacheSize, int bunchSize, bool crossValidation, float *learningRateList){
   if(nn->mNLayers % 3 != 0) // linear / biases / non-linear
     Error("NN has to have 3 Xform layers for one NN layer");
   mNLayers = nn->mNLayers / 3; // true NN layers consisting of 3 STK layers
@@ -22,7 +22,7 @@ SNet::NNet::NNet(CompositeXform* nn, int cacheSize, int bunchSize, bool crossVal
   mBunchSize = bunchSize;
   mCacheSize = cacheSize;
   mCrossValidation = crossValidation;
-  mLearnRate = learningRate;
+  mpLearningRateList = learningRateList;
   mActualCache = 0;
   mVectors = 0;
   mDiscarded = 0;
@@ -220,7 +220,7 @@ int pocitadlo = 0;
 void SNet::NNet::ChangeWeights(){
   if(mpUpdateElement == NULL){ // 1 CPU, not server-client
     for(int i=0; i < mNLayers; i++){
-      mpLayers[i]->ChangeLayerWeights(mLearnRate); // learning rate needed
+      mpLayers[i]->ChangeLayerWeights(mpLearningRateList[i]); // learning rate needed
     }  
   }
   else{ // server-client, not 1 CPU

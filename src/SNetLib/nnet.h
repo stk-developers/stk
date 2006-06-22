@@ -21,7 +21,7 @@ namespace SNet{
       int mVectors;          ///< Number of training frames used for training so far
       int mGood;             ///< Number of training frames which are classified as in example
       int mDiscarded;        ///< Number of training frames discarded and not used
-      float mLearnRate;      ///< Neural net training rate
+      float *mpLearningRateList;      ///< Neural net training rates
       bool mCrossValidation; ///< Only compute cross-validation
       int mNCache;           ///< Actual cache number
       
@@ -43,7 +43,7 @@ namespace SNet{
       void RandomizeIndices(int *randind, int n); ///< Makes random list 0,1,2,3...
     public:
       NNet(CompositeXform* nn, int cacheSize, int bunchSize, bool crossValidation, ///< Constructor
-           float learningRate); 
+           float *learningRateList); 
       ~NNet();                                                                     ///< Destructor
       
       void AddToCache(FLOAT *inVector, FLOAT *outVector, int inSize, int outSize); ///< Copy input vector to cache
@@ -64,7 +64,8 @@ namespace SNet{
       bool CrossValidation() const {return mCrossValidation;};
       int NLayers()          const {return mNLayers;};
       NLayer* Layers(int i)  const {return mpLayers[i];};
-      float LearnRate()      const {return mLearnRate;};
+      float LearningRate(int i)      const {return mpLearningRateList[i];};
+      float* LearningRate()      const {return mpLearningRateList;};
       int Good()             const {return mGood;};
       int Vectors()          const {return mVectors;};
       int Discarded()        const {return mDiscarded;};

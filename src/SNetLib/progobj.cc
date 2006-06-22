@@ -2,7 +2,29 @@
 
 SNet::ProgObj::ProgObj(XformInstance *NNetInstance, int cacheSize, int bunchSize, bool crossValidation, 
                        std::string version, float learningRate, int clients, char* ip, bool randomize, bool sync, int port, int seed,
-                       int ncumrbu){
+                       int ncumrbu, char *learning_rate_list){
+                       
+  mpLearningRateList = NULL;
+  int ls = (static_cast<CompositeXform*>(NNetInstance->mpXform))->mNLayers / 3;
+  mpLearningRateList = (float*)malloc(sizeof(float) * ls);
+  if(learning_rate_list != NULL){
+    // Parse learning_rate_list
+    char * pch;
+    pch = strtok(learning_rate_list, ",");
+    int i=0;
+    while (pch != NULL){
+      sscanf(pch, "%f", &mpLearningRateList[i]);
+      pch = strtok (NULL, ",");
+      mpLearningRateList[i] *= learningRate; // To have absolute learningRate multiplied by list
+      i++;
+    }
+  }
+  else{
+    for(int i=0; i<ls; i++) {
+      mpLearningRateList[i] = learningRate;
+    }
+  }
+                       
   mPort = port;
   mNoClients = clients;
   mRandomize = randomize;
@@ -34,9 +56,17 @@ SNet::ProgObj::ProgObj(XformInstance *NNetInstance, int cacheSize, int bunchSize
   CompositeXform* nn = static_cast<CompositeXform*>(NNetInstance->mpXform);
 
   // Make neural network
-  mpNNet = new NNet(nn, cacheSize, bunchSize, crossValidation, learningRate); // create NN
+  mpNNet = new NNet(nn, cacheSize, bunchSize, crossValidation, mpLearningRateList); // create NN
   
   std::cout << "===== SNET v" << version << " " << (crossValidation ? "CROSS-VALIDATION" : "TRAINING") << " STARTED ===== \n";  
+  std::cout << "Learning rate list: ";
+  for(int i=0; i<ls; i++) {
+    std::cout << mpLearningRateList[i];
+    if(i != ls-1)
+      std::cout << ", ";
+    else
+      std::cout << "\n";
+  }
       
   srand48((seed == 0) ? GiveMeSeed() : seed);
   
@@ -218,7 +248,8 @@ void SNet::ProgObj::RunServer(){
          mFreeElements.push(element);
         pthread_mutex_unlock(mpFreeMutex);
       }
-      element_nn->Add(element_add, -1.0*mpNNet->LearnRate()); // make new weights
+      // element_nn->Add(element_add, -1.0*mpNNet->LearnRate()); // make new weights
+      element_nn->SubByLearningRate(element_add, mpNNet->LearningRate()); // make new weights
       
       // For all clients, send element if client is active
       for(int i=0; i<mNoClients; i++){
