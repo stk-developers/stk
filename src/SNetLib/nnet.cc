@@ -43,6 +43,7 @@ SNet::NNet::NNet(CompositeXform* nn, int cacheSize, int bunchSize, bool crossVal
   mpError = new Matrix<FLOAT>(bunchSize, mpLayers[mNLayers-1]->Weights()->Rows());
   
   // Connect layers using their inputs, outputs and errors
+  // If you would like to make not full weight connections, you should have separate weights
   for(int i=0; i<mNLayers; i++){
     mpLayers[i]->In((i == 0)           ? mpInCache  : mpLayers[i-1]->Out());
     mpLayers[i]->Out((i == mNLayers-1) ? mpCompCachePart : new Matrix<FLOAT>(bunchSize, mpLayers[i]->Weights()->Rows()));
@@ -175,6 +176,7 @@ void SNet::NNet::ComputeBunch(){
     mpLayers[i]->BunchBias();
     mpLayers[i]->BunchLinear();
     mpLayers[i]->BunchNonLinear();
+    // If you would like to make not full weight connections, you should copy results of one layer to another
   }
 }
 

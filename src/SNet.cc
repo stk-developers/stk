@@ -480,7 +480,7 @@ int main(int argc, char *argv[])
 ///************************************************************************************************     
   /// DELETE SNET
   delete prog_obj;  
-  std::cout << "SNet is Deleted...\n" << std::flush;
+  std::cout << "SNet is Deleted... debug message\n" << std::flush;
   
   if (trace_flag & 2) {
     TraceLog("Total number of frames: %d", totFrames);

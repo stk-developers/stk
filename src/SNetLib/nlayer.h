@@ -19,8 +19,11 @@ namespace SNet{
       Matrix<FLOAT>* mpChangesBiases;  ///< Changes bias vector computed during forward pass
       Matrix<FLOAT>* mpRecWeights;     ///< Pointer to weights matrixes received from clients
       Matrix<FLOAT>* mpRecBiases;      ///< Pointer to bias vectors received from clients
+      
       Matrix<FLOAT>* mpIn;             ///< Matrix of layer input vectors (first layer uses window of input cache)
       Matrix<FLOAT>* mpOut;            ///< Matrix of layer output vectors (last layer uses window of input cache)
+      // If you would like to make not full weight connections, you will need more matrixes, one for each block
+      
       Matrix<FLOAT>* mpErr;            ///< Layer error matrix (errors before non-linearity)
       Matrix<FLOAT>* mpNextErr;        ///< Next layer errors - for error propagation
       Matrix<FLOAT>* mpNextWeights;    ///< Next layer weights - for error propagation
