@@ -17,7 +17,7 @@ extern "C"{
 }
 #endif
 
-
+//#define TRACE_MATRIX_OPERATIONS
 #define CHECKSIZE
 
 namespace STK
@@ -177,7 +177,7 @@ namespace STK
       AddMMMul(const ThisType& a, const ThisType& b);
       
       ThisType &
-      AddMMTMul(const ThisType& a, const ThisType& b);
+      AddMMtMul(const ThisType& a, const ThisType& b);
 
       ThisType &
       AddCMMtMul(const _ElemT& c, const ThisType& a, const ThisType& b);

@@ -47,10 +47,11 @@ namespace STK
     }
   } // AddFileList(const std::string & rFileName)
     
+  
   //***************************************************************************
   //***************************************************************************
   int 
-  ReadHTKHeader (FILE * pInFp, HtkHeader * pHeader, bool swap)
+  ReadHTKHeader (FILE* pInFp, HtkHeader* pHeader, bool swap)
   {
     if (!fread(&pHeader->mNSamples,     sizeof(INT_32),  1, pInFp)) return -1;
     if (!fread(&pHeader->mSamplePeriod, sizeof(INT_32),  1, pInFp)) return -1;
@@ -107,14 +108,14 @@ namespace STK
       return 0;
     }
   
-  #if !DOUBLEPRECISION
+#if !DOUBLEPRECISION
     if (fread(pIn, sizeof(FLOAT_32), feaLen, pInFp) != feaLen) 
       return -1;
     
     if (swap) 
       for (i = 0; i < feaLen; i++) 
         swap4(pIn[i]);
-  #else
+#else
     float f;
   
     for (i = 0; i < feaLen; i++) 
@@ -127,7 +128,7 @@ namespace STK
         
       pIn[i] = f;
     }
-  #endif
+#endif
     return 0;
   }  // int ReadHTKFeature
 

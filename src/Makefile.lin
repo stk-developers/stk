@@ -1,12 +1,19 @@
+############################################################################### 
+# Processor architecture (32, 64)
+ARCH = 32
+
 ###############################################################################
-# OS architecture (lin, win)
-ARCH = lin
+# OS architecture (lin, win) 
+OS   = lin
+
+
+
 
 
 ################################################################################
 # Matlab specific stuff
-USE_MATLAB_ENGINE = TRUE
-#USE_MATLAB_ENGINE = FALSE
+#USE_MATLAB_ENGINE = TRUE
+USE_MATLAB_ENGINE = FALSE
 
 # Specify matlab root path in MATLAB_PATH
 MATLAB_PATH       = /usr/local/share/Matlab-R14SP3
@@ -32,13 +39,13 @@ endif
 ###############################################################################
 # compiler options
 #CFLAGS = -Wall -g -O3 -DDOUBLEPRECISION=0 -D_REENTRANT -DUSE_BLAS -msse -msse2 -mmmx -mfpmath=sse
-CFLAGS    = -Wall  -g -DDOUBLEPRECISION=0 -D_REENTRANT -DUSE_BLAS -msse -msse2 -mfpmath=sse $(MATLAB_CFLAGS) -O3
+CFLAGS    = -static -Wall  -g -DDOUBLEPRECISION=0 -D_REENTRANT -DUSE_BLAS -D_XOPEN_SOURCE=600 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -msse -msse2 -mfpmath=sse $(MATLAB_CFLAGS) 
 CXXFLAGS  = $(CFLAGS)
 
 ###############################################################################
 # linker options
-LDFLAGS = -g -L./STKLib $(MATLAB_LDFLAGS)
-LDLIBS = -lm -latlas -lpthread -lSTKLib $(MATLAB_LDLIBS)
+LDFLAGS = -g -static -L./STKLib $(MATLAB_LDFLAGS) 
+LDLIBS =  -lm -lpthread $(MATLAB_LDLIBS) -lSTKLib #-latlas 
 #LDLIBS = -lm -lSTKLib
 #LDFLAGS = -a -g -L. -pg
 
@@ -46,11 +53,13 @@ LDLIBS = -lm -latlas -lpthread -lSTKLib $(MATLAB_LDLIBS)
 # -DEXPANDNET_ONLY
 XFLAGS = -DMOTIF -L/usr/X11R6/lib -I/usr/X11R6/include -lXm -lXt -lX11 -lXpm 
 
+
+
 ###############################################################################
 # compiler binary
-# CROSS_COMPILE ?= x86_64-linux-
-CC  := $(CROSS_COMPILE)g++-4.1
-CXX := $(CROSS_COMPILE)g++-4.1
+#CROSS_COMPILE ?= x86_64-linux-
+CC  := $(CROSS_COMPILE)g++ 
+CXX := $(CROSS_COMPILE)g++ 
 
 ###############################################################################
 # tools summary (for make all)
@@ -60,14 +69,19 @@ TOOLS =     SERest \
             SResults \
             SExpand \
             SFeaCat \
-            SLRatio
-
+            SLRatio \
+            SNet \
+            SWEChCoFastGreen
 
 ###############################################################################
 # object needed by all tools
-STKLIB   =  STKLib/libSTKLib.a
+STKLIB   =  STKLib/libSTKLib.a 
 SNETLIB  =  SNetLib/barrier.o SNetLib/element.o SNetLib/nlayer.o \
             SNetLib/nnet.o  SNetLib/progobj.o SNetLib/socketobj.o SNetLib/timers.o
+EXTLIB   =  /usr/local/lib/libcblas.a \
+            /usr/local/lib/liblapack.a \
+            /usr/local/lib/libptcblas.a \
+            /usr/local/lib/libatlas.a
 
 
 ###############################################################################
@@ -86,18 +100,18 @@ subdirs : $(SUBDIRS)
 ###############################################################################
 # Implicit phony rule what
 $(SUBDIRS) :
-	cd ./$@; $(MAKE) -f Makefile.$(ARCH); cd ..
+	cd ./$@; $(MAKE) -f Makefile.$(OS); cd ..
 
 ###############################################################################
 # STKLib will compile itself in its directory so we call the PHONY rule
 $(STKLIB) : FORCE
-	cd ./STKLib; $(MAKE) -f Makefile.$(ARCH); cd ..
+	cd ./STKLib; $(MAKE) -f Makefile.$(OS); cd ..
 
 
 ###############################################################################
 # cleans the binaries  
 clean:
-	cd ./STKLib; make -f Makefile.$(ARCH) clean; cd ..
+	cd ./STKLib; make -f Makefile.$(OS) clean; cd ..
 	rm -f *.o SNetLib/*.o 
 	rm -f $(TOOLS)
 	rm -f *~
@@ -112,24 +126,25 @@ FORCE:
 
 ###############################################################################
 # tools-specific rules
-SFea2OutP   : $(STKLIB)
-SVite       : $(STKLIB)
-SWE         : $(STKLIB)
-SWEChCo     : $(STKLIB)
-SWEChCoFast : $(STKLIB)
-SWEChCoFastOPS : $(STKLIB)
-SLRatio     : $(STKLIB)
-SERest      : $(STKLIB) 
-SFeaCat     : $(STKLIB)
-SRover      : $(STKLIB)
-SResults    : $(STKLIB)
-SExpand     : $(STKLIB)
-SNet        : $(STKLIB) $(SNETLIB)
-SNetStats   : $(STKLIB) $(SNETLIB)
+SFea2OutP   : $(STKLIB) $(EXTLIB)
+SVite       : $(STKLIB) $(EXTLIB) 
+SWE         : $(STKLIB) $(EXTLIB) 
+SWEChCo     : $(STKLIB) $(EXTLIB) 
+SWEChCoFast : $(STKLIB) $(EXTLIB) 
+SWEChCoFastOPS : $(STKLIB) $(EXTLIB) 
+SLRatio     : $(STKLIB) $(EXTLIB) 
+SERest      : $(STKLIB) $(EXTLIB)  
+SFeaCat     : $(STKLIB) $(EXTLIB) 
+SRover      : $(STKLIB) $(EXTLIB) 
+SResults    : $(STKLIB) $(EXTLIB) 
+SExpand     : $(STKLIB) $(EXTLIB) 
+SWEChCoFastGreen : $(STKLIB) $(EXTLIB) 
+SNet        : $(STKLIB) $(SNETLIB) $(EXTLIB) 
+SNetStats   : $(STKLIB) $(SNETLIB) $(EXTLIB) 
 
 
 
-SERestX     : SERest.o $(STKLIB) STKLib/imagesc.o
+SERestX     : SERest.o $(STKLIB) $(EXTLIB)  STKLib/imagesc.o
 	$(CXX) $(CFLAGS) $(XFLAGS) -o $@ $<
 
 

@@ -277,6 +277,7 @@ namespace STK
     */
     bool is_open() const {return buf.is_open();}
 
+
     /**
     *  @brief  Closes the stream
     */
@@ -299,7 +300,7 @@ namespace STK
      *  the line)
      */
     void
-    GetLine(string & rLine);
+    GetLine(string& rLine);
 
   }; // class IStkStream
 

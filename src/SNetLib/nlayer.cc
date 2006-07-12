@@ -26,7 +26,7 @@ void SNet::NLayer::BunchBias(){
 void SNet::NLayer::BunchLinear(){
   // Matrix computation -- O += I * W^T  
   // If you would like to make not full weight connections, you should do multiplications for all blocks
-  mpOut->AddMMTMul(*mpIn, *mpWeights);
+  mpOut->AddMMtMul(*mpIn, *mpWeights);
   // Biases ready, added by BLAS operation - it is optimization
 }
       

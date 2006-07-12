@@ -36,15 +36,6 @@
 
 namespace STK
 {
-  /**
-   * @brief Defines a standard feature matrix type
-   *
-   * This is a standard STK::Matrix type with FLOATs as elements, where 
-   * feature vectors are represented by rows
-   */
-  typedef Matrix<FLOAT>         FMatrix;
-  
-  
   /** *************************************************************************
    * @brief 
    */
@@ -91,7 +82,7 @@ namespace STK
      * @return number of successfully read feature vectors
      */
     int
-    ReadFullMatrix(FMatrix * pMatrix, const std::string & rFeatureName);    
+    ReadFullMatrix(Matrix<FLOAT>* pMatrix, const std::string & rFeatureName);    
     
     /**
      * @brief Reads feature vectors from a feature file
@@ -103,7 +94,7 @@ namespace STK
      * they are used and true number of successfuly read vectors is returned.
      */
     int
-    ReadPartialMatrix(FMatrix * pMatrix);    
+    ReadPartialMatrix(Matrix<FLOAT>* pMatrix);    
     
     /**
      * @brief Returns true if there are no feature files left on input

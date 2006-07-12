@@ -35,6 +35,10 @@ namespace STK
       assert(rA.Length() == this->mMRows);
       assert(rB.Length() == this->mMCols);
       
+#ifdef TRACE_MATRIX_OPERATIONS
+      std::cerr << "AddCVVtMul(const float& c, const BasicVector<float>& rA, const BasicVector<float>& rB)" << std::endl;
+#endif 
+
 #ifdef USE_BLAS
       cblas_sger(CblasRowMajor, rA.Length(), rB.Length(), c, rA.cpData(), 1,
                  rB.pData(), 1, this->mpData, this->mStride);
@@ -55,6 +59,10 @@ namespace STK
       assert(rA.Length() == this->mMRows);
       assert(rB.Length() == this->mMCols);
       
+#ifdef TRACE_MATRIX_OPERATIONS
+      std::cerr << "AddCVVtMul(const double& c, const BasicVector<double>& rA, const BasicVector<double>& rB)" << std::endl;
+#endif 
+
 #ifdef USE_BLAS
       cblas_dger(CblasRowMajor, rA.Length(), rB.Length(), c, rA.cpData(), 1,
                    rB.cpData(), 1, this->mpData, this->mStride);
@@ -77,6 +85,10 @@ namespace STK
       assert(this->Rows() == a.Rows());
       assert(this->Cols() == b.Cols());
       
+#ifdef TRACE_MATRIX_OPERATIONS
+      std::cerr << "AddMMMul(const Matrix<float>& a, const Matrix<float>& b)" << std::endl;
+#endif 
+
 #ifdef USE_BLAS
       cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, a.Rows(), b.Cols(), b.Rows(),
                   1.0f, a.mpData, a.mStride, b.mpData, b.mStride, 1.0f, this->mpData, this->mStride);
@@ -158,12 +170,33 @@ namespace STK
   template<>
     Matrix<float> &
     Matrix<float>::
-    AddMMTMul(const Matrix<float>& a, const Matrix<float>& b)
+    AddMMtMul(const Matrix<float>& a, const Matrix<float>& b)
     { 
       assert(a.Rows() == this->Rows());
       assert(b.Rows() == this->Cols());
       assert(a.Cols() == b.Cols());
+
+#ifdef TRACE_MATRIX_OPERATIONS
+      std::cerr << "AddMMtMul(const Matrix<float>& a, const Matrix<float>& b)" << std::endl;
+#endif 
+
 #ifdef USE_BLAS
+      
+      /*
+      if (a.mpData[0] > 0) std::cerr << a.mpData[0]     << std::endl;
+      std::cerr << a.mpData[0]     << std::endl;
+      if (a.mStride)       std::cerr << a.mStride       << std::endl;
+      std::cerr << a.mStride       << std::endl;
+      if (b.mpData[0] > 0) std::cerr << b.mpData[0]     << std::endl;
+      std::cerr << b.mpData[0]     << std::endl;
+      if (b.mStride)       std::cerr << b.mStride       << std::endl;
+      std::cerr << b.mStride       << std::endl;
+      if (this->mpData[0] > 0) std::cerr << this->mpData[0]     << std::endl;
+      std::cerr << this->mpData[0] << std::endl;
+      if (this->mStride)       std::cerr << this->mStride       << std::endl;
+      std::cerr << this->mStride   << std::endl;
+      */
+      
       cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, a.Rows(), b.Rows(), b.Cols(),
                     1.0f, a.mpData, a.mStride, b.mpData, b.mStride, 1.0f, this->mpData, this->mStride);
 #else
@@ -178,7 +211,7 @@ namespace STK
   template<>
     Matrix<double> &
     Matrix<double>::
-    AddMMTMul(const Matrix<double>& a, const Matrix<double>& b)
+    AddMMtMul(const Matrix<double>& a, const Matrix<double>& b)
     { 
       assert(a.Rows() == this->Rows());
       assert(b.Rows() == this->Cols());
@@ -205,6 +238,12 @@ namespace STK
       assert(a.Rows() == this->Rows());
       assert(b.Rows() == this->Cols());
       assert(a.Cols() == b.Cols());
+
+#ifdef TRACE_MATRIX_OPERATIONS
+      std::cerr << "AddCMMtMul(const float& c, const Matrix<float>& a, const Matrix<float>& b)" << std::endl;
+#endif 
+
+
 #ifdef USE_BLAS
       cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, a.Rows(), b.Rows(), b.Cols(),
                     c, a.mpData, a.mStride, b.mpData, b.mStride, 1.0f, this->mpData, this->mStride);
@@ -248,6 +287,10 @@ namespace STK
       assert(a.Rows() == this->Rows());
       assert(b.Cols() == this->Cols());
       assert(a.Cols() == b.Rows());
+      
+#ifdef TRACE_MATRIX_OPERATIONS
+      std::cerr << "RepMMMul(const Matrix<float>& a, const Matrix<float>& b)" << std::endl;
+#endif 
       
       Clear();
       
@@ -371,6 +414,10 @@ namespace STK
       */
       Clear();
             
+#ifdef TRACE_MATRIX_OPERATIONS
+      std::cerr << "RepMtMMul(const Matrix<float> & a, const Matrix<float> & b)" << std::endl;
+#endif 
+      
       //cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, this->Rows(), this->Cols(), b.Rows(),
       //          1.0f, a.mpData, a.mStride, b.mpData, b.mStride, 1.0f, this->mpData, this->mStride);
       //printf("%d %d %d %d %d %d\n", a.Cols(), b.Cols(), b.Rows(), a.mStride, b.mStride, this->mStride);
@@ -423,6 +470,11 @@ namespace STK
       assert(b.Rows() == this->Cols());
       assert(a.Cols() == b.Cols());
       */
+      
+#ifdef TRACE_MATRIX_OPERATIONS
+      std::cerr << "AddCMtMMul(const float& c, const Matrix<float>& a, const Matrix<float>& b)" << std::endl;
+#endif 
+      
       //cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, this->Rows(), this->Cols(), b.Rows(),
       //          1.0f, a.mpData, a.mStride, b.mpData, b.mStride, 1.0f, this->mpData, this->mStride);
       //printf("%d %d %d %d %d %d\n", a.Cols(), b.Cols(), b.Rows(), a.mStride, b.mStride, this->mStride);

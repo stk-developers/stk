@@ -993,6 +993,8 @@ namespace STK
     }
     */
     
+    // If extension of the matrix to the left or to the right is required,
+    // perform it here
     for (i = 0; i < extLeft; i++) 
     {
       memcpy(rFeatureMatrix[i],
@@ -1062,7 +1064,7 @@ namespace STK
             }
           } 
           else 
-          { // otherwice use more efficient code
+          { // otherwise use more efficient code
             for (k = 1; k <= winLen; k++) 
             {  
               *(src+coefs) += k*(src[ k * rFeatureMatrix.Stride()]
