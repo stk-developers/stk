@@ -26,7 +26,7 @@
 #include <iostream>
 
 #include <string>
-
+#include <vector>
 
 static union
 {
@@ -1248,6 +1248,8 @@ void fast_softmax_vec(double *in, double *out, int size)
       value = strchr(bptr, '=');
       if (!value) Error("Character '=' expected after option '%s'", argv[optind]);
       *value++ = '\0';
+      
+      
       InsertConfigParam(cfgHash, bptr, value /*? value : "TRUE"*/, '-');
       free(bptr);
     }
@@ -1362,7 +1364,7 @@ void fast_softmax_vec(double *in, double *out, int size)
   FileListElem::
   FileListElem(const std::string & rFileName)
   {
-    std::size_t  pos;
+    std::string::size_type  pos;
     
     mLogical = rFileName;
     
@@ -1377,10 +1379,16 @@ void fast_softmax_vec(double *in, double *out, int size)
       // copy all from mLogical[pos+1] till the end to mPhysical
       mPhysical.assign(mLogical.begin() + pos + 1, mLogical.end());
       // erase all from pos + 1 till the end from mLogical
-      mLogical.erase(pos + 1);
+      mLogical.erase(pos);
+      // trim the leading and trailing spaces
+      Trim(mPhysical);
+      Trim(mLogical);
     }
     else
     {
+      // trim the leading and trailing spaces
+      Trim(mLogical);
+
       mPhysical = mLogical;
     }    
   }    
@@ -1490,8 +1498,6 @@ void fast_softmax_vec(double *in, double *out, int size)
         
   
   
-  using std::string;
-  
   /**
   *  @brief Returns true if rString matches rWildcard and fills substr with
   *         corresponding %%% matched pattern
@@ -1565,10 +1571,59 @@ void fast_softmax_vec(double *in, double *out, int size)
     {
       throw std::logic_error("Unexpected error parsing HTK string");
     }
-
   }
 
   
+  //**************************************************************************** 
+  //**************************************************************************** 
+  std::vector<std::string>&
+  TokenizeString(
+      const std::string&                rString, 
+            std::vector<std::string>&   rTokens, 
+      const std::string&                rSeparators)
+  {
+    std::vector<std::string>::size_type last_pos = 
+        rString.find_first_not_of(rSeparators, 0);
+    
+    std::vector<std::string>::size_type this_pos = 
+        rString.find_first_of(rSeparators, last_pos);
+
+    
+    while (std::string::npos != this_pos || std::string::npos != last_pos)
+    {
+      // Found a token, add it to the vector.
+      rTokens.push_back(rString.substr(last_pos, this_pos - last_pos));
+      // Skip delimiters.  Note the "not_of"
+      last_pos = rString.find_first_not_of(rSeparators, this_pos);
+      // Find next "non-delimiter"
+      this_pos = rString.find_first_of(rSeparators, last_pos);
+    }
+    
+    return rTokens;
+  } // TokenizeString(...) //
+
+  
+
+  //**************************************************************************** 
+  //**************************************************************************** 
+  std::string&
+  Trim(std::string& rStr)
+  {
+    // WHITE_CHARS is defined in common.h
+    std::string::size_type pos = rStr.find_last_not_of(WHITE_CHARS);
+    if(pos != std::string::npos) 
+    {
+      rStr.erase(pos + 1);
+      pos = rStr.find_first_not_of(WHITE_CHARS);
+      if(pos != std::string::npos) rStr.erase(0, pos);
+    }
+    else 
+      rStr.erase(rStr.begin(), rStr.end());
+
+    return rStr;
+  }
+
+
   /**
   * @brief Builds new filename based on the parameters given
   * @param rOutFileName reference to a string where new file name is stored

@@ -13,8 +13,11 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif /* HAVE_CONFIG_H */
+
 #include "Error.h"
-#include "StkMath.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,6 +39,7 @@
 #endif
 
 #include <string>
+#include <vector>
 
 
 /* Alignment of critical dynamic data structure
@@ -143,6 +147,39 @@ typedef union
 #define INT_16   short
 #define INT_32   int
 #define FLOAT_32 float
+
+#define LOG_INC(a, b) ((a) = LogAdd((a),(b)))
+
+#define PARAMKIND_WAVEFORM  0
+#define PARAMKIND_LPC       1
+#define PARAMKIND_LPREFC    2
+#define PARAMKIND_LPCEPSTRA 3
+#define PARAMKIND_LPDELCEP  4
+#define PARAMKIND_IREFC     5
+#define PARAMKIND_MFCC      6
+#define PARAMKIND_FBANK     7
+#define PARAMKIND_MELSPEC   8
+#define PARAMKIND_USER      9
+#define PARAMKIND_DISCRETE 10
+#define PARAMKIND_PLP      11
+#define PARAMKIND_ANON     12
+
+#define PARAMKIND_E   0000100 /// has energy
+#define PARAMKIND_N   0000200 /// absolute energy suppressed
+#define PARAMKIND_D   0000400 /// has delta coefficients
+#define PARAMKIND_A   0001000 /// has acceleration coefficients
+#define PARAMKIND_C   0002000 /// is compressed
+#define PARAMKIND_Z   0004000 /// has zero mean static coef.
+#define PARAMKIND_K   0010000 /// has CRC checksum
+#define PARAMKIND_0   0020000 /// has 0'th cepstral coef.  cccccc
+#define PARAMKIND_V   0040000 /// has VQ codebook index
+#define PARAMKIND_T   0100000 /// has triple delta coefficients
+
+
+/// Defines the white chars for string trimming
+#if !defined(WHITE_CHARS)
+#  define WHITE_CHARS " \t"
+#endif
 
 using namespace STK;
 
@@ -353,6 +390,10 @@ using namespace STK;
   
   void fprintf_ll(FILE* fp, long long n);
   
+
+  //////////////////////////////////////////////////////////////////////////////
+  // THE C++ COMMON ROUTINES
+  //////////////////////////////////////////////////////////////////////////////
   /**
   *  @brief Returns true if rString matches rWildcard and fills substr with
   *         corresponding %%% matched pattern
@@ -369,32 +410,36 @@ using namespace STK;
                     std::string & rSubstr);
   
   
-  #define LOG_INC(a, b) ((a) = LogAdd((a),(b)))
-  
-  #define PARAMKIND_WAVEFORM  0
-  #define PARAMKIND_LPC       1
-  #define PARAMKIND_LPREFC    2
-  #define PARAMKIND_LPCEPSTRA 3
-  #define PARAMKIND_LPDELCEP  4
-  #define PARAMKIND_IREFC     5
-  #define PARAMKIND_MFCC      6
-  #define PARAMKIND_FBANK     7
-  #define PARAMKIND_MELSPEC   8
-  #define PARAMKIND_USER      9
-  #define PARAMKIND_DISCRETE 10
-  #define PARAMKIND_PLP      11
-  #define PARAMKIND_ANON     12
-  
-  #define PARAMKIND_E   0000100 /// has energy
-  #define PARAMKIND_N   0000200 /// absolute energy suppressed
-  #define PARAMKIND_D   0000400 /// has delta coefficients
-  #define PARAMKIND_A   0001000 /// has acceleration coefficients
-  #define PARAMKIND_C   0002000 /// is compressed
-  #define PARAMKIND_Z   0004000 /// has zero mean static coef.
-  #define PARAMKIND_K   0010000 /// has CRC checksum
-  #define PARAMKIND_0   0020000 /// has 0'th cepstral coef.  cccccc
-  #define PARAMKIND_V   0040000 /// has VQ codebook index
-  #define PARAMKIND_T   0100000 /// has triple delta coefficients
+  /**
+   * @brief Splits the string into tokens based on the specified separator
+   *
+   * @param rString The original string
+   * @param rTokens STL vector (not necesarilly empty) of strings
+   * @param rSeparators String containing separators
+   *
+   * @return Returns a refference to the original vector
+   */
+  std::vector<std::string>&
+  TokenizeString(
+      const std::string&              rString, 
+            std::vector<std::string>& rTokens, 
+      const std::string&              rSeparators = ",");
+
+
+  /** 
+   * @brief Removes the leading and trailing white chars
+   * 
+   * @param rStr Refference to the string to be processed
+   *
+   * @return Refference to the original string
+   *
+   * The white characters are determined by the @c WHITE_CHARS macro defined 
+   * above.
+   */
+  std::string&
+  Trim(std::string& rStr);
+
+
   
   /// Sets application HTK compatibility. If true, all functions work to
   /// be HTK compatible.

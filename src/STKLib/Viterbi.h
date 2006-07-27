@@ -100,6 +100,17 @@ namespace STK
   };
   
   
+  /** 
+   * @brief Description of the NBest mixtures structure
+   */
+  struct NBestRecord 
+  {
+    FLOAT    like;
+    FLOAT    P;
+    size_t   index;
+  };
+
+  
   /** *************************************************************************
    ** *************************************************************************
    *  @brief Network representation
@@ -374,38 +385,58 @@ namespace STK
   
   
   
-  void              KillToken(Token *token);
+  void              
+  KillToken(Token *token);
   
-  FLOAT             DiagCGaussianDensity(const Mixture* mix, const FLOAT* pObs, Network* net);  
-  FLOAT             DiagCGaussianMixtureDensity(State *state, FLOAT *obs, Network *network);
-  FLOAT             FromObservationAtStateId(State *state, FLOAT *obs, Network *network);
-  int               PassTokenMax(Token *from, Token *to, FLOAT addLogLike);
-  int               PassTokenSum(Token *from, Token *to, FLOAT addLogLike);
-  int               PassTokenSumUnlogLikes(Token *from, Token *to, FLOAT addLogLike);
+  void
+  FindNBestMixtures(State* pState, FLOAT* pObs, NBestRecord* pNBest, 
+      size_t nBest, int time);
+
+  FLOAT             
+  DiagCGaussianDensity(const Mixture* mix, const FLOAT* pObs, Network* net);
+
+  FLOAT             
+  DiagCGaussianMixtureDensity(State *state, FLOAT *obs, Network *network);
+
+  FLOAT             
+  FromObservationAtStateId(State *state, FLOAT *obs, Network *network);
+
+  int               
+  PassTokenMax(Token *from, Token *to, FLOAT addLogLike);
+
+  int               
+  PassTokenSum(Token *from, Token *to, FLOAT addLogLike);
+
+  int               
+  PassTokenSumUnlogLikes(Token *from, Token *to, FLOAT addLogLike);
   
-  WordLinkRecord *  TimePruning(Network *network, int frame_delay);
+  WordLinkRecord *  
+  TimePruning(Network *network, int frame_delay);
   
-  void LoadRecognitionNetwork(
-    char *        netFileName,
-    ModelSet *    hmms,
-    Network *     net);
+  void 
+  LoadRecognitionNetwork(
+      char *        netFileName,
+      ModelSet *    hmms,
+      Network *     net);
   
-  void ReadRecognitionNetwork(
-    FILE *        fp,
-    ModelSet *    hmms,
-    Network *     network,
-    LabelFormat   labelFormat,
-    long          sampPeriod,
-    const char *  file_name,
-    const char *  in_MLF);
+  void 
+  ReadRecognitionNetwork(
+      FILE *        fp,
+      ModelSet *    hmms,
+      Network *     network,
+      LabelFormat   labelFormat,
+      long          sampPeriod,
+      const char *  file_name,
+      const char *  in_MLF);
   
-  FLOAT *StateOccupationProbability(
-    Network *     network,
-    FLOAT *       observationMx,
-    ModelSet *    hmmset,
-    int           nFrames,
-    FLOAT **      outProbOrMahDist,
-    int           getMahalDist);
+  FLOAT 
+  *StateOccupationProbability(
+      Network *     network,
+      FLOAT *       observationMx,
+      ModelSet *    hmmset,
+      int           nFrames,
+      FLOAT **      outProbOrMahDist,
+      int           getMahalDist);
     
   /*
   FLOAT MCEReest(

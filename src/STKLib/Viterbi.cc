@@ -810,6 +810,38 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
+  void
+  FindNBestMixtures(State* pState, FLOAT* pObs, NBestRecord* pNBest, 
+      size_t nBest, int time)
+  {
+    // go through all mixtures and find N-best
+    for (size_t i = 0; i < pState->mNMixtures; i++)
+    {
+      size_t    j;
+      Mixture*  mix   = pState->mpMixture[i].mpEstimates;
+      FLOAT*    l_obs = XformPass(mix->mpInputXform, pObs, time, FORWARD);
+      assert(l_obs != NULL);
+      FLOAT     glike = DiagCGaussianDensity(mix, l_obs, NULL) + pState->mpMixture[i].mWeight;
+
+      // the new result is better than some of the already chosen ones
+      for (j = 0; j < nBest && pNBest[j].like < glike; j++)
+      {}
+
+      if (j > 0)
+      {
+        // rearange
+        for (size_t k = 1; k < j; k++)
+          pNBest[k - 1] = pNBest[k];
+
+        pNBest[j - 1].like  = glike;
+        pNBest[j - 1].index = i;
+      }
+    }
+  }
+
+
+  //***************************************************************************
+  //***************************************************************************
   FLOAT 
   DiagCGaussianMixtureDensity(State* state, FLOAT* pObs, Network* net)
   {

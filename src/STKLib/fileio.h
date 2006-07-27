@@ -49,6 +49,24 @@ namespace STK
   } ;
   
   
+  enum CNFileType 
+  {
+    CNF_Mean, 
+    CNF_Variance, 
+    CNF_VarScale
+  };
+  
+  //***************************************************************************
+  //***************************************************************************
+  void ReadCepsNormFile(
+    const char*   pFileName, 
+    char**        lastFile, 
+    FLOAT**       vecBuff,
+    int           sampleKind, 
+    CNFileType    type, 
+    int           coefs);
+  
+  
   int WriteHTKHeader  (FILE * fp_out, HtkHeader header, bool swap);
   int WriteHTKFeature (FILE * fp_out, FLOAT *out, size_t fea_len, bool swap);
   int ReadHTKHeader   (FILE * fp_in, HtkHeader *header, bool swap);

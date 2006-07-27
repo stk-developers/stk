@@ -62,7 +62,7 @@ namespace STK
 
       }
       
-      fileptr     = 0;
+      fileptr     = NULL;
       filename    = "";
       mode        = ios_base::openmode(0);
       stream_type = basic_stkbuf::t_undef;

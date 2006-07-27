@@ -126,6 +126,7 @@ namespace STK
        */
       basic_stkbuf(const string & fName, std::ios_base::openmode m, const string & filter="");
 
+      
       /**
       *  @return  The underlying FILE*.
       *
@@ -136,6 +137,18 @@ namespace STK
       std::__c_file*
       file() { return this->_M_file.file(); }
 
+
+      /**
+      *  @return  The underlying FILE*.
+      *
+      *  This function can be used to access the underlying "C" file pointer.
+      *  Note that there is no way for the library to track what you do
+      *  with the file, so be careful.
+      */
+      std::__c_file*
+      fp() { return this->_M_file.file(); }
+      
+      
       /**
        *  @brief  Opens an external file.
        *  @param  fName  The name of the file.
@@ -292,6 +305,10 @@ namespace STK
     std::__c_file*
     file() {return buf.file();}
 
+    /// Returns a pointer to the main FILE structure
+    std::__c_file*
+    fp() {return buf.fp();}
+
     /**
      *  @brief  Reads a single line
      *
@@ -380,6 +397,10 @@ namespace STK
     /// Returns a pointer to the main FILE structure
     std::__c_file*
     file() {return buf.file();}
+
+    /// Returns a pointer to the main FILE structure
+    std::__c_file*
+    fp() {return buf.fp();}
 
   }; // class OStkStream
 }; // namespace STK
