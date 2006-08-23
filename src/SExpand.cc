@@ -182,6 +182,7 @@ int main(int argc, char *argv[]) {
   ci_phn =(char*)GetParamStr(&cfgHash, SNAME":CIMODEL",        NULL);
   tee_phn=(char*)GetParamStr(&cfgHash, SNAME":TEEMODEL",       NULL);
   script =(char*)GetParamStr(&cfgHash, SNAME":SCRIPT",          NULL);
+  expOptions.mTraceFlag = trace_flag;
 
   cchrptr      = GetParamStr(&cfgHash, SNAME":NETFORMATING",  "");
   if (*cchrptr) {

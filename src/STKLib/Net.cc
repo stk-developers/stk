@@ -356,7 +356,7 @@ namespace STK
     FLOAT tlike;
     for (node = pFirstNode; node != NULL; node = node->mpNext) 
     {
-      for (i = 0; i < node->mNLinks; i++) 
+/**/      for (i = 0; i < node->mNLinks; i++) 
       {
       //for (tnode = inode; tnode != NULL; tnode = (tnode == inode ? jnode : NULL)) {
       
@@ -405,6 +405,7 @@ namespace STK
           assert(k == forwnode->mNBackLinks);
         }
       }
+/**/      
   //dnet(pFirstNode, 1, node);
   
       // For current node 'node', check for each possible pair of its successors
@@ -470,6 +471,10 @@ namespace STK
   
           assert(inode->mNLinks && jnode->mNLinks);
   
+//TraceLog("Removing node: %s", inode->mType & NT_PHONE ? inode->mpName : 
+//                              inode->mType & NT_WORD  ? (inode->mpPronun ? inode->mpPronun->mpWord->mpName : "!NULL") : "UNKNOWN_TYPE");
+
+
             // Remove links to jnode form predeccessors
           for (l=0; l < jnode->mNBackLinks; l++) 
           {

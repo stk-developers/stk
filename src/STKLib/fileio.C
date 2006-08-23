@@ -435,8 +435,8 @@ namespace STK
         // are appended after HTK header.
   
         int coefs = pHeader->mSampleSize/sizeof(INT_16);
-        pBuff->A = (FLOAT*) realloc(pBuff->A, coefs * sizeof(FLOAT_32));
-        pBuff->B = (FLOAT*) realloc(pBuff->B, coefs * sizeof(FLOAT_32));
+        pBuff->A = (FLOAT*) realloc(pBuff->A, coefs * sizeof(FLOAT)); // PODIVAT!!!
+        pBuff->B = (FLOAT*) realloc(pBuff->B, coefs * sizeof(FLOAT)); // PODIVAT!!!
         if (pBuff->A == NULL || pBuff->B == NULL) Error("Insufficient memory");
   
         e  = ReadHTKFeature(pBuff->mpFp, pBuff->A, coefs, swap, 0, 0, 0);
@@ -807,8 +807,8 @@ namespace STK
         // are appended after HTK header.
   
         int coefs = pHeader->mSampleSize/sizeof(INT_16);
-        pBuff->A = (FLOAT*) realloc(pBuff->A, coefs * sizeof(FLOAT_32));
-        pBuff->B = (FLOAT*) realloc(pBuff->B, coefs * sizeof(FLOAT_32));
+        pBuff->A = (FLOAT*) realloc(pBuff->A, coefs * sizeof(FLOAT)); //PODIVAT!!!
+        pBuff->B = (FLOAT*) realloc(pBuff->B, coefs * sizeof(FLOAT)); //PODIVAT!!!
         if (pBuff->A == NULL || pBuff->B == NULL) Error("Insufficient memory");
   
         e  = ReadHTKFeature(pBuff->mpFp, pBuff->A, coefs, swap, 0, 0, 0);
