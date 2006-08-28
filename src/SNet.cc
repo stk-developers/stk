@@ -327,43 +327,56 @@ int main(int argc, char *argv[])
   
   ilfp = OpenInputMLF(src_mlf);
   
-///************************************************************************************************
+  ///***************************************************************************
   /// INITIALIZE SNET
-  ProgObj *prog_obj = new ProgObj(NNet_instance, cache_size, bunch_size, cross_validation, VERSION, learning_rate, clients, ip, randomize, sync, port, seed, ncumrbu, learning_rate_list); 
-  if(prog_obj->Server()){
+  ProgObj *prog_obj = new ProgObj(NNet_instance, cache_size, bunch_size, 
+      cross_validation, VERSION, learning_rate, clients, ip, randomize, sync, 
+      port, seed, ncumrbu, learning_rate_list); 
+      
+  if(prog_obj->Server())
+  {
     prog_obj->RunServer();
   }
-  else if(prog_obj->Client()){
+  else if(prog_obj->Client())
+  {
     prog_obj->RunClient();
   }  
-  else{
+  else
+  {
     prog_obj->TimersGet()->Start(0); // 1 CPU version starts here
   }  
   
-  // MAIN FILE LOOP
+  // main file loop
   for (file_name = feature_files;
-      file_name != NULL;
-      file_name = outlabel_map ? file_name->mpNext : file_name->mpNext->mpNext) {
+       file_name != NULL;
+       file_name = outlabel_map ? file_name->mpNext : file_name->mpNext->mpNext) 
+  {
 
-    if (trace_flag & 1) {
-      if (!outlabel_map) {
+    if (trace_flag & 1) 
+    {
+      if (!outlabel_map) 
+      {
         TraceLog("Processing file pair %d/%d '%s' <-> %s",  ++fcnt,
         nfeature_files/2, file_name->mpPhysical,file_name->mpNext->logical);
-      } else {
+      } 
+      else 
+      {
         TraceLog("Processing file %d/%d '%s'", ++fcnt, nfeature_files,file_name->logical);
       }
     }
-    int nFrames;
-    char *phys_fn = (!outlabel_map ? file_name->mpNext : file_name)->mpPhysical;
-    char *lgcl_fn = (!outlabel_map ? file_name->mpNext : file_name)->logical;
-
-    // read sentence weight definition if any ( physical_file.fea[s,e]{weight} )
-    FLOAT sentWeight = 1.0; // Use this to wight feature frames;
     
-    if ((chrptr = strrchr(phys_fn, '{')) != NULL &&
-      ((i=0), sscanf(chrptr, "{%f}%n", &sentWeight, &i), chrptr[i] == '\0')) {
+    int     n_frames;
+    char*   phys_fn = (!outlabel_map ? file_name->mpNext : file_name)->mpPhysical;
+    char*   lgcl_fn = (!outlabel_map ? file_name->mpNext : file_name)->logical;
+    FLOAT   sentWeight = 1.0; // Use this to wight feature frames;
+    
+    // read sentence weight definition if any ( physical_file.fea[s,e]{weight} )
+    if ((chrptr = strrchr(phys_fn, '{')) != NULL 
+    && ((i=0), sscanf(chrptr, "{%f}%n", &sentWeight, &i), chrptr[i] == '\0')) 
+    {
       *chrptr = '\0';
     }
+
     if (cmn_mask) process_mask(lgcl_fn, cmn_mask, cmn_file);
     if (cvn_mask) process_mask(lgcl_fn, cvn_mask, cvn_file);
 
@@ -379,14 +392,17 @@ int main(int argc, char *argv[])
                     cmn_path, cvn_path, cvg_file, &rhfbuff,feature_matrix);
 #endif
 
-    if ((size_t) hset.mInputVectorSize != header.mSampleSize / sizeof(float)) {
+    if ((size_t) hset.mInputVectorSize != header.mSampleSize / sizeof(float)) 
+    {
       Error("Vector size [%d] in '%s' is incompatible with source HMM set [%d]",
             header.mSampleSize/sizeof(float), phys_fn, hset.mInputVectorSize);
     }
-    nFrames = header.mNSamples - NNet_input->mTotalDelay;
-    if (!outlabel_map) { //If output examples are given by features
-                         // read the second set of features ...
-                         
+
+    n_frames = header.mNSamples - NNet_input->mTotalDelay;
+
+    if (!outlabel_map) 
+    { // If output examples are given by features
+      // read the second set of features ...
       if (cmn_mask_out) process_mask(file_name->logical, cmn_mask_out, cmn_file_out);
       if (cvn_mask_out) process_mask(file_name->logical, cvn_mask_out, cvn_file_out);
       
@@ -403,13 +419,15 @@ int main(int argc, char *argv[])
                       feature_matrix_out);
 #endif
 
-      if (nFrames != header_out.mNSamples) {
+      if (n_frames != header_out.mNSamples) 
+      {
         Error("Mismatch in number of frames in input/output feature file pair: "
               "'%s' <-> '%s'.", file_name->mpNext->mpPhysical, file_name->mpPhysical);
       }
       
-    } else {            // ... otherwise, read corresponding label file
-    
+    } 
+    else 
+    { // ... otherwise, read corresponding label file           
       strcpy(label_file, file_name->logical);
       ilfp = OpenInputLabelFile(label_file, src_lbl_dir, src_lbl_ext, ilfp, src_mlf);
       labels = ReadLabels(ilfp, &labelHash, UL_WARN, in_lbl_fmt, header.mSamplePeriod,
@@ -421,7 +439,9 @@ int main(int argc, char *argv[])
     hset.ResetXformInstances();
     Label  *lbl_ptr = labels;
     time = 1;
-    if (NNet_input) time -= NNet_input->mTotalDelay;
+    
+    if (NNet_input) 
+      time -= NNet_input->mTotalDelay;
     
     // Loop over all feature frames.
     for (i = 0; i < header.mNSamples; i++, time++) 
@@ -439,12 +459,15 @@ int main(int argc, char *argv[])
       //Input of NN is not yet read because of NNet_input delay
       if (time <= 0) continue;
 
-      if (outlabel_map) {
+      if (outlabel_map) 
+      {
         //Create NN output example vector from lables
         for (j = 0; j < NNet_instance->OutSize(); j++) obs_out[j] = 0;
         while (lbl_ptr && lbl_ptr->mStop < time) lbl_ptr = lbl_ptr->mpNext;
         if (lbl_ptr && lbl_ptr->mStart <= time) obs_out[(int) lbl_ptr->mpData - 1] = 1;
-      } else {
+      } 
+      else 
+      {
         //Get NN output example vector from obsMx_out matrix
 #ifndef USE_NEW_MATRIX  
         obs_out = obsMx_out + (time-1) * NNet_instance->OutSize();
@@ -453,16 +476,16 @@ int main(int argc, char *argv[])
 #endif
       }
       
-///*****************************************************************************************************************************
+      ///***********************************************************************
       /// For EACH NEW VECTOR - give it to SNet
       prog_obj->NewVector(obs, obs_out, NNet_input->OutSize(), NNet_instance->OutSize(), 
                          ((i+1) == header.mNSamples && (outlabel_map ? file_name->mpNext : file_name->mpNext->mpNext) == NULL));
-                                                                       // this returns true, if last vector
-///*****************************************************************************************************************************
+    // this returns true, if last vector
+    ///*************************************************************************
     }
 
-    totFrames  += nFrames;
-    //TraceLog("[%d frames]", nFrames);
+    totFrames  += n_frames;
+    //TraceLog("[%d frames]", n_frames);
 #ifndef USE_NEW_MATRIX  
     free(obsMx);
 #endif

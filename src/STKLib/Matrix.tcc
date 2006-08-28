@@ -16,7 +16,7 @@
 #include <cassert>
 #include <math.h>
 
-#ifdef USE_BLAS
+#ifdef HAVE_ATLAS
 extern "C"{
   #include <cblas.h>
 }
@@ -231,7 +231,7 @@ namespace STK
   template<typename _ElemT>
     Matrix<_ElemT> &
     Matrix<_ElemT>::
-    RepMMMul(const ThisType& a, const ThisType& b)
+    RepMMMul(const Matrix<_ElemT>& a, const Matrix<_ElemT>& b)
     { 
       Clear();
       AddMMMul(a, b);

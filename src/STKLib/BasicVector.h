@@ -21,7 +21,7 @@
 #include <stdexcept>
 #include <iostream>
 
-#ifdef USE_BLAS
+#ifdef HAVE_ATLAS
 extern "C"{
   #include <cblas.h>
   #include <clapack.h>

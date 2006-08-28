@@ -33,16 +33,18 @@ int IsMLF(FILE *MLFfp)
   while (isspace(c = getc(MLFfp)))
     ;
 
-  for (i=0; (c == line[i] ||
-           (c == 'N' && i == 3) // !!!To be removed, #!MNF!# will be no more supported
-           ) && i < static_cast<int>(sizeof(line)-1); i++) {
+  // !!! N to be removed, #!MNF!# will be no more supported
+  for (i=0; (c == line[i] || (c == 'N' && i == 3) ) 
+      && (i < static_cast<int>(sizeof(line)-1)); i++) 
+  {
     c = getc(MLFfp);
   }
 
-  if (i < static_cast<int>(sizeof(line)-1)) {
-   ungetc(c, MLFfp);
-   while (--i >= 0) ungetc(line[i], MLFfp);
-   return 0;
+  if (i < static_cast<int>(sizeof(line)-1)) 
+  {
+    ungetc(c, MLFfp);
+    while (--i >= 0) ungetc(line[i], MLFfp);
+    return 0;
   }
 
   while (c != EOF && c != '\n') c = getc(MLFfp);
@@ -50,12 +52,13 @@ int IsMLF(FILE *MLFfp)
 }
 
 
-FILE *OpenOutputMLF(const char *out_MLF)
+FILE* OpenOutputMLF(const char *out_MLF)
 {
   FILE *lfp = NULL;
 
   if (out_MLF) {
-    if ((lfp = my_fopen(out_MLF, "wt", transc_ofilter)) == NULL) {
+    if ((lfp = my_fopen(out_MLF, "wt", transc_ofilter)) == NULL) 
+    {
       Error("Cannot open output MLF file %s", out_MLF);
     }
 /*    if (!strcmp(out_MLF, "-")) {
@@ -77,11 +80,14 @@ FILE *OpenOutputMLF(const char *out_MLF)
   return lfp;
 }
 
-FILE *OpenOutputLabelFile(char *file_name, const char *out_lbl_dir, const char *out_lbl_ext,
-                          FILE *MLFfp, const char *out_MLF)
+
+//******************************************************************************
+//******************************************************************************
+FILE* OpenOutputLabelFile(char *file_name, const char *out_lbl_dir, 
+    const char *out_lbl_ext, FILE *MLFfp, const char *out_MLF)
 {
-  char label_file[1024];
-  FILE *lfp;
+  char  label_file[1024];
+  FILE* lfp;
 
   if (!out_MLF && !strcmp(file_name, "-")) {
     return stdout;
@@ -90,13 +96,17 @@ FILE *OpenOutputLabelFile(char *file_name, const char *out_lbl_dir, const char *
   MakeFileName(label_file, file_name, out_lbl_dir, out_lbl_ext);
   strcpy(file_name, label_file);
 
-  if (out_MLF) {
+  if (out_MLF) 
+  {
     assert(MLFfp);
+
     lfp = MLFfp;
     if (fprintf(lfp, "\"%s\"\n", label_file) < 0) {
       Error("Cannot write to output MLF file %s", out_MLF);
     }
-  } else if ((lfp = my_fopen(label_file, "wt", transc_ofilter)) == NULL) {
+  } 
+  else if ((lfp = my_fopen(label_file, "wt", transc_ofilter)) == NULL) 
+  {
     Error("Cannot open output label file %s", label_file);
   }
   /*if (transc_ofilter) {

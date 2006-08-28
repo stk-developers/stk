@@ -115,12 +115,13 @@ namespace STK
       // extract index file name
       if (!mCurrentIndexFileDir.empty())
       {
-        char tmp_name[mCurrentIndexFileDir.length() 
-                      + mCurrentIndexFileExt.length()
-                      + mInputQueueCurrentIterator->Physical().length()]; 
+        char tmp_name[mCurrentIndexFileDir.length() + 
+          mCurrentIndexFileExt.length() + 
+          mInputQueueCurrentIterator->Physical().length()]; 
         
         MakeFileName(tmp_name, mInputQueueCurrentIterator->Physical().c_str(), 
             mCurrentIndexFileDir.c_str(), mCurrentIndexFileExt.c_str());
+        
         mCurrentIndexFileName = tmp_name;
       }
       else
@@ -269,7 +270,8 @@ namespace STK
    
     // read frame range definition if any ( physical_file.fea[s,e] )
     if ((chptr = strrchr(file_name.c_str(), '[')) == NULL ||
-        ((i=0), sscanf(chptr, "[%d,%d]%n", &from_frame, &to_frame, &i), chptr[i] != '\0')) 
+        ((i=0), sscanf(chptr, "[%d,%d]%n", &from_frame, &to_frame, &i), 
+         chptr[i] != '\0')) 
     {
       chptr = NULL;
     }
@@ -328,8 +330,8 @@ namespace STK
         // are appended after HTK header.
   
         int coefs = mHeader.mSampleSize/sizeof(INT_16);
-        mpA = (FLOAT*) realloc(mpA, coefs * sizeof(FLOAT_32));
-        mpB = (FLOAT*) realloc(mpB, coefs * sizeof(FLOAT_32));
+        mpA = (FLOAT*) realloc(mpA, coefs * sizeof(FLOAT));
+        mpB = (FLOAT*) realloc(mpB, coefs * sizeof(FLOAT));
         if (mpA == NULL || mpB == NULL) Error("Insufficient memory");
   
         e  = ReadHTKFeature(mpA, coefs, 0, 0, 0);
@@ -420,11 +422,10 @@ namespace STK
     to_frame    += i;
     ext_right    -= i;
   
-    if (from_frame > to_frame || from_frame >= mHeader.mNSamples || to_frame < 0)
+    if (from_frame > to_frame || from_frame >= mHeader.mNSamples || to_frame< 0)
       Error("Invalid frame range for feature file: '%s'", file_name.c_str());
     
     tot_frames = to_frame - from_frame + 1 + ext_left + ext_right;
-    
     
     // initialize matrix 
     rFeatureMatrix.Init(tot_frames, trg_vec_size);
@@ -467,7 +468,8 @@ namespace STK
       }
       
       if (e) 
-        Error("Cannot read feature file: '%s' frame %d/%d", file_name.c_str(), i, to_frame - from_frame + 1);
+        Error("Cannot read feature file: '%s' frame %d/%d", file_name.c_str(),
+            i, to_frame - from_frame + 1);
     }
   
     // From now, coefs includes also trg_0 + trg_E !
@@ -563,6 +565,7 @@ namespace STK
     ////////////////////////////////////////////////////////////////////////////
     /////////////// Cepstral mean and variance normalization ///////////////////
     ////////////////////////////////////////////////////////////////////////////
+    //.........................................................................
     if (mpCmnPath != NULL
     &&  mpCmnMask != NULL) 
     {
@@ -590,6 +593,7 @@ namespace STK
                            mDerivOrder==2 ? PARAMKIND_D | PARAMKIND_A :
                            mDerivOrder==1 ? PARAMKIND_D : 0;
   
+    //.........................................................................
     if (mpCvnPath != NULL
     &&  mpCvnMask != NULL) 
     {
@@ -613,7 +617,8 @@ namespace STK
       }
     }
     
-
+    //.........................................................................
+    // process the global covariance file
     if (mpCvgFile != NULL) 
     {
       ReadCepsNormFile(mpCvgFile, &mpLastCvgFile, &mpCvg,

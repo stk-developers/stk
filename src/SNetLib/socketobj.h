@@ -1,6 +1,10 @@
 #ifndef SOCKETOBJ_H
 #define SOCKETOBJ_H
 
+// STK Common include
+#include "element.h"
+#include "barrier.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -11,10 +15,6 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-
-#include "../STKLib/Error.h"
-#include "element.h"
-#include "barrier.h"
 
 
 #define DEBUG 0

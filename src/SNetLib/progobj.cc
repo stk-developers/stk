@@ -1,26 +1,37 @@
 #include"progobj.h"
+#include "barrier.h"
 
-SNet::ProgObj::ProgObj(XformInstance *NNetInstance, int cacheSize, int bunchSize, bool crossValidation, 
-                       std::string version, float learningRate, int clients, char* ip, bool randomize, bool sync, int port, int seed,
-                       int ncumrbu, char *learning_rate_list){
+//******************************************************************************
+//******************************************************************************
+SNet::ProgObj::
+ProgObj(XformInstance* NNetInstance, int cacheSize, int bunchSize, 
+    bool  crossValidation, std::string version, float learningRate, int clients, 
+    char* ip, bool randomize, bool sync, int port, int seed, int ncumrbu, 
+    char* learning_rate_list)
+{
                        
   mpLearningRateList = NULL;
   int ls = (static_cast<CompositeXform*>(NNetInstance->mpXform))->mNLayers / 3;
   mpLearningRateList = (float*)malloc(sizeof(float) * ls);
-  if(learning_rate_list != NULL){
+
+  if(learning_rate_list != NULL)
+  {
     // Parse learning_rate_list
-    char * pch;
+    char* pch;
     pch = strtok(learning_rate_list, ",");
     int i=0;
-    while (pch != NULL){
+    while (pch != NULL)
+    {
       sscanf(pch, "%f", &mpLearningRateList[i]);
       pch = strtok (NULL, ",");
       mpLearningRateList[i] *= learningRate; // To have absolute learningRate multiplied by list
       i++;
     }
   }
-  else{
-    for(int i=0; i<ls; i++) {
+  else
+  {
+    for(int i=0; i<ls; i++) 
+    {
       mpLearningRateList[i] = learningRate;
     }
   }
@@ -71,32 +82,48 @@ SNet::ProgObj::ProgObj(XformInstance *NNetInstance, int cacheSize, int bunchSize
   srand48((seed == 0) ? GiveMeSeed() : seed);
   
   // Create sync mechanisms
-  mpFreeMutex = new pthread_mutex_t;
-  mpReceivedMutex = new pthread_mutex_t;    
+  mpFreeMutex       = new pthread_mutex_t;
+  mpReceivedMutex   = new pthread_mutex_t;    
   pthread_mutex_init(mpFreeMutex, NULL);
   pthread_mutex_init(mpReceivedMutex, NULL);
-  mpBarrier = new barrier_t;
-  mpEndBarrier = new barrier_t;
-  if(mClient) {
+  mpBarrier         = new barrier_t;
+  mpEndBarrier      = new barrier_t;
+
+  if(mClient) 
+  {
     barrier_init(mpBarrier, 2); // receiving thread + main
     barrier_init(mpEndBarrier, 2); 
   }
-  if(mServer) barrier_init(mpBarrier, mNoClients+1); // all client threads + main
+
+  if(mServer) 
+    barrier_init(mpBarrier, mNoClients+1); // all client threads + main
 }
 
-SNet::ProgObj::~ProgObj(){
+
+//******************************************************************************
+//******************************************************************************
+SNet::ProgObj::
+~ProgObj()
+{
   delete mpNNet;
-  if(mpThreads != NULL){
+  
+  if(mpThreads != NULL)
     delete [] mpThreads;
-  }
+  
   delete mpFreeMutex;
   delete mpReceivedMutex;  
   delete mpBarrier;
   delete mpEndBarrier;
 }
 
-void SNet::ProgObj::NewVector(FLOAT *inVector, FLOAT *outVector, int inSize, int outSize, bool last){
-  mpNNet->AddToCache(inVector, outVector, inSize, outSize); // make copy of new vector to cache
+
+//******************************************************************************
+//******************************************************************************
+void 
+SNet::ProgObj::
+NewVector(FLOAT* pInVector, FLOAT* pOutVector, int inSize, int outSize, bool last)
+{
+  mpNNet->AddToCache(pInVector, pOutVector, inSize, outSize); // make copy of new vector to cache
   
   // There is full or last cache
   if(last || mpNNet->CacheFull()){
@@ -148,50 +175,72 @@ bool SNet::ProgObj::LastSent(int noClients){
   return(finished >= noClients);
 }
 
-int SNet::ProgObj::ActiveClients(){
+int 
+SNet::ProgObj::
+ActiveClients()
+{
   int finished = 0; 
-  for(int i=0; i < mNoClients; i++){ 
+  
+  for(int i=0; i < mNoClients; i++)
+  { 
     if(mpClientFinished[i]) finished++;
   }
   return(mNoClients - finished);
 }
 
-void* newServerThread(void *thdata){
+void* 
+newServerThread(void* thdata)
+{
   //Just run receiving thread
-  SNet::ThreadData *thread_data = (SNet::ThreadData*)thdata;
+  SNet::ThreadData* thread_data = (SNet::ThreadData*)thdata;
   thread_data->progObj->ServerReceivingThread(thread_data->number);
 
   return NULL;
 }
 
-void* newClientThread(void *thdata){
+
+void* 
+newClientThread(void* thdata)
+{
   //Just run receiving thread
-  SNet::ThreadData *thread_data = (SNet::ThreadData*)thdata;
+  SNet::ThreadData* thread_data = (SNet::ThreadData*)thdata;
   thread_data->progObj->ClientReceivingThread();
 
   return NULL;
 }
 
-SNet::Element *SNet::ProgObj::GetOrCreate(std::queue<Element*> *que, NNet *nn, pthread_mutex_t *mutex){
-  Element *element;
-  int size = 0;
+
+SNet::Element* 
+SNet::ProgObj::
+GetOrCreate(std::queue<Element*> *que, NNet *nn, pthread_mutex_t *mutex)
+{
+  Element*    element;
+  int         size = 0;
   pthread_mutex_lock(mutex);
-  size = que->size();
-  if(size > 0){
+  size =      que->size();
+
+  if(size > 0)
+  {
     element = que->front();
     que->pop();
     pthread_mutex_unlock(mutex);
     return element;
   }
-  else{  
+  else
+  {  
     pthread_mutex_unlock(mutex);
     return(new Element(nn, true));
   }
 }
 
-/// ********** Server **********
-void SNet::ProgObj::RunServer(){
 
+//******************************************************************************
+//******************************************************************************
+//********** Server **********
+void 
+SNet::ProgObj::
+RunServer()
+{
   // Start server
   mpServer = new Socket::Server(mPort, mNoClients); // create server - will wait for clients
   
@@ -319,7 +368,10 @@ void SNet::ProgObj::ServerReceivingThread(int number){
 }
 
 /// ********** Client **********
-void SNet::ProgObj::RunClient(){
+void 
+SNet::ProgObj::
+RunClient()
+{
   // Open client receiving thread
   mpThreads = new pthread_t[1]; // because of delete[]
   mpClient = new Socket::Client(mPort, (char*)mIp.c_str());
@@ -346,19 +398,30 @@ void SNet::ProgObj::RunClient(){
   // Do nothing, return to program
 }
 
-void SNet::ProgObj::ClientReceivingThread(){
+
+//******************************************************************************
+//******************************************************************************
+void 
+SNet::ProgObj::
+ClientReceivingThread()
+{
   Element *element;
   mClientShouldFinish = false;
-  while(!mClientShouldFinish){
+
+  while(!mClientShouldFinish)
+  {
     element = GetOrCreate(&mFreeElements, mpNNet, mpFreeMutex);
     mpClient->ReceiveElement(element);
     pthread_mutex_lock(mpReceivedMutex);
-     mReceivedElements.push(element);
-     mpNNet->TimersGet()->Count(0);
-     if(DEBUG_PROG) {
-       if(element->mLast == 1)  std::cerr << "THREAD: Received Weights " << mpNNet->TimersGet()->Counter(0) << " LAST\n";
-       else std::cerr << "THREAD: Received Weights " << mpNNet->TimersGet()->Counter(0) << "\n";
-     }
+    mReceivedElements.push(element);
+    mpNNet->TimersGet()->Count(0);
+
+    if(DEBUG_PROG) 
+    {
+      if(element->mLast == 1)  std::cerr << "THREAD: Received Weights " << mpNNet->TimersGet()->Counter(0) << " LAST\n";
+      else std::cerr << "THREAD: Received Weights " << mpNNet->TimersGet()->Counter(0) << "\n";
+    }
+
     pthread_mutex_unlock(mpReceivedMutex);
     if(DEBUG_PROG) if(mSync)  std::cerr << "THREAD: Waiting on barrier\n";
     if(mSync) barrier_wait(mpBarrier);
@@ -366,6 +429,8 @@ void SNet::ProgObj::ClientReceivingThread(){
       mClientShouldFinish = true;
     } 
   }
+
   if(DEBUG_PROG) std::cerr << "THREAD: END OF THREAD WAITING ON END-BARRIER\n";
+
   barrier_wait(mpEndBarrier);
 }

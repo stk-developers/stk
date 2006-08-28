@@ -26,10 +26,11 @@
 #include <malloc.h>
 #include <assert.h>
 
-#ifndef WIN32
-#include <unistd.h>
+// Use internal version of getopt function if not available
+#ifndef HAVE_UNISTD_H
+#  include <unistd.h>
 #else
-#include "getopt.h"
+#  include <getopt.h>
 #endif
 
 #include <iostream>

@@ -3,17 +3,21 @@
 ARCH = win
 
 
+ATLAS_LIBS= -llapack -lcblas  -latlas
+ATLAS_LIBDIR = /usr/local/lib/
+ATLAS_INCLUDEDIR = /usr/local/include
+
 ###############################################################################
 # compiler options
-CFLAGS = -Wall -g -DDOUBLEPRECISION=0 -D_REENTRANT -D WIN32 -I/usr/local/include \
-         -I/usr/include -I./STKLib/gnu -O2
+CFLAGS =  -Wall -g -DDOUBLEPRECISION=0 -D_REENTRANT -D WIN32 -I/usr/local/include \
+         -I/usr/include -I./STKLib/gnu -I $(ATLAS_INCLUDEDIR) -O2
 CXXFLAGS = $(CFLAGS)
 
 ###############################################################################
 # linker options
-LDFLAGS = -L./STKLib
+LDFLAGS = -L./STKLib -L $(ATLAS_LIBDIR)
 #LDLIBS = -lm -latlas -lpthread -lSTKLib
-LDLIBS = -lm -lSTKLib
+LDLIBS = -lm $(ATLAS_LIBS)
 #LDFLAGS = -a -g -L. -pg
 
 ###############################################################################

@@ -1,7 +1,6 @@
 #ifndef ELEMENT_H
 #define ELEMENT_H
 
-#include "../STKLib/Error.h"
 #include "../STKLib/Matrix.h"
 
 namespace SNet{

@@ -10,7 +10,7 @@
 #include <stdexcept>
 #include <iostream>
 
-#ifdef USE_BLAS
+#ifdef HAVE_ATLAS
 extern "C"{
   #include <cblas.h>
   #include <clapack.h>
@@ -504,6 +504,12 @@ namespace STK
     Matrix<double>::
     AddMMMul(const Matrix<double> & a, const Matrix<double>& b);
 
+    
+  template<>
+    Matrix<float> &
+    Matrix<float>::
+    RepMMMul(const Matrix<float> & a, const Matrix<float>& b);
+    
     
   template<>
     Matrix<float> &

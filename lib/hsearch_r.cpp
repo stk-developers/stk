@@ -73,7 +73,7 @@
 #define ENOTEMPTY 49    /* Directory not empty              */
 
 
-//#include <errno.h>
+#include <errno.h>
 #include <malloc.h>
 #include <string.h>
 

@@ -10,15 +10,17 @@
  *                                                                         *
  ***************************************************************************/
 #define VERSION "0.2 "__TIME__" "__DATE__
+
 #include "STKLib/Net.h"
 #include "STKLib/labels.h"
 #include "STKLib/common.h"
 
-#ifndef WIN32
-#include <unistd.h>
+#ifndef HAVE_UNISTD_H
+#  include <unistd.h>
 #else
-#include "getopt.h"
+#  include <getopt.h>
 #endif
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

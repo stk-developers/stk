@@ -1,4 +1,5 @@
 #include"socketobj.h"
+#include "../STKLib/Error.h"
 
 using namespace Socket;
 

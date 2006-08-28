@@ -22,6 +22,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <ctype.h>
+
 #ifndef WIN32
 #include <unistd.h>
 #else
@@ -211,15 +212,19 @@ namespace STK
         *chptr='\0';
       
       if ((access(dir_name, 0) || stat(dir_name, &stat_buff) == -1 ||
+#ifndef _POSIX_SOURCE
           !(S_IFDIR & stat_buff.st_mode))) 
+#else
+          !(_IFDIR & stat_buff.st_mode))) 
+#endif
       {
-  #ifndef WIN32
-        if (mkdir(dir_name, 0777)) 
+#ifndef WIN32
+          if (mkdir(dir_name, 0777)) 
           return -1;
-  #else
-        if (mkdir(dir_name)) 
+#else
+          if (mkdir(dir_name)) 
           return -1;
-  #endif
+#endif
       }
       
       if (chptr)

@@ -9,25 +9,17 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
-#define VERSION "0.2 "__TIME__" "__DATE__
+//#define VERSION "0.2 "__TIME__" "__DATE__
 
 
 // PROJECT INCLUDES
 //
+#include "common.h"
 #include "Models.h"
 #include "labels.h"
 #include "dict.h"
 #include "Net.h"
-#include "common.h"
 
-
-// SYSTEM INCLUDES
-//
-#ifndef WIN32
-#include <unistd.h>
-#else
-#include "getopt.h"
-#endif
 #include <stdlib.h>
 #include <string.h>
 #include <cstdio>
@@ -145,19 +137,23 @@ namespace STK
     int keep_word_nodes,
     int multiple_pronun)
   {
-    Node *node, *prev = NULL;
-    int i, j;
+    Node* node; 
+    Node* prev = NULL;
+    int   i;
+    int   j;
   
-    Pronun singlePronun, *singlePronunPtr;
-    Word singlePronunWrd;
+    Pronun    singlePronun;
+    Pronun*   singlePronunPtr;
+    Word      singlePronunWrd;
+
     singlePronunWrd.npronuns = 1;
     singlePronunWrd.pronuns  = &singlePronunPtr;
     singlePronunPtr = &singlePronun;
   
     assert(pFirstNode != NULL || pFirstNode->mType & NT_WORD || pFirstNode->mpPronun == NULL);
   
-    for (node = pFirstNode; node != NULL; prev = node, node = node->mpNext) {
-  
+    for (node = pFirstNode; node != NULL; prev = node, node = node->mpNext) 
+    {
       if (!(node->mType & NT_WORD)) continue;
   
       if (node->mpPronun == NULL) continue;
@@ -166,7 +162,8 @@ namespace STK
       //Do not expand non-dictionary words, which where added by ReadSTKNetwork
       if (word->npronunsInDict == 0) continue;
   
-      if (!multiple_pronun) {
+      if (!multiple_pronun) 
+      {
         singlePronunWrd.mpName = node->mpPronun->mpWord->mpName;
         word = &singlePronunWrd;
         *word->pronuns = node->mpPronun;
@@ -174,9 +171,13 @@ namespace STK
   
       // Remove links to current node form backlinked nodes and realloc
       // link arrays of backlinked nodes to hold word->npronuns more backlinks
-      for (i = 0; i < node->mNBackLinks; i++) {
+      for (i = 0; i < node->mNBackLinks; i++) 
+      {
         Node *bakcnode = node->mpBackLinks[i].mpNode;
-        for (j=0; j<bakcnode->mNLinks && bakcnode->mpLinks[j].mpNode!=node; j++);
+
+        for (j=0; j<bakcnode->mNLinks && bakcnode->mpLinks[j].mpNode!=node; j++)
+        {}
+
         assert(j < bakcnode->mNLinks); // Otherwise link to 'node' is missing
                                       // from which backlink exists
         bakcnode->mpLinks[j] = bakcnode->mpLinks[bakcnode->mNLinks-1];
@@ -190,7 +191,8 @@ namespace STK
   
       // Remove backlinks to current node form linked nodes and realloc
       // backlink arrays of linked nodes to hold word->npronuns more backlinks
-      for (i=0; i < node->mNLinks; i++) {
+      for (i=0; i < node->mNLinks; i++) 
+      {
         Node *forwnode = node->mpLinks[i].mpNode;
         for (j=0;j<forwnode->mNBackLinks&&forwnode->mpBackLinks[j].mpNode!=node;j++);
         assert(j < forwnode->mNBackLinks);
@@ -203,7 +205,9 @@ namespace STK
         if (forwnode->mpBackLinks == NULL) Error("Insufficient memory");
         forwnode->mNBackLinks--;
       }
-      for (i = 0; i < word->npronuns; i++) {
+
+      for (i = 0; i < word->npronuns; i++) 
+      {
         Pronun *pronun = word->pronuns[i];
         Node *pronun_first = NULL, *pronun_prev = NULL, *tnode;
   
@@ -314,7 +318,8 @@ namespace STK
     Node *node;
     int  i;
   
-    for (node = pFirstNode; node != NULL; node = node->mpNext)  {
+    for (node = pFirstNode; node != NULL; node = node->mpNext)  
+    {
       if (format.mNoLMLikes) {
         for (i=0; i < node->mNLinks;     i++) node->mpLinks    [i].mLike = 0.0;
         for (i=0; i < node->mNBackLinks; i++) node->mpBackLinks[i].mLike = 0.0;
@@ -381,10 +386,10 @@ namespace STK
           
           assert(k < backnode->mNLinks);
           backnode->mpLinks[k].mLike -= tlike;
-      #ifndef NDEBUG
+#ifndef NDEBUG
           for (k++; k<backnode->mNLinks && backnode->mpLinks[k].mpNode!=tnode; k++)
           {}
-      #endif
+#endif
           assert(k == backnode->mNLinks);
         }
         
@@ -398,10 +403,10 @@ namespace STK
           
           assert(k < forwnode->mNBackLinks);
           forwnode->mpBackLinks[k].mLike += tlike;
-      #ifndef NDEBUG
+#ifndef NDEBUG
           for (k++; k<forwnode->mNBackLinks && forwnode->mpBackLinks[k].mpNode!=tnode;k++)
           {}
-      #endif
+#endif
           assert(k == forwnode->mNBackLinks);
         }
       }
@@ -590,10 +595,11 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  Node *ReverseNetwork(Node *pFirstNode)
+  Node*
+  ReverseNetwork(Node *pFirstNode)
   {
-    Node *  node;
-    Node *  last = NULL;
+    Node*  node;
+    Node*  last = NULL;
     
     for (node = pFirstNode; node != NULL; node = node->mpBackNext) 
     {
@@ -1193,8 +1199,10 @@ namespace STK
   // in network manipulation functions  
   void SelfLinksToNullNodes(Node * pFirstNode)
   {
-    int i, j;
-    Node *node, *tnode;
+    int   i;
+    int   j;
+    Node* node;
+    Node* tnode;
   
     for (node = pFirstNode; node != NULL; node = node->mpNext) 
     {

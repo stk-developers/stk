@@ -1,6 +1,7 @@
 #ifndef STK_StkStream_tcc
 #define STK_StkStream_tcc
 
+#include "common.h"
 #include <iostream>
 #pragma GCC system_header
 

@@ -39,7 +39,7 @@ namespace STK
       std::cerr << "AddCVVtMul(const float& c, const BasicVector<float>& rA, const BasicVector<float>& rB)" << std::endl;
 #endif 
 
-#ifdef USE_BLAS
+#ifdef HAVE_ATLAS
       cblas_sger(CblasRowMajor, rA.Length(), rB.Length(), c, rA.cpData(), 1,
                  rB.pData(), 1, this->mpData, this->mStride);
 #else
@@ -63,7 +63,7 @@ namespace STK
       std::cerr << "AddCVVtMul(const double& c, const BasicVector<double>& rA, const BasicVector<double>& rB)" << std::endl;
 #endif 
 
-#ifdef USE_BLAS
+#ifdef HAVE_ATLAS
       cblas_dger(CblasRowMajor, rA.Length(), rB.Length(), c, rA.cpData(), 1,
                    rB.cpData(), 1, this->mpData, this->mStride);
 #else
@@ -89,7 +89,7 @@ namespace STK
       std::cerr << "AddMMMul(const Matrix<float>& a, const Matrix<float>& b)" << std::endl;
 #endif 
 
-#ifdef USE_BLAS
+#ifdef HAVE_ATLAS
       cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, a.Rows(), b.Cols(), b.Rows(),
                   1.0f, a.mpData, a.mStride, b.mpData, b.mStride, 1.0f, this->mpData, this->mStride);
 #else
@@ -110,7 +110,7 @@ namespace STK
       assert(this->Rows() == a.Rows());
       assert(this->Cols() == b.Cols());
       
-#ifdef USE_BLAS
+#ifdef HAVE_ATLAS
       cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, a.Rows(), b.Cols(), b.Rows(),
                   1.0f, a.mpData, a.mStride, b.mpData, b.mStride, 1.0f, this->mpData, this->mStride);
 #else
@@ -180,7 +180,7 @@ namespace STK
       std::cerr << "AddMMtMul(const Matrix<float>& a, const Matrix<float>& b)" << std::endl;
 #endif 
 
-#ifdef USE_BLAS
+#ifdef HAVE_ATLAS
       
       /*
       if (a.mpData[0] > 0) std::cerr << a.mpData[0]     << std::endl;
@@ -216,7 +216,7 @@ namespace STK
       assert(a.Rows() == this->Rows());
       assert(b.Rows() == this->Cols());
       assert(a.Cols() == b.Cols());
-#ifdef USE_BLAS
+#ifdef HAVE_ATLAS
       cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, a.Rows(), b.Rows(), b.Cols(),
                     1.0f, a.mpData, a.mStride, b.mpData, b.mStride, 1.0f, this->mpData, this->mStride);
 #else
@@ -244,7 +244,7 @@ namespace STK
 #endif 
 
 
-#ifdef USE_BLAS
+#ifdef HAVE_ATLAS
       cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, a.Rows(), b.Rows(), b.Cols(),
                     c, a.mpData, a.mStride, b.mpData, b.mStride, 1.0f, this->mpData, this->mStride);
 #else
@@ -265,7 +265,7 @@ namespace STK
       assert(a.Rows() == this->Rows());
       assert(b.Rows() == this->Cols());
       assert(a.Cols() == b.Cols());
-#ifdef USE_BLAS
+#ifdef HAVE_ATLAS
       cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, a.Rows(), b.Rows(), b.Cols(),
                     c, a.mpData, a.mStride, b.mpData, b.mStride, 1.0F, this->mpData, this->mStride);
 #else
@@ -294,7 +294,7 @@ namespace STK
       
       Clear();
       
-#ifdef USE_BLAS
+#ifdef HAVE_ATLAS
       cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, a.Rows(), b.Cols(), b.Rows(),
                   1.0f, a.mpData, a.mStride, b.mpData, b.mStride, 1.0f, this->mpData, this->mStride);
 #else
@@ -317,7 +317,7 @@ namespace STK
     { 
       assert(Rows() == Cols());
       
-#ifdef USE_BLAS
+#ifdef HAVE_ATLAS
       int* pivot = new int[mMRows];
       clapack_sgetrf(CblasColMajor, Rows(), Cols(), mpData, mStride, pivot);
       clapack_sgetri(CblasColMajor, Rows(), mpData, mStride, pivot);
@@ -337,7 +337,7 @@ namespace STK
     { 
       assert(Rows() == Cols());
       
-#ifdef USE_BLAS
+#ifdef HAVE_ATLAS
       int* pivot = new int[mMRows];
       clapack_dgetrf(CblasColMajor, Rows(), Cols(), mpData, mStride, pivot);
       clapack_dgetri(CblasColMajor, Rows(), mpData, mStride, pivot);
@@ -421,7 +421,7 @@ namespace STK
       //cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, this->Rows(), this->Cols(), b.Rows(),
       //          1.0f, a.mpData, a.mStride, b.mpData, b.mStride, 1.0f, this->mpData, this->mStride);
       //printf("%d %d %d %d %d %d\n", a.Cols(), b.Cols(), b.Rows(), a.mStride, b.mStride, this->mStride);
-#ifdef USE_BLAS
+#ifdef HAVE_ATLAS
       cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, a.Cols(), b.Cols(), b.Rows(),
                   1.0f, a.mpData, a.mStride, b.mpData, b.mStride, 1.0f, this->mpData, this->mStride);
 #else
@@ -447,7 +447,7 @@ namespace STK
       //cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, this->Rows(), this->Cols(), b.Rows(),
       //          1.0f, a.mpData, a.mStride, b.mpData, b.mStride, 1.0f, this->mpData, this->mStride);
       //printf("%d %d %d %d %d %d\n", a.Cols(), b.Cols(), b.Rows(), a.mStride, b.mStride, this->mStride);
-#ifdef USE_BLAS
+#ifdef HAVE_ATLAS
       cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, a.Cols(), b.Cols(), b.Rows(),
                   1.0f, a.mpData, a.mStride, b.mpData, b.mStride, 1.0f, this->mpData, this->mStride);
 #else
@@ -478,7 +478,7 @@ namespace STK
       //cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, this->Rows(), this->Cols(), b.Rows(),
       //          1.0f, a.mpData, a.mStride, b.mpData, b.mStride, 1.0f, this->mpData, this->mStride);
       //printf("%d %d %d %d %d %d\n", a.Cols(), b.Cols(), b.Rows(), a.mStride, b.mStride, this->mStride);
-#ifdef USE_BLAS
+#ifdef HAVE_ATLAS
       cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, a.Cols(), b.Cols(), b.Rows(),
                   1.0f, a.mpData, a.mStride, b.mpData, b.mStride, c, this->mpData, this->mStride);
 #else
@@ -501,7 +501,7 @@ namespace STK
       assert(b.Rows() == this->Cols());
       assert(a.Cols() == b.Cols());
       */
-#ifdef USE_BLAS
+#ifdef HAVE_ATLAS
       cblas_dgemm(CblasRowMajor, CblasTrans, CblasNoTrans, a.Cols(), b.Cols(), b.Rows(),
                   1.0f, a.mpData, a.mStride, b.mpData, b.mStride, c, this->mpData, this->mStride);
 #else

@@ -13,6 +13,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+// include config.h if desired
 #if HAVE_CONFIG_H
 #  include <config.h>
 #endif /* HAVE_CONFIG_H */
@@ -24,22 +25,50 @@
 #include <float.h>
 #include <math.h>
 
+#include <malloc.h>
+
 #ifndef _GNU_SOURCE
 #  define _GNU_SOURCE
 #endif
-#include <limits.h>
 
-#ifdef __WIN32
-#  include <gnusearch.h>
-#  undef HAVE_POSIX_MEMALIGN
-#  undef HAVE_MEMALIGN
-#else
-#  include <search.h>
-#  define HAVE_POSIX_MEMALIGN
+#include <limits.h>
+#include <string>
+
+
+
+#if defined __CYGWIN32__ && !defined __CYGWIN__
+   /* For backwards compatibility with Cygwin b19 and
+      earlier, we define __CYGWIN__ here, so that
+      we can rely on checking just for that macro. */
+#  define __CYGWIN__  __CYGWIN32__
 #endif
 
-#include <string>
+#if defined _WIN32 && !defined __CYGWIN__
+   /* Use Windows separators on all _WIN32 defining
+      environments, except Cygwin. */
+#  define DIR_SEPARATOR_CHAR		'\\'
+#  define DIR_SEPARATOR_STR		"\\"
+#  define PATH_SEPARATOR_CHAR		';'
+#  define PATH_SEPARATOR_STR		";"
+#endif
+#ifndef DIR_SEPARATOR_CHAR
+   /* Assume that not having this is an indicator that all
+      are missing. */
+#  define DIR_SEPARATOR_CHAR		'/'
+#  define DIR_SEPARATOR_STR		"/"
+#  define PATH_SEPARATOR_CHAR		':'
+#  define PATH_SEPARATOR_STR		":"
+#endif /* !DIR_SEPARATOR_CHAR */
+
+
+#if !HAVE_REENTRANT_SEARCH
+#  include <gnusearch.h>
+#else
+#  include <search.h>
+#endif
+
 #include <vector>
+
 
 
 /* Alignment of critical dynamic data structure
@@ -56,7 +85,7 @@
 #  endif
 #elif defined(HAVE_MEMALIGN)
    /* Some systems have memalign() but no declaration for it */
-   void * memalign( size_t align, size_t size );
+   //void * memalign( size_t align, size_t size );
 #  define stk_memalign(align,size,pp_orig) \
      ( *(pp_orig) = memalign( align, size ) )
 #  ifdef STK_MEMALIGN_MANUAL
@@ -76,10 +105,21 @@
 #  define FEATURES_16_ALIGNED
 #endif
 
+
+// some extra code to handle strchr and strrchr 
+#if !STDC_HEADERS
+#  if !HAVE_STRCHR
+#    define strchr index
+#    define strrchr rindex
+#  endif
+#endif
+
+
+
 // vector of four single floats
+// vector of four single doubles
 typedef float v4sf __attribute__((vector_size(16))); 
 typedef double v4sd __attribute__((vector_size(16))); 
-
 
 typedef union 
 {

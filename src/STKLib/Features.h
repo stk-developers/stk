@@ -13,14 +13,19 @@
 #ifndef STK_Features_h
 #define STK_Features_h
 
+
+#define FEATURE_REPOSITORY_PTHREAD_ENABLE 0
+#define FEATURE_REPOSITORY_DEFAULT_READ_OVERHEAD
+
 //*****************************************************************************
 //*****************************************************************************
 // Specific includes
 //
-#include "fileio.h"
 #include "common.h"
+#include "fileio.h"
 #include "Matrix.h"
 #include "stkstream.h"
+
 
 //*****************************************************************************
 //*****************************************************************************
@@ -32,7 +37,7 @@
 
 //*****************************************************************************
 //*****************************************************************************
-// Code
+// Code ...
 //
 
 namespace STK
@@ -43,9 +48,9 @@ namespace STK
   class FeatureRepository
   {
 
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   //  PUBLIC SECTION
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   public:
     // some params for loading features
     bool                        mSwapFeatures;
@@ -74,13 +79,29 @@ namespace STK
     { 
       mInputQueueIterator        = mInputQueue.end(); 
       mInputQueueCurrentIterator = mInputQueue.end();
+
+#if FEATURE_REPOSITORY_PTHREAD_ENABLE
+      mpRoMutex        = new pthread_mutex_t;
+      mpRoCondNotFull  = new pthread_cond_t;
+      mpRoCondNotEmpty = new pthread_cond_t;
+
+      pthread_mutex_init(mpRoMutex, NULL);
+      pthread_cond_init(mpRoCondNotFull, NULL);
+      pthread_cond_init(mpRoCondNotEmpty, NULL);
+#endif
     }
 
     /**
      * @brief Destroys the repository
      */
     ~FeatureRepository()
-    {}
+    {
+#if FEATURE_REPOSITORY_PTHREAD_ENABLE
+      delete mpRoMutex;
+      delete mpRoCondNotFull;
+      delete mpRoCondNotEmpty;
+#endif
+    }
 
 
     /**
@@ -107,12 +128,12 @@ namespace STK
      *                      and to control suppression of 0'th cepstral or 
      *                      energy coefficients accorging to modifiers _E, _0, 
      *                      and _N. Modifiers _D, _A and _T are ignored; 
-     *                      Computation of derivatioves is controled by parameters
+     *                      Computation of derivatives is controled by parameters
      *                      derivOrder and derivWinLen. Value PARAMKIND_ANON 
      *                      ensures that function do not result in targetKind 
      *                      mismatch error and cause no _E or _0 suppression.
      * @param derivOrder    Final features will be augmented with their 
-     *                      derivatives up to 'derivOrder' order. If 'derivOrder' 
+     *                      derivatives up to 'derivOrder' order. If 'derivOrder'
      *                      is negative value, no new derivatives are appended 
      *                      and derivatives that already present in feature file
      *                      are preserved.  Straight features are considered 
@@ -137,11 +158,12 @@ namespace STK
      *                      last frame, respectively. If the segment of frames 
      *                      is extracted according to range specification and 
      *                      parameters extLeft and extLeft are set to zero, the 
-     *                      first and the last frames of the segment are considered 
-     *                      to be repeated, eventough the true feature frames from 
-     *                      beyond the segment boundary can be available in the 
-     *                      file. Therefore, segment extracted from features that 
-     *                      were before augmented with derivatives will differ 
+     *                      first and the last frames of the segment are 
+     *                      considered to be repeated, eventough the true feature
+     *                      frames from beyond the segment boundary can be
+     *                      available in the file. Therefore, segment extracted 
+     *                      from features that were before augmented with 
+     *                      derivatives will differ 
      *                      from the same segment augmented with derivatives by 
      *                      this function. Difference will be of course only on 
      *                      boundaries and only in derivatives. This "incorrect" 
@@ -233,8 +255,6 @@ namespace STK
     const std::string &
     CurrentPhysical() const
     { return mInputQueueCurrentIterator->Physical(); }
-
-    
     
 
     /**
@@ -251,6 +271,7 @@ namespace STK
     bool
     ReadFullMatrix(Matrix<FLOAT>& rMatrix);    
     
+    
     /**
      * @brief Reads feature vectors from a feature file
      * @param rMatrix matrix to be (only!) filled with read data. 
@@ -263,6 +284,7 @@ namespace STK
     int
     ReadPartialMatrix(Matrix<FLOAT>& rMatrix);    
     
+
     /**
      * @brief Returns true if there are no feature files left on input
      */
@@ -310,7 +332,12 @@ namespace STK
     FLOAT*                      mpA;
     FLOAT*                      mpB;
 
-
+#if FEATURE_REPOSITORY_PTHREAD_ENABLE
+    // read overhead paralelism
+    pthread_mutex_t*            mpRoMutex;
+    pthread_cond_t*             mpRoCondNotFull;
+    pthread_cond_t*             mpRoCondNotEmpty;
+#endif 
 
     // Reads HTK feature file header
     int 

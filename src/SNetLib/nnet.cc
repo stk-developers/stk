@@ -1,4 +1,5 @@
-#include"nnet.h"
+#include "nnet.h"
+#include "barrier.h"
 
 SNet::NNet::NNet(CompositeXform* nn, int cacheSize, int bunchSize, bool crossValidation, float *learningRateList){
   if(nn->mNLayers % 3 != 0) // linear / biases / non-linear

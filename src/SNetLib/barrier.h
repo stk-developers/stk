@@ -13,6 +13,9 @@
  */
 #include <pthread.h>
 
+#ifndef barrier_h
+#define barrier_h
+
 /*
  * Structure describing a barrier.
  */
@@ -37,6 +40,17 @@ typedef struct barrier_tag {
 /*
  * Define barrier functions
  */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern int barrier_init (barrier_t *barrier, int count);
 extern int barrier_destroy (barrier_t *barrier);
 extern int barrier_wait (barrier_t *barrier);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
+

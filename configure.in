@@ -1,0 +1,184 @@
+#                                               -*- Autoconf -*-
+# Process this file with autoconf to produce a configure script.
+
+AC_PREREQ(2.59)
+AC_INIT(STK, 2.0, ondrej.glembek@fit.vutbr.cz)
+AC_REVISION([$Revision$])
+AC_CONFIG_AUX_DIR(config)
+AC_CONFIG_HEADERS([config.h:config-h.in])
+AC_CONFIG_SRCDIR([src/SERest.cc])
+AC_CONFIG_MACRO_DIR([m4])
+
+AM_INIT_AUTOMAKE(nostdinc)	
+
+AC_LANG(C++)
+
+AC_PREFIX_DEFAULT([/usr/local/share/STK])
+
+# We're building GNU source, so let's define it
+AC_DEFINE([_GNU_SOURCE], [],          [declare the GNU extensions])
+AC_DEFINE([_REENTRANT], [],           [select additionaly reentrant object])
+AC_DEFINE([_XOPEN_SOURCE], [600],     [select additionaly reentrant object])
+AC_DEFINE([_LARGE_FILE_SOURCE], [],   [select additionaly reentrant object])
+AC_DEFINE([_FILE_OFFSET_BITS], [64],   [select additionaly reentrant object])
+#k-DDOUBLEPRECISION=0 -D_REENTRANT -DUSE_BLAS -D_XOPEN_SOURCE=600 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
+
+
+# Checks for programs.
+AC_PROG_RANLIB
+AC_PROG_AWK
+AC_PROG_CXX
+AC_PROG_CC
+
+# Checks for libraries.
+
+# Checks for header files.
+AC_HEADER_STDC
+AC_CHECK_HEADERS([iostream arpa/inet.h float.h limits.h malloc.h netdb.h netinet/in.h stddef.h stdlib.h string.h sys/socket.h sys/time.h ])
+
+AC_CHECK_HEADERS([search.h],
+                 [have_search_h=yes],
+                 [have_search_h=no])
+
+AC_CHECK_HEADERS([unistd.h],
+                 [want_getopt_h=no],
+                 [want_getopt_h=yes])
+
+AM_CONDITIONAL([WANT_GETOPT_H], [test "x$want_getopt_h" != "xno"])
+AM_CONDITIONAL([WANT_LIBGETOPT], [test "x$want_getopt_h" != "xno"])
+
+# Checks for typedefs, structures, and compiler characteristics.
+AC_HEADER_STDBOOL
+AC_C_CONST
+AC_C_INLINE
+AC_TYPE_SIZE_T
+AC_HEADER_TIME
+AC_STRUCT_TM
+
+# Checks for library functions.
+AC_FUNC_MALLOC
+AC_FUNC_REALLOC
+AC_FUNC_STRTOD
+AC_CHECK_FUNCS([gethostbyname gettimeofday inet_ntoa memmove memset socket sqrt strchr strdup strerror strrchr strspn strstr strtol strtoull], 
+               [], 
+               [AC_MSG_FAILURE([])]
+              )
+
+
+################################################################################
+# CHECK FOR VARIOUS MEMALIGN FUNCTIONS
+# Manual alignment is defined if none of these exist
+AC_CHECK_FUNCS([posix-memalign memalign], break)
+
+
+################################################################################
+# TODO: Maybe get rid of this
+AC_CHECK_FUNCS([getopt])
+
+################################################################################
+# CECK FOR THE REENTRANT VERSIONS OF HSEARCH FUNCTIONS
+AC_CHECK_FUNCS([hsearch_r hcreate_r hdestroy_r], 
+  #KLUDGE: $ac_func not documented in original autoconf documentation... 
+  #  TODO: Google it out...
+  [AC_CHECK_DECLS([$ac_func],
+     [AC_DEFINE(HAVE_REENTRANT_SEARCH, [1], 
+                [use internal reentran version of search_h])
+      REENTRANT_SEARCH_INCLUDE_FLAG=""
+      REENTRANT_SEARCH_OBJ=""
+      usemy_hsearch_r_inc=no
+      usemy_hsearch_r_obj=no
+     ]
+     [AC_DEFINE(HAVE_REENTRANT_SEARCH, [0], 
+                [don't use internal reentran version of search_h])
+      AC_SUBST([REENTRANT_SEARCH_INCLUDE_FLAG], "-I$top_srcdir/lib/gnu",)
+      AC_SUBST([REENTRANT_SEARCH_OBJ], "$top_srcdir/lib/gnu/hsearch_r.cpp",)
+      usemy_hsearch_r_inc=yes
+      usemy_hsearch_r_obj=no
+     ])
+  ],
+  [usemy_hsearch_r_inc=yes
+   usemy_hsearch_r_obj=yes
+   break
+  ])
+                  
+AM_CONDITIONAL([WANT_GNUSEARCH_H], [test "$usemy_hsearch_r_inc" != no]) 
+AM_CONDITIONAL([WANT_HSEARCH_R_O], [test "$usemy_hsearch_r_obj" != no]) 
+
+################################################################################ 
+# CHECK FOR DOUBLE PRECISION OPTION 
+AC_ARG_ENABLE([double-precision], 
+              [AS_HELP_STRING([--enable-double-precision], 
+                 [make STK use double instead of float as basic floating point type]) 
+              ], 
+              [AC_DEFINE([DOUBLEPRECISION], [1], [enable double precision])], 
+              [AC_DEFINE([DOUBLEPRECISION], [0], [disable double precision])]) 
+
+################################################################################ 
+# CHECK FOR ATLAS USAGE 
+AC_ARG_WITH([atlas],   
+            [AS_HELP_STRING([--with-atlas], 
+              [add support for the ATLAS library @<:@default=check@:>@])], 
+            [], 
+            [with_atlas=check]) 
+
+AC_ARG_WITH([atlas-dir], 
+            [AS_HELP_STRING([--with-atlas-dir], 
+              [specify the atlas location]) ], 
+            [AC_SUBST([ATLASINCLUDEDIR], ["-I $withval/include"])
+             AC_SUBST([ATLASLIBDIR], ["-L $withval/lib"])
+             echo ATLAS: adding $ATLASLIBDIR to the library search path
+             echo ATLAS: adding $ATLASINCLUDEDIR to the include search path
+             AC_SUBST([LDFLAGS],["$ATLASLIBDIR $LDFLAGS"])
+             AC_SUBST([CFLAGS],["$ATLASINCLUDEDIR $CFLAGS"])
+             AC_SUBST([CXXFLAGS],["$ATLASINCLUDEDIR $CXXFLAGS"])
+            ], 
+            [])
+          
+AC_ARG_WITH([atlas-include-dir],
+            [AS_HELP_STRING([--with-atlas-include-dir],
+              [specify the atlas header files location])
+            ],
+            [AC_SUBST([ATLASINCLUDEDIR], ["-I$withval/include"])
+             echo ATLAS: adding $ATLASINCLUDEDIR to the include search path
+             AC_SUBST([CFLAGS],["$ATLASINCLUDEDIR $CFLAGS"])
+             AC_SUBST([CXXFLAGS],["$ATLASINCLUDEDIR $CXXFLAGS"])
+            ], 
+            [])
+
+AC_ARG_WITH([atlas-lib-dir],
+            [AS_HELP_STRING([--with-atlas-lib-dir],
+              [specify the atlas libdir location])
+            ],
+            [AC_SUBST([ATLASLIBDIR], ["-L$withval/lib"])
+             echo ATLAS: adding $ATLASLIBDIR to the library search path
+             AC_SUBST([LDFLAGS],["$ATLASLIBDIR $LDFLAGS"])
+            ], 
+            [])
+
+LIBATLAS=
+
+# we choose one func from blas and one from lapack
+AS_IF([test "x$with_atlas" != "xno"],
+      [AC_SEARCH_LIBS([cblas_sgemm], [cblas lapack atlas],
+                      [AC_SUBST([LIBATLAS], ["-llapack -lcblas -latlas"])
+                       AC_DEFINE([HAVE_ATLAS], [1],
+                                 [Define if we have libatlas])
+                      ],
+                      [if test "x$with_atlas" != xcheck; then
+                       AC_MSG_FAILURE(
+                       [--with-atlas was given, but test for atlas failed. Try specifying the --with-atlas-dir or --with-alas-lib-dir.])
+                       fi
+                      ],[-latlas -llapack -lcblas])
+      ])
+
+AC_SUBST([LIBS], ["$LIBATLAS $LIBS"])
+################################################################################
+# END OF ATLAS CHECK
+################################################################################
+
+
+AC_CONFIG_FILES([Makefile lib/Makefile src/Makefile src/SNetLib/Makefile src/STKLib/Makefile])
+
+
+
+AC_OUTPUT

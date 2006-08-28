@@ -9,23 +9,15 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
-#define VERSION "0.2 "__TIME__" "__DATE__
 
 
 // PROJECT INCLUDES
 //
+#include "common.h"
 #include "labels.h"
 #include "Net.h"
-#include "common.h"
 
 
-// SYSTEM INCLUDES
-//
-#ifndef WIN32
-#include <unistd.h>
-#else
-#include "getopt.h"
-#endif
 #include <stdlib.h>
 #include <string.h>
 #include <cstdio>
