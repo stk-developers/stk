@@ -17,7 +17,7 @@ endif
 
 
 # These are the common libraries needed by all programs
-COMMONLDFLAGS = -L./STKLib
+COMMONLDFLAGS = -L./STKLib -pthread
 COMMONLIBS    = -lSTKLib $(LIBGETOPT)
 
 

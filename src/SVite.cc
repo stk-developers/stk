@@ -10,7 +10,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#define VERSION "0.4 "__TIME__" "__DATE__
+#define MODULE_VERSION "0.4 "__TIME__" "__DATE__
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -125,10 +125,8 @@ char *optionStr =
 
 int main(int argc, char *argv[]) 
 {
-  HtkHeader                     header;
   ModelSet                      hset;
   Network                       net;
-  FILE *                        sfp;
   FILE *                        lfp = NULL;
   FILE *                        ilfp = NULL;
   
@@ -142,12 +140,11 @@ int main(int argc, char *argv[])
   char                          line[1024];
   char                          label_file[1024];
   const char *                  cchrptr;
-  int                           nfeature_files = 0;
   
-  MyHSearchData        nonCDphHash;
-  MyHSearchData        phoneHash;
-  MyHSearchData        dictHash;
-  MyHSearchData        cfgHash;
+  MyHSearchData                 nonCDphHash;
+  MyHSearchData                 phoneHash;
+  MyHSearchData                 dictHash;
+  MyHSearchData                 cfgHash;
   
   FileListElem *                feature_files = NULL;
   FileListElem *                file_name = NULL;
@@ -206,7 +203,6 @@ int main(int argc, char *argv[])
   enum TranscriptionFormat {TF_HTK, TF_STK} in_transc_fmt, out_transc_fmt;
   int                           notInDictAction = WORD_NOT_IN_DIC_UNSET;
   
-  RHFBuffer                     rhfbuff     = {0};
   ExpansionOptions              expOptions  = {0};
   STKNetworkOutputFormat        in_net_fmt  = {0};
   STKNetworkOutputFormat        out_net_fmt = {0};
@@ -245,8 +241,8 @@ int main(int argc, char *argv[])
   // the rest of the parameters are the feature files
   for (; i < argc; i++) 
   {
-    last_file = AddFileElem(last_file, argv[i]);
-    nfeature_files++;
+    feature_repo.AddFile(argv[i]);
+    //last_file = AddFileElem(last_file, argv[i]);
   }
   
   // extract the feature parameters
@@ -367,6 +363,7 @@ int main(int argc, char *argv[])
             *cchrptr);
     }
   }
+  
   in_transc_fmt = (TranscriptionFormat) 
     GetParamEnum(&cfgHash, SNAME":SOURCETRANSCFMT",
       !network_file && htk_compat ? TF_HTK : TF_STK,
@@ -394,7 +391,7 @@ int main(int argc, char *argv[])
 
   if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", false)) 
   {
-    puts("Version: "VERSION"\n");
+    puts("Version: "MODULE_VERSION"\n");
   }
 
   if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", false)) 
@@ -402,28 +399,12 @@ int main(int argc, char *argv[])
     CheckCommandLineParamUse(&cfgHash);
   }
 
-//  if (NULL != script)
-//  {
-//    for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) 
-//    {
-//      if ((sfp = my_fopen(script, "rt", gpScriptFilter)) == NULL) 
-//      {
-//        Error("Cannot open script file %s", script);
-//      }
-//
-//      while (fscanf(sfp, "%s", line) == 1) 
-//      {
-//        last_file = AddFileElem(last_file, line);
-//        nfeature_files++;
-//      }
-//      my_fclose(sfp);
-//    }
-//  }
-  
+ 
   // initialize the feature repository
   feature_repo.Init(swap_features, startFrmExt, endFrmExt, targetKind, 
      derivOrder, derivWinLengths, cmn_path, cmn_mask, cvn_path, cvn_mask,
      cvg_file);
+
 
   if (NULL != script) 
     feature_repo.AddFileList(script, gpScriptFilter); 
@@ -501,7 +482,7 @@ int main(int argc, char *argv[])
           dictionary ? &dictHash : &phoneHash,
           dictionary ? UL_ERROR : UL_INSERT, 
           in_lbl_fmt,
-          header.mSamplePeriod, 
+          feature_repo.CurrentHeader().mSamplePeriod, 
           network_file, 
           NULL, 
           NULL);
@@ -521,7 +502,7 @@ int main(int argc, char *argv[])
          &phoneHash, 
          notInDictAction, 
          in_lbl_fmt,
-         header.mSamplePeriod, 
+         feature_repo.CurrentHeader().mSamplePeriod, 
          network_file, 
          NULL);
     }
@@ -550,14 +531,15 @@ int main(int argc, char *argv[])
   // we are going to read from the feature repository
   feature_repo.Rewind();
 
+
   //////////////////////////////////////////////////////////////////////////////
   // read consequently all the feature files 
   while (!feature_repo.EndOfList())
   {
     if (trace_flag & 1) 
     {
-      TraceLog("Processing file %d/%d '%s'", ++fcnt,
-                 nfeature_files,file_name->mpPhysical);
+      TraceLog("Processing file %d/%d '%s'", ++fcnt, feature_repo.QueueSize(), 
+          feature_repo.FollowingPhysical().c_str());
     }
     
     // read the feature matrix .................................................
@@ -573,14 +555,15 @@ int main(int argc, char *argv[])
     // parse per-datafile models ...............................................
     if (mmf_mask != NULL) 
     {
-      static string lastSpeakerMMF;
-      string speakerMMF;
-      ProcessMask(feature_repo.CurrentLogical(), mmf_mask, speakerMMF);
+      static string    last_speaker_mmf;
+      string           speaker_mmf;
+
+      ProcessMask(feature_repo.CurrentLogical(), mmf_mask, speaker_mmf);
         
-      if (lastSpeakerMMF != speakerMMF) 
+      if (last_speaker_mmf != speaker_mmf) 
       {
-        hset.ParseMmf((string(mmf_dir) + "/" + speakerMMF).c_str(), NULL);
-        lastSpeakerMMF = speakerMMF;
+        hset.ParseMmf((string(mmf_dir) + "/" + speaker_mmf).c_str(), NULL);
+        last_speaker_mmf = speaker_mmf;
       }
     }
     
@@ -600,7 +583,7 @@ int main(int argc, char *argv[])
       {
         labels = ReadLabels(ilfp, dictionary ? &dictHash : &phoneHash, 
             dictionary ? UL_ERROR : UL_INSERT, in_lbl_fmt,
-            header.mSamplePeriod, label_file, in_MLF, NULL);
+            feature_repo.CurrentHeader().mSamplePeriod, label_file, in_MLF, NULL);
 
         node = MakeNetworkFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
         ReleaseLabels(labels);
@@ -608,7 +591,7 @@ int main(int argc, char *argv[])
       else if (in_transc_fmt == TF_STK) 
       {
         node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash, notInDictAction,
-            in_lbl_fmt, header.mSamplePeriod, label_file, in_MLF);
+            in_lbl_fmt, feature_repo.CurrentHeader().mSamplePeriod, label_file, in_MLF);
       } 
       else 
       {
@@ -646,7 +629,7 @@ int main(int argc, char *argv[])
       net.PassTokenInNetwork = baum_welch ? &PassTokenSum : &PassTokenMax;
       net.PassTokenInModel   = baum_welch ? &PassTokenSum : &PassTokenMax;
 
-      for (i = 0; i < header.mNSamples; i++) 
+      for (i = 0; i < feature_matrix.Rows(); i++) 
       {
         net.ViterbiStep(feature_matrix[i]);
       }
@@ -670,8 +653,9 @@ int main(int argc, char *argv[])
 
     if (trace_flag & 1 && labels) 
     {
-      Label *label;
-      int nFrames = header.mNSamples - hset.mTotalDelay;
+      Label* label;
+      int    n_frames = feature_matrix.Rows() - hset.mTotalDelay;
+
       for (label = labels; 
           label->mpNextLevel != NULL;
           label = label->mpNextLevel)
@@ -682,7 +666,7 @@ int main(int argc, char *argv[])
         fprintf(stdout, "%s ", label->mpName);
       }
 
-      TraceLog(" ==  [%d frames] %f", nFrames, like / nFrames);
+      TraceLog(" ==  [%d frames] %f", n_frames, like / n_frames);
     }
 
     strcpy(label_file, feature_repo.CurrentLogical().c_str());
@@ -692,7 +676,7 @@ int main(int argc, char *argv[])
 
     if (out_transc_fmt == TF_HTK) 
     {
-      WriteLabels(lfp, labels, out_lbl_fmt, header.mSamplePeriod, label_file,
+      WriteLabels(lfp, labels, out_lbl_fmt, feature_repo.CurrentHeader().mSamplePeriod, label_file,
           out_MLF);
     } 
     else 
@@ -700,8 +684,8 @@ int main(int argc, char *argv[])
       Node* node = MakeNetworkFromLabels(labels, 
           alignment & (MODEL_ALIGNMENT|STATE_ALIGNMENT) ? NT_MODEL : NT_WORD);
       
-      WriteSTKNetwork(lfp, node, out_net_fmt, header.mSamplePeriod, label_file, 
-          out_MLF);
+      WriteSTKNetwork(lfp, node, out_net_fmt, feature_repo.CurrentHeader().mSamplePeriod,
+          label_file, out_MLF);
 
       FreeNetwork(node);
     }

@@ -213,9 +213,9 @@ namespace STK
       
       if ((access(dir_name, 0) || stat(dir_name, &stat_buff) == -1 ||
 #ifndef _POSIX_SOURCE
-          !(S_IFDIR & stat_buff.st_mode))) 
-#else
           !(_IFDIR & stat_buff.st_mode))) 
+#else
+          !(S_IFDIR & stat_buff.st_mode))) 
 #endif
       {
 #ifndef WIN32

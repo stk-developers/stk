@@ -10,7 +10,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#define VERSION "0.7 "__TIME__" "__DATE__
+#define MODULE_VERSION "0.7 "__TIME__" "__DATE__
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -193,7 +193,7 @@ int main(int argc, char *argv[])
     PrintConfig(&cfg_hash);
   
   if (GetParamBool(&cfg_hash, SNAME":PRINTVERSION", false))
-    puts("Version: "VERSION"\n");
+    puts("Version: "MODULE_VERSION"\n");
                                  
   if (!GetParamBool(&cfg_hash,SNAME":ACCEPTUNUSEDPARAM", false))
     CheckCommandLineParamUse(&cfg_hash);

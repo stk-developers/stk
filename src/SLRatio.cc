@@ -10,7 +10,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#define VERSION "0.6 "__TIME__" "__DATE__
+#define MODULE_VERSION "0.6 "__TIME__" "__DATE__
 
 #include "STKLib/Viterbi.h"
 #include "STKLib/Models.h"
@@ -383,7 +383,7 @@ int main(int argc, char *argv[]) {
     PrintConfig(&cfgHash);
   }
   if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", false)) {
-    puts("Version: "VERSION"\n");
+    puts("Version: "MODULE_VERSION"\n");
   }
   if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", false)) {
     CheckCommandLineParamUse(&cfgHash);

@@ -140,6 +140,17 @@ namespace STK
     int 
     HasCycle();
     
+
+    /** 
+     * @brief State reestimation procedure
+     * 
+     * @param pNode 
+     * @param stateIndex 
+     * @param logPriorProb 
+     * @param updateDir 
+     * @param obs 
+     * @param obs2 
+     */
     void 
     ReestState(Node *    pNode,
                int       stateIndex, 
@@ -408,10 +419,10 @@ namespace STK
   PassTokenSum(Token *from, Token *to, FLOAT addLogLike);
 
   int               
-  PassTokenSumUnlogLikes(Token *from, Token *to, FLOAT addLogLike);
+  PassTokenSumUnlogLikes(Token* pFrom, Token* pTo, FLOAT addLogLike);
   
-  WordLinkRecord *  
-  TimePruning(Network *network, int frame_delay);
+  WordLinkRecord*  
+  TimePruning(Network* pNetwork, int frameDelay);
   
   void 
   LoadRecognitionNetwork(

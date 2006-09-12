@@ -10,7 +10,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#define VERSION "0.7 "__TIME__" "__DATE__
+#define MODULE_VERSION "0.7 "__TIME__" "__DATE__
 
 #include "STKLib/fileio.h"
 #include "STKLib/common.h"
@@ -435,7 +435,7 @@ int main(int argc, char* argv[])
     PrintConfig(&cfgHash);
   
   if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", false)) 
-    puts("Version: "VERSION"\n");
+    puts("Version: "MODULE_VERSION"\n");
   
 
   GetParamBool(&cfgHash, SNAME":NFRAMEOUTPNORM", false);

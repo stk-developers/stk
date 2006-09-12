@@ -10,7 +10,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#define VERSION "0.1 12/19/2002"
+#define MODULE_VERSION "0.1 12/19/2002"
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -180,7 +180,7 @@ int main(int argc, char *argv[]) {
     putchar('\n');
   }
 
-  if (print_version) puts("Version: "VERSION"\n");
+  if (print_version) puts("Version: "MODULE_VERSION"\n");
   if (feature_files == NULL) return 0;
   if ((opp = (FLOAT *) malloc(hset.mNStates * sizeof(float))) == NULL) {
     Error("Insufficient memory");

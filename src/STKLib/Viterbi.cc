@@ -680,7 +680,7 @@ namespace STK
   }
   
 
-//#define OPTIMIZE_GAUSSIAN_COMPUTATION      
+#define OPTIMIZE_GAUSSIAN_COMPUTATION      
   //***************************************************************************
   //***************************************************************************
   // The function does the gaussian dist exponent operations.
@@ -693,10 +693,14 @@ namespace STK
     const FLOAT*  pVar,
     const size_t  vSize)
   {
-    FLOAT m_like = 0;
+#ifdef __GNUC__
+    FLOAT m_like __attribute__ ((aligned (16))) = 0.0;
+#else
+    FLOAT m_like = 0.0;
+#endif
     size_t j;
-    
-#ifdef OPTIMIZE_GAUSSIAN_COMPUTATION    
+
+#ifdef OPTIMIZE_GAUSSIAN_COMPUTATION && __GNUC__   
     // this is a stric optimization
     f4vector        l = {{0.0F}}; 
     const f4vector* o = reinterpret_cast<const f4vector*>(pObs); 
@@ -705,13 +709,7 @@ namespace STK
     
     l.f[0] = l.f[1] = l.f[2] = l.f[3] = 0.0F;
 
-#  ifndef USE_NEW_MATRIX      
-    const size_t chunk(vSize & ~3);         
-#  else
-    const size_t chunk(align<4>(vSize));         
-#  endif        
-    
-    for (j = 0; j < chunk; j += 4) 
+    for (j = 0; j < vSize; j += 4) 
     {
       l.v += SQR(o->v - m->v) * v->v;
       o++;
@@ -721,12 +719,6 @@ namespace STK
     
     m_like = l.f[0] + l.f[1] + l.f[2] + l.f[3];
     
-#  ifndef USE_NEW_MATRIX      
-    for (; j < vSize; j++) 
-    {
-      m_like += SQR(pObs[j] - pMean[j]) * pVar[j];
-    }
-#  endif
 #else
     // the original loop
     for (j = 0; j < vSize; j++) 
@@ -773,6 +765,39 @@ namespace STK
   }
 
   
+  //***************************************************************************
+  //***************************************************************************
+  FLOAT 
+  DiagCGaussianDensity(const Mixture* mix, const FLOAT* pObs, Network* net, 
+      size_t nOverhead)  
+  {
+    if (!net || net->mpMixPCache[mix->mID].mTime != net->mTime)
+    {
+      FLOAT m_like;
+      
+      // we call the computation
+      m_like = compute_diag_c_gaussian_density(
+        pObs,
+        mix->GConst(),
+        mix->mpMean->mVector.cpData(),
+        mix->mpVariance->mVector.cpData(),        
+        mix->mpMean->VectorSize());
+    
+      if (net)
+      {
+        net->mpMixPCache[mix->mID].mTime  = net->mTime;
+        net->mpMixPCache[mix->mID].mValue = m_like;
+      }
+      
+      return m_like;
+    }
+    else
+    {
+      return net->mpMixPCache[mix->mID].mValue;
+    }
+  }
+
+
   //***************************************************************************
   //***************************************************************************
   FLOAT 

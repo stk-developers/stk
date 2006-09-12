@@ -1,7 +1,12 @@
+// include config.h if desired
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif /* HAVE_CONFIG_H */
+
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
-#include <getopt.h>
+#include "getopt.h"
 
 char *optarg;
 int optind=0;

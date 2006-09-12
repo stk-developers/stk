@@ -23,7 +23,7 @@ endif
 ################################################################################
 # compiler options
 #CFLAGS = -Wall -g -O3 -DDOUBLEPRECISION=0 -D_REENTRANT  -DUSE_BLAS -msse -msse2 -mmmx -mfpmath=sse
-CFLAGS    = -Wall -g -DDOUBLEPRECISION=0 -D_REENTRANT -DHAVE_BLAS -D_XOPEN_SOURCE=600 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -msse -msse2 -mfpmath=sse $(MATLAB_CFLAGS) 
+CFLAGS    = -Wall -g -D_POSIX_SOURCE -DHAVE_REENTRANT_SEARCH=1 -DDOUBLEPRECISION=0 -D_REENTRANT -DHAVE_BLAS -D_XOPEN_SOURCE=600 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -msse -msse2 -mfpmath=sse $(MATLAB_CFLAGS) 
 CXXFLAGS  = $(CFLAGS)
 
 

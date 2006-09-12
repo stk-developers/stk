@@ -10,7 +10,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#define VERSION "2.0.4"
+#define MODULE_VERSION "2.0.4"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -37,7 +37,7 @@ void usage(char *progname)
   if ((tchrptr = strrchr(progname, '\\')) != NULL) progname = tchrptr+1;
   if ((tchrptr = strrchr(progname, '/')) != NULL) progname = tchrptr+1;
   fprintf(stderr,
-"\nSNet version " VERSION "\n"
+"\nSNet version " MODULE_VERSION "\n"
 "\nUSAGE: %s [options] DataFiles...\n\n"
 " Option                                                     Default\n\n"
 " -A         Print command line arguments                    Off\n"
@@ -330,7 +330,7 @@ int main(int argc, char *argv[])
   ///***************************************************************************
   /// INITIALIZE SNET
   ProgObj *prog_obj = new ProgObj(NNet_instance, cache_size, bunch_size, 
-      cross_validation, VERSION, learning_rate, clients, ip, randomize, sync, 
+      cross_validation, MODULE_VERSION, learning_rate, clients, ip, randomize, sync, 
       port, seed, ncumrbu, learning_rate_list); 
       
   if(prog_obj->Server())

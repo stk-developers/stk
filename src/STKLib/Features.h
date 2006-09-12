@@ -206,6 +206,14 @@ namespace STK
         const char*           pCvgFile);
     
         
+    /** 
+     * @brief Returns a refference to the current file header
+     */
+    const HtkHeader&
+    CurrentHeader() const 
+    { return mHeader; }
+
+
     /**
      * @brief Returns the current file details
      *
@@ -256,12 +264,23 @@ namespace STK
     CurrentPhysical() const
     { return mInputQueueCurrentIterator->Physical(); }
     
+    /**
+     * @brief Returns logical name of the file to be read next
+     * @return 
+     */
+    const std::string &
+    FollowingLogical() const
+    { return mInputQueueIterator->Logical(); }
+
 
     /**
-     * @brief Opens next feature file
+     * @brief Returns physical name of the file to be read next
+     * @return 
      */
-    void
-    OpenNext();
+    const std::string &
+    FollowingPhysical() const
+    { return mInputQueueIterator->Physical(); }
+    
     
     /**
      * @brief Reads full feature matrix from a feature file
@@ -271,7 +290,9 @@ namespace STK
     bool
     ReadFullMatrix(Matrix<FLOAT>& rMatrix);    
     
-    
+    const size_t
+    QueueSize() const {return mInputQueue.size(); }
+
     /**
      * @brief Reads feature vectors from a feature file
      * @param rMatrix matrix to be (only!) filled with read data. 
@@ -292,12 +313,12 @@ namespace STK
     EndOfList() const 
     { return mInputQueueIterator == mInputQueue.end(); }
 
-
     const std::string&
     CurrentIndexFileName() const
     { return mCurrentIndexFileName; }
 
-    
+
+
 ////////////////////////////////////////////////////////////////////////////////
 //  PRIVATE SECTION
 ////////////////////////////////////////////////////////////////////////////////

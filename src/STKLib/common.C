@@ -327,7 +327,8 @@ void fast_softmax_vec(double *in, double *out, int size)
         return  x;
     }
   
-    return x + log(1.0 + exp(diff));
+    //return x + log(1.0 + exp(diff));
+    return x + log(1.0 + FAST_EXP(diff));
   }
   
   //***************************************************************************

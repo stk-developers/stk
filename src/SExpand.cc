@@ -9,7 +9,7 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
-#define VERSION "0.2 "__TIME__" "__DATE__
+#define MODULE_VERSION "0.2 "__TIME__" "__DATE__
 
 #include "STKLib/Net.h"
 #include "STKLib/labels.h"
@@ -225,7 +225,7 @@ int main(int argc, char *argv[]) {
   }
   
   if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", false)) {
-    puts("Version: "VERSION"\n");
+    puts("Version: "MODULE_VERSION"\n");
   }
   
   if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", false)) {

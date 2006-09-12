@@ -1,3 +1,4 @@
+# THIS IS A DEPRECATED VERSION. FOR BACKWARDS COMPATIBILITY ONLY
 ############################################################################### 
 # Processor architecture (32, 64)
 ARCH = 32
