@@ -26,10 +26,10 @@
 // SYSTEM INCLUDES
 //#############################################################################
 //#############################################################################
-#include <stdlib.h>
-#include <stdio.h>
+#include <cstdlib>
+#include <cstdio>
 #include <cstring>
-#include <stdarg.h>
+#include <cstdarg>
 #include <math.h>
 #include <assert.h>
 #include <ctype.h>

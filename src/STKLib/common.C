@@ -1421,10 +1421,21 @@ void fast_softmax_vec(double *in, double *out, int size)
     return ret;
   }
   
+
   //***************************************************************************
   //***************************************************************************
   int 
-  process_mask(const char *normstr, const char *wildcard, char *substr)
+  process_mask(const char* pNormstr, const char* pWildcard, char* pSubstr)
+  {
+    return match(pWildcard, pNormstr, pSubstr);
+  }
+
+
+
+  //***************************************************************************
+  //***************************************************************************
+  int 
+  process_mask_old(const char *normstr, const char *wildcard, char *substr)
   {
     char *hlpptr;
     const char  *endwc = wildcard + strlen(wildcard);
@@ -1432,7 +1443,8 @@ void fast_softmax_vec(double *in, double *out, int size)
   
     *substr = '\0';
   
-    if ((hlpptr = (char *) memchr(wildcard, '*', endwc-wildcard)) == NULL) {//hvezdicka neni
+    if ((hlpptr = (char *) memchr(wildcard, '*', endwc-wildcard)) == NULL) 
+    {//hvezdicka neni
       return !((endwc-wildcard != endns-normstr) ||
               memcmpw(normstr, wildcard, endns-normstr, &substr));
     }
@@ -1499,16 +1511,8 @@ void fast_softmax_vec(double *in, double *out, int size)
         
   
   
-  /**
-  *  @brief Returns true if rString matches rWildcard and fills substr with
-  *         corresponding %%% matched pattern
-  *  @param rString    String to be parsed
-  *  @param rWildcard  String containing wildcard pattern
-  *  @param Substr     The mathced %%% pattern is stored here
-  *
-  *  This is a C++ extension to the original process_mask function.
-  *
-  */
+  //***************************************************************************
+  //***************************************************************************
   bool
   ProcessMask(const std::string & rString,
               const std::string & rWildcard,
@@ -1539,6 +1543,43 @@ void fast_softmax_vec(double *in, double *out, int size)
     delete[] substr;
     return ret;
   } // ProcessMask
+
+
+
+  //***************************************************************************
+  //***************************************************************************
+  bool
+  ProcessMask(const std::string & rString,
+              const std::string & rWildcard,
+                    char*         pSubstr)
+  {
+    char *  substr;
+    int     percent_count        = 0;
+    int     ret ;
+    size_t  pos                  = 0;
+
+    // let's find how many % to allocate enough space for the return substring
+    while ((pos = rWildcard.find('%', pos)) != rWildcard.npos)
+    {
+      percent_count++;
+      pos++;
+    }
+
+    // allocate space for the substring
+    substr = new char[percent_count + 1];
+    substr[percent_count] = 0;
+    substr[0]             = '\0';
+
+    // parse the string
+    if (0 != (ret = match(rWildcard.c_str(), rString.c_str(), substr)))
+    {
+      strcpy(pSubstr, substr);
+    }
+    delete[] substr;
+    return ret;
+  } // ProcessMask
+
+
 
 
   //*****************************************************************************

@@ -375,6 +375,8 @@ namespace STK
     bool 
     ReadHTKFeatures(const std::string& rFileName, Matrix<FLOAT>& rFeatureMatrix);
     
+    bool 
+    ReadHTKFeatures(const FileListElem& rFileNameRecord, Matrix<FLOAT>& rFeatureMatrix);
   }; // class FeatureStream
 }; //namespace STK
 

@@ -129,10 +129,12 @@ namespace STK
       AddCVVDotMul(const _ElemT c, const _ElemT* pV, const size_t nV, 
                                    const _ElemT* pV, const size_t nV);
       
+      /// this = this + c * rM * rV 
       BasicVector<_ElemT>&
       AddCMVMul(const _ElemT c, const Matrix<_ElemT>& rM, 
                 const BasicVector<_ElemT>& rV);
 
+      /// this = this + c * rM * pV 
       BasicVector<_ElemT>&
       AddCMVMul(const _ElemT c, const Matrix<_ElemT>& rM, 
                 const _ElemT* pV);

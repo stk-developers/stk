@@ -125,7 +125,7 @@ CPPFLAGS =
 CXX = g++
 CXXCPP = g++ -E
 CXXDEPMODE = depmode=gcc3
-CXXFLAGS = -I /usr/local/include -g -p
+CXXFLAGS = -I /usr/local/include -g -O2
 CYGPATH_W = echo
 DEFS = -DHAVE_CONFIG_H
 DEPDIR = .deps
@@ -140,7 +140,7 @@ INSTALL_DATA = ${INSTALL} -m 644
 INSTALL_PROGRAM = ${INSTALL}
 INSTALL_SCRIPT = ${INSTALL}
 INSTALL_STRIP_PROGRAM = ${SHELL} $(install_sh) -c -s
-LDFLAGS = -L /usr/local/lib -p
+LDFLAGS = -L /usr/local/lib 
 LIBATLAS = -llapack -lcblas -latlas
 LIBOBJS =  strtod$U.o
 LIBS = -llapack -lcblas -latlas -lcblas 

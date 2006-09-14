@@ -283,6 +283,7 @@ using namespace STK;
    */
   class FileListElem
   {
+  private:
     std::string         mLogical;     ///< Logical file name representation
     std::string         mPhysical;    ///< Pysical file name representation
     
@@ -448,6 +449,21 @@ using namespace STK;
   ProcessMask(const std::string & rString,
               const std::string & rWildcard,
                     std::string & rSubstr);
+
+  /**
+  *  @brief Returns true if rString matches rWildcard and fills substr with
+  *         corresponding %%% matched pattern
+  *  @param rString    String to be parsed
+  *  @param rWildcard  String containing wildcard pattern
+  *  @param Substr     The mathced %%% pattern is stored here
+  *
+  *  This is a C++ extension to the original process_mask function.
+  *
+  */
+  bool
+  ProcessMask(const std::string & rString,
+              const std::string & rWildcard,
+              char*               pSubstr);
   
   
   /**

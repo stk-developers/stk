@@ -227,24 +227,27 @@ int main(int argc, char *argv[])
     if (trace_flag & 1) TraceLog("Processing file %d/%d '%s'",
                                 ++fcnt, nfeature_files, file_name->logical);
                                 
+    /*
     if(cmn_mask) 
       process_mask(file_name->logical, cmn_mask, cmn_file);
       
     if(cvn_mask) 
       process_mask(file_name->logical, cvn_mask, cvn_file);
+    */
+
+    if(cmn_mask) 
+      ProcessMask(file_name->logical, cmn_mask, cmn_file);
       
-#ifndef USE_NEW_MATRIX  
-    obs_mx = ReadHTKFeatures(file_name->mpPhysical, swap_features,
-                            startFrmExt, endFrmExt, targetKind,
-                            derivOrder, derivWinLengths, &header,
-                            cmn_path, cvn_path, cvg_file, &rhfbuff);
-#else
+    if(cvn_mask) 
+      ProcessMask(file_name->logical, cvn_mask, cvn_file);
+      
+
     ReadHTKFeatures(file_name->mpPhysical, swap_features,
                     startFrmExt, endFrmExt, targetKind,
                     derivOrder, derivWinLengths, &header,
                     cmn_path, cvn_path, cvg_file, &rhfbuff, feature_matrix);
-#endif
                             
+
     vec_size = header.mSampleSize / sizeof(float);
     out_size = p_input ? p_input->OutSize() : vec_size;
 
