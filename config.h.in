@@ -1,7 +1,16 @@
 /* config.h.in.  Generated from configure.in by autoheader.  */
 
+/* disable double precision */
+#undef DOUBLEPRECISION
+
+/* disable sse support */
+#undef ENABLE_SSE
+
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #undef HAVE_ARPA_INET_H
+
+/* Define if we have libatlas */
+#undef HAVE_ATLAS
 
 /* Define to 1 if you have the <float.h> header file. */
 #undef HAVE_FLOAT_H
@@ -9,8 +18,20 @@
 /* Define to 1 if you have the `gethostbyname' function. */
 #undef HAVE_GETHOSTBYNAME
 
+/* Define to 1 if you have the `getopt' function. */
+#undef HAVE_GETOPT
+
 /* Define to 1 if you have the `gettimeofday' function. */
 #undef HAVE_GETTIMEOFDAY
+
+/* Define to 1 if you have the `hcreate_r' function. */
+#undef HAVE_HCREATE_R
+
+/* Define to 1 if you have the `hdestroy_r' function. */
+#undef HAVE_HDESTROY_R
+
+/* Define to 1 if you have the `hsearch_r' function. */
+#undef HAVE_HSEARCH_R
 
 /* Define to 1 if you have the `inet_ntoa' function. */
 #undef HAVE_INET_NTOA
@@ -31,6 +52,9 @@
 /* Define to 1 if you have the <malloc.h> header file. */
 #undef HAVE_MALLOC_H
 
+/* Define to 1 if you have the `memalign' function. */
+#undef HAVE_MEMALIGN
+
 /* Define to 1 if you have the `memmove' function. */
 #undef HAVE_MEMMOVE
 
@@ -46,9 +70,18 @@
 /* Define to 1 if you have the <netinet/in.h> header file. */
 #undef HAVE_NETINET_IN_H
 
+/* Define to 1 if you have the `posix_memalign' function. */
+#undef HAVE_POSIX_MEMALIGN
+
 /* Define to 1 if your system has a GNU libc compatible `realloc' function,
    and to 0 otherwise. */
 #undef HAVE_REALLOC
+
+/* don't use internal reentran version of search_h */
+#undef HAVE_REENTRANT_SEARCH
+
+/* Define to 1 if you have the <search.h> header file. */
+#undef HAVE_SEARCH_H
 
 /* Define to 1 if you have the `socket' function. */
 #undef HAVE_SOCKET
@@ -146,6 +179,18 @@
 /* Version number of package */
 #undef VERSION
 
+/* select additionaly reentrant object */
+#undef _FILE_OFFSET_BITS
+
+/* select additionaly reentrant object */
+#undef _LARGE_FILE_SOURCE
+
+/* select additionaly reentrant object */
+#undef _REENTRANT
+
+/* select additionaly reentrant object */
+#undef _XOPEN_SOURCE
+
 /* Define to empty if `const' does not conform to ANSI C. */
 #undef const
 
@@ -163,5 +208,3 @@
 
 /* Define to `unsigned' if <sys/types.h> does not define. */
 #undef size_t
-
-#undef _REENTRANT

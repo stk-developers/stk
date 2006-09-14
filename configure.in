@@ -5,7 +5,7 @@ AC_PREREQ(2.59)
 AC_INIT(STK, 2.0, ondrej.glembek@fit.vutbr.cz)
 AC_REVISION([$Revision$])
 AC_CONFIG_AUX_DIR(config)
-AC_CONFIG_HEADERS([config.h:config-h.in])
+AC_CONFIG_HEADERS([config.h:config.h.in])
 AC_CONFIG_SRCDIR([src/SERest.cc])
 AC_CONFIG_MACRO_DIR([m4])
 
