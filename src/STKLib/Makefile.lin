@@ -1,0 +1,122 @@
+# archiver binary
+AR = ar
+
+
+################################################################################
+# Matlab specific stuff
+#USE_MATLAB_ENGINE = TRUE
+USE_MATLAB_ENGINE = FALSE
+
+# Specify matlab root path in MATLAB_PATH
+MATLAB_PATH       = /usr/local/share/Matlab-R14SP3
+
+ifeq ($(USE_MATLAB_ENGINE), TRUE)
+  MATLAB_CFLAGS   = -I$(MATLAB_PATH)/extern/include \
+                    -I$(MATLAB_PATH)/simulink/include \
+                    -DMATLAB_MEX_FILE \
+                    -DMATLAB_ENGINE
+else
+  MATLAB_CFLAGS   = 
+endif
+
+
+################################################################################
+# compiler options
+#CFLAGS = -Wall -g -O3 -DDOUBLEPRECISION=0 -D_REENTRANT  -DUSE_BLAS -msse -msse2 -mmmx -mfpmath=sse
+CFLAGS    = -Wall -g -D_POSIX_SOURCE -DHAVE_REENTRANT_SEARCH=1 -DDOUBLEPRECISION=0 -D_REENTRANT -DHAVE_BLAS -D_XOPEN_SOURCE=600 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -msse -msse2 -mfpmath=sse $(MATLAB_CFLAGS) 
+CXXFLAGS  = $(CFLAGS)
+
+
+################################################################################
+# compiler binary
+#CROSS_COMPILE ?= x86_64-linux-
+CC  := $(CROSS_COMPILE)g++-4.1
+CXX := $(CROSS_COMPILE)g++-4.1
+
+
+################################################################################
+# library name
+LIBNAME = libSTKLib.a
+
+################################################################################
+# library-specific modules
+OBJFILES = 	common.o \
+			dict.o	\
+			Error.o  \
+			fileio.o \
+			filmatch.o  \
+			labels.o  \
+			Matrix.o  \
+			Models_IO.o  \
+			Models.o  \
+			Net_IO.o  \
+			Net.o  \
+			Viterbi.o \
+			Features.o \
+			ZNorm.o \
+			BasicVector.o 
+
+
+###############################################################################
+# implicit "make all" rule             
+all  : $(LIBNAME)
+	echo "Done :-)"
+
+
+###############################################################################
+# library specific rules
+#
+$(LIBNAME) : $(OBJFILES)
+	$(AR) r $(LIBNAME) $(OBJFILES)
+
+###############################################################################
+# cleans the binaries  
+clean:
+	rm -f *.o 
+	rm -f $(LIBNAME)
+	rm -f *~
+
+###############################################################################
+# runs makedepend to automatically define header files dependencies
+depend:
+	-makedepend -fMakefile.lin -Y *.c *.C *.cc 
+    
+
+# DO NOT DELETE
+
+common.o: common.h Error.h filmatch.h
+dict.o: dict.h Models.h Matrix.h common.h Error.h BasicVector.h
+dict.o: BasicVector.tcc Matrix.tcc stkstream.h stkstream.tcc
+fileio.o: fileio.h Matrix.h common.h Error.h BasicVector.h BasicVector.tcc
+fileio.o: Matrix.tcc stkstream.h stkstream.tcc
+filmatch.o: filmatch.h common.h Error.h
+getopt.o: getopt.h
+imagesc.o: imagesc.h
+labels.o: Viterbi.h Models.h Matrix.h common.h Error.h BasicVector.h
+labels.o: BasicVector.tcc Matrix.tcc stkstream.h stkstream.tcc labels.h
+labels.o: dict.h Net.h
+BasicVector.o: Matrix.h common.h Error.h BasicVector.h BasicVector.tcc
+BasicVector.o: Matrix.tcc
+Buffer.o: Buffer.h
+Error.o: Error.h
+Features.o: Features.h fileio.h Matrix.h common.h Error.h BasicVector.h
+Features.o: BasicVector.tcc Matrix.tcc stkstream.h stkstream.tcc
+labelreader.o: labelreader.h stkstream.h common.h Error.h stkstream.tcc
+Matrix.o: Matrix.h common.h Error.h BasicVector.h BasicVector.tcc Matrix.tcc
+Models.o: Models.h Matrix.h common.h Error.h BasicVector.h BasicVector.tcc
+Models.o: Matrix.tcc stkstream.h stkstream.tcc Viterbi.h labels.h dict.h
+Models.o: Net.h
+Models_IO.o: Models.h Matrix.h common.h Error.h BasicVector.h BasicVector.tcc
+Models_IO.o: Matrix.tcc stkstream.h stkstream.tcc
+Net.o: Models.h Matrix.h common.h Error.h BasicVector.h BasicVector.tcc
+Net.o: Matrix.tcc stkstream.h stkstream.tcc labels.h dict.h Net.h
+Net_IO.o: labels.h common.h Error.h Net.h Models.h Matrix.h BasicVector.h
+Net_IO.o: BasicVector.tcc Matrix.tcc stkstream.h stkstream.tcc dict.h
+Score.o: Models.h Matrix.h common.h Error.h BasicVector.h BasicVector.tcc
+Score.o: Matrix.tcc stkstream.h stkstream.tcc Viterbi.h labels.h dict.h Net.h
+Viterbi.o: Viterbi.h Models.h Matrix.h common.h Error.h BasicVector.h
+Viterbi.o: BasicVector.tcc Matrix.tcc stkstream.h stkstream.tcc labels.h
+Viterbi.o: dict.h Net.h
+ZNorm.o: ZNorm.h Models.h Matrix.h common.h Error.h BasicVector.h
+ZNorm.o: BasicVector.tcc Matrix.tcc stkstream.h stkstream.tcc Viterbi.h
+ZNorm.o: labels.h dict.h Net.h

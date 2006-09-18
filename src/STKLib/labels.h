@@ -14,7 +14,8 @@
 #define LABELS_H
 
 #include "common.h"
-#include <stdio.h>
+
+#include <cstdio>
 #include <ctype.h>
 
 //typedef struct _LabelFormat LabelFormat;
@@ -47,9 +48,9 @@ public:
   Label *     mpNextLevel;
 };
 
-extern const Label init_label;
-extern const char *transc_filter;
-extern const char *transc_ofilter;
+extern const Label  init_label;
+extern const char * transc_filter;
+extern const char * transc_ofilter;
 
 //typedef struct _Transcription Transcription;
 //struct _Transcription {
@@ -63,19 +64,19 @@ extern const char *transc_ofilter;
 FILE *OpenOutputMLF(const char *out_MLF);
 
 FILE *OpenOutputLabelFile(
-  char       *file_name,
-  const char *out_lbl_dir,
-  const char *out_lbl_ext,
-  FILE       *MLFfp,
-  const char *out_MLF);
+  char       * file_name,
+  const char * out_lbl_dir,
+  const char * out_lbl_ext,
+  FILE       * MLFfp,
+  const char * out_MLF);
 
 void WriteLabels(
-  FILE        *flp,
-  Label       *labels,
+  FILE        * flp,
+  Label       * labels,
   LabelFormat labelFormat,
   long        sampPeriod,
-  const char  *label_file,
-  const char  *out_MLF);
+  const char  * label_file,
+  const char  * out_MLF);
 
 void CloseOutputLabelFile(FILE *lfp, const char *out_MLF);
 
@@ -86,7 +87,8 @@ void ReleaseLabels(Label *labels);
 int IsMLF(FILE *MLFfp);
 FILE *OpenInputMLF(const char *in_MLF);
 
-enum UnknownLabelsAction {
+enum UnknownLabelsAction 
+{
   UL_ERROR,
   UL_WARN,
   UL_IGNORE,
@@ -94,34 +96,35 @@ enum UnknownLabelsAction {
   UL_INSERT
 };
 
-struct LabelStats {
+struct LabelStats 
+{
   int nLabelsRead;
   int nLabelsTotal;
   long long endTime;
 };
 
-Label *ReadLabels(
-  FILE *lfp,
-  MyHSearchData *label_hash,
+Label* ReadLabels(
+  FILE* lfp,
+  MyHSearchData* label_hash,
   enum UnknownLabelsAction unknownLabels,
   LabelFormat labelFormat,
   long sampPeriod,
-  const char *file_name,
-  const char *in_MLF,
+  const char* file_name,
+  const char* in_MLF,
   struct LabelStats *stats);
 
-FILE *OpenInputLabelFile(
-  char *file_name,
-  const char *out_lbl_dir,
-  const char *out_lbl_ext,
-  FILE *MLFfp, const char *out_MLF);
+FILE* OpenInputLabelFile(
+  char* file_name,
+  const char* out_lbl_dir,
+  const char* out_lbl_ext,
+  FILE* MLFfp, const char *out_MLF);
 
 
-void CloseInputMLF(FILE *lfp);
-void CloseInputLabelFile(FILE *lfp, const char *out_MLF);
+void CloseInputMLF(FILE* lfp);
+void CloseInputLabelFile(FILE* lfp, const char* out_MLF);
 
 
-void AlingTranscriptions(Label **aligned_hyps, Label *new_hyp, long *weights);
+void AlingTranscriptions(Label** aligned_hyps, Label* new_hyp, long* weights);
 
 
 extern int   substitution_cost;

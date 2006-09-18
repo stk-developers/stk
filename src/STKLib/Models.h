@@ -16,7 +16,10 @@
 #include "Matrix.h"
 #include "common.h"
 #include "stkstream.h"
-#include <search.h>
+
+#ifdef MATLAB_ENGINE
+#  include "engine.h"
+#endif
 
 
 #define SQR(x) ((x) * (x))
@@ -44,15 +47,20 @@ namespace STK
   class Transition;
   class XformInstance;
   class Xform;
+  
+  class BiasXform;
   class CompositeXform;
   class CopyXform;
-  class LinearXform;
-  class BiasXform;
+  class FeatureMappingXform;
+  class FrantaProductXform;
   class FuncXform;
+  class LinearXform;
+  class MatlabXform;
   class StackingXform;
   class XformStatCache;
   class XformStatAccum;
 
+  
   enum MacroType 
   {
     mt_hmm             = 'h',
@@ -147,11 +155,13 @@ namespace STK
   /** *************************************************************************
    ** *************************************************************************
    *  @brief Macro data base class
+   *  
+   *  Any class, that can be defined as a macro in the MMF file
    */
   class MacroData
   {
   public:
-    Macro *                     mpMacro;
+    Macro*                     mpMacro;
   
   public:  
     /// Default constructor
@@ -176,13 +186,13 @@ namespace STK
   class Macro 
   {
   public:
-    char *        mpName;
-    char *        mpFileName;
-    MacroData *   mpData;
+    char*         mpName;
+    char*         mpFileName;
+    MacroData*    mpData;
     long          mOccurances;
     int           mType;
-    Macro *       nextAll;
-    Macro *       prevAll;
+    Macro*        nextAll;
+    Macro*        prevAll;
   };
   
           
@@ -194,7 +204,9 @@ namespace STK
     UM_WEIGHT     = 8,
     UM_OLDMEANVAR = 16,
     UM_XFSTATS    = 32,
-    UM_XFORM      = 64
+    UM_XFORM      = 64,
+    UM_MAP        = 128,
+    UM_CWEIGHTS   = 256
   };
   
   enum KeywordID
@@ -220,6 +232,10 @@ namespace STK
   
     /* Numeric functions - FuncXform*/
     KID_Sigmoid,     KID_Log,        KID_Exp,        KID_Sqrt,     KID_SoftMax,
+    
+    KID_ExtendedXform, 
+    
+    KID_Weights = 253,
   
     KID_MaxKwdID
   };
@@ -259,37 +275,44 @@ namespace STK
     
     /// This group of methods does exactly what their names state
     /// @{ 
-    Hmm *           ReadHMM           (FILE * fp, Macro * macro);
-    State *         ReadState         (FILE * fp, Macro * macro);
-    Mixture *       ReadMixture       (FILE * fp, Macro * macro);
-    Mean *          ReadMean          (FILE * fp, Macro * macro);
-    Variance *      ReadVariance      (FILE * fp, Macro * macro);
-    Transition *    ReadTransition    (FILE * fp, Macro * macro);
-    XformInstance * ReadXformInstance (FILE * fp, Macro * macro);
-    Xform *         ReadXform         (FILE * fp, Macro * macro);
-    CompositeXform *ReadCompositeXform(FILE * fp, Macro * macro);
-    LinearXform *   ReadLinearXform   (FILE * fp, Macro * macro);
-    CopyXform *     ReadCopyXform     (FILE * fp, Macro * macro);
-    BiasXform *     ReadBiasXform     (FILE * fp, Macro * macro);
-    FuncXform *     ReadFuncXform     (FILE * fp, Macro * macro, int funcId);
-    StackingXform * ReadStackingXform (FILE * fp, Macro * macro);
-    int             ReadGlobalOptions (FILE * fp);
+    Hmm*            ReadHMM           (FILE* fp, Macro* macro);
+    State*          ReadState         (FILE* fp, Macro* macro);
+    Mixture*        ReadMixture       (FILE* fp, Macro* macro);
+    Mean*           ReadMean          (FILE* fp, Macro* macro);
+    Variance*       ReadVariance      (FILE* fp, Macro* macro);
+    Transition*     ReadTransition    (FILE* fp, Macro* macro);
+    XformInstance*  ReadXformInstance (FILE* fp, Macro* macro);
+    Xform*          ReadXform         (FILE* fp, Macro* macro);
+    CompositeXform* ReadCompositeXform(FILE* fp, Macro* macro);
+    LinearXform*    ReadLinearXform   (FILE* fp, Macro* macro);
+    CopyXform*      ReadCopyXform     (FILE* fp, Macro* macro);
+    FeatureMappingXform*    ReadFeatureMappingXform     (FILE* fp, Macro* macro);
+    FrantaProductXform*     ReadFrantaProductXform      (FILE* fp, Macro* macro);
+    MatlabXform*    ReadMatlabXform(FILE* fp, Macro* macro);
+    BiasXform*      ReadBiasXform     (FILE* fp, Macro* macro);
+    FuncXform*      ReadFuncXform     (FILE* fp, Macro* macro, int funcId);
+    StackingXform*  ReadStackingXform (FILE* fp, Macro* macro);
+    int             ReadGlobalOptions (FILE* fp);
     
-    void   WriteHMM          (FILE * fp, bool binary, Hmm * hmm);
-    void   WriteState        (FILE * fp, bool binary, State * state);
-    void   WriteMixture      (FILE * fp, bool binary, Mixture * mixture);
-    void   WriteMean         (FILE * fp, bool binary, Mean * mean);
-    void   WriteVariance     (FILE * fp, bool binary, Variance * variance);
-    void   WriteTransition   (FILE * fp, bool binary, Transition * transition);
-    void   WriteXformInstance(FILE * fp, bool binary, XformInstance * xformInstance);
-    void   WriteXform        (FILE * fp, bool binary,          Xform * xform);
-    void   WriteCompositeXform(FILE *fp, bool binary, CompositeXform * xform);
-    void   WriteLinearXform  (FILE * fp, bool binary,    LinearXform * xform);
-    void   WriteCopyXform    (FILE * fp, bool binary,      CopyXform * xform);
-    void   WriteFuncXform    (FILE * fp, bool binary,      FuncXform * xform);
-    void   WriteBiasXform    (FILE * fp, bool binary,      BiasXform * xform);
-    void   WriteStackingXform(FILE * fp, bool binary,  StackingXform * xform);
-    void   WriteGlobalOptions(FILE * fp, bool binary);  
+    void   WriteHMM          (FILE* fp, bool binary, Hmm*             hmm);
+    void   WriteState        (FILE* fp, bool binary, State*           state);
+    void   WriteMixture      (FILE* fp, bool binary, Mixture*         mixture);
+    void   WriteMean         (FILE* fp, bool binary, Mean*            mean);
+    void   WriteVariance     (FILE* fp, bool binary, Variance*        variance);
+    void   WriteTransition   (FILE* fp, bool binary, Transition*      transition);
+    void   WriteXformInstance(FILE* fp, bool binary, XformInstance*   xformInstance);
+    void   WriteXform        (FILE* fp, bool binary,          Xform*  xform);
+    void   WriteCompositeXform(FILE*fp, bool binary, CompositeXform*  xform);
+    void   WriteLinearXform  (FILE* fp, bool binary,    LinearXform*  xform);
+    void   WriteCopyXform    (FILE* fp, bool binary,      CopyXform*  xform);
+    void   WriteFeatureMappingXform (FILE* fp, bool binary, FeatureMappingXform* xform);
+    void   WriteFrantaProductXform  (FILE* fp, bool binary, FrantaProductXform* xform);
+    void   WriteFuncXform    (FILE* fp, bool binary,      FuncXform*  xform);
+    void   WriteBiasXform    (FILE* fp, bool binary,      BiasXform*  xform);
+    void   WriteStackingXform(FILE* fp, bool binary,  StackingXform*  xform);
+    void   WriteGlobalOptions(FILE* fp, bool binary);  
+    
+    
     /// @}
     
     
@@ -297,16 +320,17 @@ namespace STK
     Macro *                   mpFirstMacro;
     Macro *                   mpLastMacro;
     
-    MyHSearchData    mHmmHash;
-    MyHSearchData    mStateHash;
-    MyHSearchData    mMixtureHash;
-    MyHSearchData    mMeanHash;
-    MyHSearchData    mVarianceHash;
-    MyHSearchData    mTransitionHash;
-    MyHSearchData    mXformInstanceHash;
-    MyHSearchData    mXformHash;
+    MyHSearchData             mHmmHash;
+    MyHSearchData             mStateHash;
+    MyHSearchData             mMixtureHash;
+    MyHSearchData             mMeanHash;
+    MyHSearchData             mVarianceHash;
+    MyHSearchData             mTransitionHash;
+    MyHSearchData             mXformInstanceHash;
+    MyHSearchData             mXformHash;
     
     int                       mInputVectorSize;
+    int                       mInputVectorStride;
     int                       mParamKind;
     size_t                    mNMixtures;
     size_t                    mNStates;
@@ -317,29 +341,39 @@ namespace STK
     
     KeywordID                 mOutPdfKind;
     KeywordID                 mDurKind;
-    XformInstance *           mpInputXform;
-    XformInstance *           mpXformInstances;
+    XformInstance*            mpInputXform;
+    XformInstance*            mpXformInstances;
     
     //Reestimation params
     int                       mUpdateMask;
     FLOAT                     mMinMixWeight;
-    Variance *                mpVarFloor;
+    Variance*                 mpVarFloor;
     double                    mMinVariance;            ///< global minimum variance floor
     long                      mMinOccurances;
-    MakeXformCommand *        mpXformToUpdate;
+    MakeXformCommand*         mpXformToUpdate;
     size_t                    mNumberOfXformsToUpdate;
     int                       mGaussLvl2ModelReest;
     int                       mMmiUpdate;
+    bool                      mSaveGlobOpts;
     FLOAT                     MMI_E;
     FLOAT                     MMI_h;
     FLOAT                     MMI_tauI;
+    FLOAT                     mMapTau;
+    
+    BiasXform**               mpClusterWeightVectors;
+    int                       mNClusterWeightVectors;
+    Matrix<FLOAT>*            mpGw;                                             ///< Accumulator G_w for cluster vector update
+    BasicVector<FLOAT>*       mpKw;                                             ///< Accumulator k_w for cluster vector update
+    OStkStream                mClusterWeightsStream;
+    std::string               mClusterWeightsOutPath;
+    
+    //bool                      mClusterParametersUpdate;
     
     
     /**
      * @name MMF output functions
      */
     //@{
-    void 
     /**
      * @brief Writes the complete Model set to a file
      * @param rFileName file name to write to
@@ -347,15 +381,16 @@ namespace STK
      * @param rOutputExt output file's implicit extension
      * @param binary write in binary mode if true
      */
+    void 
     WriteMmf(const char * pFileName, 
              const char * pOutputDir,
              const char * pOutputExt, bool binary);
     
-    void 
     /**
      * @brief Writes HMM statistics to a file
      * @param rFileName file to write to
      */
+    void 
     WriteHMMStats(const char * pFileName);             
     
     
@@ -372,6 +407,13 @@ namespace STK
                 long         totFrames, 
                 FLOAT        totLogLike);
     
+    /**
+     * @brief 
+     * @param i 
+     */
+    void
+    WriteClusterWeightsVector(size_t i);            
+                
     void 
     /**
      * 
@@ -457,10 +499,14 @@ namespace STK
     ResetAccums();
     
     void 
-    ComputeGlobalStats(FLOAT *observation, int time);
+    ComputeGlobalStats(FLOAT* observation, int time);
     
     void 
-    UpdateFromAccums(const char * pOutputDir);
+    UpdateFromAccums(const char* pOutputDir);
+    
+    void
+    AttachPriors(ModelSet *pPriorModelSet);
+
     
     void 
     DistributeMacroOccurances();
@@ -469,14 +515,29 @@ namespace STK
     ResetXformInstances();
   
     void
-    UpdateStacks(FLOAT *obs, int time,  PropagDirectionType dir);
+    UpdateStacks(FLOAT* obs, int time,  PropagDirectionType dir);
     
-    Macro *
+    void
+    UpdateStacks(const FLOAT* obs, int time,  PropagDirectionType dir);
+    
+    /**
+     * @brief Creates a macro object and adds it into the hash
+     * @param type Type of macro
+     * @param rNewName Macro name
+     * @return Pointer to the new macro object
+     */
+    Macro*
     pAddMacro(const char type, const std::string & rNewName);    
     
     MyHSearchData 
     MakeCIPhoneHash();
     
+    
+    void
+    ComputeClusterWeightsVector(size_t i);
+    
+    void 
+    ResetClusterWeightVectorsAccums(size_t i);
     
     void 
     /**
@@ -504,9 +565,8 @@ namespace STK
   {
   public:
     size_t                    mNStates;
-    Transition *              mpTransition;
-    State **                  mpState;
-    //State *                   state[1];
+    Transition*               mpTransition;
+    State**                   mpState;
     
   public:
     /// Constructor
@@ -515,15 +575,23 @@ namespace STK
     /// Destructor
     virtual ~Hmm();
     
-    void
     /**
      * @brief Updates the object from the accumulators
      * @param rModelSet ModelSet object which holds the accumulator configuration
      */
+    void
     UpdateFromAccums(const ModelSet * pModelSet);
     
-    
+        /**
+     * 
+     * @brief Attach prior model nodes to target model nodes
+     * @param nodeName 
+     * @param pPriorMean 
+     */
     void
+    AttachPriors(HMMSetNodeName nodeName, Hmm * pPriorHmm);
+
+    
     /**
      * @brief Performs desired @c action on the HMM's data which are chosen by @mask
      * @param mask bit mask of flags that tells which data to process by @c action
@@ -531,6 +599,7 @@ namespace STK
      * @param action routine to apply on pUserData
      * @param pUserData the data to process by @c action
      */
+    virtual void
     Scan( int             mask,
           HMMSetNodeName  nodeNameBuffer,
           ScanAction      action, 
@@ -544,10 +613,8 @@ namespace STK
     NStates() const
     {
       return mNStates;
-    }
-    
+    }    
   };
-  
   
   
   /** *************************************************************************
@@ -576,18 +643,20 @@ namespace STK
     KeywordID                 mOutPdfKind;
     union 
     {
-      size_t                  mNumberOfMixtures;
+      size_t                  mNMixtures;
       int                     PDF_obs_coef;
     };
   
     struct MixtureLink
     {
     public:
-      Mixture *               mpEstimates;
+      Mixture*                mpEstimates;
       FLOAT                   mWeight;
       FLOAT                   mWeightAccum; //used for reestimation
       FLOAT                   mWeightAccumDen;
-    } *                     mpMixture;
+    }*                        mpMixture;
+    
+    State*                    mpPrior;
     
     void
     /**
@@ -596,8 +665,16 @@ namespace STK
      * @param rHmm parrent Hmm of this state
      */
     UpdateFromAccums(const ModelSet * pModelSet, const Hmm * pHmm);
-  
-  
+
+    /**
+     * 
+     * @brief Attach prior model nodes to target model nodes
+     * @param nodeName 
+     * @param pPriorMean 
+     */
+    void
+    AttachPriors(HMMSetNodeName nodeName, State * pPriorState);
+    
     void
     /**
      * @brief Performs desired @c action on the HMM's data which are chosen by @mask
@@ -621,26 +698,49 @@ namespace STK
    */
   class Mixture : public MacroData 
   {
-  private:
-    FLOAT                     mGConst;
-    
   public:
     /// The (empty) constructor
-    Mixture(): mpMean(NULL), mpVariance(NULL), mpInputXform(NULL)
+    Mixture(): mID(0), mpMean(NULL), mpVariance(NULL), mpInputXform(NULL), 
+      mAccumG(), mAccumK(), mAccumL(), mPartialAccumG(0), 
+      mPartialAccumK(), mPartialAccumGd(0), mAccumGd()
     {};
     
     /// The (empty) destructor
     virtual
     ~Mixture() {};
     
-    
     long                      mID;
-    Mean *                    mpMean;
-    Variance *                mpVariance;
-    XformInstance *           mpInputXform;
+    Mean*                     mpMean;
+    Variance*                 mpVariance;
+    XformInstance*            mpInputXform;
+    
+    //: KLUDGE:
+    // get rid of this... 
+    // Cluster Parameter Update section
+    Matrix<FLOAT>             mAccumG;
+    Matrix<FLOAT>             mAccumK;
+    BasicVector<FLOAT>        mAccumL;
+    FLOAT                     mPartialAccumG;
+    BasicVector<FLOAT>        mPartialAccumK;
+    
+    // Discriminative CAT accumulators
+    FLOAT                     mPartialAccumGd;
+    Matrix<FLOAT>             mAccumGd;
+    
+    /**
+     * @brief Updates the G, K, L accumulators from partial accums and lambdas
+     *
+     * Updates the G, K, L accumulators which sum over speakers, i.e. we want
+     * to call this function whenever new speaker is loaded = when new weights 
+     * are read. The partial accums are cleared.
+     */
+    void 
+    UpdateClusterParametersAccums();
+    
+    
   
     /// Returns the GConst constant
-    const FLOAT &
+    inline const FLOAT&
     GConst() const { return mGConst; }
     
     /// Gives full access to the GConst
@@ -659,13 +759,29 @@ namespace STK
     UpdateFromAccums(const ModelSet * pModelSet);
     
     /**
+     * 
+     * @brief Attach prior model nodes to target model nodes
+     * @param nodeName 
+     * @param pPriorMean 
+     */
+    void
+    AttachPriors(HMMSetNodeName nodeName, Mixture * pPriorMixture);
+    
+    /**
      * @brief Performs variance flooring on the mixture's variance
      * @param rModelSet parrent ModelSet containing variance floor vector
      * @return pointer to the mixture variance object
      */
-    Variance *
+    Variance*
     FloorVariance(const ModelSet * pModelSet);
 
+    
+    Mixture&
+    AddToClusterWeightVectorsAccums(Matrix<FLOAT>* pGw, BasicVector<FLOAT>* pKw);
+
+    Mixture&
+    ResetClusterWeightVectorsAccums();
+        
     void
     /**
      * @brief Performs desired @c action on the HMM's data which are chosen by @mask
@@ -678,6 +794,16 @@ namespace STK
           HMMSetNodeName  nodeNameBuffer,
           ScanAction      action, 
           void *          pUserData);
+  
+  private:
+    FLOAT                     mGConst;
+    
+    /**
+     * @brief Updates the mean vectors and covariance matrix
+     * @param pModelSet 
+     */
+    void
+    UpdateClusterParametersFromAccums(const ModelSet * pModelSet);
   };
 
   
@@ -688,9 +814,9 @@ namespace STK
   class XformStatAccum
   {
   public:
-    Xform *                 mpXform;
+    Xform*                  mpXform;
     FLOAT                   mNorm;
-    FLOAT *                 mpStats;
+    FLOAT*                  mpStats;
   };
   
   
@@ -712,20 +838,59 @@ namespace STK
     virtual
     ~Mean();
     
-    
-    size_t                  mVectorSize;
-    XformStatAccum *        mpXformStatAccum;
+    BasicVector<FLOAT>      mVector;
+    FLOAT*                  mpAccums;
+    XformStatAccum*         mpXformStatAccum;
     size_t                  mNumberOfXformStatAccums;
     bool                    mUpdatableFromStatAccums;
-    FLOAT *                 mpVectorO;
+    Mean  *                 mpPrior;
+    
+    BiasXform**             mpClusterWeightVectors;    ///< Specifies cluser weight vectors defined by Bias Xform macros (if CAT), otherwise NULL
+    size_t                  mNClusterWeightVectors;    ///< Number of cluset weight vectors to use
+    Matrix<FLOAT>           mClusterMatrixT;            ///< Cluster mean vectors in matrix (stored in transposed form = mean vectors in rows)
+    FLOAT*                  mpOccProbAccums;           ///< Occupation probability accumulators
+    Matrix<FLOAT>           mCwvAccum;                 ///< Cluster weight vector accumulators (\sum \gamma_m(\tau) o(\tau))
     
     
-    void
+    /**
+     * @brief Returns mean vector size
+     */
+    const size_t
+    VectorSize() const 
+    { return mVector.Length(); } 
+    
     /**
      * @brief Updates the object from the accumulators
      * @param rModelSet ModelSet object which holds the accumulator configuration
      */
+    void
     UpdateFromAccums(const ModelSet * pModelSet);
+    
+    /**
+     * 
+     * @brief Attach prior model nodes to target model nodes
+     * @param nodeName 
+     * @param pPriorMean 
+     */
+    void
+    AttachPriors(HMMSetNodeName nodeName, Mean * pPriorMean);
+    
+    /** @brief Recalculates mean vector for cluster adaptive training
+     * 
+     * mClusterMatrixT holds the matrix of cluster mean vectors, mpWeights is the 
+     * cluster weight vector. This method implements their scalar multiplication
+     */
+    void
+    RecalculateCAT();
+  
+    void
+    ResetClusterWeightVectorsAccums(size_t i);
+    
+    
+  private:
+#ifdef STK_MEMALIGN_MANUAL
+    FLOAT*                  mpAccumsFree;
+#endif
   };
 
   
@@ -747,21 +912,46 @@ namespace STK
     virtual
     ~Variance();
   
-      
     //  BOOL         diagonal;
-    size_t                  mVectorSize;
+    BasicVector<FLOAT>      mVector;
+    FLOAT*                  mpAccums;
+    
     XformStatAccum *        mpXformStatAccum;
     size_t                  mNumberOfXformStatAccums;
     bool                    mUpdatableFromStatAccums;
-    FLOAT *                 mpVectorO;    
+    
+    Variance*               mpPrior;
+    
+    /**
+     * @brief Returns mean vector size
+     */
+    const size_t
+    VectorSize() const 
+    { return mVector.Length(); }
     
     void
     /**
      * @brief Updates the object from the accumulators
      * @param rModelSet ModelSet object which holds the accumulator configuration
      */
-    UpdateFromAccums(const ModelSet * pModelSet);
+    UpdateFromAccums(const ModelSet* pModelSet);
+
+    /**
+     * 
+     * @brief Attach prior model nodes to target model nodes
+     * @param nodeName 
+     * @param pPriorMean 
+     */
+    void
+    AttachPriors(HMMSetNodeName nodeName, Variance * pPriorVariance);
+
+  
+  private:
+#ifdef STK_MEMALIGN_MANUAL
+    FLOAT*                  mpAccumsFree;
+#endif
   };
+
   
   
   /** *************************************************************************
@@ -787,13 +977,23 @@ namespace STK
     size_t                  mNStates;
     //Matrix<FLOAT>           mMatrix;
     FLOAT *                 mpMatrixO;
+    Transition *            mpPrior;
   
-    void
     /**
      * @brief Updates the object from the accumulators
      * @param rModelSet ModelSet object which holds the accumulator configuration
      */
+    void
     UpdateFromAccums(const ModelSet * pModelSet);
+    
+    /**
+     * 
+     * @brief Attach prior model nodes to target model nodes
+     * @param nodeName 
+     * @param pPriorMean 
+     */
+    void
+    AttachPriors(HMMSetNodeName nodeName, Transition * pPriorTransition);
   };
 
 
@@ -838,25 +1038,57 @@ namespace STK
     ~XformInstance();
     
   
-    XformInstance *       mpInput;
-    Xform *               mpXform;
+    /// Output vector declaration
+    BasicVector<FLOAT>    mOutputVector;
+    XformInstance*        mpInput;
+    Xform*                mpXform;
     int                   mTime;
-    XformInstance  *      mpNext; // Chain of all instances
-    XformStatCache *      mpXformStatCache;
+    XformInstance*        mpNext; // Chain of all instances
+    XformStatCache*       mpXformStatCache;
     size_t                mNumberOfXformStatCaches;
-    size_t                mOutSize;
+    
     int                   mStatCacheTime;
-    char *                mpMemory;
+    char*                 mpMemory;
     int                   mTotalDelay;
 
-    Variance *            mpVarFloor;
+    Variance*             mpVarFloor;
         
-    FLOAT *               mpOutputVector; 
     
-    FLOAT *
-    XformPass(FLOAT *in_vec, int time, PropagDirectionType dir);
-  
-  
+    /**
+     * @brief Returns output vector size
+     */
+    const size_t
+    OutSize() const
+    { return mOutputVector.Length(); }
+    
+    
+    /**
+     * @brief Gives access to the output data vector
+     * @return Pointer to the const data array
+     */
+    const FLOAT* const
+    cpOutputData() const
+    { return mOutputVector.cpData(); }
+    
+
+    /**
+     * @brief Gives access to the output data vector
+     * @return Pointer to the data array
+     */
+    FLOAT*
+    pOutputData() const
+    { return mOutputVector.pData(); }
+    
+    
+    /**
+     * @brief Output vector accessor
+     * @return Const refference to the output vector object
+     */
+    const BasicVector<FLOAT>&
+    OutputVector() const
+    { return mOutputVector; }
+    
+    
     void
     /**
      * @brief Performs desired @c action on the HMM's data which are chosen by @mask
@@ -868,8 +1100,17 @@ namespace STK
     Scan( int             mask,
           HMMSetNodeName  nodeNameBuffer,
           ScanAction      action, 
-          void *          pUserData);
+          void*           pUserData);
   
+    
+    friend 
+    FLOAT*
+    XformPass( XformInstance*         pXformInst, 
+               FLOAT*                 pInputVector, 
+               int                    time, 
+               PropagDirectionType    dir);
+               
+  private:
   };
 
   
@@ -881,6 +1122,9 @@ namespace STK
     XT_FUNC,
     XT_STACKING,
     XT_COMPOSITE,
+    XT_FEATURE_MAPPING,
+    XT_FRANTA_PRODUCT,
+    XT_MATLAB
   } XformType;
 
   
@@ -897,6 +1141,11 @@ namespace STK
     size_t              mMemorySize;
     int                 mDelay;
     
+    Xform() : MacroData() {}
+    
+    virtual 
+    ~Xform() {}
+    
     /**
      * @brief Interface to the evaluation procedure of a concrete Xform
      * @param pInputVector pointer to the input vector
@@ -904,10 +1153,10 @@ namespace STK
      * @param pMemory pointer to the extra memory needed by the operation
      * @param direction propagation direction (forward/backward)
      */
-    virtual FLOAT * 
-    Evaluate(FLOAT *    pInputVector, 
-             FLOAT *    pOutputVector,
-             char *     pMemory,
+    virtual FLOAT*  
+    Evaluate(FLOAT*     pInputVector, 
+             FLOAT*     pOutputVector,
+             char*      pMemory,
              PropagDirectionType  direction) = 0;
   
     void
@@ -921,7 +1170,7 @@ namespace STK
     Scan( int             mask,
           HMMSetNodeName  nodeNameBuffer,
           ScanAction      action, 
-          void *          pUserData);
+          void*           pUserData);
   };
 
   
@@ -935,9 +1184,9 @@ namespace STK
   class XformLayer
   {
   public:
-    FLOAT *             mpOutputVector;
+    BasicVector<FLOAT>  mOutputVector;
     size_t              mNBlocks;
-    Xform **            mpBlock;
+    Xform**             mpBlock;
     
     /// The (empty) constructor
     XformLayer();
@@ -945,7 +1194,7 @@ namespace STK
     /// The destructor
     ~XformLayer();
     
-    Xform **
+    Xform**
     /**
      * @brief Inits (creates) the blocks
      * @param nBlocks number of blocks in the layer
@@ -975,7 +1224,7 @@ namespace STK
     ~CompositeXform();    
     
     size_t              mNLayers;    
-    XformLayer *        mpLayer;
+    XformLayer*         mpLayer;
     
     /**
      * @brief Composite Xform evaluation 
@@ -984,10 +1233,10 @@ namespace STK
      * @param pMemory pointer to the extra memory needed by the operation
      * @param direction propagation direction (forward/backward)
      */
-    virtual FLOAT * 
-    Evaluate(FLOAT *    pInputVector, 
-             FLOAT *    pOutputVector,
-             char *     pMemory,
+    virtual FLOAT* 
+    Evaluate(FLOAT*    pInputVector, 
+             FLOAT*    pOutputVector,
+             char*     pMemory,
              PropagDirectionType  direction);
   };
   
@@ -1010,9 +1259,7 @@ namespace STK
     virtual
     ~LinearXform();
   
-    
     Matrix<FLOAT>       mMatrix;
-    FLOAT *             mpMatrixO;
     
     /**
      * @brief Linear Xform evaluation 
@@ -1021,10 +1268,10 @@ namespace STK
      * @param pMemory pointer to the extra memory needed by the operation
      * @param direction propagation direction (forward/backward)
      */
-    virtual FLOAT * 
-    Evaluate(FLOAT *    pInputVector, 
-             FLOAT *    pOutputVector,
-             char *     pMemory,
+    virtual FLOAT* 
+    Evaluate(FLOAT*     pInputVector, 
+             FLOAT*     pOutputVector,
+             char*      pMemory,
              PropagDirectionType  direction);
   };
   
@@ -1046,8 +1293,6 @@ namespace STK
     ~BiasXform();
     
     Matrix<FLOAT>       mVector;
-    FLOAT *             mpVectorO;
-    
     
     /**
      * @brief Bias Xform evaluation 
@@ -1056,10 +1301,10 @@ namespace STK
      * @param pMemory pointer to the extra memory needed by the operation
      * @param direction propagation direction (forward/backward)
      */
-    virtual FLOAT * 
-    Evaluate(FLOAT *    pInputVector, 
-             FLOAT *    pOutputVector,
-             char *     pMemory,
+    virtual FLOAT* 
+    Evaluate(FLOAT*    pInputVector, 
+             FLOAT*    pOutputVector,
+             char*     pMemory,
              PropagDirectionType  direction);
   };
   
@@ -1090,10 +1335,10 @@ namespace STK
      * @param pMemory pointer to the extra memory needed by the operation
      * @param direction propagation direction (forward/backward)
      */
-    virtual FLOAT * 
-    Evaluate(FLOAT *    pInputVector, 
-             FLOAT *    pOutputVector,
-             char *     pMemory,
+    virtual FLOAT* 
+    Evaluate(FLOAT*    pInputVector, 
+             FLOAT*    pOutputVector,
+             char*     pMemory,
              PropagDirectionType  direction);
   };
   
@@ -1115,7 +1360,7 @@ namespace STK
     virtual
     ~CopyXform();
     
-    int *               mpIndices;  
+    int*                mpIndices;  
   
     /**
      * @brief Copy Xform evaluation 
@@ -1124,11 +1369,136 @@ namespace STK
      * @param pMemory pointer to the extra memory needed by the operation
      * @param direction propagation direction (forward/backward)
      */
-    virtual FLOAT * 
-    Evaluate(FLOAT *    pInputVector, 
-             FLOAT *    pOutputVector,
-             char *     pMemory,
+    virtual FLOAT* 
+    Evaluate(FLOAT*     pInputVector, 
+             FLOAT*     pOutputVector,
+             char*      pMemory,
              PropagDirectionType  direction);  
+  };
+  
+  
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Feature Mapping Xform representation
+   */
+  class FeatureMappingXform : public Xform 
+  {
+  public:
+    /**
+     * @brief The constructor
+     * @param inSize size of input vector
+     * @param outSize size of output vector
+     */
+    FeatureMappingXform(size_t inSize);
+    
+    virtual
+    ~FeatureMappingXform();
+  
+    /**
+     * @brief Copy Xform evaluation 
+     * @param pInputVector pointer to the input vector
+     * @param pOutputVector pointer to the output vector
+     * @param pMemory pointer to the extra memory needed by the operation
+     * @param direction propagation direction (forward/backward)
+     */
+    virtual FLOAT* 
+    Evaluate(FLOAT*     pInputVector, 
+             FLOAT*     pOutputVector,
+             char*      pMemory,
+             PropagDirectionType  direction);  
+             
+    State*              mpStateFrom;
+    State*              mpStateTo;    
+  };
+  
+  
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief FrantaProduct Xform representation
+   *
+   *  This transform splits the input vector of size @a s into @a n vectors of 
+   *  size @a s / @a n and performs product element by element 
+   */
+  class FrantaProductXform : public Xform 
+  {                                     
+  public:
+    /**
+     * @brief The constructor
+     * @param inSize size of input vector
+     * @param nParts number of parts to use
+     */
+    FrantaProductXform(size_t inSize, size_t nParts);
+    
+    virtual
+    ~FrantaProductXform();
+    
+    size_t NParts() const
+    { return mNParts; }
+    
+    /**
+     * @brief Copy Xform evaluation 
+     * @param pInputVector pointer to the input vector
+     * @param pOutputVector pointer to the output vector
+     * @param pMemory pointer to the extra memory needed by the operation
+     * @param direction propagation direction (forward/backward)
+     */
+    virtual FLOAT* 
+    Evaluate(FLOAT*     pInputVector, 
+             FLOAT*     pOutputVector,
+             char*      pMemory,
+             PropagDirectionType  direction);  
+             
+  private:
+    size_t        mNParts;           
+  };
+  
+  
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Matlab Xform representation
+   * 
+   *  Matlab Xform runs a matlab program. The program has predefined variables
+   *  STKInput and STKOutput for IO operations
+   */
+  class MatlabXform : public Xform 
+  {
+  public:
+    /**
+     * @brief The constructor
+     * @param inSize size of input vector
+     * @param outSize size of output vector
+     */
+    MatlabXform(size_t inRows, size_t inCols, size_t outSize);
+    
+    virtual
+    ~MatlabXform();
+    
+    std::string         mProgram;
+    
+    /**
+     * @brief Copy Xform evaluation 
+     * @param pInputVector pointer to the input vector
+     * @param pOutputVector pointer to the output vector
+     * @param pMemory pointer to the extra memory needed by the operation
+     * @param direction propagation direction (forward/backward)
+     */
+    virtual FLOAT* 
+    Evaluate(FLOAT*     pInputVector, 
+             FLOAT*     pOutputVector,
+             char*      pMemory,
+             PropagDirectionType  direction);  
+             
+  private:
+    
+#ifdef MATLAB_ENGINE
+    /// interface
+    mxArray*            mpInput;
+    mxArray*            mpOutput;
+    
+    /// The MATLAB Engine instance
+    Engine*             mpEp;
+#endif    
+    
   };
   
   
@@ -1159,10 +1529,10 @@ namespace STK
      * @param pMemory pointer to the extra memory needed by the operation
      * @param direction propagation direction (forward/backward)
      */
-    virtual FLOAT * 
-    Evaluate(FLOAT *    pInputVector, 
-             FLOAT *    pOutputVector,
-             char *     pMemory,
+    virtual FLOAT* 
+    Evaluate(FLOAT*     pInputVector, 
+             FLOAT*     pOutputVector,
+             char*      pMemory,
              PropagDirectionType  direction);
   };
   
@@ -1196,11 +1566,19 @@ namespace STK
     int           mMmi;
   };
 
+  class ClusterWeightAccumUserData
+  {
+  public:
+    int                   mNClusterWeightVectors;
+    Matrix<FLOAT>*        mpGw;
+    BasicVector<FLOAT>*   mpKw;
+  };
+  
   class ReplaceItemUserData
   {
   public:
-    MacroData *         mpOldData;
-    MacroData *         mpNewData;
+    MacroData*          mpOldData;
+    MacroData*          mpNewData;
     int                 mType;
   };
 
@@ -1219,7 +1597,6 @@ namespace STK
     bool                      mBinary;
   };
   /// @}
-
     
   
   extern const char *   gpCurrentMmfName;
@@ -1229,33 +1606,32 @@ namespace STK
   extern FunctionTable  gFuncTable[];                         ///< FuncXform table (keyword Id to function mapping)
   extern size_t         gFuncTableSize;                       ///< Number of records in gFuncTable
   extern char *         gpKwds[KID_MaxKwdID];                 ///< MMF keyword table
-                                                           
 
                   
   /**
    * @brief Passes the vector through XformInstance
    */
-  FLOAT *     XformPass(XformInstance *xformInstance, FLOAT *in_vec, int time, PropagDirectionType dir);
+  FLOAT*      XformPass(XformInstance* xformInstance, FLOAT* in_vec, int time, PropagDirectionType dir);
 
-  void        ReleaseMacroHash(MyHSearchData *macro_hash);
-  Macro *     FindMacro(MyHSearchData *macro_hash, const char *name);
+  void        ReleaseMacroHash(MyHSearchData* macro_hash);
+  Macro*      FindMacro(MyHSearchData* macro_hash, const char *name);
   
-  void        PutFlt(FILE *fp, bool binary, FLOAT f);
-  void        PutInt(FILE *fp, bool binary, int i);
-  void        PutKwd(FILE *fp, bool binary, KeywordID kwdID);
-  void        PutNLn(FILE *fp, bool binary);
+  void        PutFlt(FILE* fp, bool binary, FLOAT f);
+  void        PutInt(FILE* fp, bool binary, int i);
+  void        PutKwd(FILE* fp, bool binary, KeywordID kwdID);
+  void        PutNLn(FILE* fp, bool binary);
   
-  FLOAT       GetFloat(FILE *fp);
-  int         GetInt(FILE *fp);
-  char *      GetString(FILE *fp, int eofNotExpected);
-  void        RemoveSpaces(FILE *fp);
+  FLOAT       GetFloat(FILE* fp);
+  int         GetInt(FILE* fp);
+  char*       GetString(FILE* fp, int eofNotExpected);
+  void        RemoveSpaces(FILE* fp);
   void        UngetString(void);
   
   
-  int         CheckKwd(const char *str, KeywordID kwdID);
+  int         CheckKwd(const char* str, KeywordID kwdID);
   void        InitKwdTable();
-  KeywordID   ReadDurKind(char *str);
-  KeywordID   ReadOutPDFKind(char *str);
+  KeywordID   ReadDurKind(char* str);
+  KeywordID   ReadOutPDFKind(char* str);
   
   /// Action procedures
   /// @{
@@ -1270,6 +1646,7 @@ namespace STK
   void        ResetAccum (int macro_type, HMMSetNodeName, MacroData * pData, void *userData);
   void        WriteAccum (int macro_type, HMMSetNodeName, MacroData * pData, void *userData);
   void        WriteStatsForXform(int macro_type, HMMSetNodeName, MacroData * pData, void *userData);
+  void        ComputeClusterWeightVectorAccums(int macro_type, HMMSetNodeName nodeName, MacroData* pData, void* pUserData);
   /// @}  
   
 }; //namespace STK

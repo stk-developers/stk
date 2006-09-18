@@ -11,8 +11,14 @@
  ***************************************************************************/
 
 #include "Models.h"
+#include "Viterbi.h"
 #include "stkstream.h"
 #include "common.h"
+
+// MATLAB Engine
+#ifdef MATLAB_ENGINE
+#  include "engine.h"
+#endif
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -24,7 +30,7 @@
 
 namespace STK
 {
-  const char *    gpHListFilter;
+  const char*     gpHListFilter;
   bool            gHmmsIgnoreMacroRedefinition = true;
   FLOAT           gWeightAccumDen;
   
@@ -39,6 +45,99 @@ namespace STK
   size_t gFuncTableSize = sizeof(gFuncTable)/sizeof(*gFuncTable);
   enum StatType {MEAN_STATS, COV_STATS};
   
+  
+  //***************************************************************************
+  //***************************************************************************
+  void
+  CatMVectors(BasicVector<FLOAT>& rV, Matrix<FLOAT>* pM, size_t nM)
+  {
+    size_t j(0);
+    
+    for (size_t n = 0; n < nM; n++)
+    {
+      for (size_t i = 0; i < pM[n].Cols(); i++)
+      {
+        rV[j++] = pM[n][0][i];
+      }
+    }
+  }
+  
+  
+  //***************************************************************************
+  //***************************************************************************
+  void
+  CatClusterWeightPartialVectors(BasicVector<FLOAT>& rV, BiasXform** pM, size_t nM)
+  {
+    size_t j(0);
+    
+    for (size_t n = 0; n < nM; n++)
+    {
+      for (size_t i = 0; i < pM[n]->mInSize; i++)
+      {
+        rV[j++] = pM[n]->mVector[0][i];
+      }
+    }
+  }
+  
+  
+  //***************************************************************************
+  //***************************************************************************
+  Mixture&
+  Mixture::
+  AddToClusterWeightVectorsAccums(Matrix<FLOAT>* pGw, BasicVector<FLOAT>* pKw)
+  {
+    FLOAT          occ_counts;                                                  // occupation counts for current mixture
+    Matrix<FLOAT>  aux_mat1(mpMean->mClusterMatrixT);                           // auxiliary matrix
+    
+    // old vector
+    aux_mat1.DiagScale(mpVariance->mVector);
+    
+    // we go through each accumulator set
+    for (size_t sub=0; sub < mpMean->mNClusterWeightVectors; sub++)
+    {
+      occ_counts = mpMean->mpOccProbAccums[sub];                
+      
+      pGw[sub].AddCMMtMul(occ_counts, aux_mat1, mpMean->mClusterMatrixT);
+      pKw[sub].AddCMVMul(1, aux_mat1, mpMean->mCwvAccum[sub]);
+    } // for (size_t sub=0; sub < mpMean->mCwvAccum.Rows())
+        
+    return *this;
+  }
+  
+  //***************************************************************************
+  //***************************************************************************
+  void 
+  ComputeClusterWeightVectorAccums(
+    int               macro_type, 
+    HMMSetNodeName    nodeName, 
+    MacroData*        pData, 
+    void*             pUserData)
+  {
+    ClusterWeightAccumUserData* cwa = reinterpret_cast<ClusterWeightAccumUserData*>(pUserData);
+    Mixture*             mix = reinterpret_cast<Mixture*>(pData);
+    
+    if (mix->mpMean->mNClusterWeightVectors > 0)
+    {
+      mix->AddToClusterWeightVectorsAccums(cwa->mpGw, cwa->mpKw);
+    }
+  }  
+  
+  //***************************************************************************
+  //***************************************************************************
+  Mixture&
+  Mixture::
+  ResetClusterWeightVectorsAccums()
+  {
+    for (size_t i = 0; i < mpMean->mNClusterWeightVectors; i++)
+    {
+      mpMean->mpOccProbAccums[i] = 0.0;
+    }
+    
+    mpMean->mCwvAccum.Clear();
+    return *this;
+  }
+  
+  
   //***************************************************************************
   //***************************************************************************
   void 
@@ -48,7 +147,7 @@ namespace STK
     MacroData *       pData, 
     void *            pUserData)
   {
-    ReplaceItemUserData *  ud = (ReplaceItemUserData *) pUserData;
+    ReplaceItemUserData*   ud = (ReplaceItemUserData*) pUserData;
     size_t                  i;
     size_t                  j;
   
@@ -77,7 +176,8 @@ namespace STK
       State *state = (State *) pData;
       if (state->mOutPdfKind != KID_PDFObsVec) 
       {
-        for (i = 0; i < state->mNumberOfMixtures; i++) 
+//!!! Test for macro_type == 'm'
+        for (i = 0; i < state->mNMixtures; i++) 
         {
           if (state->mpMixture[i].mpEstimates == ud->mpOldData) 
           {
@@ -89,10 +189,43 @@ namespace STK
     
     else if (macro_type == 'm') 
     {
-      Mixture *mixture = (Mixture *) pData;
+      Mixture* mixture = static_cast<Mixture*>(pData);
       if (mixture->mpMean      == ud->mpOldData) mixture->mpMean       = (Mean*)          ud->mpNewData;
       if (mixture->mpVariance  == ud->mpOldData) mixture->mpVariance   = (Variance*)      ud->mpNewData;
       if (mixture->mpInputXform== ud->mpOldData) mixture->mpInputXform = (XformInstance*) ud->mpNewData;
+      
+      // For cluster adaptive training, BiasXform holds the weights vector. If
+      // new bias is defined, we want to check all means and potentially update
+      // the weights refference and recalculate the values
+      if ('x' == ud->mType                                               
+      && (XT_BIAS == static_cast<Xform*>(ud->mpNewData)->mXformType))
+      {
+        Mean* mean(mixture->mpMean);
+        
+        // find if any of the mpWeights points to the old data
+        i=0;
+        while (i < mean->mNClusterWeightVectors 
+        &&    (mean->mpClusterWeightVectors[i] != static_cast<BiasXform*>(ud->mpOldData)))
+        {i++;}
+        
+        // if we found something... 
+        if (i < mean->mNClusterWeightVectors)
+        {
+          // the cluster parameters accumulators need to be updated as speaker 
+          // has changed
+          mixture->UpdateClusterParametersAccums();
+          
+          BiasXform* new_weights = static_cast<BiasXform*>(ud->mpNewData);
+          
+          mean->mpClusterWeightVectors[i] = new_weights;
+          mean->RecalculateCAT();
+          
+          if (mean->mCwvAccum.Rows() > 0)
+          {
+            mean->ResetClusterWeightVectorsAccums(i);
+          }
+        }        
+      }
     } 
     
     else if (macro_type == 'x') 
@@ -154,7 +287,7 @@ namespace STK
     if (cxf == NULL)                                        return false;
     if (cxf->mXformType == XT_LINEAR)                       return true;
     if (cxf->mXformType != XT_COMPOSITE)                    return false;
-    if (cxf->mNLayers > 1 || cxf->mpLayer[0].mNBlocks > 1)    return false;
+    if (cxf->mNLayers > 1 || cxf->mpLayer[0].mNBlocks > 1)  return false;
     
     return Is1Layer1BlockLinearXform(cxf->mpLayer[0].mpBlock[0]);
   }
@@ -162,10 +295,11 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  Macro *
+  Macro*
   FindMacro(MyHSearchData *macro_hash, const char *name) 
   {
-    ENTRY e, *ep;
+    ENTRY   e={0}; // {0} is just to make compiler happy
+    ENTRY*  ep; 
     e.key = (char *) name;
     my_hsearch_r(e, FIND, &ep, macro_hash);
     return (Macro *) (ep ? ep->data : NULL);
@@ -207,38 +341,47 @@ namespace STK
     return strcmp(((Macro *)a)->mpName, ((Macro *)b)->mpName);
   }
   
+  
   //*****************************************************************************
   //*****************************************************************************
   void 
   ResetAccum(int macro_type, HMMSetNodeName nodeName,
-             MacroData * pData, void *pUserData) 
+             MacroData* pData, void* pUserData) 
   {
     size_t    i;
     size_t    size    = 0;
-    FLOAT *   vector  = NULL;
+    FLOAT*    vector  = NULL;
   
-    if (macro_type == mt_mean || macro_type == mt_variance) {
+    if (macro_type == mt_mean || macro_type == mt_variance) 
+    {
       if (macro_type == mt_mean) {
-        size   = ((Mean *)pData)->mVectorSize;
-        vector = ((Mean *)pData)->mpVectorO + size;
+        size   = ((Mean *)pData)->VectorSize();
+        vector = ((Mean *)pData)->mpAccums;
         size   = (size + 1) * 2;
       } else if (macro_type == mt_variance) {
-        size   = ((Variance *)pData)->mVectorSize;
-        vector = ((Variance *)pData)->mpVectorO + size;
+        size   = ((Variance *)pData)->VectorSize();
+        vector = ((Variance *)pData)->mpAccums;
         size   = (size * 2 + 1) * 2;
       }
   
-      for (i = 0; i < size; i++) vector[i] = 0;
+      //for (i = 0; i < size; i++) vector[i] = 0;
+      memset(vector, 0, size*sizeof(FLOAT));
   
-    } else if (macro_type == mt_state) {
+    } 
+    else if (macro_type == mt_state) 
+    {
       State *state = (State *) pData;
-      if (state->mOutPdfKind == KID_DiagC) {
-        for (i = 0; i < state->mNumberOfMixtures; i++) {
+      if (state->mOutPdfKind == KID_DiagC) 
+      {
+        for (i = 0; i < state->mNMixtures; i++) 
+        {
           state->mpMixture[i].mWeightAccum     = 0;
           state->mpMixture[i].mWeightAccumDen  = 0;
         }
       }
-    } else if (macro_type == mt_transition) {
+    } 
+    else if (macro_type == mt_transition) 
+    {
       size   = SQR(((Transition *) pData)->mNStates);
       vector = ((Transition *) pData)->mpMatrixO + size;
   
@@ -253,8 +396,8 @@ namespace STK
   GlobalStats(
     int                 macro_type, 
     HMMSetNodeName      nn, 
-    MacroData       *   pData, 
-    void            *   pUserData)
+    MacroData*          pData, 
+    void*               pUserData)
   {
     size_t        i;
     
@@ -266,7 +409,7 @@ namespace STK
       
       if (state->mOutPdfKind == KID_DiagC) 
       {
-        for (i = 0; i < state->mNumberOfMixtures; i++) 
+        for (i = 0; i < state->mNMixtures; i++) 
         {
           state->mpMixture[i].mWeightAccum += 1;
         }
@@ -275,32 +418,38 @@ namespace STK
     else 
     { // macro_type == mt_mixture
       Mixture * mixture   = (Mixture *) pData;
-      size_t    vec_size  = mixture->mpMean->mVectorSize;
+      size_t    vec_size  = mixture->mpMean->VectorSize();
       FLOAT *   obs       = XformPass(mixture->mpInputXform,ud->observation,ud->mTime,FORWARD);
       
       for (i = 0; i < vec_size; i++) 
       {
-        mixture->mpMean->mpVectorO[vec_size + i] += obs[i];
+        //mixture->mpMean->mpVectorO[vec_size + i] += obs[i];
+        mixture->mpMean->mpAccums[i] += obs[i];
       }
       
-      mixture->mpMean->mpVectorO[2 * vec_size] += 1;
+      //mixture->mpMean->mpVectorO[2 * vec_size] += 1;
+      mixture->mpMean->mpAccums[vec_size] += 1;
   
       for (i = 0; i < vec_size; i++) 
       {
-        mixture->mpVariance->mpVectorO[vec_size  +i] += SQR(obs[i]);
-        mixture->mpVariance->mpVectorO[2*vec_size+i] += obs[i];
+        //mixture->mpVariance->mpVectorO[vec_size  +i] += SQR(obs[i]);
+        //mixture->mpVariance->mpVectorO[2*vec_size+i] += obs[i];
+        mixture->mpVariance->mpAccums[i] += SQR(obs[i]);
+        mixture->mpVariance->mpAccums[vec_size+i] += obs[i];
       }
-      mixture->mpVariance->mpVectorO[3 * vec_size] += 1;
+      
+      //mixture->mpVariance->mpVectorO[3 * vec_size] += 1;
+      mixture->mpVariance->mpAccums[2 * vec_size] += 1;
     }
   }
   
   
   //*****************************************************************************
   //*****************************************************************************
-  FLOAT *
+  FLOAT*
   XformPass(
-    XformInstance   *     pXformInst, 
-    FLOAT           *     pInputVector, 
+    XformInstance*        pXformInst, 
+    FLOAT*                pInputVector, 
     int                   time, 
     PropagDirectionType   dir)
   {
@@ -308,7 +457,9 @@ namespace STK
       return pInputVector;
   
     if (time != UNDEF_TIME && pXformInst->mTime == time) 
-      return pXformInst->mpOutputVector;
+// oldvec:
+//      return pXformInst->mpOutputVector; 
+      return pXformInst->pOutputData();
   
     pXformInst->mTime = time;
   
@@ -318,11 +469,14 @@ namespace STK
   
     // evaluate this transformation
     pXformInst->mpXform->Evaluate(
-                          pInputVector,
-                          pXformInst->mpOutputVector,
-                          pXformInst->mpMemory,dir);
+        pInputVector,
+// oldvec:
+//        pXformInst->mpOutputVector,
+        pXformInst->pOutputData(),
+        pXformInst->mpMemory,
+        dir);
   
-    return pXformInst->mpOutputVector;
+    return pXformInst->pOutputData();
   }
 
     
@@ -540,17 +694,17 @@ namespace STK
   WriteStatsForXform(int macro_type, HMMSetNodeName nodeName,
                      MacroData * pData, void * pUserData) 
   {
-    XformStatsFileNames *    file = NULL;
-    XformStatAccum *              xfsa = NULL;
+    XformStatsFileNames*     file = NULL;
+    XformStatAccum*               xfsa = NULL;
     size_t                        i;
     size_t                        j;
     size_t                        k;
     size_t                        nxfsa = 0;
     int                           cc = 0;
     size_t                        size;
-    FLOAT *                       mean;
-    FLOAT *                       cov;
-    WriteStatsForXformUserData * ud = (WriteStatsForXformUserData *) pUserData;
+    FLOAT*                        mean;
+    FLOAT*                        cov;
+    WriteStatsForXformUserData*   ud = (WriteStatsForXformUserData *) pUserData;
   
     if (macro_type == mt_mean) 
     {
@@ -746,105 +900,7 @@ namespace STK
     }
   }
   
-  
-  //*****************************************************************************
-  //*****************************************************************************
-  void 
-  WriteAccum(int macro_type, HMMSetNodeName nodeName,
-             MacroData * pData, void *pUserData) 
-  {
-    size_t                i;
-    size_t                size;
-    FLOAT *               vector = NULL;
-  //  FILE *fp = (FILE *) pUserData;
-    WriteAccumUserData *  ud = (WriteAccumUserData * ) pUserData;
-    Macro *               macro = static_cast <MacroData *> (pData)->mpMacro;
-  
-    if (macro &&
-      (fprintf(ud->mpFp, "~%c \"%s\"", macro->mType, macro->mpName) < 0 ||
-       fwrite(&macro->mOccurances, sizeof(macro->mOccurances), 1, ud->mpFp) != 1)) 
-    {
-      Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
-    }
-  
-    if (macro_type == mt_mean || macro_type == mt_variance) 
-    {
-      XformStatAccum *    xfsa = NULL;
-      UINT_32             nxfsa = 0;
-  
-      if (macro_type == mt_mean) 
-      {
-        xfsa   = ((Mean *)pData)->mpXformStatAccum;
-        nxfsa  = ((Mean *)pData)->mNumberOfXformStatAccums;
-        size   = ((Mean *)pData)->mVectorSize;
-        vector = ((Mean *)pData)->mpVectorO+size;
-        size   = size + 1;
-      } 
-      else if (macro_type == mt_variance) 
-      {
-        xfsa   = ((Variance *)pData)->mpXformStatAccum;
-        nxfsa  = ((Variance *)pData)->mNumberOfXformStatAccums;
-        size   = ((Variance *)pData)->mVectorSize;
-        vector = ((Variance *)pData)->mpVectorO+size;
-        size   = size * 2 + 1;
-      }
-  
-  //    if (ud->mMmi) vector += size; // Move to MMI accums, which follows ML accums
-  
-      if (fwrite(vector, sizeof(FLOAT), size, ud->mpFp) != size ||
-          fwrite(&nxfsa, sizeof(nxfsa),    1, ud->mpFp) != 1) 
-      {
-        Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
-      }
-  
-  //    if (!ud->mMmi) { // MMI estimation of Xform statistics has not been implemented yet
-      for (i = 0; i < nxfsa; i++) 
-      {
-        size = xfsa[i].mpXform->mInSize;
-        size = (macro_type == mt_mean) ? size : size+size*(size+1)/2;
-        assert(xfsa[i].mpXform->mpMacro != NULL);
-        if (fprintf(ud->mpFp, "\"%s\"", xfsa[i].mpXform->mpMacro->mpName) < 0 ||
-          fwrite(&size,           sizeof(size),        1, ud->mpFp) != 1    ||
-          fwrite(xfsa[i].mpStats, sizeof(FLOAT), size, ud->mpFp) != size ||
-          fwrite(&xfsa[i].mNorm,  sizeof(FLOAT),    1, ud->mpFp) != 1) 
-        {
-          Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
-        }
-      }
-  //    }
-    }
-    
-    else if (macro_type == mt_state) 
-    {
-      State *state = (State *) pData;
-      if (state->mOutPdfKind == KID_DiagC) 
-      {
-        for (i = 0; i < state->mNumberOfMixtures; i++) 
-        {
-          if (fwrite(&state->mpMixture[i].mWeightAccum,
-                    sizeof(FLOAT), 1, ud->mpFp) != 1 ||
-            fwrite(&state->mpMixture[i].mWeightAccumDen,
-                    sizeof(FLOAT), 1, ud->mpFp) != 1) 
-          {
-            Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
-          }
-        }
-      }
-    } 
-    
-    else if (macro_type == mt_transition) 
-    {
-      size   = SQR(((Transition *) pData)->mNStates);
-      vector = ((Transition *) pData)->mpMatrixO + size;
-  
-      if (fwrite(vector, sizeof(FLOAT), size, ud->mpFp) != size) 
-      {
-        Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
-      }
-    }
-  }
-  
-  
+
   //*****************************************************************************
   //*****************************************************************************
   void 
@@ -865,16 +921,18 @@ namespace STK
       {
         xfsa   = ((Mean *)pData)->mpXformStatAccum;
         nxfsa  = ((Mean *)pData)->mNumberOfXformStatAccums;
-        size   = ((Mean *)pData)->mVectorSize;
-        vector = ((Mean *)pData)->mpVectorO+size;
+        size   = ((Mean *)pData)->VectorSize();
+        //vector = ((Mean *)pData)->mpVectorO+size;
+        vector = ((Mean *)pData)->mpAccums;
         size   = size + 1;
       } 
       else if (macro_type == mt_variance) 
       {
         xfsa   = ((Variance *)pData)->mpXformStatAccum;
         nxfsa  = ((Variance *)pData)->mNumberOfXformStatAccums;
-        size   = ((Variance *)pData)->mVectorSize;
-        vector = ((Variance *)pData)->mpVectorO+size;
+        size   = ((Variance *)pData)->VectorSize();
+        //vector = ((Variance *)pData)->mpVectorO+size;
+        vector = ((Variance *)pData)->mpAccums;
         size   = size * 2 + 1;
       }
   
@@ -900,12 +958,12 @@ namespace STK
       {
         FLOAT accum_sum = 0.0;
   
-        for (i = 0; i < state->mNumberOfMixtures; i++)
+        for (i = 0; i < state->mNMixtures; i++)
           accum_sum += state->mpMixture[i].mWeightAccum;
   
         if (accum_sum > 0.0) 
         {
-          for (i = 0; i < state->mNumberOfMixtures; i++)
+          for (i = 0; i < state->mNMixtures; i++)
             state->mpMixture[i].mWeightAccum /= accum_sum;
         }
       }
@@ -929,170 +987,6 @@ namespace STK
         for (j=0; j < nstates; j++) 
         {
           vector[i * nstates + j] -= nrm;
-        }
-      }
-    }
-  }
-  
-  
-  //*****************************************************************************
-  //*****************************************************************************
-  unsigned int faddfloat(FLOAT *vec, size_t size, float mul_const, FILE *fp) 
-  {
-    size_t    i;
-    FLOAT     f;
-  
-    for (i = 0; i < size; i++) 
-    {
-      if (fread(&f, sizeof(FLOAT), 1, fp) != 1) break;
-      vec[i] += f * mul_const;
-    }
-    
-    return i;
-  }
-  
-  
-  //*****************************************************************************
-  //*****************************************************************************
-  void ReadAccum(int macro_type, HMMSetNodeName nodeName,
-                  MacroData * pData, void *pUserData) 
-  {
-    unsigned int        i;
-    unsigned int        j;
-    int                 c;
-    unsigned int        size   = 0;
-    FLOAT *             vector = NULL;
-    Macro *             macro;
-    ReadAccumUserData * ud = (ReadAccumUserData *) pUserData;
-  //  FILE *fp =        ((ReadAccumUserData *) pUserData)->fp;
-  //  char *fn =        ((ReadAccumUserData *) pUserData)->fn;
-  //  ModelSet *hmm_set = ((ReadAccumUserData *) pUserData)->hmm_set;
-  //  float weight =    ((ReadAccumUserData *) pUserData)->weight;
-    char                xfName[128];
-  
-    xfName[sizeof(xfName)-1] = '\0';
-  
-    if (macro_type == mt_mean || macro_type == mt_variance) 
-    {
-      XformStatAccum *  xfsa = NULL;
-      UINT_32           size_inf;
-      UINT_32           nxfsa_inf;
-      size_t            nxfsa = 0;
-  
-      if (macro_type == mt_mean) 
-      {
-        xfsa   = ((Mean *)pData)->mpXformStatAccum;
-        nxfsa  = ((Mean *)pData)->mNumberOfXformStatAccums;
-        size   = ((Mean *)pData)->mVectorSize;
-        vector = ((Mean *)pData)->mpVectorO+size;
-        size   = size + 1;
-      } 
-      else if (macro_type == mt_variance) 
-      {
-        xfsa   = ((Variance *)pData)->mpXformStatAccum;
-        nxfsa  = ((Variance *)pData)->mNumberOfXformStatAccums;
-        size   = ((Variance *)pData)->mVectorSize;
-        vector = ((Variance *)pData)->mpVectorO+size;
-        size   = size * 2 + 1;
-      }
-  
-      if (ud->mMmi) 
-        vector += size;
-  
-      if (faddfloat(vector, size, ud->mWeight,    ud->mpFp) != size ||
-          fread(&nxfsa_inf, sizeof(nxfsa_inf), 1, ud->mpFp) != 1) 
-      {
-        Error("Incompatible accumulator file: '%s'", ud->mpFileName);
-      }
-  
-      if (!ud->mMmi) { // MMI estimation of Xform statistics has not been implemented yet
-        for (i = 0; i < nxfsa_inf; i++) 
-        {
-          if (getc(ud->mpFp) != '"') 
-            Error("Incompatible accumulator file: '%s'", ud->mpFileName);
-  
-          for (j=0; (c=getc(ud->mpFp)) != EOF && c != '"' && j < sizeof(xfName)-1; j++) 
-            xfName[j] = c;
-  
-          xfName[j] = '\0';
-          
-          if (c == EOF)
-            Error("Incompatible accumulator file: '%s'", ud->mpFileName);
-  
-          macro = FindMacro(&ud->mpModelSet->mXformHash, xfName);
-  
-          if (fread(&size_inf, sizeof(size_inf), 1, ud->mpFp) != 1) 
-            Error("Incompatible accumulator file: '%s'", ud->mpFileName);
-  
-          if (macro != NULL) 
-          {
-            size = ((LinearXform *) macro->mpData)->mInSize;
-            size = (macro_type == mt_mean) ? size : size+size*(size+1)/2;
-  
-            if (size != size_inf)
-              Error("Incompatible accumulator file: '%s'", ud->mpFileName);
-  
-            for (j = 0; j < nxfsa && xfsa[j].mpXform != macro->mpData; j++)
-              ;
-            
-            if (j < nxfsa) 
-            {
-              if (faddfloat(xfsa[j].mpStats, size, ud->mWeight, ud->mpFp) != size  ||
-                  faddfloat(&xfsa[j].mNorm,     1, ud->mWeight, ud->mpFp) != 1) 
-              {
-                Error("Invalid accumulator file: '%s'", ud->mpFileName);
-              }
-            } 
-            else 
-            {
-              macro = NULL;
-            }
-          }
-  
-          // Skip Xform accumulator
-          if (macro == NULL) 
-          { 
-            FLOAT f;
-            for (j = 0; j < size_inf+1; j++) 
-              fread(&f, sizeof(f), 1, ud->mpFp);
-          }
-        }
-      }
-    } else if (macro_type == mt_state) {
-      State *state = (State *) pData;
-      if (state->mOutPdfKind == KID_DiagC) {
-        FLOAT junk;
-        for (i = 0; i < state->mNumberOfMixtures; i++) {
-          if (ud->mMmi == 1) {
-            if (faddfloat(&state->mpMixture[i].mWeightAccumDen, 1, ud->mWeight, ud->mpFp) != 1 ||
-                faddfloat(&junk,                                1, ud->mWeight, ud->mpFp) != 1) {
-              Error("Incompatible accumulator file: '%s'", ud->mpFileName);
-            }
-          } else if (ud->mMmi == 2) {
-            if (faddfloat(&junk,                                1, ud->mWeight, ud->mpFp) != 1 ||
-                faddfloat(&state->mpMixture[i].mWeightAccumDen, 1, ud->mWeight, ud->mpFp) != 1) {
-              Error("Incompatible accumulator file: '%s'", ud->mpFileName);
-            }
-          } else {
-            if (faddfloat(&state->mpMixture[i].mWeightAccum,     1, ud->mWeight, ud->mpFp) != 1 ||
-                faddfloat(&state->mpMixture[i].mWeightAccumDen,  1, ud->mWeight, ud->mpFp) != 1) {
-              Error("Incompatible accumulator file: '%s'", ud->mpFileName);
-            }
-          }
-        }
-      }
-    } else if (macro_type == mt_transition) {
-      FLOAT f;
-      size   = SQR(((Transition *) pData)->mNStates);
-      vector =     ((Transition *) pData)->mpMatrixO + size;
-  
-      for (i = 0; i < size; i++) {
-        if (fread(&f, sizeof(FLOAT), 1, ud->mpFp) != 1) {
-        Error("Incompatible accumulator file: '%s'", ud->mpFileName);
-        }
-        if (!ud->mMmi) { // MMI estimation of transition probabilities has not been implemented yet
-          f += log(ud->mWeight);
-          LOG_INC(vector[i], f);
         }
       }
     }
@@ -1141,6 +1035,7 @@ namespace STK
 
   //*****************************************************************************
   //*****************************************************************************
+  //virtual 
   void 
   Hmm::
   Scan(int mask, HMMSetNodeName nodeName,
@@ -1199,13 +1094,15 @@ namespace STK
     FLOAT cov_det = 0;
     size_t i;
   
-    for (i = 0; i < mpVariance->mVectorSize; i++) 
+    for (i = 0; i < mpVariance->VectorSize(); i++) 
     {
-      cov_det -= log(mpVariance->mpVectorO[i]);
+      // old vector
+      //cov_det -= log(mpVariance->mpVectorO[i]);
+      cov_det -= log(mpVariance->mVector[i]);
     }
-    mGConst = cov_det + M_LOG_2PI * mpVariance->mVectorSize;
+    mGConst = cov_det + M_LOG_2PI * mpVariance->VectorSize();
   }  
-
+  
   //***************************************************************************
   //***************************************************************************
   Variance *
@@ -1223,25 +1120,29 @@ namespace STK
     // none of the above needs to be set, so 
     if (f_floor != NULL)
     {
-      assert(f_floor->mVectorSize == mpVariance->mVectorSize);
+      assert(f_floor->VectorSize() == mpVariance->VectorSize());
       
       // go through each element and update
-      for (i = 0; i < mpVariance->mVectorSize; i++)
+      for (i = 0; i < mpVariance->VectorSize(); i++)
       {
-        mpVariance->mpVectorO[i] = LOWER_OF(mpVariance->mpVectorO[i],
-                                            f_floor->mpVectorO[i]);
+        // old vector
+        //mpVariance->mpVectorO[i] = LOWER_OF(mpVariance->mpVectorO[i],
+        //                                    f_floor->mpVectorO[i]);
+        mpVariance->mVector[i] = LOWER_OF(mpVariance->mVector[i],
+                                          f_floor->mVector[i]);
       }
     }
     
     // we still may have global varfloor constant set
     if (g_floor > 0.0)
     {
-printf("%f", g_floor);
       // go through each element and update
       g_floor =  1.0 / g_floor;
-      for (i = 0; i < mpVariance->mVectorSize; i++)
+      for (i = 0; i < mpVariance->VectorSize(); i++)
       {
-        mpVariance->mpVectorO[i] = LOWER_OF(mpVariance->mpVectorO[i], g_floor);
+        // old vector
+        //mpVariance->mpVectorO[i] = LOWER_OF(mpVariance->mpVectorO[i], g_floor);
+        mpVariance->mVector[i] = LOWER_OF(mpVariance->mVector[i], g_floor);
       }
     }
     
@@ -1259,56 +1160,88 @@ printf("%f", g_floor);
 
     if (pModelSet->mMmiUpdate == 1 || pModelSet->mMmiUpdate == -1) 
     {
-      int vec_size    = mpVariance->mVectorSize;
-      FLOAT *mean_vec = mpMean->mpVectorO;
-      FLOAT *var_vec  = mpVariance->mpVectorO;
+      int vec_size    = mpVariance->VectorSize();
+      // old vector
+      //FLOAT *mean_vec = mpMean->mpVectorO;
+      //FLOAT *var_vec  = mpVariance->mpVectorO;
+      FLOAT* mean_vec = mpMean->mVector.pData();
+      FLOAT* var_vec  = mpVariance->mVector.pData();
   
-      FLOAT *vac_num  = var_vec + 1 * vec_size;
-      FLOAT *mac_num  = var_vec + 2 * vec_size;
-      FLOAT *nrm_num  = var_vec + 3 * vec_size;
+      //FLOAT *vac_num  = var_vec + 1 * vec_size;
+      //FLOAT *mac_num  = var_vec + 2 * vec_size;
+      //FLOAT *nrm_num  = var_vec + 3 * vec_size;
+      FLOAT *vac_num  = mpVariance->mpAccums;
+      FLOAT *mac_num  = mpVariance->mpAccums + 1 * vec_size;
+      FLOAT *nrm_num  = mpVariance->mpAccums + 2 * vec_size;
   
       FLOAT *vac_den  = vac_num + 2 * vec_size + 1;
       FLOAT *mac_den  = mac_num + 2 * vec_size + 1;
       FLOAT *nrm_den  = nrm_num + 2 * vec_size + 1;
   
+      FLOAT *var_pri  = mpVariance->mpPrior->mVector.pData();
+      FLOAT *mean_pri = mpMean    ->mpPrior->mVector.pData();
+
       if (pModelSet->mMmiUpdate == 1) 
       {
-        // I-smoothing
+        // Obsolete way of I-smoothing making use of numearator statistics
         for (i = 0; i < vec_size; i++) 
         {
           mac_num[i] *= (*nrm_num + pModelSet->MMI_tauI) / *nrm_num;
           vac_num[i] *= (*nrm_num + pModelSet->MMI_tauI) / *nrm_num;
         }
         *nrm_num   += pModelSet->MMI_tauI;
+
+        // New way of I-smoothing or general MAP update making use of prior model set
+        if (pModelSet->mUpdateMask & UM_MAP)
+        {
+          for (i = 0; i < vec_size; i++) {
+            mac_num[i] += pModelSet->mMapTau * mean_pri[i];
+            vac_num[i] += pModelSet->mMapTau * var_pri[i];
+          }
+          *nrm_num += pModelSet->mMapTau;
+        }
       }
   
       Djm = 0.0;
       
-      // Find minimum Djm leading to positive update of variances
-      for (i = 0; i < vec_size; i++) {
-        double macn_macd = mac_num[i]-mac_den[i];
-        double vacn_vacd = vac_num[i]-vac_den[i];
-        double nrmn_nrmd = *nrm_num - *nrm_den;
-        double a  = 1/var_vec[i];
-        double b  = vacn_vacd + nrmn_nrmd * (1/var_vec[i] + SQR(mean_vec[i])) -
-                  2 * macn_macd * mean_vec[i];
-        double c  = nrmn_nrmd * vacn_vacd - SQR(macn_macd);
-        double Dd = (- b + sqrt(SQR(b) - 4 * a * c)) / (2 * a);
-  
-        Djm = HIGHER_OF(Djm, Dd);
+      if (pModelSet->mUpdateMask & UM_VARIANCE) 
+      {
+        // Find minimum Djm leading to positive update of variances
+        for (i = 0; i < vec_size; i++) {
+          double macn_macd = mac_num[i]-mac_den[i];
+          double vacn_vacd = vac_num[i]-vac_den[i];
+          double nrmn_nrmd = *nrm_num - *nrm_den;
+          double a  = 1/var_vec[i];
+          double b  = vacn_vacd + nrmn_nrmd * (1/var_vec[i] + SQR(mean_vec[i])) -
+                      2 * macn_macd * mean_vec[i];
+          double c  = nrmn_nrmd * vacn_vacd - SQR(macn_macd);
+          double Dd = (- b + sqrt(SQR(b) - 4 * a * c)) / (2 * a);
+    
+          Djm = HIGHER_OF(Djm, Dd);
+        }
       }
   
       Djm = HIGHER_OF(pModelSet->MMI_h * Djm, pModelSet->MMI_E * *nrm_den);
   
       if (pModelSet->mMmiUpdate == -1) 
       {
-        // I-smoothing
+        // Obsolete way of I-smoothing making use of numearator statistics
         for (i = 0; i < vec_size; i++) 
         {
           mac_num[i] *= (*nrm_num + pModelSet->MMI_tauI) / *nrm_num;
           vac_num[i] *= (*nrm_num + pModelSet->MMI_tauI) / *nrm_num;
         }
         *nrm_num   += pModelSet->MMI_tauI;
+
+        // New way of I-smoothing or general MAP update making use of prior model set
+        if (pModelSet->mUpdateMask & UM_MAP)
+        {
+          for (i = 0; i < vec_size; i++) {
+            mac_num[i] += pModelSet->mMapTau * mean_pri[i];
+            vac_num[i] += pModelSet->mMapTau * var_pri[i];
+          }
+          *nrm_num += pModelSet->mMapTau;
+        }
       }
       
       for (i = 0; i < vec_size; i++) 
@@ -1318,97 +1251,191 @@ printf("%f", g_floor);
         double nrmn_nrmd = *nrm_num - *nrm_den;
   
         double new_mean = (macn_macd + Djm * mean_vec[i]) / (nrmn_nrmd + Djm);
-        var_vec[i]     = 1/((vacn_vacd + Djm * (1/var_vec[i] + SQR(mean_vec[i]))) /
-                        (nrmn_nrmd + Djm) - SQR(new_mean));
-        mean_vec[i]    = new_mean;
-  
-        /* We will floor the variance separately at the end of this member function
-        if (pModelSet->mpVarFloor) {
-          var_vec[i] = LOWER_OF(var_vec[i], pModelSet->mpVarFloor->mpVectorO[i]);
+        
+        if (pModelSet->mUpdateMask & UM_VARIANCE) 
+        {
+          var_vec[i]   = 1/((vacn_vacd + Djm * (1/var_vec[i] + SQR(mean_vec[i]))) /
+                            (nrmn_nrmd + Djm) - SQR(new_mean));
         }
-        */
+        
+        if (pModelSet->mUpdateMask & UM_MEAN) 
+        {
+          mean_vec[i]  = new_mean;
+        }
       }
     } 
     
     // //////////
-    // MFE update
-    else if (pModelSet->mMmiUpdate == 2 || pModelSet->mMmiUpdate == -2 ) 
+    // MPE update
+    else if ((pModelSet->mMmiUpdate == 2 || pModelSet->mMmiUpdate == -2) && 0 == mAccumK.Rows()) 
     { 
-      int vec_size    = mpVariance->mVectorSize;
-      FLOAT *mean_vec = mpMean->mpVectorO;
-      FLOAT *var_vec  = mpVariance->mpVectorO;
+      int    vec_size = mpVariance->VectorSize();
+      FLOAT* mean_vec = mpMean->mVector.pData();
+      FLOAT* var_vec  = mpVariance->mVector.pData();
   
-      FLOAT *vac_mle  = var_vec + 1 * vec_size;
-      FLOAT *mac_mle  = var_vec + 2 * vec_size;
-      FLOAT *nrm_mle  = var_vec + 3 * vec_size;
+      //FLOAT *vac_mpe  = var_vec + 1 * vec_size;
+      //FLOAT *mac_mpe  = var_vec + 2 * vec_size;
+      //FLOAT *nrm_mpe  = var_vec + 3 * vec_size;
+      FLOAT *vac_mpe  = mpVariance->mpAccums;
+      FLOAT *mac_mpe  = mpVariance->mpAccums + 1 * vec_size;
+      FLOAT *nrm_mpe  = mpVariance->mpAccums + 2 * vec_size;
   
-      FLOAT *vac_mfe  = vac_mle + 2 * vec_size + 1;
-      FLOAT *mac_mfe  = mac_mle + 2 * vec_size + 1;
-      FLOAT *nrm_mfe  = nrm_mle + 2 * vec_size + 1;
+      FLOAT *var_pri  = mpVariance->mpPrior->mVector.pData();
+      FLOAT *mean_pri = mpMean    ->mpPrior->mVector.pData();
   
       if (pModelSet->mMmiUpdate == 2) 
       {
-        // I-smoothing
-        for (i = 0; i < vec_size; i++) {
-          mac_mfe[i] += (pModelSet->MMI_tauI / *nrm_mle * mac_mle[i]);
-          vac_mfe[i] += (pModelSet->MMI_tauI / *nrm_mle * vac_mle[i]);
+        // I-smoothing or general MAP update
+        if (pModelSet->mUpdateMask & UM_MAP)
+        {
+//printf("mac_mpe[0]=%f, pModelSet->mMapTau=%f, mean_pri[0]=%f\n", mac_mpe[0], pModelSet->mMapTau, mean_pri[0]);
+//printf("vac_mpe[0]=%f, pModelSet->mMapTau=%f, 1.0/var_pri[0] + SQR(mean_pri[0])=%f\n",  vac_mpe[0], pModelSet->mMapTau, 1.0/var_pri[0] + SQR(mean_pri[0]));
+          for (i = 0; i < vec_size; i++) 
+          {
+            mac_mpe[i] += pModelSet->mMapTau * mean_pri[i];
+            vac_mpe[i] += pModelSet->mMapTau * (1.0/var_pri[i] + SQR(mean_pri[i]));
+          }
+          *nrm_mpe += pModelSet->mMapTau;
         }
-        *nrm_mfe += pModelSet->MMI_tauI;
       }
       
       Djm = 0.0;
       
-      // Find minimum Djm leading to positive update of variances
-      for (i = 0; i < vec_size; i++) 
+      if (pModelSet->mUpdateMask & UM_VARIANCE) 
       {
-        double macn_macd = mac_mfe[i];
-        double vacn_vacd = vac_mfe[i];
-        double nrmn_nrmd = *nrm_mfe;
-        double a  = 1/var_vec[i];
-        double b  = vacn_vacd + nrmn_nrmd * (1/var_vec[i] + SQR(mean_vec[i])) -
-                  2 * macn_macd * mean_vec[i];
-        double c  = nrmn_nrmd * vacn_vacd - SQR(macn_macd);
-        double Dd = (- b + sqrt(SQR(b) - 4 * a * c)) / (2 * a);
+        // Find minimum Djm leading to positive update of variances
+        for (i = 0; i < vec_size; i++) 
+        {
+          double macn_macd = mac_mpe[i];
+          double vacn_vacd = vac_mpe[i];
+          double nrmn_nrmd = *nrm_mpe;
+          double a  = 1/var_vec[i];
+          double b  = vacn_vacd + nrmn_nrmd * (1/var_vec[i] + SQR(mean_vec[i])) -
+                    2 * macn_macd * mean_vec[i];
+          double c  = nrmn_nrmd * vacn_vacd - SQR(macn_macd);
+          double Dd = (- b + sqrt(SQR(b) - 4 * a * c)) / (2 * a);
   
-        Djm = HIGHER_OF(Djm, Dd);
+          Djm = HIGHER_OF(Djm, Dd);
+        }
       }
   
-      // gWeightAccumDen is passed using quite ugly hack that work
-      // only if mixtures are not shared by more states - MUST BE REWRITEN
+//printf("Djm=%f, gWeightAccumDen=%f\n", Djm, gWeightAccumDen);
+      // !!! gWeightAccumDen is passed using quite ugly hack that work
+      // !!! only if mixtures are not shared by more states - MUST BE REWRITEN
       Djm = HIGHER_OF(pModelSet->MMI_h * Djm, pModelSet->MMI_E * gWeightAccumDen);
   
       if (pModelSet->mMmiUpdate == -2) 
       {
         // I-smoothing
-        for (i = 0; i < vec_size; i++) 
+        if (pModelSet->mUpdateMask & UM_MAP)
         {
-          mac_mfe[i] += (pModelSet->MMI_tauI / *nrm_mle * mac_mle[i]);
-          vac_mfe[i] += (pModelSet->MMI_tauI / *nrm_mle * vac_mle[i]);
+          for (i = 0; i < vec_size; i++) {
+            mac_mpe[i] += pModelSet->mMapTau * mean_pri[i];
+            vac_mpe[i] += pModelSet->mMapTau * (1.0/var_pri[i] + SQR(mean_pri[i]));
+          }
+          *nrm_mpe += pModelSet->mMapTau;
         }
-        *nrm_mfe += pModelSet->MMI_tauI;
       }
   
+//printf("mac_mpe[0]=%f, Djm=%f, mean_vec[0]=%f, *nrm_mpe=%f\n", mac_mpe[0], Djm, mean_vec[0], *nrm_mpe);
+//printf("vac_mpe[0]=%f, var_vec[0]=%f\n", vac_mpe[0], var_vec[0]);
       for (i = 0; i < vec_size; i++) 
       {
-        double macn_macd = mac_mfe[i];
-        double vacn_vacd = vac_mfe[i];
-        double nrmn_nrmd = *nrm_mfe;
+        double macn_macd = mac_mpe[i];
+        double vacn_vacd = vac_mpe[i];
+        double nrmn_nrmd = *nrm_mpe;
         double new_mean  = (macn_macd + Djm * mean_vec[i]) / (nrmn_nrmd + Djm);
-        var_vec[i]       = 1 / ((vacn_vacd + Djm * (1/var_vec[i] + SQR(mean_vec[i]))) /
-                               (nrmn_nrmd + Djm) - SQR(new_mean));
-        mean_vec[i]      = new_mean;
-  
-        /* We will floor variance separately in the end
-        if (pModelSet->mpVarFloor) 
-          var_vec[i] = LOWER_OF(var_vec[i], pModelSet->mpVarFloor->mpVectorO[i]);
-        */
+        if (pModelSet->mUpdateMask & UM_VARIANCE) 
+        {
+          var_vec[i]     = 1 / ((vacn_vacd + Djm * (1/var_vec[i] + SQR(mean_vec[i]))) /
+                                (nrmn_nrmd + Djm) - SQR(new_mean));
+        }
+
+        if (pModelSet->mUpdateMask & UM_MEAN)  
+        {
+          mean_vec[i]    = new_mean;
+        }
       }
     }
-     
+    
+    // Cluster parameters update
+    else if (0 < mAccumK.Rows())
+    {
+
+      // update accumulators from partial simplified accumulators
+      UpdateClusterParametersAccums();
+
+      // if discriminative training:
+      if (pModelSet->mMmiUpdate == 2 || pModelSet->mMmiUpdate == -2)
+      {
+        FLOAT D       = pModelSet->MMI_E * gWeightAccumDen;
+        FLOAT gamma_n = mpVariance->mpAccums[mpVariance->VectorSize()*2] + gWeightAccumDen;
+        
+        // G_D = G / gamma_n
+        Matrix<FLOAT>&      G_D(mAccumGd);
+        G_D.DivC(gamma_n);
+        
+        // K_D = G_D * M^T
+        Matrix<FLOAT>      K_D;
+        K_D.AddMMMul(G_D, mpMean->mClusterMatrixT);
+                
+        // L_D = 1/invVar_old + M_old * G_D * M_old' =
+        //       1/invVar_old + MG_D * M_old'
+        BasicVector<FLOAT> L_D(mpVariance->mVector);
+        Matrix<FLOAT>      MG_D(mpMean->mClusterMatrixT.Cols(),
+                                mpMean->mClusterMatrixT.Rows());
+        
+        // :TODO:
+        // Test these procedures, they are new...
+        MG_D.AddCMtMMul(1.0, mpMean->mClusterMatrixT, G_D);
+        L_D.AddDiagCMMMul(1.0, MG_D, mpMean->mClusterMatrixT);
+                
+        //G += D * G_D
+        //K += D * K_D
+        //L += D * L_D        
+        mAccumG.AddCMMul(D, G_D);
+        mAccumK.AddCMMul(D, K_D);
+        mAccumL.AddCVMul(D, L_D);
+        
+        //:KLUDGE^2:
+        // this is a total mess
+        mpVariance->mpAccums[mpVariance->VectorSize()*2] += D;
+      }
+      
+      // perform update of parameters from accumulators
+      UpdateClusterParametersFromAccums(pModelSet);
+    }
+    
     // ///////
     // ordinary update    
     else 
     {
+      // !!! MAP update should not be here !!!
+      int vec_size    = mpVariance->VectorSize();
+//      FLOAT *mean_vec = mpMean->mVector.pData();
+//      FLOAT *var_vec  = mpVariance->mVector.pData();
+  
+      FLOAT* mmac  = mpMean->mpAccums;
+      FLOAT* mnrm  = mpMean->mpAccums + 1 * vec_size;
+      FLOAT* vvac  = mpVariance->mpAccums;
+      FLOAT* vmac  = mpVariance->mpAccums + 1 * vec_size;
+      FLOAT* vnrm  = mpVariance->mpAccums + 2 * vec_size;
+  
+      FLOAT* var_pri  = mpVariance->mpPrior->mVector.pData();
+      FLOAT* mean_pri = mpMean    ->mpPrior->mVector.pData();
+      
+      if (pModelSet->mUpdateMask & UM_MAP)
+      {
+        for (i = 0; i < vec_size; i++) {
+          mmac[i] += pModelSet->mMapTau * mean_pri[i];
+          vmac[i] += pModelSet->mMapTau * mean_pri[i];
+          vvac[i] += pModelSet->mMapTau * (1.0/var_pri[i] + SQR(mean_pri[i]));
+        }
+        *mnrm += pModelSet->mMapTau;
+        *vnrm += pModelSet->mMapTau;
+      }
+      // !!! MAP update should not be here !!!
+      
       if (!mpVariance->mpMacro)
         mpVariance->UpdateFromAccums(pModelSet);
   
@@ -1426,6 +1453,7 @@ printf("%f", g_floor);
   
   //***************************************************************************
   //***************************************************************************
+  //virtual 
   void 
   Mixture::
   Scan(int mask, HMMSetNodeName nodeName, ScanAction action, void *pUserData)
@@ -1466,30 +1494,108 @@ printf("%f", g_floor);
     }
   }
 
-        
   
+  //***************************************************************************
+  //***************************************************************************
+  void 
+  Mixture::
+  UpdateClusterParametersAccums()
+  {
+    // create a helping weight vector which is a concatenation of all elementary
+    // weight vectors
+    BasicVector<FLOAT> aux_vec(mAccumG.Rows());
+    CatClusterWeightPartialVectors(aux_vec, mpMean->mpClusterWeightVectors, 
+      mpMean->mNClusterWeightVectors);
+    
+    // add const * vec * vec^T
+    mAccumG.AddCVVtMul(mPartialAccumG, aux_vec, aux_vec);
+    mAccumK.AddCVVtMul(1, aux_vec, mPartialAccumK);
+    
+    // clear the partial accumulator as they are strictly speaker dependent
+    mPartialAccumG = 0.0;
+    mPartialAccumK.Clear();
+    
+    // for discriminative training:
+    if (mAccumGd.IsInitialized())
+    {
+      mAccumGd.AddCVVtMul(mPartialAccumGd, aux_vec, aux_vec);      
+      mPartialAccumGd = 0.0;
+    }
+  }    
+          
+
+  //****************************************************************************
+  //****************************************************************************
+  void 
+  Mixture::
+  UpdateClusterParametersFromAccums(const ModelSet * pModelSet)
+  {
+    if (pModelSet->mUpdateMask & UM_MEAN)
+    {
+      // update the mean matrix
+      Matrix<FLOAT>   g_inv(mAccumG);
+      
+      g_inv.Invert();
+      mpMean->mClusterMatrixT.RepMMMul(g_inv, mAccumK);
+    }
+      
+    if (pModelSet->mUpdateMask & UM_VARIANCE)
+    {
+      FLOAT           tmp_val;
+      //: KLUDGE:
+      // norms for variances are stored in vector[vec_zize*3]. Not nice...
+      for (size_t i = 0; i < mpVariance->VectorSize(); i++)
+      {
+        tmp_val = 0;
+         
+        for (size_t j = 0; j < mAccumK.Rows(); j++)
+        {
+          tmp_val += mpMean->mClusterMatrixT[j][i] * mAccumK[j][i]; 
+        }
+        
+        // old vector
+        //mpVariance->mpVectorO[i] = (mpVariance->mpVectorO[mpVariance->VectorSize()*3]) / 
+        //  (mAccumL[i] - tmp_val);
+        mpVariance->mVector[i] = (mpVariance->mpAccums[mpVariance->VectorSize()*2]) / 
+          (mAccumL[i] - tmp_val);        
+      }
+    }
+  }    
+  
+    
   //**************************************************************************  
   //**************************************************************************  
   // Mean section
   //**************************************************************************  
   //**************************************************************************  
   Mean::
-  Mean(size_t vectorSize, bool allocateAccums)
+  Mean(size_t vectorSize, bool allocateAccums) :
+    mVector(vectorSize)
   {
     size_t accum_size = 0;
+    void*  free_vec;
     
-    if (allocateAccums) 
-      accum_size = (vectorSize + 1) * 2; // * 2 for MMI accums
+    if (allocateAccums)
+    {
+      accum_size = align<16>(((vectorSize + 1) * 2) * sizeof(FLOAT)); // * 2 for MMI accums
+      
+      mpAccums = static_cast<FLOAT*>
+        (stk_memalign(16, accum_size, &free_vec));
+    }
+    else
+    {
+      mpAccums = NULL;
+    }
     
-    mpVectorO = new FLOAT[vectorSize + accum_size];
-    
-    mVectorSize               = vectorSize;    
     mpXformStatAccum          = NULL;
     mNumberOfXformStatAccums  = 0;
     mUpdatableFromStatAccums  = true;
-}  
-  
-  
+    mpPrior                   = NULL;
+    mpClusterWeightVectors    = NULL;
+    mNClusterWeightVectors    = 0;
+    mpOccProbAccums           = NULL;
+  }  
+
   //**************************************************************************  
   //**************************************************************************  
   Mean::
@@ -1500,7 +1606,23 @@ printf("%f", g_floor);
       free(mpXformStatAccum->mpStats);
       free(mpXformStatAccum);
     }
-    delete [] mpVectorO;
+    
+    // delete refferences to weights Bias xforms
+    if (NULL != mpClusterWeightVectors)
+    { 
+      delete [] mpClusterWeightVectors;
+    }
+    
+    if (NULL != mpOccProbAccums)
+    {
+      delete [] mpOccProbAccums;
+    }
+    
+#ifdef STK_MEMALIGN_MANUAL
+    free(mpAccumsFree);
+#else
+    free(mpAccums);
+#endif
   }  
   
   //**************************************************************************  
@@ -1510,15 +1632,18 @@ printf("%f", g_floor);
   UpdateFromAccums(const ModelSet * pModelSet)
   {
     size_t   i;
-    FLOAT *  vec  = mpVectorO;
-    FLOAT *  acc  = mpVectorO + 1 * mVectorSize;
-    FLOAT    nrm  = mpVectorO  [2 * mVectorSize];
+    //FLOAT*   vec  = mpVectorO;
+    //FLOAT *  acc  = mpVectorO + 1 * VectorSize();
+    //FLOAT    nrm  = mpVectorO  [2 * VectorSize()];
+    FLOAT*   vec  = mVector.pData();
+    FLOAT*   acc  = mpAccums;
+    FLOAT    nrm  = mpAccums[VectorSize()];
   
     if (pModelSet->mUpdateMask & UM_MEAN) 
     {
       if (mNumberOfXformStatAccums == 0) 
-      {
-        for (i = 0; i < mVectorSize; i++) 
+      {              
+        for (i = 0; i < VectorSize(); i++) 
         {
           vec[i] = acc[i] / nrm;
         }
@@ -1535,29 +1660,68 @@ printf("%f", g_floor);
         // If 'mUpdatableFromStatAccums' is true then 'mNumberOfXformStatAccums' is equal to 1
         for (i=0; i < mNumberOfXformStatAccums; i++) 
         {
-          LinearXform * xform   = (LinearXform *) mpXformStatAccum[i].mpXform;
+          LinearXform*  xform   = (LinearXform*) mpXformStatAccum[i].mpXform;
           size_t        in_size = xform->mInSize;
-          FLOAT *       mnv     = mpXformStatAccum[i].mpStats;
+          FLOAT*        mnv     = mpXformStatAccum[i].mpStats;
   
           assert(xform->mXformType == XT_LINEAR);
-          assert(pos + xform->mOutSize <= mVectorSize);
+          assert(pos + xform->mOutSize <= VectorSize());
           
           for (r = 0; r < xform->mOutSize; r++) 
           {
-            mpVectorO[pos + r] = 0;
+            //mpVectorO[pos + r] = 0;
+            mVector[pos + r] = 0;
+            
             for (c = 0; c < in_size; c++) 
             {
-              mpVectorO[pos + r] += mnv[c] * xform->mpMatrixO[in_size * r + c];
+              //mpVectorO[pos + r] += mnv[c] * xform->mpMatrixO[in_size * r + c];
+              //mpVectorO[pos + r] += mnv[c] * xform->mMatrix[r][c];
+              mVector[pos + r] += mnv[c] * xform->mMatrix[r][c];
             }
           }
           pos += xform->mOutSize;
         }
         
-        assert(pos == mVectorSize);
+        assert(pos == VectorSize());
       }
     }
   } // UpdateFromAccums(const ModelSet * pModelSet)
-
+  
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  void 
+  Mean::
+  RecalculateCAT()
+  {
+    if (NULL != mpClusterWeightVectors)
+    {
+      //:KLUDGE: optimize this
+      //memset(mpVectorO, 0, sizeof(FLOAT) * VectorSize());
+      mVector.Clear();
+      
+      int v = 0;
+      
+      // go through weights vectors
+      for (size_t w = 0; w < mNClusterWeightVectors; w++)
+      {
+        // go through rows in the cluster matrix
+        for (size_t i = 0; i < mpClusterWeightVectors[w]->mInSize; i++)
+        {
+          // go through cols in the cluster matrix
+          for (size_t j = 0; j < VectorSize(); j++)
+          {
+            //mpVectorO[j] += mClusterMatrixT(v, j) * mpClusterWeightVectors[w]->mVector[0][i];
+            mVector[j] += mClusterMatrixT[v][j] * mpClusterWeightVectors[w]->mVector[0][i];
+          }
+          // move to next cluster mean vector
+          v++;
+        }
+      }
+      
+    }
+  }
+  
   
   //**************************************************************************  
   //**************************************************************************  
@@ -1565,18 +1729,32 @@ printf("%f", g_floor);
   //**************************************************************************  
   //**************************************************************************  
   Variance::
-  Variance(size_t vectorSize, bool allocateAccums)
+  Variance(size_t vectorSize, bool allocateAccums) :
+    mVector(vectorSize)
   {
-    size_t accum_size = 0;
+    void* free_vec;
     
     if (allocateAccums) 
-      accum_size = (2*vectorSize + 1) * 2; // * 2 for MMI accums
+    {
+      // * 2 for MMI accums
+      size_t accum_size = align<16>(((2*vectorSize + 1) * 2)*sizeof(FLOAT)); 
+          
+      mpAccums = static_cast<FLOAT*>
+        (stk_memalign(16, accum_size, &free_vec));
+#ifdef STK_MEMALIGN_MANUAL
+      mpAccumsFree = static_cast<FLOAT*>(free_vec);
+#endif
+    }
+    else
+    {
+      mpAccums = NULL;
+    }
     
-    mpVectorO = new FLOAT[vectorSize + accum_size];
-    mVectorSize               = vectorSize;    
+    //mVectorSize               = vectorSize;    
     mpXformStatAccum          = NULL;
     mNumberOfXformStatAccums  = 0;
     mUpdatableFromStatAccums  = true;
+    mpPrior                   = NULL;
   }  
   
   //**************************************************************************  
@@ -1589,7 +1767,18 @@ printf("%f", g_floor);
       free(mpXformStatAccum->mpStats);
       free(mpXformStatAccum);
     }
-    delete [] mpVectorO;
+    
+#ifdef STK_MEMALIGN_MANUAL
+//    free(mpVectorOFree);
+#else
+//    free(mpVectorO);
+#endif
+
+#ifdef STK_MEMALIGN_MANUAL
+    free(mpAccumsFree);
+#else
+    free(mpAccums);
+#endif
   }  
   
   //**************************************************************************  
@@ -1604,12 +1793,17 @@ printf("%f", g_floor);
     {
       if (mNumberOfXformStatAccums == 0) 
       {
-        FLOAT *vec  = mpVectorO;
-        FLOAT *vac  = mpVectorO + 1 * mVectorSize; // varriance accum 
-        FLOAT *mac  = mpVectorO + 2 * mVectorSize; // mean accum 
-        FLOAT *nrm  = mpVectorO + 3 * mVectorSize; // norm - occupation count
+        // old vector
+        //FLOAT *vec  = mpVectorO;
+        FLOAT *vec  = mVector.pData();
+        //FLOAT *vac  = mpVectorO + 1 * VectorSize(); // varriance accum 
+        //FLOAT *mac  = mpVectorO + 2 * VectorSize(); // mean accum 
+        //FLOAT *nrm  = mpVectorO + 3 * VectorSize(); // norm - occupation count
+        FLOAT *vac  = mpAccums; // varriance accum 
+        FLOAT *mac  = mpAccums + 1 * VectorSize(); // mean accum 
+        FLOAT *nrm  = mpAccums + 2 * VectorSize(); // norm - occupation count
         
-        for (i = 0; i < mVectorSize; i++) 
+        for (i = 0; i < VectorSize(); i++) 
         {
           if (pModelSet->mUpdateMask & UM_OLDMEANVAR) 
           {
@@ -1625,7 +1819,7 @@ printf("%f", g_floor);
           
           // !!! Need for transformation dependent varFloors
           if (pModelSet->mpVarFloor && 
-              pModelSet->mpVarFloor->mVectorSize == mVectorSize) 
+              pModelSet->mpVarFloor->VectorSize() == VectorSize()) 
           {
             vec[i] = LOWER_OF(vec[i], pModelSet->mpVarFloor->mpVectorO[i]);
           }
@@ -1646,38 +1840,47 @@ printf("%f", g_floor);
   //    If 'mUpdatableFromStatAccums' is true then 'mNumberOfXformStatAccums' is equal to 1
         for (i=0; i<mNumberOfXformStatAccums; i++) 
         {
-          LinearXform * xform = (LinearXform *) mpXformStatAccum[i].mpXform;
+          LinearXform*  xform = (LinearXform*) mpXformStatAccum[i].mpXform;
           size_t        in_size = xform->mInSize;
-          FLOAT *       cov  = mpXformStatAccum[i].mpStats + in_size;
+          FLOAT*        cov  = mpXformStatAccum[i].mpStats + in_size;
   
           assert(xform->mXformType == XT_LINEAR);
-          assert(pos + xform->mOutSize <= mVectorSize);
+          assert(pos + xform->mOutSize <= VectorSize());
           
           for (r = 0; r < xform->mOutSize; r++) 
           {
-            mpVectorO[pos + r] = 0.0;
+            // old vector
+            //mpVectorO[pos + r] = 0.0;
+            mVector[pos + r] = 0.0;
   
             for (c = 0; c < in_size; c++) 
             {
               FLOAT aux = 0;
               for (t = 0; t <= c; t++) 
               {
-                aux += cov[c * (c+1)/2 + t] * xform->mpMatrixO[in_size * r + t];
+                //aux += cov[c * (c+1)/2 + t] * xform->mpMatrixO[in_size * r + t];
+                aux += cov[c * (c+1)/2 + t] * xform->mMatrix[r][t];
               }
   
               for (; t < in_size; t++) 
               {
-                aux += cov[t * (t+1)/2 + c] * xform->mpMatrixO[in_size * r + t];
+                //aux += cov[t * (t+1)/2 + c] * xform->mpMatrixO[in_size * r + t];
+                aux += cov[t * (t+1)/2 + c] * xform->mMatrix[r][t];
               }
               
-              mpVectorO[pos + r] += aux     * xform->mpMatrixO[in_size * r + c];
+              //mpVectorO[pos + r] += aux     * xform->mpMatrixO[in_size * r + c];
+              // old vector
+              //mpVectorO[pos + r] += aux     * xform->mMatrix[r][c];
+              mVector[pos + r] += aux     * xform->mMatrix[r][c];              
             }
             
-            mpVectorO[pos + r] = 1 / HIGHER_OF(0.0, mpVectorO[pos + r]);
+            // old vector
+            //mpVectorO[pos + r] = 1 / HIGHER_OF(0.0, mpVectorO[pos + r]);
+            mVector[pos + r] = 1 / HIGHER_OF(0.0, mVector[pos + r]);
 
             /* This block is moved one level higher
             if (pModelSet->mpVarFloor && 
-                pModelSet->mpVarFloor->mVectorSize == mVectorSize) // !!! Need for transformation dependent varFloors
+                pModelSet->mpVarFloor->VectorSize() == VectorSize()) // !!! Need for transformation dependent varFloors
             {
                  mpVectorO[pos + r] = LOWER_OF(mpVectorO[pos + r], pModelSet->mpVarFloor->mpVectorO[pos + r]);
             }
@@ -1687,7 +1890,7 @@ printf("%f", g_floor);
           pos += xform->mOutSize;
         } // for (i=0; i<mNumberOfXformStatAccums; i++) 
         
-        assert(pos == mVectorSize);
+        assert(pos == VectorSize());
       }
     }
   }
@@ -1706,6 +1909,7 @@ printf("%f", g_floor);
     
     mpMatrixO = new FLOAT[alloc_size];
     mNStates = nStates;
+    mpPrior  = NULL;
   }
   
   //**************************************************************************  
@@ -1761,7 +1965,8 @@ printf("%f", g_floor);
   State::
   State(size_t numMixtures)
   {
-    mpMixture = (numMixtures > 0) ? new MixtureLink[numMixtures] : NULL;    
+    mpMixture = (numMixtures > 0) ? new MixtureLink[numMixtures] : NULL;
+    mpPrior   = NULL;
   }
   
   
@@ -1770,8 +1975,10 @@ printf("%f", g_floor);
   State::
   ~State()
   {
-    if (mpMixture != NULL)
+    if (NULL != mpMixture)
       delete [] mpMixture;
+    
+    //std::cerr << "State destructor" << std::endl;      
   }
 
   
@@ -1788,12 +1995,26 @@ printf("%f", g_floor);
       FLOAT accum_sum = 0;
   
 //    if (hmm_set->mUpdateMask & UM_WEIGHT) {
-      for (i = 0; i < mNumberOfMixtures; i++) 
+      for (i = 0; i < mNMixtures; i++) 
       {
+        if(pModelSet->mMmiUpdate == 2 || pModelSet->mMmiUpdate == -2)
+        {
+          //!!! We do not have mWeightAccum, so priot weights are taken instead.
+          //!!! Anyway, this is something not very nice.
+          if(mpPrior->mpMixture[i].mWeight < LOG_MIN)
+          {
+            mpMixture[i].mWeightAccum = 0.0;
+          }
+          else
+          {
+            mpMixture[i].mWeightAccum = exp(mpPrior->mpMixture[i].mWeight);
+          }
+        }
+        
         accum_sum += mpMixture[i].mWeightAccum;
       }
 
-      if (accum_sum <= 0.0) 
+      if (accum_sum <= 0.0 && pModelSet->mMinMixWeight > 0.0) 
       {
         if (mpMacro) 
         {
@@ -1814,7 +2035,7 @@ printf("%f", g_floor);
         // Remove mixtures with low weight
       if (pModelSet->mUpdateMask & UM_WEIGHT) 
       {
-        for (i = 0; i < mNumberOfMixtures; i++) 
+        for (i = 0; i < mNMixtures; i++) 
         {
           if (mpMixture[i].mWeightAccum / accum_sum < pModelSet->mMinMixWeight) 
           {
@@ -1839,13 +2060,13 @@ printf("%f", g_floor);
               mpMixture[i].mpEstimates->Scan(MTM_ALL,NULL,ReleaseItem,NULL);
             }
   
-            mpMixture[i--] = mpMixture[--mNumberOfMixtures];
+            mpMixture[i--] = mpMixture[--mNMixtures];
             continue;
           }
         }
       }
   
-      for (i = 0; i < mNumberOfMixtures; i++) 
+      for (i = 0; i < mNMixtures; i++) 
       {
   //      printf("Weight Acc: %f\n", (float) state->mpMixture[i].mWeightAccum);
         if (pModelSet->mUpdateMask & UM_WEIGHT) 
@@ -1866,6 +2087,7 @@ printf("%f", g_floor);
 
   //***************************************************************************
   //***************************************************************************
+  //virtual 
   void 
   State::
   Scan(int mask, HMMSetNodeName nodeName,  ScanAction action, void *pUserData)
@@ -1889,7 +2111,7 @@ printf("%f", g_floor);
     if (mOutPdfKind != KID_PDFObsVec &&
       mask & (MTM_ALL & ~(MTM_STATE | MTM_HMM | MTM_TRANSITION))) 
     {
-      for (i=0; i < mNumberOfMixtures; i++) 
+      for (i=0; i < mNMixtures; i++) 
       {
         if (!mpMixture[i].mpEstimates->mpMacro) 
         {
@@ -1913,11 +2135,10 @@ printf("%f", g_floor);
   //***************************************************************************
   //***************************************************************************
   XformInstance::
-  XformInstance(size_t vectorSize)
+  XformInstance(size_t vectorSize) :
+    mOutputVector(vectorSize)
   {
-    mpOutputVector  = new FLOAT[vectorSize];
-    mpVarFloor      = NULL;
-    mOutSize        = vectorSize;
+    mpVarFloor       = NULL;
     mpXformStatCache = NULL;
 
     mpInput          = NULL;
@@ -1933,11 +2154,10 @@ printf("%f", g_floor);
   //***************************************************************************
   //***************************************************************************
   XformInstance::
-  XformInstance(Xform * pXform, size_t vectorSize)
+  XformInstance(Xform* pXform, size_t vectorSize) :
+    mOutputVector(vectorSize)
   {
-    mpOutputVector      = new FLOAT[vectorSize];
     mpVarFloor          = NULL;
-    mOutSize            = vectorSize;
     mpXformStatCache    = NULL;
 
     mpInput             = NULL;
@@ -1961,38 +2181,14 @@ printf("%f", g_floor);
       free(mpXformStatCache->mpStats);
       free(mpXformStatCache);
     }
-    delete [] mpOutputVector;
+    //delete [] mpOutputVector;
     delete [] mpMemory;
   }
   
-  //***************************************************************************
-  //***************************************************************************
-  FLOAT *
-  XformInstance::
-  XformPass(FLOAT * pInputVector, int time, PropagDirectionType dir)
-  {
-    if (time != UNDEF_TIME && this->mTime == time) 
-      return mpOutputVector;
-  
-    this->mTime = time;
-  
-    if (this->mpInput) {
-      pInputVector = mpInput->XformPass(pInputVector, time, dir);
-    }
-  
-    mpXform->Evaluate(pInputVector, mpOutputVector, mpMemory, dir);
-  
-  /*  {int i;
-    for (i=0; i<xformInst->mOutSize; i++)
-      printf("%.2f ", xformInst->mpOutputVector[i]);
-    printf("%s\n", dir == FORWARD ? "FORWARD" : "BACKWARD");}*/
-  
-    return mpOutputVector;
-  }; // XformPass(FLOAT *in_vec, int time, PropagDirectionType dir)
-  
   
   //*****************************************************************************
   //*****************************************************************************
+  //virtual   
   void 
   XformInstance::
   Scan(int mask, HMMSetNodeName nodeName, ScanAction action, void *pUserData)
@@ -2039,6 +2235,7 @@ printf("%f", g_floor);
   
   //****************************************************************************
   //****************************************************************************
+  //virtual 
   void 
   Xform::
   Scan(int mask, HMMSetNodeName nodeName, ScanAction action, void *pUserData)
@@ -2077,6 +2274,12 @@ printf("%f", g_floor);
         }
       }
     }
+    
+    if (mXformType == XT_FEATURE_MAPPING)
+    {
+      static_cast<FeatureMappingXform*>(this)->mpStateTo->Scan(mask, nodeName, action, pUserData);
+      static_cast<FeatureMappingXform*>(this)->mpStateFrom->Scan(mask, nodeName, action, pUserData);
+    }
   
     if (!(mask & MTM_PRESCAN)) 
     {
@@ -2095,7 +2298,7 @@ printf("%f", g_floor);
   //**************************************************************************  
   //**************************************************************************  
   XformLayer::
-  XformLayer() : mpOutputVector(NULL), mNBlocks(0), mpBlock(NULL) 
+  XformLayer() : mOutputVector(), mNBlocks(0), mpBlock(NULL) 
   {
     // we don't do anything here, all is done by the consructor call
   }
@@ -2105,8 +2308,8 @@ printf("%f", g_floor);
   XformLayer::
   ~XformLayer()
   {
-    // delete the pointers
-    delete [] mpOutputVector;
+    //delete the pointers
+    //delete [] mpOutputVector;
     delete [] mpBlock;
   }
 
@@ -2148,7 +2351,7 @@ printf("%f", g_floor);
   CompositeXform::
   ~CompositeXform()
   {
-    
+    delete [] mpLayer;
   }
   
   //**************************************************************************  
@@ -2156,9 +2359,9 @@ printf("%f", g_floor);
   //virtual 
   FLOAT *
   CompositeXform::
-  Evaluate(FLOAT *    pInputVector, 
-           FLOAT *    pOutputVector,
-           char *     pMemory,
+  Evaluate(FLOAT*     pInputVector, 
+           FLOAT*     pOutputVector,
+           char*      pMemory,
            PropagDirectionType  direction)
   {
     size_t  i;
@@ -2166,8 +2369,10 @@ printf("%f", g_floor);
   
     for (i = 0; i < mNLayers; i++) 
     {
-      FLOAT *in  = (i == 0)          ? pInputVector  : mpLayer[i-1].mpOutputVector;
-      FLOAT *out = (i == mNLayers-1) ? pOutputVector : mpLayer[i].mpOutputVector;
+      //FLOAT* in  = (i == 0)          ? pInputVector  : mpLayer[i-1].mpOutputVector;
+      //FLOAT* out = (i == mNLayers-1) ? pOutputVector : mpLayer[i].mpOutputVector;
+      FLOAT* in  = (i == 0)          ? pInputVector  : mpLayer[i-1].mOutputVector.pData();
+      FLOAT* out = (i == mNLayers-1) ? pOutputVector : mpLayer[i].mOutputVector.pData();
       
       for (j = 0; j < mpLayer[i].mNBlocks; j++) 
       {
@@ -2190,11 +2395,9 @@ printf("%f", g_floor);
   //**************************************************************************  
   LinearXform::
   LinearXform(size_t inSize, size_t outSize):
-    mMatrix(inSize, outSize, STORAGE_TRANSPOSED)
+    mMatrix(outSize, inSize)
   {
-    //ret = (LinearXform *) malloc(sizeof(LinearXform)+(out_size*in_size-1)*sizeof(ret->mpMatrixO[0]));
-    //if (ret == NULL) Error("Insufficient memory");
-    mpMatrixO     = new FLOAT[inSize * outSize];    
+    //mpMatrixO     = new FLOAT[inSize * outSize];
     mOutSize      = outSize;
     mInSize       = inSize;
     mMemorySize   = 0;
@@ -2202,22 +2405,24 @@ printf("%f", g_floor);
     mXformType    = XT_LINEAR;
   }
     
+  
   //**************************************************************************  
   //**************************************************************************  
   LinearXform::
   ~LinearXform()
   {
-    delete [] mpMatrixO;
+    //delete [] mpMatrixO;
   }
+  
   
   //**************************************************************************  
   //**************************************************************************  
   //virtual 
-  FLOAT *
+  FLOAT*
   LinearXform::
-  Evaluate(FLOAT *    pInputVector, 
-           FLOAT *    pOutputVector,
-           char *     pMemory,
+  Evaluate(FLOAT*     pInputVector, 
+           FLOAT*     pOutputVector,
+           char*      pMemory,
            PropagDirectionType  direction)
   {
     size_t c; // column counter
@@ -2229,7 +2434,8 @@ printf("%f", g_floor);
       pOutputVector[r] = 0.0;
       for (c = 0; c < mInSize; c++) 
       {
-        pOutputVector[r] += pInputVector[c] * mpMatrixO[mInSize * r + c];
+        //pOutputVector[r] += pInputVector[c] * mpMatrixO[mInSize * r + c];
+        pOutputVector[r] += mMatrix[r][c] * pInputVector[c];
       }
     }
     return pOutputVector;  
@@ -2245,20 +2451,19 @@ printf("%f", g_floor);
   BiasXform(size_t vectorSize) :
     mVector(1, vectorSize)
   {
-    mpVectorO     = new FLOAT[vectorSize];  
     mInSize       = vectorSize;
     mOutSize      = vectorSize;
     mMemorySize   = 0;
     mDelay        = 0;
     mXformType    = XT_BIAS;
-}
+  }
   
   //**************************************************************************  
   //**************************************************************************  
   BiasXform::
   ~BiasXform()
   {
-    delete [] mpVectorO;
+    //delete [] mpVectorO;
   }
   
   //**************************************************************************  
@@ -2275,7 +2480,7 @@ printf("%f", g_floor);
     
     for (i = 0; i < mOutSize; i++) 
     {
-      pOutputVector[i] = pInputVector[i] + mpVectorO[i];
+      pOutputVector[i] = pInputVector[i] + mVector[0][i];
     }
     return pOutputVector;
   }; //Evaluate(...)
@@ -2360,6 +2565,237 @@ printf("%f", g_floor);
     }
     return pOutputVector;
   }; //Evaluate(...)
+
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  // FeatureMappingXform section
+  //**************************************************************************  
+  //**************************************************************************  
+  FeatureMappingXform::
+  FeatureMappingXform(size_t inSize)
+  {
+    mOutSize      = inSize;
+    mInSize       = inSize;
+    mMemorySize   = 0;
+    mDelay        = 0;
+    mXformType    = XT_FEATURE_MAPPING;
+    mpStateFrom   = NULL;
+    mpStateTo     = NULL;
+  }
+  
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  // virutal
+  FeatureMappingXform::
+  ~FeatureMappingXform()
+  {
+    //std::cerr << "FeatureMappingXform destructor" << std::endl;
+  }
+  
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  //virtual 
+  FLOAT *
+  FeatureMappingXform::
+  Evaluate(FLOAT*     pInputVector, 
+           FLOAT*     pOutputVector,
+           char*      pMemory,
+           PropagDirectionType  direction)
+  {
+    State*  state_from = mpStateFrom;
+    State*  state_to   = mpStateTo;
+    size_t  i;
+    size_t  max_i      = 0;
+    FLOAT   g_like;
+    FLOAT   max_g_like = LOG_0;
+    
+    // find best input mixture
+    for (i = 0; i < state_from->mNMixtures; i++)
+    {
+      g_like = ::DiagCGaussianDensity(state_from->mpMixture[i].mpEstimates, 
+        pInputVector, NULL) + state_from->mpMixture[i].mWeight;
+        
+      if (g_like > max_g_like)
+      {
+        max_i      = i;
+        max_g_like = g_like;
+      }
+    }
+    
+    // retrieve matching output mixture
+    const FLOAT*  m_from  = state_from->mpMixture[max_i].mpEstimates->mpMean->mVector.cpData();
+    const FLOAT*  v_from  = state_from->mpMixture[max_i].mpEstimates->mpVariance->mVector.cpData();
+    const FLOAT*  m_to    = state_to->mpMixture[max_i].mpEstimates->mpMean->mVector.cpData();
+    const FLOAT*  v_to    = state_to->mpMixture[max_i].mpEstimates->mpVariance->mVector.cpData();    
+    
+    // compute new feature vector
+    // compute each element separately
+#ifndef OPTIMIZE_LOOPS_FOR_SSE    
+    for (i = 0; i < mInSize; i++)
+    {
+      pOutputVector[i] = (pInputVector[i] - m_from[i]) * v_to[i] / v_from[i] + m_to[i];
+    }
+#else
+          f4vector* pov      = reinterpret_cast<f4vector*>(pOutputVector);
+    const f4vector* piv      = reinterpret_cast<const f4vector*>(pInputVector);
+    const f4vector* pm_from  = reinterpret_cast<const f4vector*>(m_from);
+    const f4vector* pv_from  = reinterpret_cast<const f4vector*>(v_from);
+    const f4vector* pm_to    = reinterpret_cast<const f4vector*>(m_to);
+    const f4vector* pv_to    = reinterpret_cast<const f4vector*>(v_to);
+    
+    for (i = 0; i < mInputVectorSize; i += 4)
+    {
+      pov->v = (piv->v - pm_from->v) * pv_to->v / pv_from->v + pm_to->v;
+
+      pov     ++;
+      piv     ++;
+      pm_from ++;
+      pv_from ++;
+      pm_to   ++;
+      pv_to   ++;      
+    }
+#endif
+    
+    return pOutputVector;
+  }; //Evaluate(...)
+    
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  // FeatureMappingXform section
+  //**************************************************************************  
+  //**************************************************************************  
+  FrantaProductXform::
+  FrantaProductXform(size_t inSize, size_t n_parts)
+  {
+    mOutSize      = inSize / n_parts;
+    mInSize       = inSize;
+    mMemorySize   = 0;
+    mDelay        = 0;
+    mNParts       = n_parts;
+    mXformType    = XT_FRANTA_PRODUCT;
+  }
+  
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  FrantaProductXform::
+  ~ FrantaProductXform()
+  {
+  }
+  
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  //virtual 
+  FLOAT*
+  FrantaProductXform::
+  Evaluate(FLOAT*     pInputVector, 
+           FLOAT*     pOutputVector,
+           char*      pMemory,
+           PropagDirectionType  direction)
+  {
+    size_t i;
+    size_t j;
+    
+    for (i = 0; i < mOutSize; i++)
+    {
+      pOutputVector[i] = 1.0;
+      
+      for (j = 0; j < mNParts; j++)
+      {
+        pOutputVector[i] *= pInputVector[j * mOutSize + i];
+      }
+    }
+    
+    return pOutputVector;
+  }; //Evaluate(...)
+
+  
+    
+
+  //**************************************************************************  
+  //**************************************************************************  
+  // MatlabXform section
+  //**************************************************************************  
+  //**************************************************************************  
+  MatlabXform::
+  MatlabXform(size_t inSize, size_t outSize, size_t delay)
+  {
+    mOutSize      = outSize;
+    mInSize       = inSize;
+    mMemorySize   = 0;
+    mDelay        = delay;
+    mXformType    = XT_MATLAB;
+#ifdef MATLAB_ENGINE
+#  ifdef DOUBLEPRECISION    
+    mpInput       = mxCreateNumericMatrix(1, inSize,  mxSINGLE_CLASS, mxREAL);
+#  else
+    mpInput       = mxCreateNumericMatrix(1, inSize,  mxDOUBLE_CLASS, mxREAL);
+#  endif
+    mpOutput      = NULL;
+    mpEp          = NULL;
+#endif
+  }
+  
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  MatlabXform::
+  ~ MatlabXform()
+  {
+#ifdef MATLAB_ENGINE
+    if (NULL != mpInput)  mxDestroyArray(mpInput);
+    if (NULL != mpEp)     engClose(mpEp);
+#endif  
+  }
+  
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  //virtual 
+  FLOAT*
+  MatlabXform::
+  Evaluate(FLOAT*     pInputVector, 
+           FLOAT*     pOutputVector,
+           char*      pMemory,
+           PropagDirectionType  direction)
+  {
+#ifdef MATLAB_ENGINE
+    // check whether we have a running instance of Matlab. If not, create one
+    if (NULL == mpEp)
+    {
+      if (!(mpEp = engOpen("\0"))) 
+      {
+        Error("Can't start MATLAB Engine");
+      }      
+    }
+    
+    // copy our data to the MATLAB Matrix struct
+    //mxSetData(mpInput, static_cast<void*>(pInputVector));
+    memcpy(mxGetData(mpInput), static_cast<void*>(pInputVector), 
+      mInSize * sizeof(FLOAT));
+    
+    engPutVariable(mpEp, "STKInput", mpInput);
+    
+    // run the program
+    engEvalString(mpEp, mProgram.c_str());
+    
+    if (NULL == (mpOutput = engGetVariable(mpEp, "STKOutput")))
+      Error("Cannot retrieve STKOutput (perhaps an error in Matlab script)");
+    
+    // copy result to pOutputVector
+    memcpy(static_cast<void*>(pOutputVector), mxGetData(mpOutput), 
+      mOutSize * sizeof(FLOAT));
+      
+    mxDestroyArray(mpOutput);
+#endif    
+
+    return pOutputVector;
+  }; //Evaluate(...)
   
   
   //**************************************************************************  
@@ -2391,12 +2827,12 @@ printf("%f", g_floor);
   //virtual 
   FLOAT *
   StackingXform::
-  Evaluate(FLOAT *    pInputVector, 
-           FLOAT *    pOutputVector,
-           char *     pMemory,
+  Evaluate(FLOAT*     pInputVector, 
+           FLOAT*     pOutputVector,
+           char*      pMemory,
            PropagDirectionType  direction)
   {
-    FLOAT *stack = reinterpret_cast <FLOAT *> (pMemory);
+    FLOAT* stack = reinterpret_cast <FLOAT*> (pMemory);
   
     memmove(stack + (direction == BACKWARD ? mInSize : 0),
             stack + (direction ==  FORWARD ? mInSize : 0),
@@ -2462,6 +2898,7 @@ printf("%f", g_floor);
     this->mpFirstMacro          = NULL;
     this->mpLastMacro           = NULL;
     this->mInputVectorSize      = -1;
+    this->mInputVectorStride    = 0;
     this->mParamKind            = -1;
     this->mOutPdfKind           = KID_UNSET;
     this->mDurKind              = KID_UNSET;
@@ -2485,8 +2922,13 @@ printf("%f", g_floor);
     this->MMI_E                 = 2.0;
     this->MMI_h                 = 2.0;
     this->MMI_tauI              = 100.0;
-  
-    InitKwdTable();
+    this->mMapTau               = 10.0;
+    mpClusterWeightVectors            = NULL;
+    mNClusterWeightVectors            = 0;
+    mpGw                              = NULL;
+    mpKw                              = NULL;
+    //mClusterParametersUpdate    = false;
+    InitKwdTable();    
   } // Init(...);
 
 
@@ -2509,13 +2951,19 @@ printf("%f", g_floor);
     ReleaseMacroHash(&mXformHash);
     ReleaseMacroHash(&mXformInstanceHash);
   
-    // :KLUDGE: see the original function Release HMMSet
     for (i = 0; i < mNumberOfXformsToUpdate; i++) 
     {
-      free(mpXformToUpdate[i].mpShellCommand);
+      if (NULL != mpXformToUpdate[i].mpShellCommand)
+        free(mpXformToUpdate[i].mpShellCommand);
     }
   
-    free(mpXformToUpdate);    
+    if (NULL != mpXformToUpdate)
+      free(mpXformToUpdate);
+        
+    if (NULL != mpClusterWeightVectors) delete [] mpClusterWeightVectors;
+    if (NULL != mpGw)                   delete [] mpGw;
+    if (NULL != mpKw)                   delete [] mpKw;
+      
   } // Release();
     
   
@@ -2533,11 +2981,12 @@ printf("%f", g_floor);
   
     // walk through the list of macros and decide what to do... 
     // we also decide which direction to walk based on the MTM_REVERSE_PASS flag
-    for (macro = mask & MTM_REVERSE_PASS ? mpLastMacro : mpFirstMacro;
+    for (macro = mask & MTM_REVERSE_PASS ? mpLastMacro   : mpFirstMacro;
         macro != NULL;
-        macro = mask & MTM_REVERSE_PASS ? macro->prevAll      : macro->nextAll) 
+        macro = mask & MTM_REVERSE_PASS ? macro->prevAll : macro->nextAll) 
     {
-      if (macro->mpData != NULL && macro->mpData->mpMacro != macro) 
+      assert(macro->mpData != NULL);
+      if (macro->mpData->mpMacro != macro) 
         continue;
       
       if (nodeName != NULL) 
@@ -2587,179 +3036,6 @@ printf("%f", g_floor);
   //**************************************************************************  
   void
   ModelSet::
-  ReadAccums(const char * pFileName, 
-             float        weight,
-             long *       totFrames, 
-             FLOAT *      totLogLike, 
-             int          mmiDenominatorAccums)
-  {
-    IStkStream                in;
-    FILE *                    fp;
-    char                      macro_name[128];
-    MyHSearchData *  hash;
-    unsigned int              i;
-    int                       t = 0;
-    int                       c;
-    int                       skip_accum = 0;
-    INT_32                    occurances;
-    ReadAccumUserData         ud;
-    Macro *                   macro;
-    int                       mtm = MTM_PRESCAN | 
-                                    MTM_STATE | 
-                                    MTM_MEAN | 
-                                    MTM_VARIANCE | 
-                                    MTM_TRANSITION;
-  
-    macro_name[sizeof(macro_name)-1] = '\0';
-  
-    // open the file
-    in.open(pFileName, ios::binary);
-    if (!in.good())
-    {
-      Error("Cannot open input accumulator file: '%s'", pFileName);
-    }
-    
-    fp = in.file();
-    
-    INT_32 i32;
-    if (fread(&i32,       sizeof(i32),  1, fp) != 1 ||
-        fread(totLogLike, sizeof(FLOAT), 1, fp) != 1) 
-    {
-      Error("Invalid accumulator file: '%s'", pFileName);
-    }
-    *totFrames = i32;
-    
-//    *totFrames  *= weight; // Not sure whether we should report weighted quantities or not
-//    *totLogLike *= weight;
-  
-    ud.mpFileName   = pFileName;
-    ud.mpFp         = fp;
-    ud.mpModelSet   = this;
-    ud.mWeight      = weight;
-    ud.mMmi         = mmiDenominatorAccums;
-  
-    for (;;) 
-    {
-      if (skip_accum) 
-      { // Skip to the begining of the next macro accumulator
-        for (;;) 
-        {
-          while ((c = getc(fp)) != '~' && c != EOF)
-            ;
-          
-          if (c == EOF) 
-            break;
-            
-          if (strchr("hsmuvt", t = c = getc(fp)) &&
-            (c = getc(fp)) == ' ' && (c = getc(fp)) == '"')
-          {  
-            break;
-          }
-          
-          ungetc(c, fp);
-        }
-        
-        if (c == EOF) 
-          break;
-      } 
-      else 
-      {
-        if ((c = getc(fp)) == EOF) break;
-        
-        if (c != '~'      || !strchr("hsmuvt", t = getc(fp)) ||
-          getc(fp) != ' ' || getc(fp) != '"') 
-        {
-          Error("Incomatible accumulator file: '%s'", pFileName);
-        }
-      }
-  
-      for (i=0; (c = getc(fp))!=EOF && c!='"' && i<sizeof(macro_name)-1; i++) 
-      {
-        macro_name[i] = c;
-      }
-      macro_name[i] = '\0';
-  
-      hash = t == 'h' ? &mHmmHash :
-             t == 's' ? &mStateHash :
-             t == 'm' ? &mMixtureHash :
-             t == 'u' ? &mMeanHash :
-             t == 'v' ? &mVarianceHash :
-             t == 't' ? &mTransitionHash : NULL;
-  
-      assert(hash);
-      if ((macro = FindMacro(hash, macro_name)) == NULL) 
-      {
-        skip_accum = 1;
-        continue;
-      }
-  
-      skip_accum = 0;
-      if (fread(&occurances, sizeof(occurances), 1, fp) != 1) 
-      {
-        Error("Invalid accumulator file: '%s'", pFileName);
-      }
-  
-      if (!mmiDenominatorAccums) macro->mOccurances += occurances;
-      switch (t) 
-      {
-        case 'h': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
-        case 's': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
-        case 'm': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
-        case 'u': ReadAccum(mt_mean, NULL, macro->mpData, &ud);                break;
-        case 'v': ReadAccum(mt_variance, NULL, macro->mpData, &ud);            break;
-        case 't': ReadAccum(mt_transition, NULL, macro->mpData, &ud);          break;
-        default:  assert(0);
-      }
-    }
-    
-    in.close();
-    //delete [] ud.mpFileName;
-    //free(ud.mpFileName);    
-  }; // ReadAccums(...)
-
-  
-  //**************************************************************************  
-  //**************************************************************************  
-  void
-  ModelSet::
-  WriteAccums(const char * pFileName, 
-              const char * pOutputDir,
-              long         totFrames, 
-              FLOAT        totLogLike)
-  {
-    FILE *                fp;
-    char                  file_name[1024];
-    WriteAccumUserData    ud;  
-    
-    MakeFileName(file_name, pFileName, pOutputDir, NULL);
-  
-    if ((fp = fopen(file_name, "wb")) == NULL) 
-    {
-      Error("Cannot open output file: '%s'", file_name);
-    }
-  
-    INT_32 i32 = totFrames;
-    if (fwrite(&i32,  sizeof(i32),  1, fp) != 1 ||
-        fwrite(&totLogLike, sizeof(FLOAT), 1, fp) != 1) 
-    {
-      Error("Cannot write accumulators to file: '%s'", file_name);
-    }
-  
-    ud.mpFp         = fp;
-    ud.mpFileName   = file_name;
-  //  ud.mMmi = MMI_denominator_accums;
-  
-    Scan(MTM_PRESCAN | (MTM_ALL & ~(MTM_XFORM_INSTANCE|MTM_XFORM)),
-              NULL, WriteAccum, &ud);
-  
-    fclose(fp);
-  }; // WriteAccums(...)
-  
-  
-  //**************************************************************************  
-  //**************************************************************************  
-  void
-  ModelSet::
   NormalizeAccums()
   {
     Scan(MTM_ALL & ~(MTM_XFORM_INSTANCE|MTM_XFORM), NULL,
@@ -2773,8 +3049,11 @@ printf("%f", g_floor);
   ModelSet::
   ResetAccums()
   {
-    Scan(MTM_STATE | MTM_MEAN | MTM_VARIANCE | MTM_TRANSITION,
-             NULL, ResetAccum, NULL);
+    if (mAllocAccums)
+    {
+      Scan(MTM_STATE | MTM_MEAN | MTM_VARIANCE | MTM_TRANSITION,
+              NULL, ResetAccum, NULL);
+    }
   }; // ResetAccums()
   
   
@@ -2809,7 +3088,7 @@ printf("%f", g_floor);
   
         if (state->mOutPdfKind == KID_DiagC) 
         {
-          for (j = 0; j < state->mNumberOfMixtures; j++) 
+          for (j = 0; j < state->mNMixtures; j++) 
           {
             Mixture *mixture = state->mpMixture[j].mpEstimates;
   
@@ -2873,7 +3152,7 @@ printf("%f", g_floor);
   //  for (macro = variance_list; macro != NULL; macro = macro->mpNext) {
       if (macro->mpData->mpMacro != macro) continue;
       
-      if (strcmp(macro->mpName, "varFloor1")) 
+      if (strncmp(macro->mpName, "varFloor", 8)) 
       {
         if (macro->mOccurances < mMinOccurances) 
         {
@@ -2985,7 +3264,7 @@ printf("%f", g_floor);
       return NULL;
     }
   
-    if ((macro = FindMacro(hash, rNewName.c_str())) != NULL) 
+    if ((macro = FindMacro(hash, rNewName.c_str())) != NULL)
     {
       return macro;
     }
@@ -2994,13 +3273,12 @@ printf("%f", g_floor);
     macro = new Macro;
     
     //if ((macro = (Macro *) malloc(sizeof(Macro))) == NULL ||
-    if (
-      (macro->mpName = strdup(rNewName.c_str())) == NULL              ||
-      (macro->mpFileName = NULL, gpCurrentMmfName
-        && (macro->mpFileName = strdup(gpCurrentMmfName)) == NULL)) 
+    if ((macro->mpName = strdup(rNewName.c_str())) == NULL              
+    ||  (macro->mpFileName = NULL, gpCurrentMmfName
+    &&  (macro->mpFileName = strdup(gpCurrentMmfName)) == NULL)) 
     {
       Error("Insufficient memory");
-    }
+    }    
     
     e.key  = macro->mpName;
     e.data = macro;
@@ -3013,7 +3291,7 @@ printf("%f", g_floor);
     macro->mpData = NULL;
     macro->mOccurances = 0;
     macro->mType = type;
-  //List of all macros is made to be able to save macros in proper order
+    // List of all macros is made to be able to save macros in proper order
     macro->nextAll = NULL;
     macro->prevAll = mpLastMacro;
     
@@ -3167,7 +3445,8 @@ printf("%f", g_floor);
         for (j=0; j < userData.mpXform->mInSize; j++) 
         {
           fprintf(fp, " "FLOAT_FMT,
-                  userData.mpXform->mpMatrixO[i*userData.mpXform->mInSize+j]);
+                  //userData.mpXform->mpMatrixO[i*userData.mpXform->mInSize+j]);
+                  userData.mpXform->mMatrix[i][j]);
         }
         fputs("\n", fp);
       }
@@ -3181,11 +3460,10 @@ printf("%f", g_floor);
       }
     }
   } // WriteXformStatsAndRunCommands(const std::string & rOutDir, bool binary)
-  //***************************************************************************
 
   
-  //***************************************************************************
-  //*****************************************************************************  
+  //****************************************************************************
+  //****************************************************************************
   void 
   ModelSet::
   ReadXformStats(const char * pOutDir, bool binary) 
@@ -3193,7 +3471,6 @@ printf("%f", g_floor);
     HMMSetNodeName                nodeNameBuffer;
     WriteStatsForXformUserData   userData;
     char                          fileName[1024];
-    size_t                        i;
     size_t                        k;
     FILE *                        fp;
   
@@ -3303,10 +3580,22 @@ printf("%f", g_floor);
       }
   
       int c =0;
-      for (i=0; i < userData.mpXform->mOutSize * userData.mpXform->mInSize; i++) {
-        c |= fscanf(fp, FLOAT_FMT, &userData.mpXform->mpMatrixO[i]) != 1;
+      
+      //for (i=0; i < userData.mpXform->mOutSize * userData.mpXform->mInSize; i++) 
+      //{
+      //  c |= fscanf(fp, FLOAT_FMT, &userData.mpXform->mpMatrixO[i]) != 1;
+      //}
+      
+      for (size_t i=0; i < userData.mpXform->mOutSize; i++)
+      {
+        for (size_t j=0; j < userData.mpXform->mInSize; j++) 
+        {
+          c |= fscanf(fp, FLOAT_FMT, &userData.mpXform->mMatrix[i][j]) != 1;
+        }
       }
-      if (ferror(fp)) {
+      
+      if (ferror(fp)) 
+      {
         Error("Cannot read xform file '%s'", fileName);
       } else if (c) {
         Error("Invalid xform file '%s'", fileName);
@@ -3351,7 +3640,7 @@ printf("%f", g_floor);
       {
         State *state = hmm->mpState[j];
         FLOAT stOccP = 0;
-        for (k = 0; k < state->mNumberOfMixtures; k++) 
+        for (k = 0; k < state->mNMixtures; k++) 
         {
           stOccP += state->mpMixture[k].mWeightAccum;
         }
@@ -3370,7 +3659,7 @@ printf("%f", g_floor);
   ModelSet::
   ResetXformInstances()
   {
-    XformInstance *inst;
+    XformInstance* inst;
     for (inst = mpXformInstances; inst != NULL; inst = inst->mpNext) 
     {
       inst->mStatCacheTime = UNDEF_TIME;
@@ -3383,13 +3672,14 @@ printf("%f", g_floor);
   //**************************************************************************  
   void 
   ModelSet::
-  UpdateStacks(FLOAT *obs, int time,  PropagDirectionType dir) 
+  UpdateStacks(FLOAT* obs, int time,  PropagDirectionType dir) 
   {
     XformInstance *inst;
     
     for (inst = mpXformInstances; inst != NULL; inst = inst->mpNext) 
     {
-      if (inst->mpXform->mDelay > 0) {
+      if (inst->mpXform->mDelay > 0) 
+      {
         XformPass(inst, obs, time, dir);
       }
     }
@@ -3404,10 +3694,10 @@ printf("%f", g_floor);
   {
     unsigned int              i;
     int                       nCIphns = 0;
-    MyHSearchData    tmpHash;
-    MyHSearchData    retHash;
-    ENTRY                     e;
-    ENTRY *                   ep;
+    MyHSearchData             tmpHash;
+    MyHSearchData             retHash;
+    ENTRY                     e={0}; // {0} is just to make compiler happy
+    ENTRY*                    ep;
   
     if (!my_hcreate_r(100, &tmpHash)) 
       Error("Insufficient memory");
@@ -3415,7 +3705,7 @@ printf("%f", g_floor);
     // Find CI HMMs and put them into hash
     for (i = 0; i < mHmmHash.mNEntries; i++) 
     {
-      Macro *macro = (Macro *) mHmmHash.mpEntry[i]->data;
+      Macro* macro = (Macro*) mHmmHash.mpEntry[i]->data;
       if (strpbrk(macro->mpName, "+-")) continue;
   
       e.key  = macro->mpName;
@@ -3479,6 +3769,257 @@ printf("%f", g_floor);
     return retHash;
   }
   
+    
+  //**************************************************************************  
+  //**************************************************************************  
+  void
+  ModelSet::
+  ComputeClusterWeightsVector(size_t w)
+  {
+    // offset to the accumulator matrix row
+    size_t start = 0;
+    size_t end;
+    
+    for (size_t i = 0; i < w; i++)
+    {
+      start += mpClusterWeightVectors[i]->mInSize;
+    }
+    
+    end = start + mpClusterWeightVectors[w]->mInSize;
+    
+    mpGw[w].Invert();
+    mpClusterWeightVectors[w]->mVector.Clear();
+    
+    for (size_t i = start; i < end; i++)
+    {
+      for (size_t j=0; j < mpGw[w].Cols(); j++)
+      {
+        mpClusterWeightVectors[w]->mVector[0][i-start] += mpGw[w][i][j] * mpKw[w][j];
+      }
+    }
+  }
+
+  //**************************************************************************  
+  //**************************************************************************  
+  void 
+  ModelSet::
+  ResetClusterWeightVectorsAccums(size_t i)
+  {
+    mpGw[i].Clear();
+    mpKw[i].Clear();
+  }
+
   
+  //**************************************************************************  
+  //**************************************************************************  
+  void
+  ModelSet::
+  AttachPriors(ModelSet *pPriorModelSet)
+  {
+    Macro *macro;
+    Macro *pPriorMacro;
+    HMMSetNodeName nodeName;
+    
+    strcpy(nodeName+sizeof(HMMSetNodeName)-4, "...");
+  
+    for (macro = mpFirstMacro; macro != NULL; macro = macro->nextAll) 
+    {
+      if (macro->mpData->mpMacro != macro) 
+        continue;
+        
+      MyHSearchData * hash;
+      hash = macro->mType == 'h' ? &pPriorModelSet->mHmmHash :
+             macro->mType == 's' ? &pPriorModelSet->mStateHash :
+             macro->mType == 'm' ? &pPriorModelSet->mMixtureHash :
+             macro->mType == 'u' ? &pPriorModelSet->mMeanHash :
+             macro->mType == 'v' ? &pPriorModelSet->mVarianceHash :
+             macro->mType == 't' ? &pPriorModelSet->mTransitionHash : NULL;
+             
+      if (hash == NULL)
+        continue;
+        
+      if (NULL == (pPriorMacro = FindMacro(hash, macro->mpName))
+      ||  macro->mType != pPriorMacro->mType) 
+      {
+        Error("Macro ~%c \"%s\" is not defined in prior model set", macro->mType, macro->mpName);
+      }
+      
+      if (nodeName != NULL) 
+        strncpy(nodeName, macro->mpName, sizeof(HMMSetNodeName)-4);
+
+      switch (macro->mType) 
+      {
+        case mt_mean:       
+          reinterpret_cast<Mean       *>(macro->mpData)->AttachPriors(nodeName, reinterpret_cast<Mean       *>(pPriorMacro->mpData));
+          break;
+        case mt_variance:   
+          reinterpret_cast<Variance   *>(macro->mpData)->AttachPriors(nodeName, reinterpret_cast<Variance   *>(pPriorMacro->mpData));
+          break;
+        case mt_transition: 
+          reinterpret_cast<Transition *>(macro->mpData)->AttachPriors(nodeName, reinterpret_cast<Transition *>(pPriorMacro->mpData));
+          break;
+        case mt_mixture:    
+          reinterpret_cast<Mixture    *>(macro->mpData)->AttachPriors(nodeName, reinterpret_cast<Mixture    *>(pPriorMacro->mpData));
+          break;
+        case mt_state:      
+          reinterpret_cast<State      *>(macro->mpData)->AttachPriors(nodeName, reinterpret_cast<State      *>(pPriorMacro->mpData));
+          break;
+        case mt_hmm:        
+          reinterpret_cast<Hmm        *>(macro->mpData)->AttachPriors(nodeName, reinterpret_cast<Hmm        *>(pPriorMacro->mpData));
+          break;
+        case mt_Xform:
+        case mt_XformInstance: 
+          break;
+        default: assert(0);
+      }   
+    }
+  }
+  
+  //*****************************************************************************
+  //*****************************************************************************
+  void 
+  Hmm::
+  AttachPriors(HMMSetNodeName nodeName, Hmm * pPriorHmm)
+  {
+    size_t    i;
+    size_t    n = 0;
+    char *    chptr = NULL;
+  
+    if (nodeName != NULL) 
+    {
+      n = strlen(nodeName);
+      chptr = nodeName + n;
+      n = sizeof(HMMSetNodeName) - 4 - n;
+    }
+  
+    if (mNStates != pPriorHmm->mNStates)
+    {
+      Error("Mismatch in number of states in target and prior HMM's '%s'", nodeName);
+    }
+      
+    for (i=0; i < mNStates-2; i++) 
+    {
+      if (!mpState[i]->mpMacro) 
+      {
+        if (n > 0 ) snprintf(chptr, n, ".state[%d]", (int) i+2);
+        mpState[i]->AttachPriors(nodeName, pPriorHmm->mpState[i]);
+      }
+    }
+  
+    if (!mpTransition->mpMacro) 
+    {
+      if (n > 0) strncpy(chptr, ".transP", n);
+      mpTransition->AttachPriors(nodeName, pPriorHmm->mpTransition);
+    }
+  }
+  
+  //***************************************************************************
+  //***************************************************************************
+  void 
+  State::
+  AttachPriors(HMMSetNodeName nodeName, State * pPriorState)
+  {
+    size_t    i;
+    size_t    n = 0;
+    char *    chptr = NULL;
+  
+    if (nodeName != NULL) 
+    {
+      n = strlen(nodeName);
+      chptr = nodeName + n;
+      n = sizeof(HMMSetNodeName) - 4 - n;
+    }
+  
+    if (mOutPdfKind == KID_PDFObsVec) 
+    {
+      return;
+    }
+    
+    if (mOutPdfKind != pPriorState->mOutPdfKind)
+    {
+      Error("Mismatch in OutPdfKind of target and prior states '%s'", nodeName);
+    }
+    
+    if (mNMixtures != pPriorState->mNMixtures)
+    {
+      Error("Mismatch in number of mixtures in target and prior states '%s'", nodeName);
+    }
+    
+    for (i=0; i < mNMixtures; i++)
+    {
+      if (!mpMixture[i].mpEstimates->mpMacro)
+      {
+        if (n > 0 ) snprintf(chptr, n, ".mix[%d]", (int) i+1);
+        mpMixture[i].mpEstimates->AttachPriors(nodeName, pPriorState->mpMixture[i].mpEstimates);
+      }
+    }
+    
+    mpPrior = pPriorState;
+  }
+    
+  //***************************************************************************
+  //***************************************************************************
+  void 
+  Mixture::
+  AttachPriors(HMMSetNodeName nodeName, Mixture * pPriorMixture)
+  {
+    int n = 0;
+    char *chptr = NULL;
+    
+    if (nodeName != NULL) 
+    {
+      n = strlen(nodeName);
+      chptr = nodeName + n;
+      n = sizeof(HMMSetNodeName) - 4 - n;
+    }  
+  
+    if (!mpMean->mpMacro) {
+      if (n > 0) strncpy(chptr, ".mean", n);
+      mpMean->AttachPriors(nodeName, pPriorMixture->mpMean);
+    }
+  
+    if (!mpVariance->mpMacro) {
+      if (n > 0) strncpy(chptr, ".cov", n);
+      mpVariance->AttachPriors(nodeName, pPriorMixture->mpVariance);
+    }  
+  }
+  
+  //***************************************************************************
+  //***************************************************************************
+  void 
+  Mean::
+  AttachPriors(HMMSetNodeName nodeName, Mean * pPriorMean)
+  {
+    mpPrior = pPriorMean;
+  }
+  
+  //***************************************************************************
+  //***************************************************************************
+  void 
+  Variance::
+  AttachPriors(HMMSetNodeName nodeName, Variance * pPriorVariance)
+  {
+    mpPrior = pPriorVariance;
+  }
+
+  //***************************************************************************
+  //***************************************************************************
+  void 
+  Transition::
+  AttachPriors(HMMSetNodeName nodeName, Transition * pPriorTransition)
+  {
+    mpPrior = pPriorTransition;
+  }  
+
+  //**************************************************************************  
+  //**************************************************************************  
+  void
+  Mean::
+  ResetClusterWeightVectorsAccums(size_t i)
+  {
+    mpOccProbAccums[i] = 0;
+    
+    for (size_t j = 0; j < mCwvAccum.Cols(); j++)
+      mCwvAccum[i][j] = 0;
+  }
 }; //namespace STK  
-  

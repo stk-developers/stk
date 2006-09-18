@@ -72,7 +72,7 @@ void ReadDictionary(
     if (word->pronuns == NULL || new_pronun == NULL) Error("Insufficient memory");
 
     word->pronuns[word->npronuns-1] = new_pronun;
-    new_pronun->word       = word;
+    new_pronun->mpWord       = word;
     new_pronun->outSymbol  = word->mpName;
     new_pronun->nmodels    = 0;
     new_pronun->model      = NULL;

@@ -1,0 +1,106 @@
+# THIS IS A DEPRECATED VERSION. FOR BACKWARDS COMPATIBILITY ONLY
+###############################################################################
+# OS architecture (lin, win)
+ARCH = win
+
+
+ATLAS_LIBS= -llapack -lcblas  -latlas
+ATLAS_LIBDIR = /usr/local/lib/
+ATLAS_INCLUDEDIR = /usr/local/include
+
+###############################################################################
+# compiler options
+CFLAGS =  -Wall -g -DDOUBLEPRECISION=0 -D_REENTRANT -D WIN32 -I/usr/local/include \
+         -I/usr/include -I./STKLib/gnu -I $(ATLAS_INCLUDEDIR) -O2
+CXXFLAGS = $(CFLAGS)
+
+###############################################################################
+# linker options
+LDFLAGS = -L./STKLib -L $(ATLAS_LIBDIR)
+#LDLIBS = -lm -latlas -lpthread -lSTKLib
+LDLIBS = -lm $(ATLAS_LIBS)
+#LDFLAGS = -a -g -L. -pg
+
+###############################################################################
+# -DEXPANDNET_ONLY
+XFLAGS = -DMOTIF -L/usr/X11R6/lib -I/usr/X11R6/include -lXm -lXt -lX11 -lXpm -O2
+
+###############################################################################
+# compiler binary
+# CROSS_COMPILE ?= x86_64-linux-
+
+CC  := $(CROSS_COMPILE)g++
+CXX := $(CROSS_COMPILE)g++
+
+###############################################################################
+# tools summary (for make all)
+TOOLS =     SVite \
+            SRover \
+            SERest \
+            SResults \
+            SExpand \
+            SFeaCat \
+            SLRatio
+
+
+###############################################################################
+# object needed by all tools
+BASELIBS =  STKLib/libSTKLib.a
+
+
+###############################################################################
+# Recursive make subdirs
+SUBDIRS = STKLib
+            
+###############################################################################
+# implicit "make all" rule             
+all  : subdirs $(TOOLS)
+.PHONY : all subdirs $(SUBDIRS)
+
+
+###############################################################################
+subdirs : $(SUBDIRS)
+
+###############################################################################
+$(SUBDIRS) :
+	$(MAKE) -C $@ -f Makefile.$(ARCH)
+
+
+###############################################################################
+# tools-specific rules
+SFea2OutP   : $(BASELIBS)
+SVite       : $(BASELIBS)
+SLRatio     : $(BASELIBS)
+SERest      : $(BASELIBS) 
+SFeaCat     : $(BASELIBS)
+SRover      : $(BASELIBS)
+SResults    : $(BASELIBS)
+SExpand     : $(BASELIBS)
+
+SERestX :  SERest.o $(BASELIBS) STKLib/imagesc.o
+	$(CXX) $(CFLAGS) $(XFLAGS) -o $@ $<
+
+SNet : $(BASELIBS)  SNetLib/barrier.o SNetLib/element.o SNetLib/nlayer.o SNetLib/nnet.o  SNetLib/progobj.o SNetLib/socketobj.o SNetLib/timers.o
+
+
+###############################################################################
+# cleans the binaries  
+clean:
+	cd ./STKLib; make -f Makefile.$(ARCH) clean; cd ..
+	rm -f *.o SNetLib/*.o 
+	rm -f $(TOOLS)
+	rm -f *~
+        
+
+###############################################################################
+# runs makedepend to automatically define header files dependencies
+depend:
+	-makedepend -Y *.c *.C *.cc STKLib/*.C STKLib/*.cc SNetLib/*.C SNetLib/*.cc
+
+
+###############################################################################
+# some testing rules
+test : $(BASELIBS)
+test2 : test2.cc STKLib/common.o STKLib/Error.o STKLib/filmatch.o STKLib/Buffer.o
+
+# DO NOT DELETE

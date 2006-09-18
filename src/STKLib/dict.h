@@ -43,11 +43,11 @@ union _Model
 class Pronun 
 {
 public:
-  Word  *word;
-  char  *outSymbol;
-  int   variant_no;
-  FLOAT prob;
-  int   nmodels;
+  Word*         mpWord;
+  char*         outSymbol;
+  int           variant_no;
+  FLOAT         prob;
+  int           nmodels;
   union _Model *model;
 };
 

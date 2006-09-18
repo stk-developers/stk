@@ -10,7 +10,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#define VERSION "0.6 "__TIME__" "__DATE__
+#define MODULE_VERSION "0.6 "__TIME__" "__DATE__
 
 #include "STKLib/Viterbi.h"
 #include "STKLib/Models.h"
@@ -32,7 +32,7 @@ using namespace STK;
 
 typedef struct _LRTrace LRTrace;
 struct _LRTrace {
-  Node *wordEnd;
+  Node *mpWordEnd;
   FLOAT lastLR;
   FLOAT candidateLR;
   long long candidateStartTime;
@@ -66,7 +66,7 @@ LRTrace *MakeLRTraceTable(Network *net, int *nWords, Token **filler_end)
   }
   for (i = 0, node=net->mpFirst; node != NULL; node = node->mpNext) {
     if (node->mType == (NT_WORD | NT_STICKY) && node->mpPronun != NULL) {
-      lrt[i].wordEnd = node;
+      lrt[i].mpWordEnd = node;
       i++;
     }
   }
@@ -82,7 +82,7 @@ void PutCandidateToLabels(LRTrace *lrt, FLOAT scoreThreshold, FILE *lfp,
      Label label  = init_label;
      label.mStart = lrt->candidateStartTime;
      label.mStop  = lrt->candidateEndTime;
-     label.mpName = lrt->wordEnd->mpPronun->word->mpName;
+     label.mpName = lrt->mpWordEnd->mpPronun->mpWord->mpName;
      label.mScore = lrt->candidateLR;
 
      WriteLabels(lfp, &label, out_lbl_fmt, sampPeriod, label_file, out_MLF);
@@ -208,8 +208,16 @@ int main(int argc, char *argv[]) {
   HtkHeader header;
   ModelSet hset;
   Network net;
-  FILE *sfp, *lfp = NULL, *ilfp = NULL;
-  FLOAT  *obsMx;
+  FILE*           sfp;
+  FILE*           lfp = NULL;
+  FILE*           ilfp = NULL;
+  
+#ifndef USE_NEW_MATRIX
+  FLOAT*          obsMx;
+#else
+  Matrix<FLOAT>   feature_matrix;
+#endif
+
   int i, fcnt = 0;
   char line[1024];
   char label_file[1024];
@@ -303,22 +311,22 @@ int main(int argc, char *argv[]) {
                                 &cvn_path, &cvn_file, &cvn_mask, &cvg_file,
                                 SNAME":", 0);
   expOptions.mCDPhoneExpansion =
-                 GetParamBool(&cfgHash,SNAME":ALLOWXWRDEXP",    FALSE);
+                 GetParamBool(&cfgHash,SNAME":ALLOWXWRDEXP",    false);
   expOptions.mRespectPronunVar
-               = GetParamBool(&cfgHash,SNAME":RESPECTPRONVARS", FALSE);
+               = GetParamBool(&cfgHash,SNAME":RESPECTPRONVARS", false);
   expOptions.mStrictTiming
-               = GetParamBool(&cfgHash,SNAME":EXACTTIMEMERGE",  FALSE);
+               = GetParamBool(&cfgHash,SNAME":EXACTTIMEMERGE",  false);
   expOptions.mNoOptimization
-               =!GetParamBool(&cfgHash,SNAME":MINIMIZENET",     FALSE);
+               =!GetParamBool(&cfgHash,SNAME":MINIMIZENET",     false);
   expOptions.mRemoveWordsNodes
-               = GetParamBool(&cfgHash,SNAME":REMEXPWRDNODES",  FALSE);
+               = GetParamBool(&cfgHash,SNAME":REMEXPWRDNODES",  false);
   in_lbl_fmt.TIMES_OFF =
-                !GetParamBool(&cfgHash,SNAME":TIMEPRUNING",    FALSE);
+                !GetParamBool(&cfgHash,SNAME":TIMEPRUNING",    false);
   in_lbl_fmt.left_extent  = -100 * (long long) (0.5 + 1e5 *
                  GetParamFlt(&cfgHash, SNAME":STARTTIMESHIFT",  0.0));
   in_lbl_fmt.right_extent =  100 * (long long) (0.5 + 1e5 *
                  GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0));
-  fulleval     = GetParamBool(&cfgHash,SNAME":EVALUATION",      FALSE);
+  fulleval     = GetParamBool(&cfgHash,SNAME":EVALUATION",      false);
   swap_features=!GetParamBool(&cfgHash,SNAME":NATURALREADORDER",isBigEndian());
   gpFilterWldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
   gpScriptFilter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",   NULL);  
@@ -371,29 +379,39 @@ int main(int argc, char *argv[]) {
         Warning("Unknown label formating flag '%c' ignored (NCST)", *cchrptr);
     }
   }
-  if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", FALSE)) {
+  if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", false)) {
     PrintConfig(&cfgHash);
   }
-  if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", FALSE)) {
-    puts("Version: "VERSION"\n");
+  if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", false)) {
+    puts("Version: "MODULE_VERSION"\n");
   }
-  if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", FALSE)) {
+  if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", false)) {
     CheckCommandLineParamUse(&cfgHash);
   }
 
-  for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) {
-    if ((sfp = my_fopen(script, "rt", gpScriptFilter)) == NULL) {
-      Error("Cannot open script file %s", optarg);
+  if (NULL != script)
+  {
+    for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) 
+    {
+      if ((sfp = my_fopen(script, "rt", gpScriptFilter)) == NULL) {
+        Error("Cannot open script file %s", optarg);
+      }
+      while (fscanf(sfp, "%s", line) == 1) {
+        last_file = AddFileElem(last_file, line);
+        nfeature_files++;
+      }
+      my_fclose(sfp);
     }
-    while (fscanf(sfp, "%s", line) == 1) {
-      last_file = AddFileElem(last_file, line);
-      nfeature_files++;
+  }
+   
+  if (NULL != mmf)
+  {
+    for (mmf=strtok(mmf, ","); mmf != NULL; mmf=strtok(NULL, ",")) 
+    {
+      hset.ParseMmf(mmf, NULL);
     }
-    my_fclose(sfp);
   }
-  for (mmf=strtok(mmf, ","); mmf != NULL; mmf=strtok(NULL, ",")) {
-    hset.ParseMmf(mmf, NULL);
-  }
+  
   if (hmm_list != NULL) hset.ReadHMMList(hmm_list, hmm_dir, hmm_ext);
   nonCDphHash = hset.MakeCIPhoneHash();
 
@@ -432,10 +450,18 @@ int main(int argc, char *argv[]) {
     }
     if (cmn_mask) process_mask(file_name->logical, cmn_mask, cmn_file);
     if (cvn_mask) process_mask(file_name->logical, cvn_mask, cvn_file);
+    
+#ifndef USE_NEW_MATRIX  
     obsMx = ReadHTKFeatures(file_name->mpPhysical, swap_features,
                             startFrmExt, endFrmExt, targetKind,
                             derivOrder, derivWinLengths, &header,
                             cmn_path, cvn_path, cvg_file, &rhfbuff);
+#else
+    ReadHTKFeatures(file_name->mpPhysical, swap_features,
+                    startFrmExt, endFrmExt, targetKind,
+                    derivOrder, derivWinLengths, &header,
+                    cmn_path, cvn_path, cvg_file, &rhfbuff, feature_matrix);
+#endif
 
     if (hset.mInputVectorSize != static_cast<int>(header.mSampleSize / sizeof(float))) {
       Error("Vector size [%d] in '%s' is incompatible with HMM set [%d]",
@@ -486,24 +512,28 @@ int main(int argc, char *argv[]) {
     KillToken(filler_end);
     
     for (j = 0; j < nWords; j++) 
-      KillToken(lrt[j].wordEnd->mpExitToken);
+      KillToken(lrt[j].mpWordEnd->mpExitToken);
 
     if (trace_flag & 2) 
     {
       printf("Node# %13s", "Filler");
       for (j = 0; j < nWords; j++) {
-        printf(" %13s", lrt[j].wordEnd->mpPronun->word->mpName);
+        printf(" %13s", lrt[j].mpWordEnd->mpPronun->mpWord->mpName);
       }
       puts("");
     }
-    for (i = 0; i < header.mNSamples; i++) {
-      //ViterbiStep(&net, obsMx + i * hset.mInputVectorSize);
+    for (i = 0; i < header.mNSamples; i++) 
+    {
+#ifndef USE_NEW_MATRIX
       net.ViterbiStep(obsMx + i * hset.mInputVectorSize);
+#else
+      net.ViterbiStep(feature_matrix[i]);
+#endif
 
       if (trace_flag & 2) {
         printf("      %13e", filler_end->mLike);
         for (j = 0; j < nWords; j++) {
-          printf(" %13e", lrt[j].wordEnd->mpExitToken->mLike);
+          printf(" %13e", lrt[j].mpWordEnd->mpExitToken->mLike);
         }
         puts("");
       }
@@ -512,7 +542,7 @@ int main(int argc, char *argv[]) {
       {
         long long   wordStartTime;
         float       lhRatio;
-        Token *     word_end = lrt[j].wordEnd->mpExitToken;
+        Token *     word_end = lrt[j].mpWordEnd->mpExitToken;
 
         if (!word_end->IsActive() || !filler_end->IsActive()) 
         {
@@ -553,7 +583,12 @@ int main(int argc, char *argv[]) {
     //ViterbiDone(&net, NULL);
     net.ViterbiDone(NULL);
     
+#ifndef USE_NEW_MATRIX
     free(obsMx);
+#else
+    feature_matrix.Destroy();
+#endif    
+    
     CloseOutputLabelFile(lfp, out_MLF);
 
     if (trace_flag & 1) {

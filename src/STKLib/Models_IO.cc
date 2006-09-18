@@ -55,10 +55,15 @@ namespace STK
     gpKwds[KID_NumLayers  ] = "NumLayers";   gpKwds[KID_NumBlocks  ] = "NumBlocks";
     gpKwds[KID_Layer      ] = "Layer";       gpKwds[KID_Copy       ] = "Copy";
     gpKwds[KID_Stacking   ] = "Stacking";
+    
+    gpKwds[KID_ExtendedXform    ] = "ExtendedXform";
+    
     /* Numeric functions - FuncXform*/
     gpKwds[KID_Sigmoid    ] = "Sigmoid";     gpKwds[KID_Log        ] = "Log";
     gpKwds[KID_Exp        ] = "Exp";         gpKwds[KID_Sqrt       ] = "Sqrt";
     gpKwds[KID_SoftMax    ] = "SoftMax";
+    
+    gpKwds[KID_Weights    ] = "Weights";
   }
   
   
@@ -67,9 +72,10 @@ namespace STK
   int CheckKwd(const char *str, KeywordID kwdID)
   {
     const char *chptr;
+    
     if (str[0] == ':') {
       gHmmReadBinary = true;
-      return str[1] == kwdID;
+      return static_cast<unsigned char>(str[1]) == kwdID;
     }
   
     if (str[0] != '<') return 0;
@@ -265,6 +271,23 @@ namespace STK
   }
   
   
+  //*****************************************************************************
+  //*****************************************************************************
+  unsigned int faddfloat(FLOAT *vec, size_t size, float mul_const, FILE *fp) 
+  {
+    size_t    i;
+    FLOAT     f;
+  
+    for (i = 0; i < size; i++) 
+    {
+      if (fread(&f, sizeof(FLOAT), 1, fp) != 1) break;
+      vec[i] += f * mul_const;
+    }
+    
+    return i;
+  }
+  
+  
   //***************************************************************************
   //***************************************************************************
   KeywordID ReadOutPDFKind(char *str)
@@ -355,7 +378,7 @@ namespace STK
               const char * pInMmfDir, 
               const char * pInMmfExt)
   {
-    struct ReadlineData      rld = {0};
+    struct ReadlineData       rld = {0};
     char *                    lhmm;
     char *                    fhmm;
     char *                    chptr;
@@ -440,168 +463,211 @@ namespace STK
   ModelSet::
   ParseMmf(const char * pFileName, char * expectHMM)
   {
-    //ReadHMMSet(rName.c_str(), this, expectHMM);
     IStkStream    input_stream;
-    FILE *        fp;
-    char *        keyword;
-    Macro *       macro;
-    MacroData *   data;
-  
-    data = NULL;
+    FILE*         fp;
+    char*         keyword;
+    Macro*        macro;
+    MacroData*    data = NULL;
+    std::string   filter;
     
     gCurrentMmfLine = 1;
-    gpCurrentMmfName = pFileName;//mmFileName;
-  
-    /*
-    if ((fp = fopen(mmFileName, "rb")) == NULL) 
+    gpCurrentMmfName = pFileName;
+    
+    try
     {
-      Error("Cannot open input MMF %s", mmFileName);
-    }
-    */
-    
-    // try to open the stream
-    input_stream.open(pFileName, ios::in|ios::binary);
-    
-    if (!input_stream.good())
-    {
-      Error("Cannot open input MMF %s", pFileName);
-    }
-    
-    fp = input_stream.file();    
-    
-    for (;;) 
-    {
-      if ((keyword = GetString(fp, 0)) == NULL) 
-      {
-        if (ferror(fp)) 
-        {
-          Error("Cannot read input MMF", pFileName);
-        }
-        //fclose(fp);
-        input_stream.close();
-        return;
-      }
-  
+      filter = (NULL != gpMmfFilter) ? gpMmfFilter : "";
       
-      if (keyword[0] == '~' && keyword[2] == '\0' ) 
+      // try to open the stream
+      input_stream.open(pFileName, ios::in|ios::binary, gpMmfFilter);
+      if (!input_stream.good())
       {
-        char type = keyword[1];
-  
-        if (type == 'o') {
-          if (!ReadGlobalOptions(fp)) {
-            Error("No global option defined (%s:%d)", pFileName, gCurrentMmfLine);
-          }
-        } else {
-          keyword = GetString(fp, 1);
-          if ((macro = pAddMacro(type, keyword)) == NULL) {
-            Error("Unrecognized macro type ~%c (%s:%d)", type, pFileName, gCurrentMmfLine);
-          }
-  
-          if (macro->mpData != NULL) {
-            if (gHmmsIgnoreMacroRedefinition == 0) {
-              Error("Redefinition of macro ~%c %s (%s:%d)", type, keyword, pFileName, gCurrentMmfLine);
-            } else {
-  //            Warning("Redefinition of macro ~%c %s (%s:%d) is ignored", type, keyword, mmFileName, gCurrentMmfLine);
-            }
-          }
-          switch (type)
+        Error("Cannot open input MMF %s", pFileName);
+      }
+      fp = input_stream.file();    
+      
+      for (;;) 
+      {
+        if ((keyword = GetString(fp, 0)) == NULL) 
+        {
+          if (ferror(fp)) 
           {
-            case 'h': data =  ReadHMM          (fp, macro); break;
-            case 's': data =  ReadState        (fp, macro); break;
-            case 'm': data =  ReadMixture      (fp, macro); break;
-            case 'u': data =  ReadMean         (fp, macro); break;
-            case 'v': data =  ReadVariance     (fp, macro); break;
-            case 't': data =  ReadTransition   (fp, macro); break;
-            case 'j': data =  ReadXformInstance(fp, macro); break;
-            case 'x': data =  ReadXform        (fp, macro); break;
-            default : data = NULL; break;
-          }  
-  
-          assert(data != NULL);
-          
-          if (macro->mpData == NULL) {
-            macro->mpData = data;
-          } else {
-            Warning("Redefinition of macro ~%c %s (%s:%d)",
-                    type, keyword, pFileName, gCurrentMmfLine);
-  
-            // Macro is redefined. New item must be checked for compatibility with
-            // the old one (vector sizes, delays, memory sizes) All references to
-            // old item must be replaced and old item must be released
-            // !!! How about AllocateAccumulatorsForXformStats() and ResetAccumsForHMMSet()
-  
-  
-            unsigned int i;
-            MyHSearchData *hash = NULL;
-            ReplaceItemUserData ud;
-            ud.mpOldData = macro->mpData;
-            ud.mpNewData = data;
-            ud.mType     = type;
-  
-            switch (type) {
-            case 'h':
-              ud.mpOldData->Scan(MTM_REVERSE_PASS | MTM_ALL, NULL,ReleaseItem,NULL);
-              hash = &mHmmHash;
-              break;
-            case 's':
-              this->Scan(MTM_HMM, NULL,ReplaceItem, &ud);
-              ud.mpOldData->Scan(MTM_REVERSE_PASS | MTM_ALL, NULL,ReleaseItem,NULL);
-              hash = &mStateHash;
-              break;
-            case 'm':
-              this->Scan(MTM_STATE, NULL,ReplaceItem, &ud);
-              ud.mpOldData->Scan(MTM_REVERSE_PASS | MTM_ALL, NULL,ReleaseItem,NULL);
-              hash = &mMixtureHash;
-              break;
-            case 'u':
-              this->Scan(MTM_MIXTURE, NULL,ReplaceItem, &ud);
-              delete ud.mpOldData;
-              //free(ud.mpOldData);
-              hash = &mMeanHash;
-              break;
-            case 'v':
-              this->Scan(MTM_MIXTURE, NULL,ReplaceItem, &ud);
-              delete ud.mpOldData;
-              //free(ud.mpOldData);
-              hash = &mVarianceHash;
-              break;
-            case 't':
-              this->Scan(MTM_HMM, NULL,ReplaceItem, &ud);
-              delete ud.mpOldData;
-              //free(ud.mpOldData);
-              hash = &mTransitionHash;
-              break;
-            case 'j':
-              this->Scan(MTM_XFORM_INSTANCE | MTM_MIXTURE, NULL, ReplaceItem, &ud);
-              ud.mpOldData->Scan(MTM_REVERSE_PASS|MTM_ALL, NULL, ReleaseItem, NULL);
-              hash = &mXformInstanceHash;
-              break;
-            case 'x':
-              this->Scan(MTM_XFORM | MTM_XFORM_INSTANCE,NULL,ReplaceItem, &ud);
-              ud.mpOldData->Scan(MTM_REVERSE_PASS | MTM_ALL, NULL,ReleaseItem,NULL);
-              hash = &mXformHash;
-              break;
+            Error("Cannot read input MMF", pFileName);
+          }
+          input_stream.close();
+          return;
+        }
+    
+        
+        if (keyword[0] == '~' && keyword[2] == '\0' ) 
+        {
+          char type = keyword[1];
+    
+          if (type == 'o') {
+            if (!ReadGlobalOptions(fp)) {
+              Error("No global option defined (%s:%d)", pFileName, gCurrentMmfLine);
             }
-            
-            for (i = 0; i < hash->mNEntries; i++) {
-              if (hash->mpEntry[i]->data == ud.mpOldData) {
-                hash->mpEntry[i]->data = ud.mpNewData;
+          } else {
+            keyword = GetString(fp, 1);
+            if ((macro = pAddMacro(type, keyword)) == NULL) {
+              Error("Unrecognized macro type ~%c (%s:%d)", type, pFileName, gCurrentMmfLine);
+            }
+    
+            if (macro->mpData != NULL) {
+              if (gHmmsIgnoreMacroRedefinition == 0) {
+                Error("Redefinition of macro ~%c %s (%s:%d)", type, keyword, pFileName, gCurrentMmfLine);
+              } else {
+                Warning("Redefinition of macro ~%c %s (%s:%d)", type, keyword, pFileName, gCurrentMmfLine);
+    //            Warning("Redefinition of macro ~%c %s (%s:%d) is ignored", type, keyword, mmFileName, gCurrentMmfLine);
               }
             }
+            switch (type)
+            {
+              case 'h': data =  ReadHMM          (fp, macro); break;
+              case 's': data =  ReadState        (fp, macro); break;
+              case 'm': data =  ReadMixture      (fp, macro); break;
+              case 'u': data =  ReadMean         (fp, macro); break;
+              case 'v': data =  ReadVariance     (fp, macro); break;
+              case 't': data =  ReadTransition   (fp, macro); break;
+              case 'j': data =  ReadXformInstance(fp, macro); break;
+              case 'x': data =  ReadXform        (fp, macro); break;
+              default : data =  NULL; break;
+            }  
+    
+            assert(data != NULL);
+            
+            if (macro->mpData == NULL) {
+              macro->mpData = data;
+            } else {
+    
+              // Macro is redefined. New item must be checked for compatibility with
+              // the old one (vector sizes, delays, memory sizes) All references to
+              // old item must be replaced and old item must be released
+              // !!! How about AllocateAccumulatorsForXformStats() and ResetAccumsForHMMSet()
+              // !!! Replacing HMM will not work correctly after attaching network nodes to models    
+    
+              unsigned int i;
+              MyHSearchData *hash = NULL;
+              ReplaceItemUserData ud;
+              ud.mpOldData = macro->mpData;
+              ud.mpNewData = data;
+              ud.mType     = type;
+              
+              switch (type) {
+              case 'h':
+                ud.mpOldData->Scan(MTM_REVERSE_PASS | MTM_ALL, NULL,ReleaseItem,NULL);
+                hash = &mHmmHash;
+                break;
+              case 's':
+                this->Scan(MTM_HMM, NULL,ReplaceItem, &ud);
+                ud.mpOldData->Scan(MTM_REVERSE_PASS | MTM_ALL, NULL,ReleaseItem,NULL);
+                hash = &mStateHash;
+                break;
+              case 'm':
+                this->Scan(MTM_STATE, NULL,ReplaceItem, &ud);
+                ud.mpOldData->Scan(MTM_REVERSE_PASS | MTM_ALL, NULL,ReleaseItem,NULL);
+                hash = &mMixtureHash;
+                break;
+              case 'u':
+                this->Scan(MTM_MIXTURE, NULL,ReplaceItem, &ud);
+                delete ud.mpOldData;
+                hash = &mMeanHash;
+                break;
+              case 'v':
+                this->Scan(MTM_MIXTURE, NULL,ReplaceItem, &ud);
+                delete ud.mpOldData;
+                hash = &mVarianceHash;
+                break;
+              case 't':
+                this->Scan(MTM_HMM, NULL,ReplaceItem, &ud);
+                delete ud.mpOldData;
+                hash = &mTransitionHash;
+                break;
+              case 'j':
+                this->Scan(MTM_XFORM_INSTANCE | MTM_MIXTURE, NULL, ReplaceItem, &ud);
+                ud.mpOldData->Scan(MTM_REVERSE_PASS|MTM_ALL, NULL, ReleaseItem, NULL);
+                hash = &mXformInstanceHash;
+                break;
+              case 'x':
+                //:TODO:
+                // Fix this
+                if (mUpdateMask & UM_CWEIGHTS
+                &&  XT_BIAS == static_cast<Xform*>(ud.mpNewData)->mXformType)
+                {
+                  for (int i = 0; i < mNClusterWeightVectors; i++)
+                  {
+                    if (mpClusterWeightVectors[i] == static_cast<BiasXform*>(ud.mpOldData))
+                    {
+                      // Recompute the weights vector
+                      ComputeClusterWeightsVector(i);
+                      WriteClusterWeightsVector(i);
+                      
+                      // clear the accumulators                          
+                      mpGw[i].Clear();
+                      mpKw[i].Clear();
+                      mpClusterWeightVectors[i] = static_cast<BiasXform*>(ud.mpNewData);
+                      
+                      free(ud.mpNewData->mpMacro->mpFileName);
+                      if ((ud.mpNewData->mpMacro->mpFileName = strdup(gpCurrentMmfName)) == NULL)
+                      {
+                        Error("Insufficient memory");
+                      }
+                    }
+                  }
+                }              
+                
+                this->Scan(MTM_XFORM | MTM_XFORM_INSTANCE | MTM_MEAN | MTM_MIXTURE ,NULL,ReplaceItem, &ud);
+                ud.mpOldData->Scan(MTM_REVERSE_PASS | MTM_ALL, NULL,ReleaseItem,NULL);
+                hash = &mXformHash;
+                break;
+              }
+              
+              for (i = 0; i < hash->mNEntries; i++) 
+              {
+                if (reinterpret_cast<Macro *>(hash->mpEntry[i]->data)->mpData == ud.mpOldData) 
+                {
+                  reinterpret_cast<Macro *>(hash->mpEntry[i]->data)->mpData = ud.mpNewData;
+                }
+              }
+  /*            for (macro = mpFirstMacro; macro != NULL; macro->nextAll)
+              {
+                macro
+              }*/
+            }
           }
+        } else if (CheckKwd(keyword, KID_BeginHMM)) {
+          UngetString();
+          if (expectHMM == NULL) {
+            Error("Macro definition expected (%s:%d)",pFileName,gCurrentMmfLine);
+          }
+          //macro = AddMacroToHMMSet('h', expectHMM, hmm_set);
+          macro = pAddMacro('h', expectHMM);
+          
+          macro->mpData = ReadHMM(fp, macro);
+        } else {
+          Error("Unexpected keyword %s (%s:%d)",keyword,pFileName,gCurrentMmfLine);
         }
-      } else if (CheckKwd(keyword, KID_BeginHMM)) {
-        UngetString();
-        if (expectHMM == NULL) {
-          Error("Macro definition expected (%s:%d)",pFileName,gCurrentMmfLine);
-        }
-        //macro = AddMacroToHMMSet('h', expectHMM, hmm_set);
-        macro = pAddMacro('h', expectHMM);
-        
-        macro->mpData = ReadHMM(fp, macro);
-      } else {
-        Error("Unexpected keyword %s (%s:%d)",keyword,pFileName,gCurrentMmfLine);
       }
+      
+      if (input_stream.is_open())
+      {
+        input_stream.close();
+      }
+      
+    } // try
+    
+    catch (...)
+    {
+      if (input_stream.is_open())
+      {
+        input_stream.close();
+      }
+
+      // if cluster weights update
+      if ((mUpdateMask & UM_CWEIGHTS) && mClusterWeightsStream.is_open())
+      {
+        mClusterWeightsStream.close();
+      }
+      throw;
     }
   }
   
@@ -648,11 +714,10 @@ namespace STK
       Error("Keyword <NumStates> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
   
     nstates = GetInt(fp);
-    //***
-    // old malloc
-    // if ((ret = (Hmm *) malloc(sizeof(Hmm) + (nstates-3) * sizeof(State *))) == NULL) 
-    //   Error("Insufficient memory");
-    // ret->mNStates = nstates;
+    
+    if (nstates < 3)
+      Error("HMM must have at least 3 states (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      
     ret = new Hmm(nstates);  
     
   
@@ -696,9 +761,9 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  State *
+  State*
   ModelSet::
-  ReadState(FILE * fp, Macro * macro)
+  ReadState(FILE* fp, Macro* macro)
   {
     State *     ret;
     char *      keyword;
@@ -755,8 +820,8 @@ namespace STK
               gpCurrentMmfName, gCurrentMmfLine);
       }
       ret->PDF_obs_coef = GetInt(fp) - 1;
-      range = mpInputXform ? mpInputXform->mOutSize
-                                  : mInputVectorSize;
+      range = mpInputXform ? mpInputXform->OutSize()
+                           : mInputVectorSize;
       if (ret->PDF_obs_coef < 0 || ret->PDF_obs_coef >= range) 
       {
         Error("Parameter <ObsCoef> is out of the range 1:%d (%s:%d)",
@@ -765,7 +830,7 @@ namespace STK
     } 
     else 
     {
-      ret->mNumberOfMixtures = num_mixes;
+      ret->mNMixtures = num_mixes;
     //  printf("ptr: %x num_mixes: %d\n", ret, num_mixes);
   
       for (i=0; i<num_mixes; i++) 
@@ -830,15 +895,15 @@ namespace STK
     return ret;
   }
   
-
+  
   //***************************************************************************
   //***************************************************************************
-  Mixture *
+  Mixture*
   ModelSet::
   ReadMixture(FILE *fp, Macro *macro)
   {
-    Mixture * ret;
-    char *    keyword;
+    Mixture* ret = NULL;
+    char*    keyword;
   
   //  puts("ReadMixture");
     keyword = GetString(fp, 1);
@@ -854,11 +919,7 @@ namespace STK
       return (Mixture *) macro->mpData;
     }
   
-    //***
-    // old free
-    //
-    //if ((ret = (Mixture *) malloc(sizeof(Mixture))) == NULL)
-    //  Error("Insufficient memory");
+    // create new mixture object
     ret = new Mixture;  
   
     if (CheckKwd(keyword, KID_InputXform)) 
@@ -871,7 +932,33 @@ namespace STK
       UngetString();
     }
   
+    //
     ret->mpMean = ReadMean(fp, NULL);
+    
+    // allocate accumulators for Cluster Adaptive Training cluster parameters
+    if (NULL != ret->mpMean->mpClusterWeightVectors)
+    {
+      // Cluster Parameter Update section
+      ret->mAccumG.Init(ret->mpMean->mClusterMatrixT.Rows(),
+                        ret->mpMean->mClusterMatrixT.Rows());
+      ret->mAccumK.Init(ret->mpMean->mClusterMatrixT.Rows(),
+                        ret->mpMean->mClusterMatrixT.Cols());
+      ret->mAccumL.Init(ret->mpMean->mClusterMatrixT.Cols());
+      
+      // per-speaker partial accumulators
+      ret->mPartialAccumG = 0.0;
+      ret->mPartialAccumK.Init(ret->mpMean->mClusterMatrixT.Cols());
+      
+      // for discriminative training
+      if (mMmiUpdate == 2 || mMmiUpdate == -2)
+      {
+        ret->mPartialAccumGd = 0.0;
+        ret->mAccumGd.Init(ret->mpMean->mClusterMatrixT.Rows(),
+                           ret->mpMean->mClusterMatrixT.Rows());        
+      }
+    }
+    
+    //
     ret->mpVariance = ReadVariance(fp, NULL);
   
     if (!ret->mpInputXform && (mInputVectorSize == -1))
@@ -879,10 +966,10 @@ namespace STK
       Error("<VecSize> is not defined yet (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
     } 
     
-    size_t size = ret->mpInputXform ? ret->mpInputXform->mOutSize : mInputVectorSize;
+    size_t size = ret->mpInputXform ? ret->mpInputXform->OutSize() : mInputVectorSize;
     
-    if (ret->mpMean->mVectorSize     != size || 
-        ret->mpVariance->mVectorSize != size) 
+    if (ret->mpMean->VectorSize()     != size || 
+        ret->mpVariance->VectorSize() != size) 
     {
       Error("Invalid mean or variance vector size (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
     }
@@ -907,49 +994,161 @@ namespace STK
 
   //***************************************************************************
   //***************************************************************************
-  Mean *
+  Mean*
   ModelSet::
-  ReadMean(FILE *fp, Macro *macro)
+  ReadMean(FILE* fp, Macro* macro)
   {
-    Mean *    ret;
-    char *    keyword;
+    Mean*     ret = NULL;
+    char*     keyword;
     int       vec_size;
     int       i;
 //    int       accum_size = 0;
-  
+    
   //  puts("ReadMean");
     keyword = GetString(fp, 1);
     
     if (!strcmp(keyword, "~u")) 
     {
       keyword = GetString(fp, 1);
-      if ((macro = FindMacro(&mMeanHash, keyword)) == NULL) {
-        Error("Undefined reference to macro ~u %s (%s:%d)", keyword, gpCurrentMmfName, gCurrentMmfLine);
+      if ((macro = FindMacro(&mMeanHash, keyword)) == NULL) 
+      {
+        Error("Undefined reference to macro ~u %s (%s:%d)", 
+          keyword, 
+          gpCurrentMmfName, 
+          gCurrentMmfLine);
       }
-      return  (Mean *) macro->mpData;
+      return  (Mean*) macro->mpData;
     }
   
-    if (!CheckKwd(keyword, KID_Mean))
-      Error("Keyword <Mean> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+    // Mean definition can be defined by a set of weighted means
+    if (CheckKwd(keyword, KID_Weights))
+    {
+      Macro*        tmp_macro;
+      FLOAT         tmp_val;  // temporary read value
+      int           n_xforms; // number of xform refferences
+      BiasXform**   xforms = NULL; // temporary storage of xform refferences
+      int           total_means = 0; 
+      bool          init_Gwkw = false;
+      ret = NULL;
+      
+      // now we expect number of Xform references
+      n_xforms = GetInt(fp);
+      // allocate space for refferences to these xforms
+      xforms = new BiasXform*[n_xforms];
+      
+      // we need to know globally which bias xforms are the weights
+      if ((mUpdateMask & UM_CWEIGHTS)
+      && (NULL == mpClusterWeightVectors))
+      {
+        mNClusterWeightVectors = n_xforms;      
+        mpClusterWeightVectors = new BiasXform*[n_xforms];
+        mpGw             = new Matrix<FLOAT>[n_xforms];
+        mpKw             = new BasicVector<FLOAT>[n_xforms];
+        init_Gwkw        = true;
+      }
+      
+      
+      for (int xform_i = 0; xform_i < n_xforms; xform_i++)
+      {
+        // expect Xform macro reference
+        keyword = GetString(fp, 1);
+        if (!strcmp(keyword, "~x"))
+        {
+          keyword = GetString(fp, 1);
+          if (NULL == (tmp_macro = (FindMacro(&mXformHash, keyword))))
+          {
+            Error("Undefined reference to macro ~x %s (%s:%d)", 
+              keyword, 
+              gpCurrentMmfName, 
+              gCurrentMmfLine);
+          }
+          
+          xforms[xform_i] = static_cast<BiasXform *>(tmp_macro->mpData);
+          total_means    += xforms[xform_i]->mInSize;
+          
+          if (mUpdateMask & UM_CWEIGHTS)
+          {
+            mpClusterWeightVectors[xform_i] = xforms[xform_i];
+          }          
+        }
+        else
+        {
+          Error("Reference to macro ~x expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+        }
+      } //for (int xform_i; xform_i < n_xforms; xform_i++)
+        
+      // at this moment we know how many means we are going to use
+      if (init_Gwkw)
+      {
+        for (int xform_i = 0; xform_i < n_xforms; xform_i++)
+        {
+          mpGw[xform_i].Init(total_means, total_means);
+          mpKw[xform_i].Init(total_means);
+        }
+      }
+      
+      // read total_means means
+      for (int i = 0; i < total_means; i++)
+      {
+        keyword = GetString(fp, 1);
+        if (!CheckKwd(keyword, KID_Mean))
+          Error("Keyword <Mean> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      
+        vec_size = GetInt(fp);
+        // maybe we haven't created any Mean object yet
+        if (NULL == ret)
+        {
+          // create new Mean object
+          ret = new Mean(vec_size, mAllocAccums);
+          // initialize matrix for original mean vectors definition
+          ret->mClusterMatrixT.Init(total_means, vec_size);
+          // set the weights vectors
+          ret->mpClusterWeightVectors = xforms;
+          ret->mNClusterWeightVectors = n_xforms;
+          
+          if (mUpdateMask & UM_CWEIGHTS)
+          {
+            ret->mCwvAccum.Init(n_xforms, vec_size);
+            ret->mpOccProbAccums = new FLOAT[n_xforms];
+            memset(ret->mpOccProbAccums, 0, n_xforms * sizeof(FLOAT));
+          }
+        }
+        
+        // read the values and fill appropriate structures
+        for (int j = 0; j < vec_size; j++)
+        {
+          tmp_val = GetFloat(fp);
+          // fill the matrix 
+          ret->mClusterMatrixT[i][j] = tmp_val;
+        }
+        
+      } // for (i = 0; i < bx->mInSize; i++)
+      
+                  
+
+      // recalculate the real vector using cluster mean vectors
+      ret->RecalculateCAT();
+    } // if (CheckKwd(keyword, KID_Weights))
+    
+    else if (CheckKwd(keyword, KID_Mean))
+    {
+      vec_size = GetInt(fp);
+          
+      ret = new Mean(vec_size, mAllocAccums);
   
-    vec_size = GetInt(fp);
-  
-    //***
-    // old malloc
-    //  
-    //if (mAllocAccums) 
-    //  accum_size = (vec_size + 1) * 2; // * 2 for MMI accums
-    //
-    //ret = (Mean *) malloc(sizeof(Mean) + (vec_size+accum_size-1) * sizeof(FLOAT));
-    //if (ret == NULL)  Error("Insufficient memory");
-    //ret->mVectorSize = vec_size;
-    ret = new Mean(vec_size, mAllocAccums);
-  
-//  printf("vec_size: %d\n", vec_size);
-    for (i=0; i<vec_size; i++) {
-      ret->mpVectorO[i] = GetFloat(fp);
+      for (i=0; i<vec_size; i++) 
+      {
+        // old vector
+        //ret->mpVectorO[i] = GetFloat(fp);
+        ret->mVector[i] = GetFloat(fp);
+      }      
+    } // else if (CheckKwd(keyword, KID_Mean))
+    
+    else
+    {
+      Error("Keyword <Mean> or <Weights> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
     }
-  
+    
     ret->mpMacro = macro;
     return ret;
   }
@@ -983,19 +1182,11 @@ namespace STK
   
     vec_size = GetInt(fp);
   
-    //***
-    // old malloc
-    //if (mAllocAccums) accum_size = (2 * vec_size + 1) * 2; // * 2 for MMI accums
-    //
-    //ret = (Variance *) malloc(sizeof(Variance) + (vec_size+accum_size-1) * sizeof(FLOAT));
-    //if (ret == NULL) Error("Insufficient memory");
-    //
-    //ret->mVectorSize = vec_size;
-    
     ret = new Variance(vec_size, mAllocAccums);
   
-    for (i=0; i < vec_size; i++) {
-      ret->mpVectorO[i] = 1.0 / GetFloat(fp);
+    for (i=0; i < vec_size; i++) 
+    {
+      ret->mVector[i] = 1.0 / GetFloat(fp);
     }
   
     ret->mpMacro = macro;
@@ -1042,7 +1233,7 @@ namespace STK
       keyword = GetString(fp, 1);
     }
   
-    if ((i = ReadParmKind(keyword, TRUE)) != -1) {
+    if ((i = ReadParmKind(keyword, true)) != -1) {
       if (mParamKind != -1 && mParamKind != i) 
         Error("ParamKind mismatch (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
   
@@ -1060,13 +1251,6 @@ namespace STK
   
     out_vec_size = GetInt(fp);
   
-    //***
-    // old malloc
-    // ret = (XformInstance *) malloc(sizeof(*ret)+(out_vec_size-1)*sizeof(FLOAT));
-    // if (ret == NULL) Error("Insufficient memory");
-    //   
-    // 
-    
     // create new instance
     ret = new XformInstance(out_vec_size);
 
@@ -1089,7 +1273,7 @@ namespace STK
               gpCurrentMmfName, gCurrentMmfLine);
       }
     } else {
-      if (ret->mpXform->mInSize != input->mOutSize) {
+      if (ret->mpXform->mInSize != input->OutSize()) {
         Error("Xform input size must equal to <Input> <VecSize> (%s:%d)",
               gpCurrentMmfName, gCurrentMmfLine);
       }
@@ -1097,14 +1281,10 @@ namespace STK
   
     ret->mpMemory = NULL;
     
-    //***
-    // old malloc
-    //if (ret->mpXform->mMemorySize > 0 &&
-    //  ((ret->mpMemory = (char *) calloc(1, ret->mpXform->mMemorySize)) == NULL)) {
-    //  Error("Insufficient memory");
-    //}
     if (ret->mpXform->mMemorySize > 0)
       ret->mpMemory = new char[ret->mpXform->mMemorySize];
+    
+    memset(ret->mpMemory, 0, ret->mpXform->mMemorySize);
   
     ret->mpNext = mpXformInstances;
     mpXformInstances = ret;
@@ -1151,7 +1331,7 @@ namespace STK
     if (CheckKwd(keyword, KID_Copy)) {
       return (Xform *) ReadCopyXform(fp, macro);
     }
-  
+    
     if (CheckKwd(keyword, KID_Stacking)) {
       return (Xform *) ReadStackingXform(fp, macro);
     }
@@ -1171,7 +1351,34 @@ namespace STK
       }
     }
   
-    Error("Invalid Xform definition (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+    // check for XForm extension
+    if (CheckKwd(keyword, KID_ExtendedXform))
+    {
+      // what extension???
+      keyword = GetString(fp, 1);
+      
+      if (!strcmp(keyword, "FeatureMapping"))
+      {
+        return (Xform *) ReadFeatureMappingXform(fp, macro);
+      }
+      
+      if (!strcmp(keyword, "FrantaProduct"))
+      {
+        return static_cast<Xform*>(ReadFrantaProductXform(fp, macro));
+      }
+      
+      if (!strcmp(keyword, "Matlab"))
+      {
+        return static_cast<Xform*>(ReadMatlabXform(fp, macro));
+      }
+      
+      Error("Invalid Extended Xform definition; unexpected keyword %s (%s:%d)", 
+        keyword, gpCurrentMmfName, gCurrentMmfLine);
+    }
+    
+    Error("Invalid Xform definition; unexpected keyword %s (%s:%d)", 
+      keyword, gpCurrentMmfName, gCurrentMmfLine);
+      
     return NULL;
   }; //ReadXform(FILE *fp, Macro *macro) 
   
@@ -1339,7 +1546,8 @@ namespace STK
         //  Error("Insufficient memory");
         //}
         
-        ret->mpLayer[i-1].mpOutputVector = new FLOAT[prev_out_size];
+        //ret->mpLayer[i-1].mpOutputVector = new FLOAT[prev_out_size];
+        ret->mpLayer[i-1].mOutputVector.Init(prev_out_size);
       }
   
       prev_out_size = layer_out_size;
@@ -1367,13 +1575,8 @@ namespace STK
   
     // read the parameters
     out_size = GetInt(fp);  // Rows in Xform matrix
-    in_size = GetInt(fp);   // Cols in Xform matrix
+    in_size =  GetInt(fp);   // Cols in Xform matrix
   
-    //*** 
-    // old malloc
-    //ret = (LinearXform *) malloc(sizeof(LinearXform)+(out_size*in_size-1)*sizeof(ret->mpMatrixO[0]));
-    //if (ret == NULL) Error("Insufficient memory");
-    
     // create new object
     ret = new LinearXform(in_size, out_size);
     
@@ -1385,10 +1588,9 @@ namespace STK
       {
         tmp = GetFloat(fp);
         
-        if (mUseNewMatrix) ret->mMatrix(r, c) = tmp;        
-        //else               ret->mpMatrixO[i]  = tmp;  //:TODO: Get rid of this old stuff
+        ret->mMatrix[c][r] = tmp;        
         
-          ret->mpMatrixO[i]  = tmp;  //:TODO: Get rid of this old stuff
+        //ret->mpMatrixO[i]  = tmp;  //:TODO: Get rid of this old stuff
         i++;
       }
     }
@@ -1399,6 +1601,7 @@ namespace STK
   
 
   //***************************************************************************  
+  //***************************************************************************  
   BiasXform *
   ModelSet::
   ReadBiasXform(FILE *fp, Macro *macro)
@@ -1406,27 +1609,14 @@ namespace STK
     BiasXform *   ret;
     size_t        size;
     size_t        i;
-    FLOAT         tmp;
     
     size = GetInt(fp);
-  
-    //***
-    // old malloc
-    //     ret = (BiasXform *) malloc(sizeof(BiasXform)+(size-1)*sizeof(ret->mpVectorO[0]));
-    //     if (ret == NULL) Error("Insufficient memory");
-    //     
-    
-    ret = new BiasXform(size);
+    ret  = new BiasXform(size);
     
     // load values
     for (i=0; i < size; i++) 
     {
-      tmp = GetFloat(fp);
-      
-      if (mUseNewMatrix)  ret->mVector(0, i) = tmp;
-      //else                ret->mpVectorO[i]  = tmp;   //:TODO: Get rid of the obsolete thing
-      
-      ret->mpVectorO[i]  = tmp;   //:TODO: Get rid of the obsolete thing
+      ret->mVector[0][i]  = GetFloat(fp);
     }
   
     ret->mpMacro      = macro;
@@ -1454,6 +1644,7 @@ namespace STK
     ret->mpMacro  = macro;
     return ret;
   }; // ReadFuncXform(FILE *fp, Macro *macro, int funcId)
+  
   
   //***************************************************************************
   //***************************************************************************
@@ -1508,8 +1699,141 @@ namespace STK
     ret->mpMacro      = macro;
     return ret;
   }; //ReadCopyXform(FILE *fp, Macro *macro)
+
+  
+  //***************************************************************************
+  //***************************************************************************
+  FeatureMappingXform*
+  ModelSet::
+  ReadFeatureMappingXform(FILE* fp, Macro* macro)
+  {
+    FeatureMappingXform*    ret=NULL;
+    int           in_size;
+    int           in_size_orig;
+    char*         keyword;
+    int           state_id;
+    
+    in_size = GetInt(fp);
+  
+    // create new object
+    ret = new FeatureMappingXform(in_size);
+    
+    // we need to tell the model set to ignore the original input vector size
+    // as the transform can have different dimensiion. The value needs to be 
+    // later restored
+    in_size_orig     = mInputVectorSize;
+    mInputVectorSize = in_size;
+    
+    // read working states
+    keyword = GetString(fp, 1);
+    
+    if (!CheckKwd(keyword, KID_State)) 
+      Error("Keyword <State> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+  
+    state_id = GetInt(fp);
+ 
+    if (state_id !=1) 
+      Error("State number should be 1 (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+  
+    ret->mpStateFrom = ReadState(fp, NULL);
+    
+    
+    keyword = GetString(fp, 1);
+    
+    if (!CheckKwd(keyword, KID_State)) 
+      Error("Keyword <State> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+  
+    state_id = GetInt(fp);
+ 
+    if (state_id != 2) 
+      Error("State number should be 2 (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+    
+    ret->mpStateTo   = ReadState(fp, NULL);
+  
+    
+    // check for alike number of mixtures in both states
+    if (ret->mpStateFrom->mNMixtures != ret->mpStateTo->mNMixtures)
+    {
+      Error("Number of mixtures must match in the Xform states (%s:%d)", 
+        gpCurrentMmfName, gCurrentMmfLine);
+    }
+    
+    // restore the original input vector size value
+    mInputVectorSize  = in_size_orig;
+    
+    ret->mpMacro      = macro;
+    return ret;
+  }; //ReadCopyXform(FILE *fp, Macro *macro)
   
   
+  //***************************************************************************
+  //***************************************************************************
+  FrantaProductXform*
+  ModelSet::
+  ReadFrantaProductXform(FILE* fp, Macro* macro)
+  {
+    FrantaProductXform*   ret;
+    int                   in_size;
+    int                   n_parts;
+      
+    in_size = GetInt(fp);
+    n_parts = GetInt(fp);
+    
+    if (in_size % n_parts)
+    {
+      Error("Vector size has to be divisible by %d (%s:%d)", 
+        n_parts, gpCurrentMmfName, gCurrentMmfLine);
+    }  
+    
+    // create new object
+    ret = new FrantaProductXform(in_size, n_parts);
+    
+    ret->mpMacro      = macro;
+    return ret;
+  }; //ReadCopyXform(FILE *fp, Macro *macro)
+  
+  
+  //***************************************************************************
+  //***************************************************************************
+  MatlabXform*
+  ModelSet::
+  ReadMatlabXform(FILE* fp, Macro* macro)
+  {
+#ifndef MATLAB_ENGINE
+    Warning("Matlab engine not available, transform will have unexpected results");    
+#endif    
+    
+    MatlabXform*          ret;
+    int                   in_rows;
+    int                   in_cols;
+    int                   out_size;
+    ReadlineData          rld = {0};
+    char*                 line;
+          
+    in_rows   = GetInt(fp);
+    in_cols   = GetInt(fp);
+    out_size  = GetInt(fp);
+    
+    // create new object
+    ret = new MatlabXform(in_rows, in_cols, out_size);
+    
+    while ((line = readline(fp, &rld)) != NULL)
+    {
+      if (!strcmp(line, "%%%% END %%%%"))
+        break;
+        
+      ret->mProgram += line;
+      ret->mProgram += '\n';
+    }
+  
+    free(rld.buffer);
+    
+    ret->mpMacro      = macro;
+    return ret;
+  }; //ReadCopyXform(FILE *fp, Macro *macro)
+  
+  
+  //***************************************************************************
   //***************************************************************************
   StackingXform *
   ModelSet::
@@ -1522,16 +1846,14 @@ namespace STK
     stack_size = GetInt(fp);
     in_size    = GetInt(fp);
   
-    //***
-    // old malloc
-    //ret = (StackingXform *) malloc(sizeof(StackingXform));
-    //if (ret == NULL) Error("Insufficient memory");
     ret = new StackingXform(stack_size, in_size);
   
     ret->mpMacro      = macro;
     return ret;
   }; //ReadStackingXform(FILE *fp, Macro *macro)
   
+  
+  //***************************************************************************
   //***************************************************************************
   int 
   ModelSet::
@@ -1560,6 +1882,7 @@ namespace STK
         }
   
         mInputVectorSize = i;
+        
         ret = 1;
       } 
       else if (CheckKwd(keyword, KID_StreamInfo)) 
@@ -1578,7 +1901,7 @@ namespace STK
         mInputVectorSize = i;
         ret = 1;
       } 
-      else if ((i = ReadParmKind(keyword, TRUE)) != -1) 
+      else if ((i = ReadParmKind(keyword, true)) != -1) 
       {
         if (mParamKind != -1 && mParamKind != i) 
           Error("Mismatch in paramKind redefinition (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
@@ -1729,14 +2052,15 @@ namespace STK
   //***************************************************************************
   void 
   ModelSet::
-  WriteMmf(const char * pFileName, const char * pOutputDir,
-           const char * pOutputExt, bool binary)
+  WriteMmf(const char* pFileName, const char* pOutputDir,
+           const char* pOutputExt, bool binary)
   {
-    FILE *    fp = NULL;
-    Macro *   macro;
-    char      mmfile[1024];
-    char *    lastFileName = NULL;
-    int       waitingForNonXform = 1;
+    FILE*       fp = NULL;
+    Macro*      macro;
+    char        mmfile[1024];
+    char*       lastFileName = NULL;
+    int         waitingForNonXform = 1;
+    OStkStream  output_stream;
   
     for (macro = mpFirstMacro; macro != NULL; macro = macro->nextAll) 
     {
@@ -1748,9 +2072,10 @@ namespace STK
         // New macro file
         lastFileName = macro->mpFileName;
         
+        /*
         if (fp && fp != stdout) 
           fclose(fp);
-  
+        
         if (!strcmp(pFileName ? pFileName : macro->mpFileName, "-")) 
         {
           fp = stdout;
@@ -1759,10 +2084,25 @@ namespace STK
         {
           MakeFileName(mmfile, pFileName ? pFileName : macro->mpFileName, pOutputDir, pOutputExt);
           
-          if ((fp  = fopen(mmfile, "wb")) == NULL) 
+          if ((fp  = fopen(mmfile, "wb")) == NULL)
+          { 
             Error("Cannot open output MMF %s", mmfile);
+          }
         }
+        */
         
+        if (output_stream.is_open())
+          output_stream.close();
+  
+        MakeFileName(mmfile, pFileName ? pFileName : macro->mpFileName, pOutputDir, pOutputExt);
+          
+        output_stream.open(mmfile, ios::binary, gpMmfOFilter);
+        if (!output_stream.good())
+        { 
+          Error("Cannot open output MMF %s", mmfile);
+        }
+        fp = output_stream.file();
+          
         waitingForNonXform = 1;
         WriteGlobalOptions(fp, binary);
       }
@@ -1800,7 +2140,9 @@ namespace STK
         }
       }
     }
-    if (fp && fp != stdout) fclose(fp);
+    //if (fp && fp != stdout) fclose(fp);
+    if (output_stream.is_open())
+      output_stream.close();
   }
 
 
@@ -1811,7 +2153,14 @@ namespace STK
   WriteGlobalOptions(FILE *fp, bool binary)
   {
     char parmkindstr[64];
-  
+
+    // :KLUDGE: Conditional jump or move depends on uninitialised value(s)
+    /*
+    if(mSaveGlobOpts == false)
+    {
+      return;
+    }
+    */
     fputs("~o ", fp);
     PutKwd(fp, binary, KID_VecSize);
     PutInt(fp, binary, mInputVectorSize);
@@ -1884,7 +2233,7 @@ namespace STK
   //*****************************************************************************  
   void 
   ModelSet::
-  WriteState(FILE *fp, bool binary, State *state)
+  WriteState(FILE* fp, bool binary, State* state)
   {
     size_t i;
   
@@ -1896,16 +2245,16 @@ namespace STK
     } 
     else 
     {
-      if (state->mNumberOfMixtures > 1) 
+      if (state->mNMixtures > 1) 
       {
         PutKwd(fp, binary, KID_NumMixes);
-        PutInt(fp, binary, state->mNumberOfMixtures);
+        PutInt(fp, binary, state->mNMixtures);
         PutNLn(fp, binary);
       }
   
-      for (i=0; i < state->mNumberOfMixtures; i++) 
+      for (i=0; i < state->mNMixtures; i++) 
       {
-        if (state->mNumberOfMixtures > 1) 
+        if (state->mNMixtures > 1) 
         {
           PutKwd(fp, binary, KID_Mixture);
           PutInt(fp, binary, i+1);
@@ -1933,9 +2282,14 @@ namespace STK
   ModelSet::
   WriteMixture(FILE *fp, bool binary, Mixture *mixture)
   {
-    if (mixture->mpInputXform != mpInputXform) 
+    //:BUG:
+    // The mixture->mpInputXform should never be null, however with feature
+    // mapping, it is. Temporary solution is to test it for NULL...
+    if (mixture->mpInputXform != mpInputXform
+    &&  NULL != mixture->mpInputXform) 
     {
       PutKwd(fp, binary, KID_InputXform);
+      
       if (mixture->mpInputXform->mpMacro) 
       {
         fprintf(fp, "~j \"%s\"", mixture->mpInputXform->mpMacro->mpName);
@@ -1981,15 +2335,49 @@ namespace STK
   {
     size_t    i;
   
-    PutKwd(fp, binary, KID_Mean);
-    PutInt(fp, binary, mean->mVectorSize);
-    PutNLn(fp, binary);
-  
-    for (i=0; i < mean->mVectorSize; i++) {
-      PutFlt(fp, binary, mean->mpVectorO[i]);
+    // Mean specified by a set of vectors
+    if (NULL != mean->mpClusterWeightVectors)
+    //if(false)
+    {
+      PutKwd(fp, binary, KID_Weights);
+      PutInt(fp, binary, mean->mNClusterWeightVectors);
+      PutNLn(fp, binary);
+      for (i = 0; i < mean->mNClusterWeightVectors; i++)
+      {
+        fprintf(fp, "~x \"%s\"", mean->mpClusterWeightVectors[i]->mpMacro->mpName);
+        PutNLn(fp, binary);
+      }
+      
+      // go through the rows in the vector
+      for (i = 0; i < mean->mClusterMatrixT.Rows(); i++)
+      {
+        PutKwd(fp, binary, KID_Mean);
+        PutInt(fp, binary, mean->VectorSize());
+        PutNLn(fp, binary);
+      
+        for (size_t j=0; j < mean->VectorSize(); j++) 
+        {
+          PutFlt(fp, binary, mean->mClusterMatrixT(i, j));
+        }
+      
+        PutNLn(fp, binary);
+      }
     }
-  
-    PutNLn(fp, binary);
+    
+    // Mean specified regularly by a single vector
+    else
+    {
+      PutKwd(fp, binary, KID_Mean);
+      PutInt(fp, binary, mean->VectorSize());
+      PutNLn(fp, binary);
+    
+      for (i=0; i < mean->VectorSize(); i++) 
+      {
+        PutFlt(fp, binary, mean->mVector[i]);
+      }
+    
+      PutNLn(fp, binary);
+    }
   } //WriteMean(FILE *fp, bool binary, Mean *mean)
 
   
@@ -2002,11 +2390,12 @@ namespace STK
     size_t   i;
   
     PutKwd(fp, binary, KID_Variance);
-    PutInt(fp, binary, variance->mVectorSize);
+    PutInt(fp, binary, variance->VectorSize());
     PutNLn(fp, binary);
   
-    for (i=0; i < variance->mVectorSize; i++) {
-      PutFlt(fp, binary, 1/variance->mpVectorO[i]);
+    for (i=0; i < variance->VectorSize(); i++) 
+    {
+      PutFlt(fp, binary, 1/variance->mVector[i]);
     }
   
     PutNLn(fp, binary);
@@ -2097,7 +2486,7 @@ namespace STK
     }
   
     PutKwd(fp, binary, KID_VecSize);
-    PutInt(fp, binary, xformInstance->mOutSize);
+    PutInt(fp, binary, xformInstance->OutSize());
     PutNLn(fp, binary);
   
     if (xformInstance->mpXform->mpMacro) 
@@ -2124,6 +2513,8 @@ namespace STK
     {
       case XT_LINEAR    : WriteLinearXform   (fp, binary, static_cast<LinearXform *>(xform)); break;
       case XT_COPY      : WriteCopyXform     (fp, binary, static_cast<CopyXform *>(xform)); break;
+      case XT_FEATURE_MAPPING: WriteFeatureMappingXform     (fp, binary, static_cast<FeatureMappingXform *>(xform)); break;
+      case XT_FRANTA_PRODUCT : WriteFrantaProductXform      (fp, binary, static_cast<FrantaProductXform  *>(xform)); break;
       case XT_FUNC      : WriteFuncXform     (fp, binary, static_cast<FuncXform *>(xform)); break;
       case XT_BIAS      : WriteBiasXform     (fp, binary, static_cast<BiasXform *>(xform)); break;
       case XT_STACKING  : WriteStackingXform (fp, binary, static_cast<StackingXform *>(xform)); break;
@@ -2228,7 +2619,7 @@ namespace STK
   //*****************************************************************************  
   void 
   ModelSet::
-  WriteBiasXform(FILE *fp, bool binary, BiasXform *xform)
+  WriteBiasXform(FILE *fp, bool binary, BiasXform* xform)
   {
     size_t  i;
   
@@ -2237,14 +2628,7 @@ namespace STK
     PutNLn(fp, binary);
     for (i=0; i < xform->mOutSize; i++) 
     {
-      if (mUseNewMatrix)
-      {
-        PutFlt(fp, binary, xform->mVector(0,i));
-      }
-      else
-      {
-        PutFlt(fp, binary, xform->mpVectorO[i]);
-      }
+      PutFlt(fp, binary, xform->mVector[0][i]);
     }
     PutNLn(fp, binary);
   } //WriteBiasXform(FILE *fp, bool binary, BiasXform *xform)
@@ -2267,14 +2651,14 @@ namespace STK
     {
       for (j=0; j < xform->mInSize; j++) 
       {
-        if (mUseNewMatrix)
-        {
-          PutFlt(fp, binary, xform->mMatrix(j, i));
-        }
-        else
-        {
-          PutFlt(fp, binary, xform->mpMatrixO[i * xform->mInSize + j]);
-        }
+//        if (mUseNewMatrix)
+//        {
+          PutFlt(fp, binary, xform->mMatrix[i][j]);
+//        }
+//        else
+//        {
+//          PutFlt(fp, binary, xform->mpMatrixO[i * xform->mInSize + j]);
+//        }
       }
       PutNLn(fp, binary);
     }
@@ -2336,7 +2720,37 @@ namespace STK
   } //WriteCopyXform(FILE *fp, bool binary, CopyXform *xform)
 
   
+  //*****************************************************************************
+  //*****************************************************************************  
+  void
+  ModelSet::
+  WriteFeatureMappingXform(FILE* fp, bool binary, FeatureMappingXform* xform)
+  {
+    fprintf(fp, "<ExtendedXform> FeatureMapping %d\n", (int) xform->mInSize);
+    
+    fprintf(fp, "<State> 1\n");
+    WriteState(fp, binary, xform->mpStateFrom);
+    fputs("\n", fp);
+    
+    fprintf(fp, "<State> 2\n");
+    WriteState(fp, binary, xform->mpStateTo);
+    fputs("\n", fp);
+  } //WriteCopyXform(FILE *fp, bool binary, CopyXform *xform)
 
+  
+  //*****************************************************************************
+  //*****************************************************************************  
+  void
+  ModelSet::
+  WriteFrantaProductXform(FILE* fp, bool binary, FrantaProductXform* xform)
+  {
+    fprintf(fp, "<ExtendedXform> FrantaProduct %d %d\n", 
+      (int) xform->mInSize, (int) xform->NParts());
+  
+    fputs("\n", fp);
+  } //WriteFrantaProductXform(FILE *fp, bool binary, CopyXform *xform)
+
+  
   //###########################################################################################################
   
   //###########################################################################
@@ -2361,12 +2775,12 @@ namespace STK
   
     while (fgets(line, sizeof(line), fp)) 
     {
-      char *            xformName;
-      char *            makeXformShellCommand = NULL;
+      char*             xformName;
+      char*             makeXformShellCommand = NULL;
       char              termChar = '\0';
       size_t            i = strlen(line);
-      Macro *           macro;
-      MakeXformCommand *mxfc;
+      Macro*            macro;
+      MakeXformCommand* mxfc;
   
       nlines++;
       
@@ -2424,7 +2838,8 @@ namespace STK
         realloc(mpXformToUpdate,
                 sizeof(MakeXformCommand) * ++mNumberOfXformsToUpdate);
   
-      if (mpXformToUpdate == NULL) {
+      if (mpXformToUpdate == NULL) 
+      {
         Error("ReadXformList: Insufficient memory");
       }
   
@@ -2432,8 +2847,10 @@ namespace STK
       mxfc->mpXform = (Xform *) macro->mpData;
       mxfc->mpShellCommand = NULL;
   
-      if (makeXformShellCommand) {
-        if ((mxfc->mpShellCommand = strdup(makeXformShellCommand)) == NULL) {
+      if (makeXformShellCommand) 
+      {
+        if ((mxfc->mpShellCommand = strdup(makeXformShellCommand)) == NULL) 
+        {
           Error("ReadXformList: Insufficient memory");
         }
       }
@@ -2441,4 +2858,560 @@ namespace STK
     fclose(fp);
   }; //ReadXformList(const std::string & rFileName);
   
+
+  //***************************************************************************
+  //*****************************************************************************  
+  void
+  ModelSet::
+  WriteClusterWeightsVector(size_t i)
+  {
+    static char buff[1024];
+    
+    MakeFileName(buff, mpClusterWeightVectors[i]->mpMacro->mpFileName, 
+      mClusterWeightsOutPath.c_str(), NULL);
+    
+    if (!mClusterWeightsStream.is_open())
+    {
+      mClusterWeightsStream.open(buff);
+    }
+    else if (mClusterWeightsStream.name() != buff)
+    {
+      mClusterWeightsStream.close();
+      mClusterWeightsStream.open(buff);
+    }
+    
+    // check if nothing's wrong with the stream
+    if (!mClusterWeightsStream.good())
+    {
+      Error("Cannot open MMF output file %s", buff);
+    }
+    
+    fprintf(mClusterWeightsStream.file(), "~x \"%s\"\n", 
+      mpClusterWeightVectors[i]->mpMacro->mpName);
+    WriteBiasXform(mClusterWeightsStream.file(), false, mpClusterWeightVectors[i]);
+
+  }
+
+  
+  //###########################################################################################################
+  //###########################################################################
+  //###########################################################################
+  // Accumulator INPUT
+  //###########################################################################
+  //###########################################################################
+  
+  //*****************************************************************************
+  //*****************************************************************************
+  void ReadAccum(int macro_type, HMMSetNodeName nodeName,
+                  MacroData * pData, void *pUserData) 
+  {
+    unsigned int        i;
+    unsigned int        j;
+    int                 c;
+    unsigned int        size   = 0;
+    FLOAT*              vector = NULL;
+    Macro*              macro;
+    ReadAccumUserData*  ud = (ReadAccumUserData *) pUserData;
+    //  FILE *fp =        ((ReadAccumUserData *) pUserData)->fp;
+    //  char *fn =        ((ReadAccumUserData *) pUserData)->fn;
+    //  ModelSet *hmm_set = ((ReadAccumUserData *) pUserData)->hmm_set;
+    //  float weight =    ((ReadAccumUserData *) pUserData)->weight;
+    char                xfName[128];
+  
+    xfName[sizeof(xfName)-1] = '\0';
+
+    if (macro_type == mt_mixture)  
+    {
+      Mixture* mixture = static_cast<Mixture*>(pData);
+      
+      //************************************************************************
+      // cluster adaptive training - cluster parameters accumulators 
+      // we expect all accums to be initialized if mAccumG is initialized
+      if (mixture->mAccumG.IsInitialized())
+      {
+        size_t r;     // row counter
+        size_t rows;
+        
+        rows = mixture->mAccumG.Rows();
+        for (r = 0; r < rows; r++)
+        {                                                              
+          if (faddfloat(mixture->mAccumG[r], mixture->mAccumG.Cols(), 1, ud->mpFp) 
+              != mixture->mAccumG.Cols())
+          {
+            Error("G: Incompatible accumulator file: '%s'", ud->mpFileName);
+          }
+        }
+
+        rows = mixture->mAccumK.Rows();
+        for (r = 0; r < rows; r++)
+        {
+          if (faddfloat(mixture->mAccumK[r], mixture->mAccumK.Cols(), 1, ud->mpFp) 
+              != mixture->mAccumK.Cols())
+          {
+            Error("K: Incompatible accumulator file: '%s'", ud->mpFileName);
+          }
+        }
+
+        if (faddfloat(mixture->mAccumL.pData(), mixture->mAccumL.Length(), 1, ud->mpFp) 
+            != mixture->mAccumL.Length())
+        {
+          Error("L: Incompatible accumulator file: '%s'", ud->mpFileName);
+        }
+        
+      } // if (mixture->mAccumG.IsInitialized())
+      //************************************************************************
+      
+    } // if (macro_type == mt_mixture)  
+    
+    else if (macro_type == mt_mean || macro_type == mt_variance) 
+    {
+      XformStatAccum *  xfsa = NULL;
+      UINT_32           size_inf;
+      UINT_32           nxfsa_inf;
+      size_t            nxfsa = 0;
+  
+      if (macro_type == mt_mean) 
+      {
+        xfsa   = ((Mean*)pData)->mpXformStatAccum;
+        nxfsa  = ((Mean*)pData)->mNumberOfXformStatAccums;
+        size   = ((Mean*)pData)->VectorSize();
+        //vector = ((Mean *)pData)->mpVectorO+size;
+        vector = ((Mean*)pData)->mpAccums;
+        size   = size + 1;
+      } 
+      else if (macro_type == mt_variance) 
+      {
+        xfsa   = ((Variance*)pData)->mpXformStatAccum;
+        nxfsa  = ((Variance*)pData)->mNumberOfXformStatAccums;
+        size   = ((Variance*)pData)->VectorSize();
+        //vector = ((Variance *)pData)->mpVectorO+size;
+        vector = ((Variance*)pData)->mpAccums;
+        size   = size * 2 + 1;
+      }
+  
+      if (ud->mMmi) 
+        vector += size;
+  
+      if (faddfloat(vector, size, ud->mWeight,    ud->mpFp) != size ||
+          fread(&nxfsa_inf, sizeof(nxfsa_inf), 1, ud->mpFp) != 1) 
+      {
+        Error("Incompatible accumulator file: '%s'", ud->mpFileName);
+      }
+  
+      if (!ud->mMmi) 
+      { // MMI estimation of Xform statistics has not been implemented yet
+        for (i = 0; i < nxfsa_inf; i++) 
+        {
+          if (getc(ud->mpFp) != '"') 
+            Error("Incompatible accumulator file: '%s'", ud->mpFileName);
+  
+          for (j=0; (c=getc(ud->mpFp)) != EOF && c != '"' && j < sizeof(xfName)-1; j++) 
+            xfName[j] = c;
+  
+          xfName[j] = '\0';
+          
+          if (c == EOF)
+            Error("Incompatible accumulator file: '%s'", ud->mpFileName);
+  
+          macro = FindMacro(&ud->mpModelSet->mXformHash, xfName);
+  
+          if (fread(&size_inf, sizeof(size_inf), 1, ud->mpFp) != 1) 
+            Error("Incompatible accumulator file: '%s'", ud->mpFileName);
+  
+          if (macro != NULL) 
+          {
+            size = ((LinearXform *) macro->mpData)->mInSize;
+            size = (macro_type == mt_mean) ? size : size+size*(size+1)/2;
+  
+            if (size != size_inf)
+              Error("Incompatible accumulator file: '%s'", ud->mpFileName);
+  
+            for (j = 0; j < nxfsa && xfsa[j].mpXform != macro->mpData; j++)
+            {}
+            
+            if (j < nxfsa) 
+            {
+              if (faddfloat(xfsa[j].mpStats, size, ud->mWeight, ud->mpFp) != size  ||
+                  faddfloat(&xfsa[j].mNorm,     1, ud->mWeight, ud->mpFp) != 1) 
+              {
+                Error("Invalid accumulator file: '%s'", ud->mpFileName);
+              }
+            } 
+            else 
+            {
+              macro = NULL;
+            }
+          }
+  
+          // Skip Xform accumulator
+          if (macro == NULL) 
+          { 
+            FLOAT f;
+            for (j = 0; j < size_inf+1; j++) 
+              fread(&f, sizeof(f), 1, ud->mpFp);
+          }
+        }
+      }
+    } 
+    
+    else if (macro_type == mt_state) 
+    {
+      State *state = (State *) pData;
+      if (state->mOutPdfKind == KID_DiagC) {
+        FLOAT junk;
+        for (i = 0; i < state->mNMixtures; i++) {
+          if (ud->mMmi == 1) {
+            if (faddfloat(&state->mpMixture[i].mWeightAccumDen, 1, ud->mWeight, ud->mpFp) != 1 ||
+                faddfloat(&junk,                                1, ud->mWeight, ud->mpFp) != 1) {
+              Error("Incompatible accumulator file: '%s'", ud->mpFileName);
+            }
+          } else if (ud->mMmi == 2) {
+            if (faddfloat(&junk,                                1, ud->mWeight, ud->mpFp) != 1 ||
+                faddfloat(&state->mpMixture[i].mWeightAccumDen, 1, ud->mWeight, ud->mpFp) != 1) {
+              Error("Incompatible accumulator file: '%s'", ud->mpFileName);
+            }
+          } else {
+            if (faddfloat(&state->mpMixture[i].mWeightAccum,     1, ud->mWeight, ud->mpFp) != 1 ||
+                faddfloat(&state->mpMixture[i].mWeightAccumDen,  1, ud->mWeight, ud->mpFp) != 1) {
+              Error("Incompatible accumulator file: '%s'", ud->mpFileName);
+            }
+          }
+        }
+      }
+    } else if (macro_type == mt_transition) {
+      FLOAT f;
+      size   = SQR(((Transition *) pData)->mNStates);
+      vector =     ((Transition *) pData)->mpMatrixO + size;
+  
+      for (i = 0; i < size; i++) {
+        if (fread(&f, sizeof(FLOAT), 1, ud->mpFp) != 1) {
+        Error("Incompatible accumulator file: '%s'", ud->mpFileName);
+        }
+        if (!ud->mMmi) { // MMI estimation of transition probabilities has not been implemented yet
+          f += log(ud->mWeight);
+          LOG_INC(vector[i], f);
+        }
+      }
+    }
+  } // void ReadAccum(int macro_type, HMMSetNodeName nodeName...)
+  
+
+  //****************************************************************************  
+  //****************************************************************************  
+  void
+  ModelSet::
+  ReadAccums(const char * pFileName, 
+             float        weight,
+             long *       totFrames, 
+             FLOAT *      totLogLike, 
+             int          mmiDenominatorAccums)
+  {
+    IStkStream                in;
+    FILE*                     fp;
+    char                      macro_name[128];
+    MyHSearchData*            hash;
+    unsigned int              i;
+    int                       t = 0;
+    int                       c;
+    int                       skip_accum = 0;
+    INT_32                    occurances;
+    ReadAccumUserData         ud;
+    Macro*                    macro;
+    int                       mtm = MTM_PRESCAN | 
+                                    MTM_STATE |
+                                    MTM_MIXTURE |
+                                    MTM_MEAN |   
+                                    MTM_VARIANCE | 
+                                    MTM_TRANSITION;
+  
+    macro_name[sizeof(macro_name)-1] = '\0';
+  
+    // open the file
+    in.open(pFileName, ios::binary);
+    if (!in.good())
+    {
+      Error("Cannot open input accumulator file: '%s'", pFileName);
+    }
+    
+    fp = in.file();
+    
+    INT_32 i32;
+    if (fread(&i32,       sizeof(i32),  1, fp) != 1 ||
+        fread(totLogLike, sizeof(FLOAT), 1, fp) != 1) 
+    {
+      Error("Invalid accumulator file: '%s'", pFileName);
+    }
+    *totFrames = i32;
+    
+//    *totFrames  *= weight; // Not sure whether we should report weighted quantities or not
+//    *totLogLike *= weight;
+  
+    ud.mpFileName   = pFileName;
+    ud.mpFp         = fp;
+    ud.mpModelSet   = this;
+    ud.mWeight      = weight;
+    ud.mMmi         = mmiDenominatorAccums;
+  
+    for (;;) 
+    {
+      if (skip_accum) 
+      { // Skip to the begining of the next macro accumulator
+        for (;;) 
+        {
+          while ((c = getc(fp)) != '~' && c != EOF)
+            ;
+          
+          if (c == EOF) 
+            break;
+            
+          if (strchr("hsmuvt", t = c = getc(fp)) &&
+            (c = getc(fp)) == ' ' && (c = getc(fp)) == '"')
+          {  
+            break;
+          }
+          
+          ungetc(c, fp);
+        }
+        
+        if (c == EOF) 
+          break;
+      } 
+      else 
+      {
+        if ((c = getc(fp)) == EOF) break;
+        
+        if (c != '~'      || !strchr("hsmuvt", t = getc(fp)) ||
+          getc(fp) != ' ' || getc(fp) != '"') 
+        {
+          Error("Incomatible accumulator file: '%s'", pFileName);
+        }
+      }
+  
+      for (i=0; (c = getc(fp))!=EOF && c!='"' && i<sizeof(macro_name)-1; i++) 
+      {
+        macro_name[i] = c;
+      }
+      macro_name[i] = '\0';
+  
+      hash = t == 'h' ? &mHmmHash :
+             t == 's' ? &mStateHash :
+             t == 'm' ? &mMixtureHash :
+             t == 'u' ? &mMeanHash :
+             t == 'v' ? &mVarianceHash :
+             t == 't' ? &mTransitionHash : NULL;
+  
+      assert(hash);
+      if ((macro = FindMacro(hash, macro_name)) == NULL) 
+      {
+        skip_accum = 1;
+        continue;
+      }
+  
+      skip_accum = 0;
+      if (fread(&occurances, sizeof(occurances), 1, fp) != 1) 
+      {
+        Error("Invalid accumulator file: '%s'", pFileName);
+      }
+      
+      if (!mmiDenominatorAccums) macro->mOccurances += occurances;
+      switch (t) 
+      {
+        case 'h': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
+        case 's': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
+        case 'm': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
+        case 'u': ReadAccum(mt_mean, NULL, macro->mpData, &ud);                break;
+        case 'v': ReadAccum(mt_variance, NULL, macro->mpData, &ud);            break;
+        case 't': ReadAccum(mt_transition, NULL, macro->mpData, &ud);          break;
+        default:  assert(0);
+      }
+    }
+    
+    in.close();
+    //delete [] ud.mpFileName;
+    //free(ud.mpFileName);    
+  }; // ReadAccums(...)
+  
+    
+  //###########################################################################################################
+  //###########################################################################
+  //###########################################################################
+  // Accumulator OUTPUT
+  //###########################################################################
+  //###########################################################################
+  
+  //*****************************************************************************
+  //*****************************************************************************
+  void 
+  WriteAccum(int macro_type, HMMSetNodeName nodeName,
+             MacroData* pData, void *pUserData) 
+  {
+    size_t                i;
+    size_t                size;
+    FLOAT*                vector = NULL;
+  //  FILE *fp = (FILE *) pUserData;
+    WriteAccumUserData*   ud = static_cast<WriteAccumUserData*>(pUserData);
+    Macro*                macro = pData->mpMacro;
+  
+    if (macro &&
+      (fprintf(ud->mpFp, "~%c \"%s\"", macro->mType, macro->mpName) < 0 ||
+       fwrite(&macro->mOccurances, sizeof(macro->mOccurances), 1, ud->mpFp) != 1)) 
+    {
+      Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
+    }
+  
+    if (macro_type == mt_mixture)
+    {
+      Mixture* mixture = static_cast<Mixture*>(pData);
+      
+      // save cluster parameters accumulators
+      if (mixture->mAccumG.IsInitialized())
+      {
+        size_t r;     // row counter
+        size_t rows;
+        
+        // we need to update the accumulators from the per-speaker partial
+        // accumulators
+        mixture->UpdateClusterParametersAccums();
+        
+        // the G accumulator
+        rows = mixture->mAccumG.Rows();
+        for (r = 0; r < rows; r++)
+        {
+          fwrite(mixture->mAccumG[r], sizeof(FLOAT), mixture->mAccumG.Cols(), 
+            ud->mpFp);
+        }
+        
+        // the K accumulator
+        rows = mixture->mAccumK.Rows();
+        for (r = 0; r < rows; r++)
+        {
+          fwrite(mixture->mAccumK[r], sizeof(FLOAT), mixture->mAccumK.Cols(), 
+            ud->mpFp);
+        }
+        
+        // the L accumulator
+        fwrite(mixture->mAccumL.cpData(), sizeof(FLOAT), mixture->mAccumL.Length(), 
+          ud->mpFp);
+      }
+    }
+    
+    else if (macro_type == mt_mean || macro_type == mt_variance) 
+    {
+      XformStatAccum*     xfsa = NULL;
+      UINT_32             nxfsa = 0;
+  
+      if (macro_type == mt_mean) 
+      {
+        xfsa   = ((Mean*)pData)->mpXformStatAccum;
+        nxfsa  = ((Mean*)pData)->mNumberOfXformStatAccums;
+        size   = ((Mean*)pData)->VectorSize();
+        //vector = ((Mean*)pData)->mpVectorO+size;
+        vector = ((Mean*)pData)->mpAccums;
+        size   = size + 1;
+      } 
+      else if (macro_type == mt_variance) 
+      {
+        xfsa   = ((Variance*)pData)->mpXformStatAccum;
+        nxfsa  = ((Variance*)pData)->mNumberOfXformStatAccums;
+        size   = ((Variance*)pData)->VectorSize();
+        //vector = ((Variance*)pData)->mpVectorO+size;
+        vector = ((Variance*)pData)->mpAccums;
+        size   = size * 2 + 1;
+      }
+  
+  //    if (ud->mMmi) vector += size; // Move to MMI accums, which follows ML accums
+  
+      if (fwrite(vector, sizeof(FLOAT), size, ud->mpFp) != size ||
+          fwrite(&nxfsa, sizeof(nxfsa),    1, ud->mpFp) != 1) 
+      {
+        Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
+      }
+  
+  //    if (!ud->mMmi) { // MMI estimation of Xform statistics has not been implemented yet
+      for (i = 0; i < nxfsa; i++) 
+      {
+        size = xfsa[i].mpXform->mInSize;
+        size = (macro_type == mt_mean) ? size : size+size*(size+1)/2;
+        assert(xfsa[i].mpXform->mpMacro != NULL);
+        if (fprintf(ud->mpFp, "\"%s\"", xfsa[i].mpXform->mpMacro->mpName) < 0 ||
+          fwrite(&size,           sizeof(size),        1, ud->mpFp) != 1    ||
+          fwrite(xfsa[i].mpStats, sizeof(FLOAT), size, ud->mpFp) != size ||
+          fwrite(&xfsa[i].mNorm,  sizeof(FLOAT),    1, ud->mpFp) != 1) 
+        {
+          Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
+        }
+      }
+  //    }
+    }
+    
+    else if (macro_type == mt_state) 
+    {
+      State *state = (State *) pData;
+      if (state->mOutPdfKind == KID_DiagC) 
+      {
+        for (i = 0; i < state->mNMixtures; i++) 
+        {
+          if (fwrite(&state->mpMixture[i].mWeightAccum,
+                    sizeof(FLOAT), 1, ud->mpFp) != 1 ||
+            fwrite(&state->mpMixture[i].mWeightAccumDen,
+                    sizeof(FLOAT), 1, ud->mpFp) != 1) 
+          {
+            Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
+          }
+        }
+      }
+    } 
+    
+    else if (macro_type == mt_transition) 
+    {
+      size   = SQR(((Transition *) pData)->mNStates);
+      vector = ((Transition *) pData)->mpMatrixO + size;
+  
+      if (fwrite(vector, sizeof(FLOAT), size, ud->mpFp) != size) 
+      {
+        Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
+      }
+    }
+  } // WriteAccum(int macro_type, HMMSetNodeName nodeName,..)
+  
+
+  //**************************************************************************  
+  //**************************************************************************  
+  void
+  ModelSet::
+  WriteAccums(const char*  pFileName, 
+              const char*  pOutputDir,
+              long         totFrames, 
+              FLOAT        totLogLike)
+  {
+    FILE*                 fp;
+    char                  file_name[1024];
+    WriteAccumUserData    ud;  
+    
+    MakeFileName(file_name, pFileName, pOutputDir, NULL);
+  
+    if ((fp = fopen(file_name, "wb")) == NULL) 
+    {
+      Error("Cannot open output file: '%s'", file_name);
+    }
+  
+    INT_32 i32 = totFrames;
+    if (fwrite(&i32,  sizeof(i32),  1, fp) != 1 ||
+        fwrite(&totLogLike, sizeof(FLOAT), 1, fp) != 1) 
+    {
+      Error("Cannot write accumulators to file: '%s'", file_name);
+    }
+  
+    ud.mpFp         = fp;
+    ud.mpFileName   = file_name;
+  //  ud.mMmi = MMI_denominator_accums;
+  
+    Scan(MTM_PRESCAN | (MTM_ALL & ~(MTM_XFORM_INSTANCE|MTM_XFORM)),
+              NULL, WriteAccum, &ud);
+  
+    fclose(fp);
+  }; // WriteAccums(...)
+  
+  
+    
 }; // namespace STK

@@ -1,6 +1,7 @@
 #include"socketobj.h"
+#include "../STKLib/Error.h"
 
-using namespace SNet;
+using namespace Socket;
 
 Server::Server(int port, int nOfClients){
   mNOfClients = nOfClients;
@@ -27,8 +28,10 @@ Server::Server(int port, int nOfClients){
   socklen_t addrlen = sizeof(clientInfo);
   int i;
   
-  pmClientSocket = new int(nOfClients);
-  for(i=0; i<mNOfClients; i++){
+  pmClientSocket = new int[nOfClients];
+  
+  // Create all connections
+  for(i=0; i<mNOfClients; i++){ 
     int client = accept(mSocket, (Tsockaddr*)&clientInfo, &addrlen);
     if(client == -1){
       STK::Error("Problems with client join");
@@ -36,6 +39,7 @@ Server::Server(int port, int nOfClients){
     printf("SERVER accepted client from %s\n",inet_ntoa((Tin_addr)clientInfo.sin_addr));
     pmClientSocket[i] = client;
   }
+  
 }
 
 Server::~Server(){
@@ -86,6 +90,16 @@ void Server::Send(char *data, int n, int who){
   }
 }
 
+void Server::SendElement(SNet::Element *element, int who){
+   assert(element != NULL);
+   SendInt(element->mLast, who);
+   SendInt(element->mNLayers, who);
+   for(int i=0; i < element->mNLayers; i++){
+     Send((char*)(*(element->mpWeights[i]))[0], element->mpWeights[i]->MSize(), who);
+     Send((char*)(*(element->mpBiases[i]))[0], element->mpBiases[i]->MSize(), who);     
+   }
+}
+
 void Server::Receive(char *data, int n, int who){
   int totalSize, size;
   char *pom = data;
@@ -102,6 +116,32 @@ void Server::Receive(char *data, int n, int who){
   if(DEBUG) printf("Received data from client %d (%d bytes)\n", who, totalSize);
 }
 
+void Server::ReceiveElement(SNet::Element *element, int who){
+   element->mLast = ReceiveInt(who);
+   element->mNLayers = ReceiveInt(who);   
+   for(int i=0; i < element->mNLayers; i++){
+     Receive((char*)(*(element->mpWeights[i]))[0], element->mpWeights[i]->MSize(), who);
+     Receive((char*)(*(element->mpBiases[i]))[0], element->mpBiases[i]->MSize(), who);     
+   }
+}
+
+void Server::SendIntBroad(int data){
+  for(int i=0; i < mNOfClients; i++){
+    SendInt(data, i);
+  }
+}
+
+void Server::SendBroad(char *data, int n){
+  for(int i=0; i < mNOfClients; i++){
+    Send(data, n, i);
+  }
+}
+
+void Server::SendElementBroad(SNet::Element *element){
+  for(int i=0; i < mNOfClients; i++){
+    SendElement(element, i);
+  }
+}
 
 Client::Client(int port, char *ip){
   int socket_num;
@@ -116,10 +156,8 @@ Client::Client(int port, char *ip){
   sock_name.sin_family = AF_INET;
   sock_name.sin_port = htons(port);
   memcpy(&(sock_name.sin_addr), host->h_addr, host->h_length);
-
   while(connect(socket_num, (Tsockaddr*)&sock_name, sizeof(sock_name)) == -1){
     fprintf(stderr, "WAITING - cannot connect to server\n");
-
     sleep(1);
   }
   printf("CLIENT joined server %s\n", ip);
@@ -170,6 +208,16 @@ void Client::Send(char *data, int n){
   }
 }
 
+void Client::SendElement(SNet::Element *element){
+   assert(element != NULL);
+   SendInt(element->mLast);
+   SendInt(element->mNLayers);
+   for(int i=0; i < element->mNLayers; i++){
+     Send((char*)(*(element->mpWeights[i]))[0], element->mpWeights[i]->MSize());
+     Send((char*)(*(element->mpBiases[i]))[0], element->mpBiases[i]->MSize());     
+   }
+}
+
 void Client::Receive(char *data, int n){
   int totalSize, size;
   char *pom = data;
@@ -185,17 +233,13 @@ void Client::Receive(char *data, int n){
   }
   if(DEBUG) printf("Received data from server (%d bytes)\n", totalSize);
 }
-/*
-int SocketObj::ReceiveInt(){
-  return 0;
-}
 
-void SocketObj::SendInt(int data){
+void Client::ReceiveElement(SNet::Element *element){
+   assert(element != NULL);
+   element->mLast = ReceiveInt();
+   element->mNLayers = ReceiveInt();
+   for(int i=0; i < element->mNLayers; i++){
+     Receive((char*)(*(element->mpWeights[i]))[0], element->mpWeights[i]->MSize());
+     Receive((char*)(*(element->mpBiases[i]))[0], element->mpBiases[i]->MSize());     
+   }
 }
-
-void SocketObj::ReceiveData(char* data, int n){
-}
-
-void SocketObj::SendData(char* data, int n){
-}
-*/

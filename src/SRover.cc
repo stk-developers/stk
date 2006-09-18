@@ -10,7 +10,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#define VERSION "0.5 "__TIME__" "__DATE__
+#define MODULE_VERSION "0.5 "__TIME__" "__DATE__
 
 // This alignment is kind of wierd - check it!!!
 //six     !NULL   !NULL   !NULL   !NULL
@@ -233,7 +233,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (print_version) {
-    puts("Version: "VERSION"\n");
+    puts("Version: "MODULE_VERSION"\n");
     if (!nMLFs) exit(0);
   }
 

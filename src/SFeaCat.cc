@@ -10,7 +10,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#define VERSION "0.7 "__TIME__" "__DATE__
+#define MODULE_VERSION "0.7 "__TIME__" "__DATE__
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -72,14 +72,20 @@ char *optionStr =
 int main(int argc, char *argv[]) 
 {
   ModelSet                hset;
-  FILE *                  sfp;
-  FILE *                  ofp = NULL;
-  FLOAT *                 obs_mx;
-  FLOAT *                 obs;
-  HtkHeader              header;
+  FILE*                   sfp;
+  FILE*                   ofp = NULL;
+  
+#ifndef USE_NEW_MATRIX  
+  FLOAT*                  obs_mx;
+#else
+  Matrix<FLOAT>           feature_matrix;
+#endif
+  
+  FLOAT*                  obs;
+  HtkHeader               header;
   int                     i;
   int                     fcnt = 0;
-  XformInstance *         p_input = NULL;
+  XformInstance*          p_input = NULL;
   char                    p_line[1024];
   char                    p_out_file[1024];
   MyHSearchData  cfg_hash;
@@ -108,6 +114,9 @@ int main(int argc, char *argv[])
         char *            cvn_file;
   const char *            cvn_mask;
   const char *            cvg_file;
+  const char *            mmf_dir;
+  const char *            mmf_mask;
+
   int                     trace_flag;
   int                     targetKind;
   int                     derivOrder;
@@ -131,7 +140,7 @@ int main(int argc, char *argv[])
   
   
   i = ParseOptions(argc, argv, optionStr, SNAME, &cfg_hash);
-//  htk_compat   = GetParamBool(&cfgHash,SNAME":HTKCOMPAT",       FALSE);
+//  htk_compat   = GetParamBool(&cfgHash,SNAME":HTKCOMPAT",       false);
   for (; i < argc; i++) 
   {
     last_file = AddFileElem(last_file, argv[i]);
@@ -162,32 +171,41 @@ int main(int argc, char *argv[])
   src_hmm_ext    = GetParamStr(&cfg_hash, SNAME":SOURCEMODELEXT",  NULL);
   src_mmf = (char*)GetParamStr(&cfg_hash, SNAME":SOURCEMMF",       NULL);
 
-  if (GetParamBool(&cfg_hash, SNAME":PRINTCONFIG", FALSE))
+  mmf_dir        = GetParamStr(&cfg_hash, SNAME":MMFDIR",          ".");
+  mmf_mask       = GetParamStr(&cfg_hash, SNAME":MMFMASK",         NULL);
+
+  if (GetParamBool(&cfg_hash, SNAME":PRINTCONFIG", false))
     PrintConfig(&cfg_hash);
   
-  if (GetParamBool(&cfg_hash, SNAME":PRINTVERSION", FALSE))
-    puts("Version: "VERSION"\n");
+  if (GetParamBool(&cfg_hash, SNAME":PRINTVERSION", false))
+    puts("Version: "MODULE_VERSION"\n");
                                  
-  if (!GetParamBool(&cfg_hash,SNAME":ACCEPTUNUSEDPARAM", FALSE))
+  if (!GetParamBool(&cfg_hash,SNAME":ACCEPTUNUSEDPARAM", false))
     CheckCommandLineParamUse(&cfg_hash);
 
-  for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) 
+  if (NULL != script)
   {
-    if ((sfp = my_fopen(script, "rt", gpScriptFilter)) == NULL) 
-      Error("Cannot open script file %s", script);
-    
-    while (fscanf(sfp, "%s", p_line) == 1) 
+    for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) 
     {
-      last_file = AddFileElem(last_file, p_line);
-      nfeature_files++;
+      if ((sfp = my_fopen(script, "rt", gpScriptFilter)) == NULL) 
+        Error("Cannot open script file %s", script);
+      
+      while (fscanf(sfp, "%s", p_line) == 1) 
+      {
+        last_file = AddFileElem(last_file, p_line);
+        nfeature_files++;
+      }
+      
+      my_fclose(sfp);
     }
-    
-    my_fclose(sfp);
   }
   
-  for (src_mmf=strtok(src_mmf, ","); src_mmf != NULL; src_mmf=strtok(NULL, ",")) 
+  if (NULL != src_mmf)
   {
-    hset.ParseMmf(src_mmf, NULL);
+    for (src_mmf=strtok(src_mmf, ","); src_mmf != NULL; src_mmf=strtok(NULL, ",")) 
+    {
+      hset.ParseMmf(src_mmf, NULL);
+    }
   }
   
   if (src_hmm_list) 
@@ -209,24 +227,46 @@ int main(int argc, char *argv[])
     if (trace_flag & 1) TraceLog("Processing file %d/%d '%s'",
                                 ++fcnt, nfeature_files, file_name->logical);
                                 
+    /*
     if(cmn_mask) 
       process_mask(file_name->logical, cmn_mask, cmn_file);
       
     if(cvn_mask) 
       process_mask(file_name->logical, cvn_mask, cvn_file);
+    */
+
+    if(cmn_mask) 
+      ProcessMask(file_name->logical, cmn_mask, cmn_file);
       
-    obs_mx = ReadHTKFeatures(file_name->mpPhysical, swap_features,
-                            startFrmExt, endFrmExt, targetKind,
-                            derivOrder, derivWinLengths, &header,
-                            cmn_path, cvn_path, cvg_file, &rhfbuff);
+    if(cvn_mask) 
+      ProcessMask(file_name->logical, cvn_mask, cvn_file);
+      
+
+    ReadHTKFeatures(file_name->mpPhysical, swap_features,
+                    startFrmExt, endFrmExt, targetKind,
+                    derivOrder, derivWinLengths, &header,
+                    cmn_path, cvn_path, cvg_file, &rhfbuff, feature_matrix);
+                            
 
     vec_size = header.mSampleSize / sizeof(float);
-    out_size = p_input ? p_input->mOutSize : vec_size;
+    out_size = p_input ? p_input->OutSize() : vec_size;
 
     if (hset.mInputVectorSize != -1 && hset.mInputVectorSize != vec_size) 
     {
       Error("Vector size [%d] in '%s' is incompatible with HMM set [%d]",
             header.mSampleSize/sizeof(float), file_name->mpPhysical, hset.mInputVectorSize);
+    }
+    
+    if(mmf_mask != NULL) {
+      static string lastSpeakerMMF;
+      string speakerMMF;
+      ProcessMask(file_name->logical, mmf_mask, speakerMMF);
+        
+      if(lastSpeakerMMF != speakerMMF) 
+      {
+        hset.ParseMmf((string(mmf_dir) + "/" + speakerMMF).c_str(), NULL);
+        lastSpeakerMMF = speakerMMF;
+      }
     }
     
     MakeFileName(p_out_file, file_name->logical, out_dir, out_ext);
@@ -246,12 +286,19 @@ int main(int argc, char *argv[])
 
     for(i = 0; i < header.mNSamples + hset.mTotalDelay; i++) 
     {
+#ifndef USE_NEW_MATRIX      
       hset.UpdateStacks(obs_mx + i * vec_size, ++time, FORWARD);
-      
+#else      
+      hset.UpdateStacks(feature_matrix[i], ++time, FORWARD);
+#endif      
       if (time <= 0) 
         continue;
 
+#ifndef USE_NEW_MATRIX      
       obs = XformPass(p_input, obs_mx + i * vec_size, time, FORWARD);
+#else
+      obs = XformPass(p_input, feature_matrix[i], time, FORWARD);
+#endif
 
       if (WriteHTKFeature (ofp, obs, out_size, swap_fea_out)) 
         Error("Cannot write to output feature file: '%s'", p_out_file);      
@@ -263,7 +310,11 @@ int main(int argc, char *argv[])
       TraceLog("[%d frames]", header.mNSamples);
       
     fclose(ofp);
+#ifndef USE_NEW_MATRIX      
     free(obs_mx);
+#else
+    feature_matrix.Destroy();
+#endif
   }
   
   if (trace_flag & 2) 

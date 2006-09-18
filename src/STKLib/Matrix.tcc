@@ -8,85 +8,71 @@
 #ifndef STK_Matrix_tcc
 #define STK_Matrix_tcc
 
-#pragma GCC system_header
+//#pragma GCC system_header
 
 #include "common.h"
+#define _XOPEN_SOURCE 600
 #include <cstdlib>
-#include <malloc.h>
-//#include <cblas.h>
 #include <cassert>
-#include <cmath>
+#include <math.h>
+
+#ifdef HAVE_ATLAS
 extern "C"{
   #include <cblas.h>
 }
+#endif
 
 #include<fstream>
 #include<iomanip>
 
 namespace STK
 {
-//******************************************************************************
+  
+  
+    
+  //****************************************************************************
   // Basic constructor
   template<typename _ElemT>
-  Matrix<_ElemT>::
-  Matrix<_ElemT> (const size_t       r,
-                  const size_t       c,
-                  const StorageType  st)
-  {
-    Init(r, c, st);
-  }
+    Matrix<_ElemT>::
+    Matrix(const size_t r, const size_t       c)
+    {
+      Init(r, c);
+    }
 
 
 //******************************************************************************    
   template<typename _ElemT>
   void
   Matrix<_ElemT>::
-  Init(const size_t r,
-       const size_t c,
-       const StorageType st)
+  Init(const size_t rows,
+       const size_t cols)
   {
     // initialize some helping vars
-    size_t  rows;
-    size_t  cols;
     size_t  skip;
     size_t  real_cols;
     size_t  size;
-    void *  data;
-
-    // at this moment, nothing is clear
-    mStorageType = STORAGE_UNDEFINED;
-
-    // if we store transposed, we swap the rows and cols
-    // we assume that the user does not specify STORAGE_UNDEFINED
-    if (st == STORAGE_TRANSPOSED)
-    { rows = c; cols = r; }
-    else
-    { rows = r; cols = c; }
-
+    void*   data;       // aligned memory block
+    void*   free_data;  // memory block to be really freed
 
     // compute the size of skip and real cols
     skip      = ((16 / sizeof(_ElemT)) - cols % (16 / sizeof(_ElemT))) % (16 / sizeof(_ElemT));
     real_cols = cols + skip;
     size      = rows * real_cols * sizeof(_ElemT);
 
-
     // allocate the memory and set the right dimensions and parameters
-    if (!posix_memalign(& data, 16, size))
+
+    if (NULL != (data = stk_memalign(16, size, &free_data)))
     {
       this->mpData        = static_cast<_ElemT *> (data);
-
-      this->mStorageType = st;
+#ifdef STK_MEMALIGN_MANUAL
+      this->mpFreeData    = static_cast<_ElemT *> (free_data);
+#endif
       this->mMRows      = rows;
       this->mMCols      = cols;
-      this->mMRealCols  = real_cols;
-      this->mMSkip      = skip;
-      this->mMSize      = size;
-
-      this->mTRows      = r;
-      this->mTCols      = c;
+      this->mStride  = real_cols;
 
       // set all bytes to 0
-      memset(this->mpData, 0, this->mMSize);
+      memset(this->mpData, 0, this->MSize());
     }
     else
     {
@@ -94,183 +80,246 @@ namespace STK
     }
   } //
   
+  //****************************************************************************
+  //****************************************************************************
+  // The destructor
+  template<typename _ElemT>
+    void
+    Matrix<_ElemT>::
+    Destroy()
+    {
+      // we need to free the data block if it was defined
+#ifndef STK_MEMALIGN_MANUAL
+      if (NULL != mpData) free(mpData);
+#else
+      if (NULL != mpFreeData) free(mpFreeData);
+#endif
 
-//******************************************************************************
+      mpData = NULL;
+      mMRows = mMCols = 0;
+    }
+
+  //****************************************************************************
+  //****************************************************************************
   // Copy constructor
   template<typename _ElemT>
-  Matrix<_ElemT>::
-  Matrix<_ElemT> (const ThisType & t)
-  {
-    // we need to be sure that the storage type is defined
-    if (t.st != STORAGE_UNDEFINED)
+    Matrix<_ElemT>::
+    Matrix(const ThisType & t)
     {
-      void * data;
-
-      // first allocate the memory
-      // this->mpData = new char[t.M_size];
-      // allocate the memory and set the right dimensions and parameters
-      if (!posix_memalign(& data, 16, t.mMSize))
+      if (NULL != t.mpData)
       {
-        this->mpData  = static_cast<_ElemT *> (data);
-
-        // copy the memory block
-        memcpy(this->mpData, t.mpData, t.mMSize);
-
-        // set the parameters
-        this->mStorageType = t.mStorageType;
-        this->mMRows       = t.mMRows;
-        this->mMCols       = t.mMCols;
-        this->mMRealCols   = t.mMRealCols;
-        this->mMSkip       = t.mMSkip;
-        this->mMSize       = t.mMSize;
+        void* data;
+        void* free_data;
+  
+        // first allocate the memory
+        // this->mpData = new char[t.M_size];
+        // allocate the memory and set the right dimensions and parameters
+        if (NULL != (data = stk_memalign(16, t.MSize(), &free_data)))
+        {
+          this->mpData        = static_cast<_ElemT *> (data);
+#ifdef STK_MEMALIGN_MANUAL
+          this->mpFreeData    = static_cast<_ElemT *> (free_data);
+#endif
+          // copy the memory block
+          memcpy(this->mpData, t.mpData, t.MSize());
+  
+          // set the parameters
+          this->mMRows       = t.mMRows;
+          this->mMCols       = t.mMCols;
+          this->mStride      = t.mStride;
+        }
+        else
+        {
+          // throw bad_alloc exception if failure
+          throw std::bad_alloc();
+        }
       }
       else
       {
-        // throw bad_alloc exception if failure
-        throw std::bad_alloc();
+        this->mpData        = NULL;
+#ifdef STK_MEMALIGN_MANUAL
+        this->mpFreeData    = NULL;
+#endif
+        // set the parameters
+        this->mMRows       = 0;
+        this->mMCols       = 0;
+        this->mStride      = 0;
       }
     }
-  }
 
 
-//******************************************************************************
+  
+  //****************************************************************************
+  //****************************************************************************
   // The destructor
   template<typename _ElemT>
-  Matrix<_ElemT>::
-  ~Matrix<_ElemT> ()
-  {
-    // we need to free the data block if it was defined
-    if (mStorageType != STORAGE_UNDEFINED)
+    Matrix<_ElemT>::
+    ~Matrix()
     {
-      free(mpData);
+      // we need to free the data block if it was defined
+#ifndef STK_MEMALIGN_MANUAL
+      if (NULL != mpData) free(mpData);
+#else
+      if (NULL != mpFreeData) free(mpFreeData);
+#endif
     }
-  }
 
-  
-//******************************************************************************
-  template<typename _ElemT>
-  _ElemT &
-  Matrix<_ElemT>::
-  operator ()(const size_t r, const size_t c)
-  {
-    assert(mStorageType == STORAGE_REGULAR || mStorageType == STORAGE_TRANSPOSED);
-    if (mStorageType == STORAGE_REGULAR)
-    {
-      return *(mpData + r * mMRealCols + c);
-    }
-    else
-    {
-      return *(mpData + c * mMRealCols + r);      
-    }
-    
-  }
 
-    
-//******************************************************************************
+  //****************************************************************************
+  //****************************************************************************
   template<typename _ElemT>
-  Matrix<_ElemT> &
-  Matrix<_ElemT>::
-  AddMMMul(ThisType & a, ThisType & b)
-  { 
-    if(!(a.Cols() == b.Rows() && this->Rows() == a.Rows() &&  this->Cols() == b.Cols()))
-      STK::Error("Matrix multiply: bad matrix sizes (%d %d)*(%d %d) -> (%d %d)", a.Rows(), a.Cols(), b.Rows(), b.Cols(), this->Rows(), this->Cols());
+    Matrix<_ElemT> &
+    Matrix<_ElemT>::
+    DivC(const _ElemT& c)
+    {
+      for (size_t i = 0; i < mMRows * mStride; i++)
+      {
+        mpData[i] = mpData[i] / c;
+      }
+      
+      return *this;
+    }
     
-    // :KLUDGE: Dirty for :o)        
-    assert(a.mStorageType == STORAGE_REGULAR);
-    for(int r = 0; r < this->Rows() ; r++){
-      for(int c = 0; c < this->Cols(); c++){
-        // for every out matrix cell
-        for(int index = 0; index < a.Cols(); index++){
-          (*this)(r, c) += a(r, index) * b(index, c);
-          //std::cout << a(r, index);
+      
+  //****************************************************************************
+  //****************************************************************************
+  template<typename _ElemT>
+    Matrix<_ElemT> &
+    Matrix<_ElemT>::
+    AddCVVtMul(const _ElemT& c, const BasicVector<_ElemT>& rA, 
+               const BasicVector<_ElemT>& rB)
+    {
+      for (size_t i = 0; i < rA.Length(); i++)
+      {
+        for (size_t j = 0; j < rB.Length(); j++)
+        {
+          (*this)[i][j] += rA[i] * rB[j] * c;
         }
       }
     }
-    
-    STK::Warning("Could be slow, not well implemented");
-    
-    return *this;
-  }; // AddMatMult(const ThisType & a, const ThisType & b)
+          
+  
+  //****************************************************************************
+  //****************************************************************************
+  template<typename _ElemT>
+    Matrix<_ElemT> &
+    Matrix<_ElemT>::
+    AddMMMul(const ThisType& a, const ThisType& b)
+    { 
+      if(!(a.Cols() == b.Rows() && this->Rows() == a.Rows() &&  this->Cols() == b.Cols()))
+        STK::Error("Matrix multiply: bad matrix sizes (%d %d)*(%d %d) -> (%d %d)", a.Rows(), a.Cols(), b.Rows(), b.Cols(), this->Rows(), this->Cols());
+      
+      // :KLUDGE: Dirty for :o)        
+      for(int r = 0; r < this->Rows() ; r++){
+        for(int c = 0; c < this->Cols(); c++){
+          // for every out matrix cell
+          for(int index = 0; index < a.Cols(); index++){
+            (*this)(r, c) += a(r, index) * b(index, c);
+            //std::cout << a(r, index);
+          }
+        }
+      }
+      
+      STK::Warning("Could be slow, not well implemented");
+      
+      return *this;
+    }; // AddMatMult(const ThisType & a, const ThisType & b)
+  
+  
+  //****************************************************************************
+  //****************************************************************************
+  template<typename _ElemT>
+    Matrix<_ElemT> &
+    Matrix<_ElemT>::
+    RepMMMul(const Matrix<_ElemT>& a, const Matrix<_ElemT>& b)
+    { 
+      Clear();
+      AddMMMul(a, b);
+      
+      return *this;
+    }; // AddMatMult(const ThisType & a, const ThisType & b)
+  
+  
+  //****************************************************************************
+  //****************************************************************************
+  template<typename _ElemT>
+    Matrix<_ElemT> &
+    Matrix<_ElemT>::
+    AddCMMul(const _ElemT& c, const Matrix<_ElemT>& a) 
+    { 
+      assert(this->Cols() == a.Cols());
+      assert(this->Rows() == a.Rows());
+      
+      _ElemT* pA = NULL;
+      _ElemT* pT = NULL;
+      
+      for(unsigned row = 0; row < this->Rows(); row++)
+      {
+        pA = a[row];
+        pT = (*this)[row];
+        for(unsigned col = 0; col < this->Cols(); col++)
+        {
+          //(*this)(row, col) += a(row, col) * c;
+          (*pT) += (*pA) * c;
+          pT++;
+          pA++;
+        }
+      }
+      
+      return *this;
+    };
+  
   
   //******************************************************************************
-  template<typename _ElemT>
-  Matrix<_ElemT> &
-  Matrix<_ElemT>::
-  RepMMTMul(ThisType & a, ThisType & b)
-  { 
-
-      STK::Error("Just only BLAS for float..."); 
-    
-    return *this;
-  }; // AddMatMult(const ThisType & a, const ThisType & b)
-  
-//******************************************************************************
-  template<typename _ElemT>
-  Matrix<_ElemT> &
-  Matrix<_ElemT>::
-  AddMCMul(ThisType & a, _ElemT c) { 
-    assert(this->Cols() == a.Cols());
-    assert(this->Rows() == a.Rows());
-    assert(this->Storage() == a.Storage());
-    _ElemT* pA = NULL;
-    _ElemT* pT = NULL;
-    
-    if(this->mStorageType == STORAGE_REGULAR){
-      for(unsigned row = 0; row < this->Rows(); row++){
-        pA = a.Row(row);
-        pT = this->Row(row);
-        for(unsigned col = 0; col < this->Cols(); col++){
-          //(*this)(row, col) += a(row, col) * c;
-	  (*pT) += (*pA) * c;
-	  pT++;
-	  pA++;
-        }
-      }
-    }
-    
-    if(this->mStorageType == STORAGE_TRANSPOSED){
-      for(unsigned row = 0; row < this->Cols(); row++){
-        pA = a.Row(row);
-        pT = this->Row(row);
-        for(unsigned col = 0; col < this->Rows(); col++){
-          //(*this)(row, col) += a(row, col) * c;
-	  (*pT) += (*pA) * c;
-	  pT++;
-	  pA++;
-        }
-      }
-    }
-    
-    return *this;
-  };
-  
   //******************************************************************************
   template<typename _ElemT>
-  Matrix<_ElemT> &
-  Matrix<_ElemT>::
-  RepMMSub(ThisType & a, ThisType & b)
-  { 
-    assert(this->Cols() == a.Cols());
-    assert(this->Rows() == a.Rows());
-    assert(this->Cols() == b.Cols());
-    assert(this->Rows() == b.Rows());      
-    _ElemT* pA = NULL;
-    _ElemT* pB = NULL;
-    _ElemT* pT = NULL;
-    for(unsigned row = 0; row < this->Rows(); row++){
-      pA = a.Row(row);
-      pB = b.Row(row);
-      pT = this->Row(row);
-      for(unsigned col = 0; col < this->Cols(); col++){
-        //(*this)(row, col) = a(row, col) - b(row, col);
-	(*pT) = (*pA) - (*pB);
-	pT++;
-	pA++;
-	pB++;
+    Matrix<_ElemT> &
+    Matrix<_ElemT>::
+    AddCVVtMul(const _ElemT& c, const _ElemT* pA, const _ElemT* pB)
+    {
+      for (size_t i= 0; i < Rows(); i++)
+      {
+        for (size_t j = 0; j < Cols(); j++)
+        {
+          (*this)[i][j] = c * pA[i] * pB[j];
+        }
       }
+      
+      return *this;
     }
-    return *this;
-  }; 
+  
+  
+  //******************************************************************************
+  //******************************************************************************
+  template<typename _ElemT>
+    Matrix<_ElemT> &
+    Matrix<_ElemT>::
+    RepMMSub(const ThisType& a, const ThisType& b)
+    { 
+      assert(this->Cols() == a.Cols());
+      assert(this->Rows() == a.Rows());
+      assert(this->Cols() == b.Cols());
+      assert(this->Rows() == b.Rows());      
+      
+      _ElemT* pA = NULL;
+      _ElemT* pB = NULL;
+      _ElemT* pT = NULL;
+      for(unsigned row = 0; row < this->Rows(); row++)
+      {
+        pA = a[row];
+        pB = b[row];
+        pT = (*this)[row];
+        for(unsigned col = 0; col < this->Cols(); col++)
+        {
+          //(*this)(row, col) = a(row, col) - b(row, col);
+          (*pT) = (*pA) - (*pB);
+          pT++;
+          pA++;
+          pB++;
+        }
+      }
+      return *this;
+    }; 
   
 //******************************************************************************
 /*
@@ -285,25 +334,26 @@ namespace STK
     assert(this->Cols() == b.Cols());
     if(b.Storage() == STORAGE_TRANSPOSED){
       cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans, a.Rows(), b.Cols(), b.Rows(),
-                  1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
+                  1.0f, a.mpData, a.mStride, b.mpData, b.mStride, 1.0f, this->mpData, this->mStride);
     }
     else{
       cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, a.Rows(), b.Cols(), b.Rows(),
-                  1.0f, a.mpData, a.mMRealCols, b.mpData, b.mMRealCols, 1.0f, this->mpData, this->mMRealCols);
+                  1.0f, a.mpData, a.mStride, b.mpData, b.mStride, 1.0f, this->mpData, this->mStride);
     }
     return *this;
   }; // AddMatMult(const ThisType & a, const ThisType & b)
 */
 
-//******************************************************************************
+  //****************************************************************************
+  //****************************************************************************
   template<typename _ElemT>
-  Matrix<_ElemT> &
-  Matrix<_ElemT>::
-  FastRowSigmoid()
-  {
-    STK::Error("Sigmoid only implemented for float");
-    return *this;
-  }
+    Matrix<_ElemT> &
+    Matrix<_ElemT>::
+    FastRowSigmoid()
+    {
+      STK::Error("Sigmoid only implemented for float");
+      return *this;
+    }
   
 
 //******************************************************************************
@@ -321,112 +371,156 @@ namespace STK
     return *this;
   }
   */
-//******************************************************************************
-  template<typename _ElemT>
-  Matrix<_ElemT> &
-  Matrix<_ElemT>::
-  FastRowSoftmax()
-  {
-    STK::Error("Softmax only implemented for float");
-    return *this;
-  }
   
-//******************************************************************************
-/*
-  template<>
-  inline
-  Matrix<float> &
-  Matrix<float>::
-  FastRowSoftmax()
-  {
-    for(size_t row = 0; row < this->Rows(); row++){
-      softmax_vec(this->Row(row), this->Row(row), this->Cols());
-    }
-    return *this;
-  }
-*/
+  //****************************************************************************
+  //****************************************************************************
   template<typename _ElemT>
-  Matrix<_ElemT> &
-  Matrix<_ElemT>::
-  Transpose()
-  {
-    if(this->mStorageType == STORAGE_REGULAR) 
-      this->mStorageType = STORAGE_TRANSPOSED;
-    else
-      this->mStorageType = STORAGE_REGULAR;  
+    Matrix<_ElemT> &
+    Matrix<_ElemT>::
+    FastRowSoftmax()
+    {
+      STK::Error("Softmax only implemented for float");
+      return *this;
+    }
+  
+  
+  //***************************************************************************
+  //***************************************************************************
+  template<typename _ElemT>
+    Matrix<_ElemT> &
+    Matrix<_ElemT>::
+    DiagScale(const _ElemT* pDiagVector)
+    {
+      // :TODO: 
+      // optimize this
+      _ElemT* data = mpData;
+      for (size_t i=0; i < Rows(); i++)
+      {
+        for (size_t j=0; j < Cols(); j++)
+        {
+          data[j] *= pDiagVector[j];
+        }
+        data += mStride;
+      }
       
-    int pom;
-    
-   /* pom = this->mMRows;
-    this->mMRows = mMCols;
-    this->mMCols = pom;*/
-
-    pom = this->mTRows;
-    this->mTRows = mTCols;
-    this->mTCols = pom;  
-    
-    return *this;
-  }
-//******************************************************************************
-  template<typename _ElemT>
-  Matrix<_ElemT> &
-  Matrix<_ElemT>::
-  Clear()
-  {
-    //std::cerr << "Cosi: " << mpData <<  " "<< mMSize << std::endl;
-  
-    memset(mpData, 0, mMSize);
-    
-    
-    return *this;
-  }
-//******************************************************************************
-template<typename _ElemT>
-     void Matrix<_ElemT>::PrintOut(char* file){
-  FILE* f = fopen(file, "w");
-  int i,j;
-  fprintf(f, "%dx%d\n", this->mMRows, this->mMCols);
-  for(i=0; i<this->mMRows; i++){
-    _ElemT *row = this->Row(i);
-    for(j=0; j<this->mMRealCols; j++){
-      fprintf(f, "%20.17f ",row[j]);
+      return *this;
     }
-    fprintf(f, "\n");
-  }
-  
-  fclose(f);
-     }
 
-//******************************************************************************
+
+  //***************************************************************************
+  //***************************************************************************
+  template<typename _ElemT>
+    Matrix<_ElemT>&
+    Matrix<_ElemT>::
+    DiagScale(const BasicVector<_ElemT>& rDiagVector)
+    {
+      // :TODO: 
+      // optimize this
+      _ElemT* data = mpData;
+      for (size_t i=0; i < Rows(); i++)
+      {
+        for (size_t j=0; j < Cols(); j++)
+        {
+          data[j] *= rDiagVector[j];
+        }
+        data += mStride;
+      }
+      
+      return *this;
+    }
+        
+      
+  //****************************************************************************
+  //****************************************************************************
+  template<typename _ElemT>
+    Matrix<_ElemT> &
+    Matrix<_ElemT>::
+    Clear()
+    {
+      memset(mpData, 0, MSize());
+      return *this;
+    }
+  
+  
+  //****************************************************************************
+  //****************************************************************************
+  template<typename _ElemT>
+    void 
+    Matrix<_ElemT>::
+    PrintOut(char* file)
+    {
+      FILE* f = fopen(file, "w");
+      unsigned i,j;
+      fprintf(f, "%dx%d\n", this->mMRows, this->mMCols);
+      
+      for(i=0; i<this->mMRows; i++)
+      {
+        _ElemT*   row = (*this)[i];
+        
+        for(j=0; j<this->mStride; j++){
+          fprintf(f, "%20.17f ",row[j]);
+        }
+        fprintf(f, "\n");
+      }
+      
+      fclose(f);
+    }
+
+      template<typename _ElemT>
+    void 
+    Matrix<_ElemT>::
+    ReadIn(char* file)
+    {
+      FILE* f = fopen(file, "r");
+      int  i = 0;
+      int j = 0;
+      fscanf(f, "%dx%d\n", &i,&j);
+      fprintf(stderr, "%dx%d\n", i,j);
+      
+      for(i=0; i<this->mMRows; i++)
+      {
+        _ElemT*   row = (*this)[i];
+        
+        for(j=0; j<this->mStride; j++){
+          fscanf(f, "%f ",&row[j]);
+        }
+        //fprintf(f, "\n");
+      }
+      
+      fclose(f);
+    }
+  
+  //****************************************************************************
+  //****************************************************************************
   // Copy constructor
   template<typename _ElemT>
     WindowMatrix<_ElemT>::
-    WindowMatrix<_ElemT> (const ThisType & t) :
+    WindowMatrix(const ThisType & t) :
       Matrix<_ElemT> (t)
     {
       // we need to be sure that the storage type is defined
-      if (t.st != STORAGE_UNDEFINED)
+      if (t.mpData != NULL)
       {
         // the data should be copied by the parent constructor
-        void * data;
+        void* data;
+        void* free_data;
 
         // first allocate the memory
         // this->mpData = new char[t.M_size];
         // allocate the memory and set the right dimensions and parameters
-        if (!posix_memalign(& data, 16, t.mMSize))
+        if (NULL != (data = stk_memalign(16, t.MSize(), &free_data)))
         {
-          Matrix<_ElemT>::mpData  = static_cast<_ElemT *> (data);
-
+          Matrix<_ElemT>::mpData        = static_cast<_ElemT *> (data);
+#ifdef STK_MEMALIGN_MANUAL
+          Matrix<_ElemT>::mpFreeData    = static_cast<_ElemT *> (free_data);
+#endif
           // copy the memory block
-          memcpy(this->mpData, t.mpData, t.mMSize);
+          memcpy(this->mpData, t.mpData, t.MSize());
 
           // set the parameters
-          this->mStorageType = t.mStorageType;
           this->mMRows       = t.mMRows;
           this->mMCols       = t.mMCols;
-          this->mMRealCols   = t.mMRealCols;
-          this->mMSkip       = t.mMSkip;
-          this->mMSize       = t.mMSize;
+          this->mStride   = t.mStride;
         }
         else
         {
@@ -444,32 +538,16 @@ template<typename _ElemT>
     SetSize(const size_t rowOff,
             const size_t rows)
     {
-      if (Matrix<_ElemT>::mStorageType == STORAGE_REGULAR)
-      {
-        // point to the begining of window
-        Matrix<_ElemT>::mpData = mpOrigData + mOrigMRealCols * rowOff;
-        Matrix<_ElemT>::mTRows = rows;
-        Matrix<_ElemT>::mTCols = mOrigTCols;
-        Matrix<_ElemT>::mMRows = rows;
-        Matrix<_ElemT>::mMCols = mOrigMCols;
-        Matrix<_ElemT>::mMRealCols = mOrigMRealCols;
-        Matrix<_ElemT>::mMSkip = mOrigMSkip;
-      }
-      else if (Matrix<_ElemT>::mStorageType == STORAGE_TRANSPOSED)
-      {
-        // point to the begining of window
-        Matrix<_ElemT>::mpData = mpOrigData + rowOff;
-        Matrix<_ElemT>::mTRows = rows;
-        Matrix<_ElemT>::mTCols = mOrigTCols;
-        Matrix<_ElemT>::mMRows = mOrigMCols;
-        Matrix<_ElemT>::mMCols = rows;
-        Matrix<_ElemT>::mMRealCols = mOrigMRealCols;
-        Matrix<_ElemT>::mMSkip = mOrigMRealCols - rows;
-      }
+      // point to the begining of window
+      Matrix<_ElemT>::mpData = mpOrigData + mOrigMRealCols * rowOff;
+      Matrix<_ElemT>::mMRows = rows;
+      Matrix<_ElemT>::mMCols = mOrigMCols;
+      Matrix<_ElemT>::mStride = mOrigMRealCols;
     }
 
 
-//******************************************************************************
+  //****************************************************************************
+  //****************************************************************************
   template<typename _ElemT>
     void
     WindowMatrix<_ElemT>::
@@ -478,29 +556,11 @@ template<typename _ElemT>
             const size_t colOff,
             const size_t cols)
     {
-      if (Matrix<_ElemT>::mStorageType == STORAGE_REGULAR)
-      {
-        // point to the begining of window
-        Matrix<_ElemT>::mpData = mpOrigData + mOrigMRealCols * rowOff + cols;
-        Matrix<_ElemT>::mTRows = rows;
-        Matrix<_ElemT>::mTCols = cols;
-        Matrix<_ElemT>::mMRows = rows;
-        Matrix<_ElemT>::mMCols = cols;
-        Matrix<_ElemT>::mMRealCols = this->mOrigMRealCols;
-        Matrix<_ElemT>::mMSkip = this->mOrigMRealCols - cols;
-      }
-      else if (Matrix<_ElemT>::mStorageType == STORAGE_TRANSPOSED)
-      {
-        // point to the begining of window
-        Matrix<_ElemT>::mpData = mpOrigData + rowOff;
-        Matrix<_ElemT>::mTRows = rows;
-        Matrix<_ElemT>::mTCols = mOrigTCols;
-        Matrix<_ElemT>::mMRows = mOrigMCols;
-        Matrix<_ElemT>::mMCols = rows;
-        Matrix<_ElemT>::mMRealCols = mOrigMRealCols;
-        Matrix<_ElemT>::mMSkip = mOrigMRealCols - rows;
-      }
-
+      // point to the begining of window
+      Matrix<_ElemT>::mpData = mpOrigData + mOrigMRealCols * rowOff + cols;
+      Matrix<_ElemT>::mMRows = rows;
+      Matrix<_ElemT>::mMCols = cols;
+      Matrix<_ElemT>::mStride = this->mOrigMRealCols;
     }
 
 
@@ -508,39 +568,39 @@ template<typename _ElemT>
     std::ostream &
     operator << (std::ostream & rOut, Matrix<_ElemT> & rM)
     {
-      /*rOut << "Rows: " << rM.Rows() << "\n";
-      rOut << "Cols: " << rM.Cols() << "\n";
-      if(rM.Storage() == STORAGE_TRANSPOSED) rOut << "Transposed \n ";
-      else rOut << "Regular \n ";*/
-      
-      /////
-      for(int i=0; i<10; i++){
-        rOut << rM.mpData[i] << " ";
-      }
-      rOut << "\n";
-      /////
-      
-      size_t    rcount;
-      size_t    ccount;
-
-      _ElemT  * data    = rM.mpData;
-
-      // go through all rows
-/*      for (rcount = 0; rcount < rM.Rows(); rcount++)
+      for (size_t i = 0; i < rM.Rows(); i++)
       {
-        // go through all columns
-        for (ccount = 0; ccount < rM.Cols(); ccount++)
+        for (size_t j = 0; j < rM.Cols(); j++)
         {
-          rOut << static_cast<_ElemT>( rM(rcount, ccount)) << " ";
-
+          rOut << rM[i][j] << " ";
         }
-
-        //data += rM.mMSkip;
-
         rOut << std::endl;
-      }*/
+      }
       return rOut;
     }
+    
+    
+
+    
+  //****************************************************************************
+  //****************************************************************************
+  // Constructor
+  template<typename _ElemT>
+    MatrixRange<_ElemT>::
+    MatrixRange(const Matrix<_ElemT>& rT, 
+                const size_t    ro,
+                const size_t    r,
+                const size_t    co,
+                const size_t    c)
+    {
+      // point to the begining of window
+      Matrix<_ElemT>::mMRows = r;
+      Matrix<_ElemT>::mMCols = c;
+      Matrix<_ElemT>::mStride = rT.Stride();
+      Matrix<_ElemT>::mpData = rT.pData() + co + ro * rT.Stride();
+    }
+        
+    
 
 }// namespace STK
 

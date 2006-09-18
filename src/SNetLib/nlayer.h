@@ -8,7 +8,7 @@
 #include "../STKLib/Matrix.h"
 
 namespace SNet{
-  /// One neural net layer (Consists of linear transformation, biases and non-linearity)
+  //! One neural net layer (Consists of linear transformation, biases and non-linearity)
   class NLayer{
     private:
       int mOutFunc; ///< Output function number
@@ -19,8 +19,11 @@ namespace SNet{
       Matrix<FLOAT>* mpChangesBiases;  ///< Changes bias vector computed during forward pass
       Matrix<FLOAT>* mpRecWeights;     ///< Pointer to weights matrixes received from clients
       Matrix<FLOAT>* mpRecBiases;      ///< Pointer to bias vectors received from clients
+      
       Matrix<FLOAT>* mpIn;             ///< Matrix of layer input vectors (first layer uses window of input cache)
       Matrix<FLOAT>* mpOut;            ///< Matrix of layer output vectors (last layer uses window of input cache)
+      // If you would like to make not full weight connections, you will need more matrixes, one for each block
+      
       Matrix<FLOAT>* mpErr;            ///< Layer error matrix (errors before non-linearity)
       Matrix<FLOAT>* mpNextErr;        ///< Next layer errors - for error propagation
       Matrix<FLOAT>* mpNextWeights;    ///< Next layer weights - for error propagation
@@ -37,11 +40,16 @@ namespace SNet{
       void ComputeLayerUpdates();               ///< Computes update matrixes
       
       // Accessors
-      Matrix<FLOAT>* Out()     const {return mpOut;};
-      Matrix<FLOAT>* Err()     const {return mpErr;};
-      Matrix<FLOAT>* NextErr() const {return mpNextErr;};
-      Matrix<FLOAT>* Weights() const {return mpWeights;};
-      Matrix<FLOAT>* Biases()  const {return mpBiases;};      
+      Matrix<FLOAT>* Out()            const {return mpOut;};
+      Matrix<FLOAT>* Err()            const {return mpErr;};
+      Matrix<FLOAT>* NextErr()        const {return mpNextErr;};
+      Matrix<FLOAT>* Weights()        const {return mpWeights;};
+      Matrix<FLOAT>* Biases()         const {return mpBiases;}; 
+      Matrix<FLOAT>* ChangesWeights() const {return mpChangesWeights;};
+      Matrix<FLOAT>* ChangesBiases()  const {return mpChangesBiases;};  
+      Matrix<FLOAT>* NextWeights()    const {return mpNextWeights;}; 
+      void Weights(Matrix<FLOAT>* weights)   {mpWeights = weights;};
+      void Biases(Matrix<FLOAT>* biases)   {mpBiases = biases;};
       void In(Matrix<FLOAT>* in)   {mpIn = in;};
       void Out(Matrix<FLOAT>* out) {mpOut = out;};
       void Err(Matrix<FLOAT>* error) {mpErr = error;};

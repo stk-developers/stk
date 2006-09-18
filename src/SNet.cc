@@ -10,7 +10,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#define VERSION "2.0.0"
+#define MODULE_VERSION "2.0.4"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -37,9 +37,9 @@ void usage(char *progname)
   if ((tchrptr = strrchr(progname, '\\')) != NULL) progname = tchrptr+1;
   if ((tchrptr = strrchr(progname, '/')) != NULL) progname = tchrptr+1;
   fprintf(stderr,
+"\nSNet version " MODULE_VERSION "\n"
 "\nUSAGE: %s [options] DataFiles...\n\n"
 " Option                                                     Default\n\n"
-" -o s       Extension for new hmm files                     As src\n"
 " -A         Print command line arguments                    Off\n"
 " -B         Save HMM macro files as binary                  Off\n"
 " -C cf      Set config file to cf                           Default\n"
@@ -51,10 +51,25 @@ void usage(char *progname)
 " -M dir     Dir to write HMM macro files                    Current\n"
 " -S f       Set script file to f                            None\n"
 " -T N       Set trace flags to N                            0\n"
-" -V         Print version information                       Off\n"
-" -X ext     Set input label (or netwokr) file ext           lab (net)\n"
+" -X ext     Set input label (or network) file ext           lab (net)\n"
+" -o s       Extension for new hmm files                     As src\n"
 "\n"
-" %s is Copyright (C) 2004-2005 Lukas Burget et al. and\n"
+"\n"
+"SNet based parameters:\n"
+"--CROSSVALIDATION                                           false\n"
+"--CACHESIZE                                                 12000\n"
+"--BUNCHSIZE                                                 1000\n"
+"--LEARNINGRATE                                              0.008\n"
+"--LEARNINGRATELISTMUL (like \"1.0,0.5\")                      NULL\n"
+"--CLIENTS                                                   0\n"
+"--JOINIP                                                    NULL\n"
+"--RANDOMIZE                                                 true\n"
+"--SYNCHRONIZE                                               true\n"
+"--PORT                                                      2020\n"
+"--SEED                                                      0 (means random)\n"
+"--NCUMRBU                                                   CLIENTS\n"
+"\n"
+" %s is Copyright (C) 2004-2005 Stanislav Kontar, Lukas Burget, Ondrej Glembek et al. and\n"
 " licensed under the GNU General Public License, version 2.\n"
 " Bug reports, feedback, etc, to: burget@fit.vutbr.cz\n"
 "\n", progname, progname);
@@ -72,7 +87,6 @@ char *optionStr =
 " -M r   TARGETMODELDIR"
 " -S l   SCRIPT"
 " -T r   TRACE"
-" -V n   PRINTVERSION=TRUE"
 " -X r   SOURCETRANSCEXT";
 
 
@@ -81,8 +95,14 @@ int main(int argc, char *argv[])
   ModelSet        hset;
   FILE *          sfp;
   FILE *          ilfp;
+#ifndef USE_NEW_MATRIX  
   FLOAT *         obsMx     = NULL;
   FLOAT *         obsMx_out = NULL;
+#else
+  Matrix<FLOAT>   feature_matrix;
+  Matrix<FLOAT>   feature_matrix_out;
+#endif
+
   FLOAT *         obs_out   = NULL;
   HtkHeader       header, 
                   header_out;
@@ -146,6 +166,14 @@ int main(int argc, char *argv[])
   int cache_size;
   int bunch_size;
   float learning_rate;
+  char *learning_rate_list;
+  int clients;
+  char *ip;
+  bool randomize;
+  bool sync;
+  int port;
+  int seed;
+  int ncumrbu;
 
   if (argc == 1) usage(argv[0]);
 
@@ -207,7 +235,7 @@ int main(int argc, char *argv[])
   src_lbl_dir  = GetParamStr(&cfgHash, SNAME":SOURCETRANSCDIR", NULL);
   src_lbl_ext  = GetParamStr(&cfgHash, SNAME":SOURCETRANSCEXT", "lab");
   trace_flag   = GetParamInt(&cfgHash, SNAME":TRACE",           0);
-  hmms_binary  = GetParamBool(&cfgHash,SNAME":SAVEBINARY",      FALSE);
+  hmms_binary  = GetParamBool(&cfgHash,SNAME":SAVEBINARY",      false);
   script =(char*)GetParamStr(&cfgHash, SNAME":SCRIPT",          NULL);
 //  src_hmm_list = GetParamStr(&cfgHash, SNAME":SOURCEHMMLIST",   NULL);
 //  src_hmm_dir  = GetParamStr(&cfgHash, SNAME":SOURCEMODELDIR",  NULL);
@@ -217,39 +245,54 @@ int main(int argc, char *argv[])
   trg_hmm_ext  = GetParamStr(&cfgHash, SNAME":TARGETMODELEXT",  NULL);
   trg_mmf      = GetParamStr(&cfgHash, SNAME":TARGETMMF",       NULL);
   
-  cross_validation  = GetParamBool(&cfgHash,SNAME":CROSSVALIDATION", FALSE);
+  cross_validation  = GetParamBool(&cfgHash,SNAME":CROSSVALIDATION", false);
   cache_size   = GetParamInt(&cfgHash, SNAME":CACHESIZE",            12000);
   bunch_size   = GetParamInt(&cfgHash, SNAME":BUNCHSIZE",            1000);
   learning_rate   = GetParamFlt(&cfgHash, SNAME":LEARNINGRATE",      0.008);
+  learning_rate_list =(char*)GetParamStr(&cfgHash, SNAME":LEARNINGRATELISTMUL",          NULL);
+  clients   = GetParamInt(&cfgHash, SNAME":CLIENTS",            0);
+  ip = (char*)GetParamStr(&cfgHash, SNAME":JOINIP",       NULL);
+  randomize =  GetParamBool(&cfgHash,SNAME":RANDOMIZE", true);
+  sync = GetParamBool(&cfgHash,SNAME":SYNCHRONIZE", true);
+  port = GetParamInt(&cfgHash, SNAME":PORT",            2020);
+  seed = GetParamInt(&cfgHash, SNAME":SEED",            0);
+  ncumrbu = GetParamInt(&cfgHash, SNAME":NCUMRBU",            clients);
+  // NCUMRBU == number of client update matrixes received before update in async version
+  
+  if(clients != 0 && script != NULL) Error("Server should not have input data.");
   
 //  in_transc_fmt= (TranscriptionFormat) GetParamEnum(&cfgHash,SNAME":SOURCETRANSCFMT",
 //                              !network_file && htk_compat ? TF_HTK : TF_STK,
 //                              "HTK", TF_HTK, "STK", TF_STK, NULL);
 
 
-  if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", FALSE)) {
+  if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", false)) {
     PrintConfig(&cfgHash);
   }
-  if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", FALSE)) {
-    puts("Version: "VERSION"\n");
-  }
 
-  if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", FALSE)) {
+  if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", false)) {
     CheckCommandLineParamUse(&cfgHash);
   }
 
-  for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) {
-    if ((sfp = my_fopen(script, "rt", gpScriptFilter)) == NULL) {
-      Error("Cannot open script file %s", script);
+  if (NULL != script)
+  {
+    for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) {
+      if ((sfp = my_fopen(script, "rt", gpScriptFilter)) == NULL) {
+        Error("Cannot open script file %s", script);
+      }
+      while (fscanf(sfp, "%s", line) == 1) {
+        last_file = AddFileElem(last_file, line);
+        nfeature_files++;
+      }
+      my_fclose(sfp);
     }
-    while (fscanf(sfp, "%s", line) == 1) {
-      last_file = AddFileElem(last_file, line);
-      nfeature_files++;
-    }
-    my_fclose(sfp);
   }
-  for (src_mmf=strtok(src_mmf, ","); src_mmf != NULL; src_mmf=strtok(NULL, ",")) {
-    hset.ParseMmf(src_mmf, NULL);
+  
+  if (NULL != src_mmf)
+  {
+    for (src_mmf=strtok(src_mmf, ","); src_mmf != NULL; src_mmf=strtok(NULL, ",")) {
+      hset.ParseMmf(src_mmf, NULL);
+    }
   }
 //  if (src_hmm_list) ReadHMMList(&hset,     src_hmm_list, src_hmm_dir, src_hmm_ext);
 
@@ -271,75 +314,120 @@ int main(int argc, char *argv[])
   if (outlabel_map) {
     labelHash = readLabelList(outlabel_map);
     
-    if (NNet_instance->mOutSize != labelHash.mNEntries) {
+    if (NNet_instance->OutSize() != labelHash.mNEntries) {
         Error("Number of entries [%d] in file '%s' does not match with NNet output size [%d]",
-              labelHash.mNEntries, outlabel_map, NNet_instance->mOutSize);
+              labelHash.mNEntries, outlabel_map, NNet_instance->OutSize());
       }
 
     //Allocate buffer, to which example of output vector will be created
     //according to labels
-    obs_out = (FLOAT *)malloc(NNet_instance->mOutSize * sizeof(FLOAT));
+    obs_out = (FLOAT *)malloc(NNet_instance->OutSize() * sizeof(FLOAT));
     if (!obs_out) Error("Insufficient memory");
   }
   
   ilfp = OpenInputMLF(src_mlf);
   
+  ///***************************************************************************
   /// INITIALIZE SNET
-  ProgObj *progObj = new ProgObj(NNet_instance, cache_size, bunch_size, cross_validation, VERSION, learning_rate); 
+  ProgObj *prog_obj = new ProgObj(NNet_instance, cache_size, bunch_size, 
+      cross_validation, MODULE_VERSION, learning_rate, clients, ip, randomize, sync, 
+      port, seed, ncumrbu, learning_rate_list); 
+      
+  if(prog_obj->Server())
+  {
+    prog_obj->RunServer();
+  }
+  else if(prog_obj->Client())
+  {
+    prog_obj->RunClient();
+  }  
+  else
+  {
+    prog_obj->TimersGet()->Start(0); // 1 CPU version starts here
+  }  
   
-  // MAIN FILE LOOP
+  // main file loop
   for (file_name = feature_files;
-      file_name != NULL;
-      file_name = outlabel_map ? file_name->mpNext : file_name->mpNext->mpNext) {
+       file_name != NULL;
+       file_name = outlabel_map ? file_name->mpNext : file_name->mpNext->mpNext) 
+  {
 
-    if (trace_flag & 1) {
-      if (!outlabel_map) {
+    if (trace_flag & 1) 
+    {
+      if (!outlabel_map) 
+      {
         TraceLog("Processing file pair %d/%d '%s' <-> %s",  ++fcnt,
         nfeature_files/2, file_name->mpPhysical,file_name->mpNext->logical);
-      } else {
+      } 
+      else 
+      {
         TraceLog("Processing file %d/%d '%s'", ++fcnt, nfeature_files,file_name->logical);
       }
     }
-    int nFrames;
-    char *phys_fn = (!outlabel_map ? file_name->mpNext : file_name)->mpPhysical;
-    char *lgcl_fn = (!outlabel_map ? file_name->mpNext : file_name)->logical;
-
-    // read sentence weight definition if any ( physical_file.fea[s,e]{weight} )
-    FLOAT sentWeight = 1.0; // Use this to wight feature frames;
     
-    if ((chrptr = strrchr(phys_fn, '{')) != NULL &&
-      ((i=0), sscanf(chrptr, "{%f}%n", &sentWeight, &i), chrptr[i] == '\0')) {
+    int     n_frames;
+    char*   phys_fn = (!outlabel_map ? file_name->mpNext : file_name)->mpPhysical;
+    char*   lgcl_fn = (!outlabel_map ? file_name->mpNext : file_name)->logical;
+    FLOAT   sentWeight = 1.0; // Use this to wight feature frames;
+    
+    // read sentence weight definition if any ( physical_file.fea[s,e]{weight} )
+    if ((chrptr = strrchr(phys_fn, '{')) != NULL 
+    && ((i=0), sscanf(chrptr, "{%f}%n", &sentWeight, &i), chrptr[i] == '\0')) 
+    {
       *chrptr = '\0';
     }
+
     if (cmn_mask) process_mask(lgcl_fn, cmn_mask, cmn_file);
     if (cvn_mask) process_mask(lgcl_fn, cvn_mask, cvn_file);
+
+#ifndef USE_NEW_MATRIX  
     obsMx = ReadHTKFeatures(phys_fn, swap_features,
                             startFrmExt, endFrmExt, target_kind,
                             derivOrder, derivWinLengths, &header,
                             cmn_path, cvn_path, cvg_file, &rhfbuff);
+#else
+    ReadHTKFeatures(phys_fn, swap_features,
+                    startFrmExt, endFrmExt, target_kind,
+                    derivOrder, derivWinLengths, &header,
+                    cmn_path, cvn_path, cvg_file, &rhfbuff,feature_matrix);
+#endif
 
-    if ((size_t) hset.mInputVectorSize != header.mSampleSize / sizeof(float)) {
+    if ((size_t) hset.mInputVectorSize != header.mSampleSize / sizeof(float)) 
+    {
       Error("Vector size [%d] in '%s' is incompatible with source HMM set [%d]",
             header.mSampleSize/sizeof(float), phys_fn, hset.mInputVectorSize);
     }
-    nFrames = header.mNSamples - NNet_input->mTotalDelay;
-    if (!outlabel_map) { //If output examples are given by features
-                         // read the second set of features ...
-                         
+
+    n_frames = header.mNSamples - NNet_input->mTotalDelay;
+
+    if (!outlabel_map) 
+    { // If output examples are given by features
+      // read the second set of features ...
       if (cmn_mask_out) process_mask(file_name->logical, cmn_mask_out, cmn_file_out);
       if (cvn_mask_out) process_mask(file_name->logical, cvn_mask_out, cvn_file_out);
+      
+#ifndef USE_NEW_MATRIX  
       obsMx_out = ReadHTKFeatures(file_name->mpPhysical, swap_features_out,
                                   startFrmExt_out, endFrmExt_out, target_kind_out,
                                   derivOrder_out, derivWinLengths_out, &header_out,
                                   cmn_path_out, cvn_path_out, cvg_file_out, &rhfbuff_out);
+#else
+      ReadHTKFeatures(file_name->mpPhysical, swap_features_out,
+                      startFrmExt_out, endFrmExt_out, target_kind_out,
+                      derivOrder_out, derivWinLengths_out, &header_out,
+                      cmn_path_out, cvn_path_out, cvg_file_out, &rhfbuff_out,
+                      feature_matrix_out);
+#endif
 
-      if (nFrames != header_out.mNSamples) {
+      if (n_frames != header_out.mNSamples) 
+      {
         Error("Mismatch in number of frames in input/output feature file pair: "
               "'%s' <-> '%s'.", file_name->mpNext->mpPhysical, file_name->mpPhysical);
       }
       
-    } else {            // ... otherwise, read corresponding label file
-    
+    } 
+    else 
+    { // ... otherwise, read corresponding label file           
       strcpy(label_file, file_name->logical);
       ilfp = OpenInputLabelFile(label_file, src_lbl_dir, src_lbl_ext, ilfp, src_mlf);
       labels = ReadLabels(ilfp, &labelHash, UL_WARN, in_lbl_fmt, header.mSamplePeriod,
@@ -351,51 +439,71 @@ int main(int argc, char *argv[])
     hset.ResetXformInstances();
     Label  *lbl_ptr = labels;
     time = 1;
-    if (NNet_input) time -= NNet_input->mTotalDelay;
+    
+    if (NNet_input) 
+      time -= NNet_input->mTotalDelay;
+    
     // Loop over all feature frames.
-    for (i = 0; i < header.mNSamples; i++, time++) {
+    for (i = 0; i < header.mNSamples; i++, time++) 
+    {
       size_t j;
+#ifndef USE_NEW_MATRIX  
       FLOAT *obs = obsMx + i * hset.mInputVectorSize;
-
+#else
+      FLOAT* obs = feature_matrix[i];
+#endif
       //Get next NN input vector by propagating vector from feature file
       //through NNet_input transformation.
-      obs = NNet_input->XformPass(obs, time, FORWARD);
+      obs = XformPass(NNet_input, obs, time, FORWARD);
+      
       //Input of NN is not yet read because of NNet_input delay
       if (time <= 0) continue;
 
-      if (outlabel_map) {
+      if (outlabel_map) 
+      {
         //Create NN output example vector from lables
-        for (j = 0; j < NNet_instance->mOutSize; j++) obs_out[j] = 0;
+        for (j = 0; j < NNet_instance->OutSize(); j++) obs_out[j] = 0;
         while (lbl_ptr && lbl_ptr->mStop < time) lbl_ptr = lbl_ptr->mpNext;
         if (lbl_ptr && lbl_ptr->mStart <= time) obs_out[(int) lbl_ptr->mpData - 1] = 1;
-      } else {
+      } 
+      else 
+      {
         //Get NN output example vector from obsMx_out matrix
-        obs_out = obsMx_out + (time-1) * NNet_instance->mOutSize;
+#ifndef USE_NEW_MATRIX  
+        obs_out = obsMx_out + (time-1) * NNet_instance->OutSize();
+#else
+        obs_out = feature_matrix_out[time-1];
+#endif
       }
       
-///************************************************************************************************
+      ///***********************************************************************
       /// For EACH NEW VECTOR - give it to SNet
-      progObj->NewVector(obs, obs_out, NNet_input->mOutSize, NNet_instance->mOutSize, 
+      prog_obj->NewVector(obs, obs_out, NNet_input->OutSize(), NNet_instance->OutSize(), 
                          ((i+1) == header.mNSamples && (outlabel_map ? file_name->mpNext : file_name->mpNext->mpNext) == NULL));
-			 // this returns true, if last vector
-
-///************************************************************************************************
+    // this returns true, if last vector
+    ///*************************************************************************
     }
 
-    totFrames  += nFrames;
-    //TraceLog("[%d frames]", nFrames);
+    totFrames  += n_frames;
+    //TraceLog("[%d frames]", n_frames);
+#ifndef USE_NEW_MATRIX  
     free(obsMx);
-
+#endif
+    
     if (!outlabel_map) {
+#ifndef USE_NEW_MATRIX  
       free(obsMx_out);
+#endif
     } else {
       ReleaseLabels(labels);
     }
   }
-  // END - MAIN FILE LOOP
-   
+  // MAIN FILE LOOP END
+
+///************************************************************************************************     
   /// DELETE SNET
-  delete progObj;  
+  delete prog_obj;  
+  std::cout << "SNet is Deleted... debug message\n" << std::flush;
   
   if (trace_flag & 2) {
     TraceLog("Total number of frames: %d", totFrames);
@@ -404,13 +512,16 @@ int main(int argc, char *argv[])
 
   if(!cross_validation)  
     hset.WriteMmf(trg_mmf, trg_hmm_dir, trg_hmm_ext, hmms_binary);
-  hset.Release();
+    
+  // :KLUDGE: Some bug in STK - maybe solved?!
+  /// hset.Release();
 
   for (size_t i = 0; i < cfgHash.mNEntries; i++) free(cfgHash.mpEntry[i]->data);
   my_hdestroy_r(&cfgHash, 1);
 
   free(derivWinLengths);
   if (src_mlf) fclose(ilfp);
+  
   if (outlabel_map) 
   {
     my_hdestroy_r(&labelHash, 1);
@@ -426,5 +537,6 @@ int main(int argc, char *argv[])
     feature_files = feature_files->mpNext;
     free(file_name);
   }
+  
   return 0;
 }

@@ -72,19 +72,19 @@ namespace STK
   class Node
   {
   public:
-    char *        mpName;
-    Hmm  *        mpHmm;
-    Hmm  *        mpHmmToUpdate;
-    Pronun *      mpPronun;
+    char*         mpName;
+    Hmm*          mpHmm;
+    Hmm*          mpHmmToUpdate;
+    Pronun*       mpPronun;
   
     int           mAux;
     int           mType;
-    Node  *       mpNext;
-    Node  *       mpBackNext;
+    Node*         mpNext;
+    Node*         mpBackNext;
     int           mNLinks;
     int           mNBackLinks;
-    Link  *       mpLinks;
-    Link  *       mpBackLinks;
+    Link*         mpLinks;
+    Link*         mpBackLinks;
   
     //time range when model can be active - apply only for model type
     long long     mStart;
@@ -92,20 +92,20 @@ namespace STK
     FLOAT         mPhoneAccuracy;
   
 #   ifndef EXPANDNET_ONLY
-    Token *       mpTokens;
-    Token *       mpExitToken;
+    Token*        mpTokens;
+    Token*        mpExitToken;
   
     //id of first emiting state - apply only for model type
     int           mEmittingStateId;
   
-    FWBWR *       mpAlphaBetaList;
-    FWBWR *       mpAlphaBetaListReverse;
+    FWBWR*        mpAlphaBetaList;
+    FWBWR*        mpAlphaBetaListReverse;
   
-    Node  *       mpNextActiveModel;
-    Node  *       mpPrevActiveModel;
+    Node*         mpNextActiveModel;
+    Node*         mpPrevActiveModel;
   
-    Node  *       mpNextActiveNode;
-    Node  *       mpPrevActiveNode;
+    Node*         mpNextActiveNode;
+    Node*         mpPrevActiveNode;
     
     int           mIsActive;
     int           mIsActiveNode;

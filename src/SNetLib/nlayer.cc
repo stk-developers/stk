@@ -6,8 +6,8 @@ SNet::NLayer::NLayer(Matrix<FLOAT>* weights, Matrix<FLOAT>* biases, int outFunc)
   mOutFunc = gFuncTable[outFunc].KID; // STK struct - only function number is needed
   
   // Make weights and biases copy => update matrixes
-  mpChangesWeights = new Matrix<FLOAT>(mpWeights->Rows(), mpWeights->Cols(), mpWeights->Storage());
-  mpChangesBiases = new Matrix<FLOAT>(mpBiases->Rows(), mpBiases->Cols(), mpBiases->Storage());
+  mpChangesWeights = new Matrix<FLOAT>(mpWeights->Rows(), mpWeights->Cols());
+  mpChangesBiases = new Matrix<FLOAT>(mpBiases->Rows(), mpBiases->Cols());
 }
 
 SNet::NLayer::~NLayer(){
@@ -16,16 +16,17 @@ SNet::NLayer::~NLayer(){
 }
 
 void SNet::NLayer::BunchBias(){
-  for(unsigned i=0; i < mpOut->Rows(); i++){
-    // For every row precopy biases FIRST! (see BunchLinear for details)
+  // For every row precopy biases FIRST! (see BunchLinear for details)
+  for(unsigned i=0; i < mpOut->Rows(); i++){  
     assert(mpBiases->Cols() == mpOut->Cols());
-    memcpy(mpOut->Row(i), mpBiases->Row(0), mpBiases->Cols() * sizeof(FLOAT));
+    memcpy((*mpOut)[i], (*mpBiases)[0], mpBiases->Cols() * sizeof(FLOAT));
   }
 }
       
 void SNet::NLayer::BunchLinear(){
-  // Matrix computation -- O += I * W  
-  mpOut->AddMMMul(*mpIn, *mpWeights);
+  // Matrix computation -- O += I * W^T  
+  // If you would like to make not full weight connections, you should do multiplications for all blocks
+  mpOut->AddMMtMul(*mpIn, *mpWeights);
   // Biases ready, added by BLAS operation - it is optimization
 }
       
@@ -44,15 +45,15 @@ void SNet::NLayer::BunchNonLinear(){
 
 void SNet::NLayer::ChangeLayerWeights(FLOAT learnRate){
   // Matrix computation -- W += CW * l 
-  mpWeights->AddMCMul(*mpChangesWeights, (FLOAT)-1.0*learnRate);
+  mpWeights->AddCMMul((FLOAT)-1.0*learnRate, *mpChangesWeights);
   // Matrix computation -- B += CB * l
-  mpBiases->AddMCMul(*mpChangesBiases, (FLOAT)-1.0*learnRate);
+  mpBiases->AddCMMul((FLOAT)-1.0*learnRate, *mpChangesBiases);
 }
 
 void SNet::NLayer::ErrorPropagation(){
   if(mpNextErr != NULL){ // last layer error = global error => do not compute it
-    // Matrix computation -- E = NE * NW^T 
-    mpErr->RepMMTMul(*mpNextErr, *mpNextWeights);
+    // Matrix computation -- E = NE * NW 
+    mpErr->RepMMMul(*mpNextErr, *mpNextWeights);
   }
   DerivateError(); // derivate error of this layer 
 }
@@ -70,9 +71,9 @@ void SNet::NLayer::DerivateError(){
       pErr = mpErr->Row(row);
       pOut = mpOut->Row(row);
       for(unsigned col = 0; col < mpErr->Cols(); col++){
-	(*pErr) = (1 - (*pOut)) * (*pOut) * (*pErr);
-	pOut++;
-	pErr++;
+        (*pErr) = (1 - (*pOut)) * (*pOut) * (*pErr);
+        pOut++;
+        pErr++;
       }
     }
     
@@ -81,13 +82,13 @@ void SNet::NLayer::DerivateError(){
 
 void SNet::NLayer::ComputeLayerUpdates(){
   // Matrix computation -- CW = E^T * I  
-  mpChangesWeights->RepMTMMul(*mpErr, *mpIn);
+  mpChangesWeights->RepMtMMul(*mpErr, *mpIn);
   
   mpChangesBiases->Clear();
   FLOAT *pChangesBiases = NULL;
   FLOAT *pErr = NULL;
   
-  // Biase changes are computed as sum of error rows
+  // Biases changes are computed as sum of error rows
   for(unsigned r=0; r < mpErr->Rows(); r++){
     pChangesBiases = mpChangesBiases->Row(0);
     pErr = mpErr->Row(r);

@@ -1,6 +1,7 @@
 #ifndef STK_StkStream_tcc
 #define STK_StkStream_tcc
 
+#include "common.h"
 #include <iostream>
 #pragma GCC system_header
 
@@ -46,7 +47,6 @@ namespace STK
     if (this->is_open())
     {
       // we want to call the parent close() procedure
-      // :TODO: WHY??? 
       std::basic_filebuf<_CharT, _Traits>::close();
 
       // and for different stream type we perform different closing
@@ -63,7 +63,7 @@ namespace STK
 
       }
       
-      fileptr     = 0;
+      fileptr     = NULL;
       filename    = "";
       mode        = ios_base::openmode(0);
       stream_type = basic_stkbuf::t_undef;
@@ -106,28 +106,28 @@ namespace STK
   template<typename _CharT, typename _Traits>
   basic_stkbuf<_CharT, _Traits> *
   basic_stkbuf<_CharT, _Traits>::
-  open(const string & fName, ios::openmode m, const string & filter)
+  open(const char* pFName, ios::openmode m, const char* pFilter)
   {
-    basic_stkbuf<_CharT, _Traits> * _ret = NULL;
+    basic_stkbuf<_CharT, _Traits>* _ret = NULL;
 
+    if (NULL == pFName)
+      return NULL;
+      
     // we need to assure, that the stream is not open
     if (!this->is_open())
     {
-
-
       char mstr[4] = {'\0', '\0', '\0', '\0'};
       int __p_mode = 0;
       int __rw_mode = 0;
 
       // now we decide, what kind of file we open
-
-      if ( !fName.compare("-") )
+      if (!strcmp(pFName,"-"))
       {
         if      ((m & ios::in) && !(m & ios::out))
         {
           fileptr = stdin;
           mode = ios::in;
-          filename = fName;
+          filename = pFName;
           stream_type = t_stdio;
           _ret = this;
         }
@@ -135,16 +135,16 @@ namespace STK
         {
           fileptr = stdout;
           mode = ios::out;
-          filename = fName;
+          filename = pFName;
           stream_type = t_stdio;
           _ret = this;
         }
         else
           _ret = NULL;
       }
-      else if ( fName[0] == '|' )
+      else if ( pFName[0] == '|' )
       {
-        const char * command = fName.c_str() + 1;
+        const char* command = pFName + 1;
 
         if      ((m & ios::in) && !(m & ios::out)) m = ios::in;
         else if ((m & ios::out) && !(m & ios::in)) m = ios::out;
@@ -167,9 +167,10 @@ namespace STK
       else
       {
         // maybe we have a filter specified
-        if (!filter.empty())
+        if ( pFilter 
+        && ('\0' != pFilter[0]))
         {
-          char * command = expandFilterCommand(filter.c_str(), fName.c_str());
+          char* command = expandFilterCommand(pFilter, pFName);
 
           if      ((m & ios::in) && !(m & ios::out)) m = ios::in;
           else if ((m & ios::out) && !(m & ios::in)) m = ios::out;
@@ -181,8 +182,8 @@ namespace STK
 
           if (fileptr = popen(command, mstr))
           {
-            filename = fName;
-            this->filter = filter;
+            filename = pFName;
+            this->filter = pFilter;
             mode     = m;
             stream_type = t_pipe;
             _ret = this;
@@ -196,9 +197,9 @@ namespace STK
           // iostream -> stdio open mode string
           this->open_mode(m, __p_mode, __rw_mode, mstr);
 
-          if (fileptr = fopen(fName.c_str(), mstr))
+          if (fileptr = fopen(pFName, mstr))
           {
-            filename = fName;
+            filename = pFName;
             mode     = m;
             stream_type = t_file;
             _ret = this;

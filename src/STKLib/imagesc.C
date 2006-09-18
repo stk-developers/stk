@@ -193,7 +193,7 @@ void imagesc(void *data, int x, int y, const char* type,
   drawing_area=XmCreateDrawingArea(toplevel,"drawing_area",al,ac);
   XtManageChild(drawing_area);
   XtAddCallback(drawing_area,XmNexposeCallback,draw_pixmap,(XtPointer) xpmImage);
-  XtAddEventHandler(drawing_area, KeyReleaseMask, FALSE, KeyAction, (XtPointer) &exitFlag);
+  XtAddEventHandler(drawing_area, KeyReleaseMask, false, KeyAction, (XtPointer) &exitFlag);
   XtRealizeWidget(toplevel);
   wm_delete = XInternAtom(XtDisplay(toplevel), "WM_DELETE_WINDOW", False);
   XmAddWMProtocolCallback(toplevel, wm_delete, quitCB, (XtPointer) &exitFlag);

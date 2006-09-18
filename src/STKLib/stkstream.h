@@ -126,6 +126,7 @@ namespace STK
        */
       basic_stkbuf(const string & fName, std::ios_base::openmode m, const string & filter="");
 
+      
       /**
       *  @return  The underlying FILE*.
       *
@@ -136,6 +137,18 @@ namespace STK
       std::__c_file*
       file() { return this->_M_file.file(); }
 
+
+      /**
+      *  @return  The underlying FILE*.
+      *
+      *  This function can be used to access the underlying "C" file pointer.
+      *  Note that there is no way for the library to track what you do
+      *  with the file, so be careful.
+      */
+      std::__c_file*
+      fp() { return this->_M_file.file(); }
+      
+      
       /**
        *  @brief  Opens an external file.
        *  @param  fName  The name of the file.
@@ -150,8 +163,9 @@ namespace STK
        *  [Table 92 gives the relation between openmode combinations and the
        *  equivalent fopen() flags, but the table has not been copied yet.]
        */
-      __filebuf_type *
-      open(const string & fName, ios_base::openmode m, const string & filter="");
+      __filebuf_type*
+      open(const char* pFName, ios_base::openmode m, const char* pFilter="");
+      
       /**
        *  @brief  Closes the currently associated file.
        *  @return  @c this on success, NULL on failure
@@ -163,7 +177,7 @@ namespace STK
        *
        *  If any operations fail, this function also fails.
        */
-      __filebuf_type *
+      __filebuf_type*
       close();
 
       /**
@@ -242,8 +256,8 @@ namespace STK
      *  Tip:  When using std::string to hold the filename, you must use
      *  .c_str() before passing it to this constructor.
     */
-    IStkStream(const string& fName, ios::openmode m=ios::out, const string & filter=""):
-      stkios() {this->open(fName, ios::in, filter);}
+    IStkStream(const char* pFName, ios::openmode m=ios::out, const char* pFilter=""):
+      stkios() {this->open(pFName, ios::in, pFilter);}
 
     ~IStkStream() 
     {
@@ -262,9 +276,9 @@ namespace STK
     *  Tip:  When using std::string to hold the filename, you must use
     *  .c_str() before passing it to this constructor.
     */
-    void open(const string & fName, ios::openmode m=ios::in, const string & filter = "")
+    void open(const char* pFName, ios::openmode m=ios::in, const char* pFilter = "")
     {
-      if (!buf.open(fName, m | ios_base::in, filter))
+      if (!buf.open(pFName, m | ios_base::in, pFilter))
         this->setstate(ios_base::failbit);
       else
       // Closing an fstream should clear error state
@@ -275,6 +289,7 @@ namespace STK
     *  @brief  Returns true if the external file is open.
     */
     bool is_open() const {return buf.is_open();}
+
 
     /**
     *  @brief  Closes the stream
@@ -290,6 +305,10 @@ namespace STK
     std::__c_file*
     file() {return buf.file();}
 
+    /// Returns a pointer to the main FILE structure
+    std::__c_file*
+    fp() {return buf.fp();}
+
     /**
      *  @brief  Reads a single line
      *
@@ -298,7 +317,7 @@ namespace STK
      *  the line)
      */
     void
-    GetLine(string & rLine);
+    GetLine(string& rLine);
 
   }; // class IStkStream
 
@@ -351,9 +370,9 @@ namespace STK
     *  Tip:  When using std::string to hold the filename, you must use
     *  .c_str() before passing it to this constructor.
     */
-    void open(const string & fName, ios::openmode m=ios::out, const string & filter="")
+    void open(const char* pFName, ios::openmode m=ios::out, const char* pFilter="")
     {
-      if (!buf.open(fName, m | ios_base::out, filter))
+      if (!buf.open(pFName, m | ios_base::out, pFilter))
         this->setstate(ios_base::failbit);
       else
       // Closing an fstream should clear error state
@@ -378,6 +397,10 @@ namespace STK
     /// Returns a pointer to the main FILE structure
     std::__c_file*
     file() {return buf.file();}
+
+    /// Returns a pointer to the main FILE structure
+    std::__c_file*
+    fp() {return buf.fp();}
 
   }; // class OStkStream
 }; // namespace STK

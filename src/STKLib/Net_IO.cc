@@ -9,23 +9,15 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
-#define VERSION "0.2 "__TIME__" "__DATE__
 
 
 // PROJECT INCLUDES
 //
+#include "common.h"
 #include "labels.h"
 #include "Net.h"
-#include "common.h"
 
 
-// SYSTEM INCLUDES
-//
-#ifndef WIN32
-#include <unistd.h>
-#else
-#include "getopt.h"
-#endif
 #include <stdlib.h>
 #include <string.h>
 #include <cstdio>
@@ -33,7 +25,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <stdarg.h>
-
+#include <sstream>
 
 #define INIT_NODE_HASH_SIZE 1000
 
@@ -59,7 +51,8 @@ namespace STK
   // to this new record is returned.
   {
     Node *node;
-    ENTRY e, *ep;
+    ENTRY e = {0}; //{0} is just to make compiler happy
+    ENTRY *ep;
   
     if (node_hash->mTabSize == 0 && !my_hcreate_r(INIT_NODE_HASH_SIZE, node_hash))
       Error("Insufficient memory");
@@ -167,11 +160,11 @@ namespace STK
         putc('=', lfp);
         fprintHTKstr(lfp, node->mType & NT_MODEL   ? node->mpHmm->mpMacro->mpName   :
                           node->mType & NT_WORD    ? (!node->mpPronun ? "!NULL" :
-                                                    node->mpPronun->word->mpName) :
+                                                    node->mpPronun->mpWord->mpName) :
                                                     node->mpName); // NT_PHONE (NT_SUBNET)
       }
       if (!format.mNoPronunVars && node->mType & NT_WORD
-      && node->mpPronun != NULL && node->mpPronun->word->npronuns > 1
+      && node->mpPronun != NULL && node->mpPronun->mpWord->npronuns > 1
       && (node->mpPronun->variant_no > 1 || !format.mNoDefaults)) {
         fprintf(lfp," v=%d", node->mpPronun->variant_no);
       }
@@ -268,13 +261,13 @@ namespace STK
               node->mType & NT_SUBNET  ? node->mpName :
               node->mType & NT_WORD    ?
                 (node->mpPronun == NULL ? "-" :
-                                        node->mpPronun->word->mpName):
+                                        node->mpPronun->mpWord->mpName):
                                         "?");
       if (node->mType & NT_WORD && node->mpPronun) {
-        if (node->mpPronun->word->mpName != node->mpPronun->outSymbol) {
+        if (node->mpPronun->mpWord->mpName != node->mpPronun->outSymbol) {
           fprintf(lfp," [%s]", node->mpPronun->outSymbol);
         }
-        if (node->mpPronun->prob != 0.0 || node->mpPronun->word->npronuns > 1) {
+        if (node->mpPronun->prob != 0.0 || node->mpPronun->mpWord->npronuns > 1) {
           fprintf(lfp," {%d "FLOAT_FMT"}",
                   node->mpPronun->variant_no,
                   node->mpPronun->prob);
@@ -286,9 +279,11 @@ namespace STK
       if (!(labelFormat.TIMES_OFF) &&
         node->mStart != UNDEF_TIME && node->mStop != UNDEF_TIME) {
         int ctm = labelFormat.CENTRE_TM;
-        fprintf(lfp," (%lld %lld)",
-                    (long long) sampPeriod * (2 * node->mStart + ctm) / 2 - labelFormat.left_extent,
-                    (long long) sampPeriod * (2 * node->mStop - ctm)  / 2 + labelFormat.right_extent);
+        fprintf   (lfp," (");
+        fprintf_ll(lfp, sampPeriod * (2 * node->mStart + ctm) / 2 - labelFormat.left_extent);
+        fprintf   (lfp," ");
+        fprintf_ll(lfp, sampPeriod * (2 * node->mStop - ctm)  / 2 + labelFormat.right_extent);
+        fprintf   (lfp,")");
       }
       fprintf(lfp,"\t%d", node->mNLinks);
       for (j = 0; j < node->mNLinks; j ++) {
@@ -380,13 +375,13 @@ namespace STK
   //***************************************************************************
   //***************************************************************************
   Node *ReadSTKNetworkInOldFormat(
-    FILE *                    lfp,
-    struct MyHSearchData *  word_hash,
-    struct MyHSearchData *  phone_hash,
+    FILE*                     lfp,
+    struct MyHSearchData*     word_hash,
+    struct MyHSearchData*     phone_hash,
     LabelFormat               labelFormat,
     long                      sampPeriod,
-    const char *              file_name,
-    const char *              in_MLF)
+    const char*               file_name,
+    const char*               in_MLF)
   {
     size_t    numOfNodes;
     size_t    i;
@@ -403,9 +398,11 @@ namespace STK
     char      wordOrModelName[1024] = {'\0'};
     double    linkLike;
     double    pronunProb;
-    Node *    node;
-    Node **   nodes;
+    Node*     node;
+    Node**    nodes;
   
+    std::stringstream ss; 
+    
     RemoveCommentLines(lfp);
   
     if (fscanf(lfp," %1023[^0-9]", wordOrModelName) == 1) {
@@ -524,7 +521,8 @@ namespace STK
         nodeType = nodeType == 'K' ? 'W' : 'N';
         }
         if (nodeType == 'W') {
-          ENTRY e, *ep;
+          ENTRY e = {0}; //{0} is just to make compiler happy
+          ENTRY *ep;
           Word *word = NULL;
   
           e.key  = wordOrModelName;
@@ -702,9 +700,13 @@ namespace STK
     MyHSearchData node_hash = {0};
     struct ReadlineData   rld       = {0};
   
-    for (;;) {
-      do {
-        if ((chptr = line = readline(lfp, &rld)) == NULL) break;
+    for (;;) 
+    {
+      do 
+      {
+        if ((chptr = line = readline(lfp, &rld)) == NULL) 
+          break;
+          
         if (chptr[0] == '.' && (chptr[1] == '\0' || isspace(chptr[1]))) {
           chptr = NULL;
           break;
@@ -810,7 +812,8 @@ namespace STK
             Error("Sub-lattice nodes are not yet supported (%s:%d)",
                   *valptr, file_name, line_no);
           } else if (!strcmp(chptr, "WORD") || !strcmp(chptr, "W")) {
-            ENTRY e, *ep;
+            ENTRY e = {0}; //{0} is just to make compiler happy
+            ENTRY *ep;
             if (getHTKstr(e.key = valptr, &chptr)) {
               Error("%s (%s:%d)", chptr, file_name, line_no);
             }
@@ -847,7 +850,8 @@ namespace STK
             node->mType &= ~(NT_MODEL | NT_PHONE);
             node->mType |= NT_WORD;
           } else if (!strcmp(chptr, "MODEL") || !strcmp(chptr, "M")) {
-            ENTRY e, *ep;
+            ENTRY e = {0}; //{0} is just to make compiler happy
+            ENTRY *ep;
   
             if (getHTKstr(e.key = valptr, &chptr)) {
               Error("%s (%s:%d)", chptr, file_name, line_no);
@@ -890,7 +894,7 @@ namespace STK
                   word->pronuns[i] = (Pronun *) malloc(sizeof(Pronun));
                   if (word->pronuns[i] == NULL) Error("Insufficient memory");
   
-                  word->pronuns[i]->word       = word;
+                  word->pronuns[i]->mpWord       = word;
                   word->pronuns[i]->outSymbol  = word->mpName;
                   word->pronuns[i]->nmodels    = 0;
                   word->pronuns[i]->model      = NULL;
@@ -1234,7 +1238,8 @@ namespace STK
           } else if (chptr[0] == 'v') {
             node_var = getInteger(valptr, &chptr, file_name, line_no) - 1;
           } else if (chptr[0] == 'W') {
-            ENTRY e, *ep;
+            ENTRY e = {0}; //{0} is just to make compiler happy
+            ENTRY *ep;
             if (getHTKstr(e.key = valptr, &chptr)) {
               Error("%s (%s:%d)", chptr, file_name, line_no);
             }

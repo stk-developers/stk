@@ -230,6 +230,7 @@ int matche ( register const char *p, register const char *t, register char *s )
             /* single any character match, with extraction*/
             case '%': {
                 *s++ = *t;
+                *s   = '\0';
                 break;
             }
 
@@ -361,7 +362,7 @@ int matche ( register const char *p, register const char *t, register char *s )
         }
     }
 
-    *s = '\0';
+    //*s = '\0';
     /* if end of text not reached then the pattern fails */
     if ( *t )
         return MATCH_END;
@@ -395,6 +396,7 @@ int matche_after_star (const register char *p, const register char *t, register 
 
         if ( *p == '%') {
             *s++ = *t;
+            *s   = '\0';
             /* if end of text then no match */
             if ( !*t++ ) {
                 return MATCH_ABORT;

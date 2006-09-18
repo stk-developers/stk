@@ -9,16 +9,18 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
-#define VERSION "0.2 "__TIME__" "__DATE__
+#define MODULE_VERSION "0.2 "__TIME__" "__DATE__
+
 #include "STKLib/Net.h"
 #include "STKLib/labels.h"
 #include "STKLib/common.h"
 
-#ifndef WIN32
-#include <unistd.h>
+#ifndef HAVE_UNISTD_H
+#  include <unistd.h>
 #else
-#include "getopt.h"
+#  include <getopt.h>
 #endif
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -77,7 +79,7 @@ char *optionStr =
 " -q r   NETFORMATING"
 //" -s n   EXACTTIMEMERGE=TRUE"
 //" -t r   TEEMODELS"
-//" -u n   MINIMIZENET=FALSE"
+//" -u n   MINIMIZENET=false"
 //" -w n   REMEXPWRDNODES=TRUE"
 " -y r   TARGETTRANSCEXT"
 " -D n   PRINTCONFIG=TRUE"
@@ -144,21 +146,21 @@ int main(int argc, char *argv[]) {
 
   }
   i = ParseOptions(argc, argv, optionStr, SNAME, &cfgHash);
-//  htk_compat = GetParamBool(&cfgHash, SNAME":HTKCOMPAT", FALSE);
+//  htk_compat = GetParamBool(&cfgHash, SNAME":HTKCOMPAT", false);
   for (; i < argc; i++) {
     last_file = AddFileElem(last_file, argv[i]);
     nfeature_files++;
   }
   expOptions.mCDPhoneExpansion =
-                 GetParamBool(&cfgHash,SNAME":ALLOWXWRDEXP",    FALSE);
+                 GetParamBool(&cfgHash,SNAME":ALLOWXWRDEXP",    false);
   expOptions.mRespectPronunVar
-               = GetParamBool(&cfgHash,SNAME":RESPECTPRONVARS", FALSE);
+               = GetParamBool(&cfgHash,SNAME":RESPECTPRONVARS", false);
   expOptions.mStrictTiming
-               = GetParamBool(&cfgHash,SNAME":EXACTTIMEMERGE",  FALSE);
+               = GetParamBool(&cfgHash,SNAME":EXACTTIMEMERGE",  false);
   expOptions.mNoOptimization
-               =!GetParamBool(&cfgHash,SNAME":MINIMIZENET",     TRUE);
+               =!GetParamBool(&cfgHash,SNAME":MINIMIZENET",     true);
   expOptions.mRemoveWordsNodes
-               = GetParamBool(&cfgHash,SNAME":REMEXPWRDNODES",  FALSE);
+               = GetParamBool(&cfgHash,SNAME":REMEXPWRDNODES",  false);
   in_lbl_fmt.left_extent  = -100 * (long long) (0.5 + 1e5 *
                  GetParamFlt(&cfgHash, SNAME":STARTTIMESHIFT",  0.0));
   in_lbl_fmt.right_extent =  100 * (long long) (0.5 + 1e5 *
@@ -182,6 +184,7 @@ int main(int argc, char *argv[]) {
   ci_phn =(char*)GetParamStr(&cfgHash, SNAME":CIMODEL",        NULL);
   tee_phn=(char*)GetParamStr(&cfgHash, SNAME":TEEMODEL",       NULL);
   script =(char*)GetParamStr(&cfgHash, SNAME":SCRIPT",          NULL);
+  expOptions.mTraceFlag = trace_flag;
 
   cchrptr      = GetParamStr(&cfgHash, SNAME":NETFORMATING",  "");
   if (*cchrptr) {
@@ -217,44 +220,61 @@ int main(int argc, char *argv[]) {
   out_transc_fmt= (TranscriptionFormat) GetParamEnum(&cfgHash,SNAME":TARGETTRANSCFMT", TF_STK,
                               "STK", TF_STK, "net", TF_NOF, NULL);
 
-  if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", FALSE)) {
+  if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", false)) {
     PrintConfig(&cfgHash);
   }
-  if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", FALSE)) {
-    puts("Version: "VERSION"\n");
+  
+  if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", false)) {
+    puts("Version: "MODULE_VERSION"\n");
   }
-  if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", FALSE)) {
+  
+  if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", false)) {
     CheckCommandLineParamUse(&cfgHash);
   }
-  for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) {
-    if ((sfp = my_fopen(script, "rt", gpScriptFilter)) == NULL) {
-      Error("Cannot open script file %s", optarg);
+  
+  if (NULL != script)
+  {
+    for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) {
+      if ((sfp = my_fopen(script, "rt", gpScriptFilter)) == NULL) {
+        Error("Cannot open script file %s", optarg);
+      }
+      while (fscanf(sfp, "%s", line) == 1) {
+        last_file = AddFileElem(last_file, line);
+        nfeature_files++;
+      }
+      my_fclose(sfp);
     }
-    while (fscanf(sfp, "%s", line) == 1) {
-      last_file = AddFileElem(last_file, line);
-      nfeature_files++;
+  }
+  
+  if (NULL != ci_phn)
+  {
+    for ( ci_phn=strtok(ci_phn, ",");  ci_phn != NULL; ci_phn=strtok(NULL, ",")) 
+    {
+      e.key = ci_phn;
+      my_hsearch_r(e, FIND, &ep, &nonCDphHash);
+      if (ep != NULL) continue;
+      if ((e.key = strdup(ci_phn)) == NULL) Error("Insufficient memory");
+      e.data = (void *) 0;
+      my_hsearch_r(e, ENTER, &ep, &nonCDphHash);
     }
-    my_fclose(sfp);
   }
-  for ( ci_phn=strtok(ci_phn, ",");  ci_phn != NULL; ci_phn=strtok(NULL, ",")) {
-    e.key = ci_phn;
-    my_hsearch_r(e, FIND, &ep, &nonCDphHash);
-    if (ep != NULL) continue;
-    if ((e.key = strdup(ci_phn)) == NULL) Error("Insufficient memory");
-    e.data = (void *) 0;
-    my_hsearch_r(e, ENTER, &ep, &nonCDphHash);
-  }
-  for (tee_phn=strtok(tee_phn, ",");tee_phn != NULL;tee_phn=strtok(NULL, ",")) {
-    e.key = tee_phn;
-    my_hsearch_r(e, FIND, &ep, &nonCDphHash);
-    if (ep != NULL) {
-      ep->data = (void *) 1;
-      continue;
+  
+  if (NULL != tee_phn)
+  {
+    for (tee_phn=strtok(tee_phn, ",");tee_phn != NULL;tee_phn=strtok(NULL, ",")) 
+    {
+      e.key = tee_phn;
+      my_hsearch_r(e, FIND, &ep, &nonCDphHash);
+      if (ep != NULL) {
+        ep->data = (void *) 1;
+        continue;
+      }
+      if ((e.key = strdup(tee_phn)) == NULL) Error("Insufficient memory");
+      e.data = (void *) 1;
+      my_hsearch_r(e, ENTER, &ep, &nonCDphHash);
     }
-    if ((e.key = strdup(tee_phn)) == NULL) Error("Insufficient memory");
-    e.data = (void *) 1;
-    my_hsearch_r(e, ENTER, &ep, &nonCDphHash);
   }
+  
   if (dictionary != NULL) {
     ReadDictionary(dictionary, &dictHash, &phoneHash);
     notInDictAction  = WORD_NOT_IN_DIC_WARN;

@@ -1,0 +1,289 @@
+# THIS IS A DEPRECATED VERSION. FOR BACKWARDS COMPATIBILITY ONLY
+############################################################################### 
+# Processor architecture (32, 64)
+ARCH = 32
+
+###############################################################################
+# OS architecture (lin, win) 
+OS   = lin
+
+
+
+
+
+################################################################################
+# Matlab specific stuff
+#USE_MATLAB_ENGINE = TRUE
+USE_MATLAB_ENGINE = FALSE
+
+# Specify matlab root path in MATLAB_PATH
+MATLAB_PATH       = /usr/local/share/Matlab-R14SP3
+
+ifeq ($(USE_MATLAB_ENGINE), TRUE)
+  MATLAB_CFLAGS   = -I$(MATLAB_PATH)/extern/include \
+                    -I$(MATLAB_PATH)/simulink/include \
+                    -DMATLAB_MEX_FILE \
+                    -DMATLAB_ENGINE
+                    
+  MATLAB_LDFLAGS  = -Wl,-rpath-link,$(MATLAB_PATH)/bin/glnx86 \
+                    -Wl,-rpath,$(MATLAB_PATH)/bin/glnx86 \
+                    -L$(MATLAB_PATH)/bin/glnx86
+                    
+  MATLAB_LDLIBS   = -leng -lmx
+else
+  MATLAB_CFLAGS   = 
+  MATLAB_LDFLAGS  = 
+  MATLAB_LDLIBS   = 
+endif
+
+
+###############################################################################
+# compiler options
+#CFLAGS = -Wall -g -O3 -DDOUBLEPRECISION=0 -D_REENTRANT -DHAVE_ATLAS -msse -msse2 -mmmx -mfpmath=sse
+CFLAGS    = -ansi -Wall  -g -DDOUBLEPRECISION=0 -D_REENTRANT -DHAVE_ATLAS -D_XOPEN_SOURCE=600 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -msse -msse2 -mfpmath=sse $(MATLAB_CFLAGS) 
+CXXFLAGS  = $(CFLAGS)
+
+###############################################################################
+# linker options
+LDFLAGS = -g -L./STKLib $(MATLAB_LDFLAGS) 
+LDLIBS =  -lm -lpthread $(MATLAB_LDLIBS) -lSTKLib #-latlas 
+#LDLIBS = -lm -lSTKLib
+#LDFLAGS = -a -g -L. -pg
+
+###############################################################################
+# -DEXPANDNET_ONLY
+XFLAGS = -DMOTIF -L/usr/X11R6/lib -I/usr/X11R6/include -lXm -lXt -lX11 -lXpm 
+
+
+
+###############################################################################
+# compiler binary
+#CROSS_COMPILE ?= x86_64-linux-
+CC  := $(CROSS_COMPILE)g++-4.1 
+CXX := $(CROSS_COMPILE)g++-4.1 
+
+###############################################################################
+# tools summary (for make all)
+TOOLS =     SERest \
+            SVite \
+            SRover \
+            SResults \
+            SExpand \
+            SFeaCat \
+            SLRatio \
+            test3 \
+            SNet \
+            SWEChCoFastGreen
+
+###############################################################################
+# object needed by all tools
+STKLIB   =  STKLib/libSTKLib.a 
+SNETLIB  =  SNetLib/barrier.o SNetLib/element.o SNetLib/nlayer.o \
+            SNetLib/nnet.o  SNetLib/progobj.o SNetLib/socketobj.o SNetLib/timers.o
+EXTLIB   =  /usr/local/lib/libcblas.a \
+            /usr/local/lib/liblapack.a \
+            /usr/local/lib/libptcblas.a \
+            /usr/local/lib/libatlas.a
+
+
+###############################################################################
+# Recursive make subdirs
+SUBDIRS = STKLib
+            
+.PHONY : all subdirs $(SUBDIRS)
+
+###############################################################################
+# implicit "make all" rule             
+all  : subdirs $(TOOLS)
+
+###############################################################################
+subdirs : $(SUBDIRS)
+
+###############################################################################
+# Implicit phony rule what
+$(SUBDIRS) :
+	cd ./$@; $(MAKE) -f Makefile.$(OS); cd ..
+
+###############################################################################
+# STKLib will compile itself in its directory so we call the PHONY rule
+$(STKLIB) : FORCE
+	cd ./STKLib; $(MAKE) -f Makefile.$(OS); cd ..
+
+
+###############################################################################
+# cleans the binaries  
+clean:
+	cd ./STKLib; make -f Makefile.$(OS) clean; cd ..
+	rm -f *.o SNetLib/*.o 
+	rm -f $(TOOLS)
+	rm -f *~
+        
+
+###############################################################################
+# runs makedepend to automatically define header files dependencies
+depend:
+	-makedepend -fMakefile.lin -Y *.c *.C *.cc STKLib/*.C STKLib/*.cc SNetLib/*.C SNetLib/*.cc
+
+FORCE:
+
+###############################################################################
+# tools-specific rules
+SFea2OutP   : $(STKLIB) $(EXTLIB)
+SVite       : $(STKLIB) $(EXTLIB) 
+SWE         : $(STKLIB) $(EXTLIB) 
+SWEChCo     : $(STKLIB) $(EXTLIB) 
+SWEChCoFast : $(STKLIB) $(EXTLIB) 
+SWEChCoFastOPS : $(STKLIB) $(EXTLIB) 
+SLRatio     : $(STKLIB) $(EXTLIB) 
+SERest      : $(STKLIB) $(EXTLIB)  
+SFeaCat     : $(STKLIB) $(EXTLIB) 
+SRover      : $(STKLIB) $(EXTLIB) 
+SResults    : $(STKLIB) $(EXTLIB) 
+SExpand     : $(STKLIB) $(EXTLIB) 
+SWEChCoFastGreen : $(STKLIB) $(EXTLIB) 
+SNet        : $(STKLIB) $(SNETLIB) $(EXTLIB) 
+test3       : $(STKLIB) $(SNETLIB) $(EXTLIB) 
+SNetStats   : $(STKLIB) $(SNETLIB) $(EXTLIB) 
+
+
+
+SERestX     : SERest.o $(STKLIB) $(EXTLIB)  STKLib/imagesc.o
+	$(CXX) $(CFLAGS) $(XFLAGS) -o $@ $<
+
+
+
+# DO NOT DELETE
+
+SFea2OutP.o: STKLib/fileio.h STKLib/Matrix.h STKLib/common.h STKLib/Error.h
+SFea2OutP.o: STKLib/BasicVector.h STKLib/BasicVector.tcc STKLib/Matrix.tcc
+SFea2OutP.o: STKLib/common.h STKLib/Models.h STKLib/stkstream.h
+SFea2OutP.o: STKLib/stkstream.tcc STKLib/Viterbi.h STKLib/Models.h
+SFea2OutP.o: STKLib/labels.h STKLib/dict.h STKLib/Net.h
+dscore.o: STKLib/fileio.h STKLib/Matrix.h STKLib/common.h STKLib/Error.h
+dscore.o: STKLib/BasicVector.h STKLib/BasicVector.tcc STKLib/Matrix.tcc
+dscore.o: STKLib/common.h STKLib/Models.h STKLib/stkstream.h
+dscore.o: STKLib/stkstream.tcc STKLib/Viterbi.h STKLib/Models.h
+dscore.o: STKLib/labels.h STKLib/dict.h STKLib/Net.h STKLib/Score.h
+SERest.o: STKLib/fileio.h STKLib/Matrix.h STKLib/common.h STKLib/Error.h
+SERest.o: STKLib/BasicVector.h STKLib/BasicVector.tcc STKLib/Matrix.tcc
+SERest.o: STKLib/common.h STKLib/Models.h STKLib/stkstream.h
+SERest.o: STKLib/stkstream.tcc STKLib/Viterbi.h STKLib/Models.h
+SERest.o: STKLib/labels.h STKLib/dict.h STKLib/Net.h STKLib/labels.h
+SERest.o: STKLib/stkstream.h
+SExpand.o: STKLib/Net.h STKLib/Models.h STKLib/labels.h STKLib/common.h
+SExpand.o: STKLib/Error.h STKLib/dict.h STKLib/labels.h STKLib/common.h
+SFea2OutP.o: STKLib/fileio.h STKLib/Matrix.h STKLib/common.h STKLib/Error.h
+SFea2OutP.o: STKLib/BasicVector.h STKLib/BasicVector.tcc STKLib/Matrix.tcc
+SFea2OutP.o: STKLib/common.h STKLib/Models.h STKLib/stkstream.h
+SFea2OutP.o: STKLib/stkstream.tcc STKLib/Viterbi.h STKLib/Models.h
+SFea2OutP.o: STKLib/labels.h STKLib/dict.h STKLib/Net.h
+SFeaCat.o: STKLib/fileio.h STKLib/Matrix.h STKLib/common.h STKLib/Error.h
+SFeaCat.o: STKLib/BasicVector.h STKLib/BasicVector.tcc STKLib/Matrix.tcc
+SFeaCat.o: STKLib/common.h STKLib/Models.h STKLib/stkstream.h
+SFeaCat.o: STKLib/stkstream.tcc STKLib/Viterbi.h STKLib/Models.h
+SFeaCat.o: STKLib/labels.h STKLib/dict.h STKLib/Net.h
+SLRatio.o: STKLib/Viterbi.h STKLib/Models.h STKLib/labels.h STKLib/common.h
+SLRatio.o: STKLib/Error.h STKLib/dict.h STKLib/Net.h STKLib/Models.h
+SLRatio.o: STKLib/Matrix.h STKLib/BasicVector.h STKLib/BasicVector.tcc
+SLRatio.o: STKLib/Matrix.tcc STKLib/stkstream.h STKLib/stkstream.tcc
+SLRatio.o: STKLib/fileio.h STKLib/labels.h STKLib/common.h
+SNet.o: STKLib/fileio.h STKLib/Matrix.h STKLib/common.h STKLib/Error.h
+SNet.o: STKLib/BasicVector.h STKLib/BasicVector.tcc STKLib/Matrix.tcc
+SNet.o: STKLib/common.h STKLib/Models.h STKLib/stkstream.h
+SNet.o: STKLib/stkstream.tcc STKLib/Viterbi.h STKLib/Models.h STKLib/labels.h
+SNet.o: STKLib/dict.h STKLib/Net.h SNetLib/progobj.h SNetLib/nnet.h
+SNet.o: SNetLib/nlayer.h STKLib/fileio.h STKLib/common.h STKLib/Models.h
+SNet.o: STKLib/Viterbi.h STKLib/Matrix.h SNetLib/timers.h SNetLib/socketobj.h
+SNet.o: STKLib/Error.h SNetLib/element.h SNetLib/barrier.h
+SResults.o: STKLib/labels.h STKLib/common.h
+SRover.o: STKLib/labels.h STKLib/common.h
+SScore.o: STKLib/fileio.h STKLib/Matrix.h STKLib/common.h STKLib/Error.h
+SScore.o: STKLib/BasicVector.h STKLib/BasicVector.tcc STKLib/Matrix.tcc
+SScore.o: STKLib/common.h STKLib/Models.h STKLib/stkstream.h
+SScore.o: STKLib/stkstream.tcc STKLib/Viterbi.h STKLib/Models.h
+SScore.o: STKLib/labels.h STKLib/dict.h STKLib/Net.h STKLib/Score.h
+SVite.o: STKLib/Viterbi.h STKLib/Models.h STKLib/labels.h STKLib/common.h
+SVite.o: STKLib/Error.h STKLib/dict.h STKLib/Net.h STKLib/Models.h
+SVite.o: STKLib/Matrix.h STKLib/BasicVector.h STKLib/BasicVector.tcc
+SVite.o: STKLib/Matrix.tcc STKLib/stkstream.h STKLib/stkstream.tcc
+SVite.o: STKLib/fileio.h STKLib/labels.h STKLib/common.h
+SWEChCoFast.o: STKLib/Viterbi.h STKLib/Models.h STKLib/labels.h
+SWEChCoFast.o: STKLib/common.h STKLib/Error.h STKLib/dict.h STKLib/Net.h
+SWEChCoFast.o: STKLib/Models.h STKLib/Matrix.h STKLib/BasicVector.h
+SWEChCoFast.o: STKLib/BasicVector.tcc STKLib/Matrix.tcc STKLib/stkstream.h
+SWEChCoFast.o: STKLib/stkstream.tcc STKLib/fileio.h STKLib/labels.h
+SWEChCoFast.o: STKLib/common.h
+SWEChCoFastGreen.o: STKLib/Features.h STKLib/fileio.h STKLib/Matrix.h
+SWEChCoFastGreen.o: STKLib/common.h STKLib/Error.h STKLib/BasicVector.h
+SWEChCoFastGreen.o: STKLib/BasicVector.tcc STKLib/Matrix.tcc
+SWEChCoFastGreen.o: STKLib/stkstream.h STKLib/stkstream.tcc STKLib/ZNorm.h
+SWEChCoFastGreen.o: STKLib/Models.h STKLib/Viterbi.h STKLib/labels.h
+SWEChCoFastGreen.o: STKLib/dict.h STKLib/Net.h STKLib/Viterbi.h
+SWEChCoFastGreen.o: STKLib/Models.h STKLib/fileio.h STKLib/labels.h
+SWEChCoFastGreen.o: STKLib/common.h
+SWEChCoFastGreenNew.o: STKLib/Features.h STKLib/fileio.h STKLib/Matrix.h
+SWEChCoFastGreenNew.o: STKLib/common.h STKLib/Error.h STKLib/BasicVector.h
+SWEChCoFastGreenNew.o: STKLib/BasicVector.tcc STKLib/Matrix.tcc
+SWEChCoFastGreenNew.o: STKLib/stkstream.h STKLib/stkstream.tcc STKLib/ZNorm.h
+SWEChCoFastGreenNew.o: STKLib/Models.h STKLib/Viterbi.h STKLib/labels.h
+SWEChCoFastGreenNew.o: STKLib/dict.h STKLib/Net.h STKLib/Viterbi.h
+SWEChCoFastGreenNew.o: STKLib/Models.h STKLib/fileio.h STKLib/labels.h
+SWEChCoFastGreenNew.o: STKLib/common.h
+test2.o: STKLib/common.h
+STKLib/common.o: STKLib/common.h STKLib/Error.h STKLib/filmatch.h
+STKLib/dict.o: STKLib/dict.h STKLib/Models.h STKLib/common.h STKLib/Error.h
+STKLib/fileio.o: STKLib/fileio.h STKLib/Matrix.h STKLib/common.h
+STKLib/fileio.o: STKLib/Error.h STKLib/BasicVector.h STKLib/BasicVector.tcc
+STKLib/fileio.o: STKLib/Matrix.tcc STKLib/stkstream.h STKLib/stkstream.tcc
+STKLib/filmatch.o: STKLib/filmatch.h STKLib/common.h STKLib/Error.h
+STKLib/getopt.o: STKLib/getopt.h
+STKLib/imagesc.o: STKLib/imagesc.h
+STKLib/labels.o: STKLib/Viterbi.h STKLib/Models.h STKLib/labels.h
+STKLib/labels.o: STKLib/common.h STKLib/Error.h STKLib/dict.h STKLib/Net.h
+STKLib/BasicVector.o: STKLib/Matrix.h STKLib/common.h STKLib/Error.h
+STKLib/BasicVector.o: STKLib/BasicVector.h STKLib/BasicVector.tcc
+STKLib/BasicVector.o: STKLib/Matrix.tcc
+STKLib/Buffer.o: STKLib/Buffer.h
+STKLib/Error.o: STKLib/Error.h
+STKLib/Features.o: STKLib/Features.h STKLib/fileio.h STKLib/Matrix.h
+STKLib/Features.o: STKLib/common.h STKLib/Error.h STKLib/BasicVector.h
+STKLib/Features.o: STKLib/BasicVector.tcc STKLib/Matrix.tcc
+STKLib/Features.o: STKLib/stkstream.h STKLib/stkstream.tcc
+STKLib/labelreader.o: STKLib/labelreader.h STKLib/stkstream.h STKLib/common.h
+STKLib/labelreader.o: STKLib/Error.h STKLib/stkstream.tcc
+STKLib/Matrix.o: STKLib/Matrix.h STKLib/common.h STKLib/Error.h
+STKLib/Matrix.o: STKLib/BasicVector.h STKLib/BasicVector.tcc
+STKLib/Matrix.o: STKLib/Matrix.tcc
+STKLib/Models.o: STKLib/Models.h STKLib/Viterbi.h STKLib/labels.h
+STKLib/Models.o: STKLib/common.h STKLib/Error.h STKLib/dict.h STKLib/Net.h
+STKLib/Models.o: STKLib/stkstream.h STKLib/stkstream.tcc
+STKLib/Models_IO.o: STKLib/Models.h
+STKLib/Net.o: STKLib/Models.h STKLib/labels.h STKLib/common.h STKLib/Error.h
+STKLib/Net.o: STKLib/dict.h STKLib/Net.h
+STKLib/Net_IO.o: STKLib/labels.h STKLib/common.h STKLib/Error.h STKLib/Net.h
+STKLib/Net_IO.o: STKLib/Models.h STKLib/dict.h
+STKLib/Score.o: STKLib/Models.h STKLib/Viterbi.h STKLib/labels.h
+STKLib/Score.o: STKLib/common.h STKLib/Error.h STKLib/dict.h STKLib/Net.h
+STKLib/Viterbi.o: STKLib/Viterbi.h STKLib/Models.h STKLib/labels.h
+STKLib/Viterbi.o: STKLib/common.h STKLib/Error.h STKLib/dict.h STKLib/Net.h
+STKLib/ZNorm.o: STKLib/ZNorm.h STKLib/Models.h STKLib/Viterbi.h
+STKLib/ZNorm.o: STKLib/labels.h STKLib/common.h STKLib/Error.h STKLib/dict.h
+STKLib/ZNorm.o: STKLib/Net.h
+SNetLib/element.o: SNetLib/element.h STKLib/Error.h STKLib/Matrix.h
+SNetLib/element.o: SNetLib/nnet.h SNetLib/nlayer.h STKLib/fileio.h
+SNetLib/element.o: STKLib/common.h STKLib/Models.h STKLib/Viterbi.h
+SNetLib/element.o: SNetLib/timers.h SNetLib/socketobj.h SNetLib/barrier.h
+SNetLib/nlayer.o: SNetLib/nlayer.h STKLib/fileio.h STKLib/common.h
+SNetLib/nlayer.o: STKLib/Models.h STKLib/Viterbi.h STKLib/Matrix.h
+SNetLib/nnet.o: SNetLib/nnet.h SNetLib/nlayer.h STKLib/fileio.h
+SNetLib/nnet.o: STKLib/common.h STKLib/Models.h STKLib/Viterbi.h
+SNetLib/nnet.o: STKLib/Matrix.h SNetLib/timers.h SNetLib/socketobj.h
+SNetLib/nnet.o: STKLib/Error.h SNetLib/element.h SNetLib/barrier.h
+SNetLib/progobj.o: SNetLib/progobj.h SNetLib/nnet.h SNetLib/nlayer.h
+SNetLib/progobj.o: STKLib/fileio.h STKLib/common.h STKLib/Models.h
+SNetLib/progobj.o: STKLib/Viterbi.h STKLib/Matrix.h SNetLib/timers.h
+SNetLib/progobj.o: SNetLib/socketobj.h STKLib/Error.h SNetLib/element.h
+SNetLib/progobj.o: SNetLib/barrier.h
+SNetLib/socketobj.o: SNetLib/socketobj.h STKLib/Error.h SNetLib/element.h
+SNetLib/socketobj.o: STKLib/Matrix.h SNetLib/barrier.h
+SNetLib/timers.o: SNetLib/timers.h

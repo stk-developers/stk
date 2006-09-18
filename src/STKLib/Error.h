@@ -21,7 +21,6 @@
 #include <stdexcept>
 #include <string>
 
-
 #define Error(...) _Error_(__func__, __FILE__, __LINE__, __VA_ARGS__)
 #define Warning(...) _Warning_(__func__, __FILE__, __LINE__, __VA_ARGS__)
 

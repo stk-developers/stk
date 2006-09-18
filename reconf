@@ -1,0 +1,8 @@
+#!/bin/sh
+#This will generate `configure' and `Makefile.in' and needs to be called whenever you change a `Makefile.am' or a `configure.ac' as well as when you change something under the `m4' directory. It will also call `autoheader' to make config.h.in.
+#rm -f config.cache
+aclocal -I m4
+autoconf
+autoheader
+automake -a
+exit

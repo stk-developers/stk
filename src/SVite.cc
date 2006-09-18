@@ -10,27 +10,42 @@
  *                                                                         *
  ***************************************************************************/
 
-#define VERSION "0.4 "__TIME__" "__DATE__
+#define MODULE_VERSION "0.4 "__TIME__" "__DATE__
+
+
+////////////////////////////////////////////////////////////////////////////////
+// STK HEADERS
+////////////////////////////////////////////////////////////////////////////////
+#include "STKLib/Features.h"
 
 #include "STKLib/Viterbi.h"
 #include "STKLib/Models.h"
 #include "STKLib/fileio.h"
 #include "STKLib/labels.h"
 #include "STKLib/common.h"
-//#include "STKLib/stkstream.h"
+
+
+////////////////////////////////////////////////////////////////////////////////
+// THE STANDARD HEADERS
+////////////////////////////////////////////////////////////////////////////////
 #include <stdlib.h>
 #include <string.h>
 #include <cstdio>
 #include <malloc.h>
-#ifndef WIN32
-#include <unistd.h>
+
+#if HAVE_UNISTD_H
+# include <unistd.h>
 #else
-#include "getopt.h"
+# include <getopt.h>
 #endif
 
+
+// we will be using the STK namespace ..........................................
 using namespace STK;
 
 
+//******************************************************************************
+//******************************************************************************
 void usage(char *progname)
 {
   char *tchrptr;
@@ -110,13 +125,14 @@ char *optionStr =
 
 int main(int argc, char *argv[]) 
 {
-  HtkHeader                    header;
   ModelSet                      hset;
   Network                       net;
-  FILE *                        sfp;
   FILE *                        lfp = NULL;
   FILE *                        ilfp = NULL;
-  FLOAT *                       obsMx;
+  
+  Matrix<FLOAT>                 feature_matrix;
+  FeatureRepository             feature_repo;
+
   FLOAT                         like;
   int                           i;
   int                           fcnt = 0;
@@ -124,12 +140,11 @@ int main(int argc, char *argv[])
   char                          line[1024];
   char                          label_file[1024];
   const char *                  cchrptr;
-  int                           nfeature_files = 0;
   
-  MyHSearchData        nonCDphHash;
-  MyHSearchData        phoneHash;
-  MyHSearchData        dictHash;
-  MyHSearchData        cfgHash;
+  MyHSearchData                 nonCDphHash;
+  MyHSearchData                 phoneHash;
+  MyHSearchData                 dictHash;
+  MyHSearchData                 cfgHash;
   
   FileListElem *                feature_files = NULL;
   FileListElem *                file_name = NULL;
@@ -173,6 +188,9 @@ int main(int argc, char *argv[])
         char *                  cvn_file;
   const char *                  cvn_mask;
   const char *                  cvg_file;
+  const char *                  mmf_dir;
+  const char *                  mmf_mask;
+
   int                           trace_flag;
   int                           targetKind;
   int                           derivOrder;
@@ -185,7 +203,6 @@ int main(int argc, char *argv[])
   enum TranscriptionFormat {TF_HTK, TF_STK} in_transc_fmt, out_transc_fmt;
   int                           notInDictAction = WORD_NOT_IN_DIC_UNSET;
   
-  RHFBuffer                     rhfbuff     = {0};
   ExpansionOptions              expOptions  = {0};
   STKNetworkOutputFormat        in_net_fmt  = {0};
   STKNetworkOutputFormat        out_net_fmt = {0};
@@ -195,51 +212,64 @@ int main(int argc, char *argv[])
   
   in_lbl_fmt.TIMES_OFF = 1;
 
-  if (argc == 1) usage(argv[0]);
+  if (argc == 1) 
+    usage(argv[0]);
 
-  //InitHMMSet(&hset, 0);
+  // initialize the HMM set
   hset.Init();
 
   if (!my_hcreate_r(100,  &dictHash)
-  || !my_hcreate_r(100,  &phoneHash)
-  || !my_hcreate_r(100,  &cfgHash)) {
+  ||  !my_hcreate_r(100,  &phoneHash)
+  ||  !my_hcreate_r(100,  &cfgHash)) 
+  {
     Error("Insufficient memory");
   }
+
   i = ParseOptions(argc, argv, optionStr, SNAME, &cfgHash);
-  htk_compat = GetParamBool(&cfgHash, SNAME":HTKCOMPAT", FALSE);
-  if (htk_compat) {
+
+  // if in HTK compatible mode, we expect the source dictionary and dictionary
+  // to come
+  htk_compat = GetParamBool(&cfgHash, SNAME":HTKCOMPAT", false);
+  if (htk_compat) 
+  {
     if (argc == i) Error("Dictionary file name expected");
     InsertConfigParam(&cfgHash, SNAME":SOURCEDICT", argv[i++], '-');
     if (argc == i) Error("HMM list file name expected");
     InsertConfigParam(&cfgHash, SNAME":SOURCEHMMLIST",    argv[i++], '-');
   }
- for (; i < argc; i++) {
-    last_file = AddFileElem(last_file, argv[i]);
-    nfeature_files++;
+  
+  // the rest of the parameters are the feature files
+  for (; i < argc; i++) 
+  {
+    feature_repo.AddFile(argv[i]);
+    //last_file = AddFileElem(last_file, argv[i]);
   }
+  
+  // extract the feature parameters
   targetKind =   GetDerivParams(&cfgHash, &derivOrder, &derivWinLengths,
                                 &startFrmExt, &endFrmExt,
                                 &cmn_path, &cmn_file, &cmn_mask,
                                 &cvn_path, &cvn_file, &cvn_mask, &cvg_file,
                                 SNAME":", 0);
+  // misc parameter extraction
   expOptions.mCDPhoneExpansion =
-                 GetParamBool(&cfgHash,SNAME":ALLOWXWRDEXP",    FALSE);
+                 GetParamBool(&cfgHash,SNAME":ALLOWXWRDEXP",    false);
   expOptions.mRespectPronunVar
-               = GetParamBool(&cfgHash,SNAME":RESPECTPRONVARS", FALSE);
+               = GetParamBool(&cfgHash,SNAME":RESPECTPRONVARS", false);
   expOptions.mStrictTiming
-               = GetParamBool(&cfgHash,SNAME":EXACTTIMEMERGE",  FALSE);
+               = GetParamBool(&cfgHash,SNAME":EXACTTIMEMERGE",  false);
   expOptions.mNoOptimization
                =!GetParamBool(&cfgHash,SNAME":MINIMIZENET",     expOptions.mCDPhoneExpansion
-                                                                ? TRUE : FALSE);
+                                                                ? true : false);
   expOptions.mRemoveWordsNodes
-               = GetParamBool(&cfgHash,SNAME":REMEXPWRDNODES",  FALSE);
+               = GetParamBool(&cfgHash,SNAME":REMEXPWRDNODES",  false);
   in_lbl_fmt.TIMES_OFF =
-                !GetParamBool(&cfgHash,SNAME":TIMEPRUNING",    FALSE);
+                !GetParamBool(&cfgHash,SNAME":TIMEPRUNING",    false);
   in_lbl_fmt.left_extent  = -100 * (long long) (0.5 + 1e5 *
                  GetParamFlt(&cfgHash, SNAME":STARTTIMESHIFT",  0.0));
   in_lbl_fmt.right_extent =  100 * (long long) (0.5 + 1e5 *
                  GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0));
-  baum_welch   = GetParamBool(&cfgHash,SNAME":EVALUATION",      FALSE);
+  baum_welch   = GetParamBool(&cfgHash,SNAME":EVALUATION",      false);
   swap_features=!GetParamBool(&cfgHash,SNAME":NATURALREADORDER",isBigEndian());
   gpFilterWldcrd= GetParamStr(&cfgHash,SNAME":HFILTERWILDCARD", "$");
   gpScriptFilter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",   NULL);
@@ -275,10 +305,16 @@ int main(int argc, char *argv[])
   trace_flag   = GetParamInt(&cfgHash, SNAME":TRACE",           0);
   script =(char*)GetParamStr(&cfgHash, SNAME":SCRIPT",          NULL);
   mmf    =(char*)GetParamStr(&cfgHash, SNAME":SOURCEMMF",       NULL);
+  
+  mmf_dir      = GetParamStr(&cfgHash, SNAME":MMFDIR",          ".");
+  mmf_mask     = GetParamStr(&cfgHash, SNAME":MMFMASK",         NULL);
+
 
   cchrptr      = GetParamStr(&cfgHash, SNAME":LABELFORMATING",  "");
-  while (*cchrptr) {
-    switch (*cchrptr++) {
+  while (*cchrptr) 
+  {
+    switch (*cchrptr++) 
+    {
       case 'N': out_lbl_fmt.SCORE_NRM = 1; break;
       case 'S': out_lbl_fmt.SCORE_OFF = 1; break;
       case 'C': out_lbl_fmt.CENTRE_TM = 1; break;
@@ -288,18 +324,25 @@ int main(int argc, char *argv[])
       case 'F': out_lbl_fmt.FRAME_SCR = 1; break;
 //      case 'X': out_lbl_fmt.STRIP_TRI = 1; break;
       default:
-        Warning("Unknown label formating flag '%c' ignored (NCSTWMF)", *cchrptr);
+        Warning("Unknown label formating flag '%c' ignored (NCSTWMF)", 
+            *cchrptr);
     }
   }
+
   cchrptr      = GetParamStr(&cfgHash, SNAME":NETFORMATING",  "");
-  if (*cchrptr) {
+  
+  if (*cchrptr) 
+  {
     out_net_fmt.mNoLMLikes    = 1;
     out_net_fmt.mNoTimes       = 1;
     out_net_fmt.mNoPronunVars = 1;
     out_net_fmt.mNoAccLikes   = 1;
   }
-  while (*cchrptr) {
-    switch (*cchrptr++) {
+  
+  while (*cchrptr) 
+  {
+    switch (*cchrptr++) 
+    {
       case 'R': out_net_fmt.mBase62Labels  = 1; // reticent
                 out_net_fmt.mLinNodeSeqs  = 1;
                 out_net_fmt.mNoDefaults    = 1; break;
@@ -316,55 +359,82 @@ int main(int argc, char *argv[])
       case 'l': out_net_fmt.mNoLMLikes    = 0; break;
       case 'p': out_net_fmt.mAproxAccuracy = 1; break;
       default:
-        Warning("Unknown net formating flag '%c' ignored (JMRVWXalpstv)", *cchrptr);
+        Warning("Unknown net formating flag '%c' ignored (JMRVWXalpstv)", 
+            *cchrptr);
     }
   }
-  in_transc_fmt = (TranscriptionFormat) GetParamEnum(&cfgHash,SNAME":SOURCETRANSCFMT",
-                              !network_file && htk_compat ? TF_HTK : TF_STK,
-                              "HTK", TF_HTK, "STK", TF_STK, NULL);
+  
+  in_transc_fmt = (TranscriptionFormat) 
+    GetParamEnum(&cfgHash, SNAME":SOURCETRANSCFMT",
+      !network_file && htk_compat ? TF_HTK : TF_STK,
+      "HTK", TF_HTK, "STK", TF_STK, NULL);
 
-  out_transc_fmt = (TranscriptionFormat) GetParamEnum(&cfgHash,SNAME":TARGETTRANSCFMT",
-                              htk_compat ? TF_HTK : TF_STK,
-                              "HTK", TF_HTK, "STK", TF_STK, NULL);
+  out_transc_fmt = (TranscriptionFormat) 
+    GetParamEnum(&cfgHash,SNAME":TARGETTRANSCFMT", 
+        htk_compat ? TF_HTK : TF_STK ,
+        "HTK", TF_HTK, "STK", TF_STK, NULL);
 
-  if (GetParamBool(&cfgHash, SNAME":STATEALIGNMENT", FALSE)) {
+  if (GetParamBool(&cfgHash, SNAME":STATEALIGNMENT", false)) 
+  {
     alignment |= STATE_ALIGNMENT;
   }
-  if (GetParamBool(&cfgHash, SNAME":MODELALIGNMENT", FALSE)) {
+
+  if (GetParamBool(&cfgHash, SNAME":MODELALIGNMENT", false)) 
+  {
     alignment |= MODEL_ALIGNMENT;
   }
-  if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", FALSE)) {
+  
+  if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", false)) 
+  {
     PrintConfig(&cfgHash);
   }
-  if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", FALSE)) {
-    puts("Version: "VERSION"\n");
+
+  if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", false)) 
+  {
+    puts("Version: "MODULE_VERSION"\n");
   }
-  if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", FALSE)) {
+
+  if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", false)) 
+  {
     CheckCommandLineParamUse(&cfgHash);
   }
 
-  for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) {
-    if ((sfp = my_fopen(script, "rt", gpScriptFilter)) == NULL) {
-      Error("Cannot open script file %s", script);
+ 
+  // initialize the feature repository
+  feature_repo.Init(swap_features, startFrmExt, endFrmExt, targetKind, 
+     derivOrder, derivWinLengths, cmn_path, cmn_mask, cvn_path, cvn_mask,
+     cvg_file);
+
+
+  if (NULL != script) 
+    feature_repo.AddFileList(script, gpScriptFilter); 
+
+  
+  // parse the given MMF file(s)
+  if (NULL != mmf)
+  {
+    for (mmf=strtok(mmf, ","); mmf != NULL; mmf=strtok(NULL, ",")) 
+    {
+      hset.ParseMmf(mmf, NULL);
     }
-    while (fscanf(sfp, "%s", line) == 1) {
-      last_file = AddFileElem(last_file, line);
-      nfeature_files++;
-    }
-    my_fclose(sfp);
   }
-  for (mmf=strtok(mmf, ","); mmf != NULL; mmf=strtok(NULL, ",")) {
-    hset.ParseMmf(mmf, NULL);
-  }
-  if (hmm_list != NULL) hset.ReadHMMList(hmm_list, hmm_dir, hmm_ext);
+  
+
+  // parse the HMM list
+  if (hmm_list != NULL) 
+    hset.ReadHMMList(hmm_list, hmm_dir, hmm_ext);
   
   nonCDphHash = hset.MakeCIPhoneHash();
 
+  
+  // a dictionary was specified
   if (dictionary != NULL) 
   {
     ReadDictionary(dictionary, &dictHash, &phoneHash);
     notInDictAction  = WORD_NOT_IN_DIC_WARN;
-    if (expOptions.mRespectPronunVar) {
+
+    if (expOptions.mRespectPronunVar) 
+    {
       notInDictAction |= PRON_NOT_IN_DIC_ERROR;
     }
   }
@@ -381,82 +451,157 @@ int main(int argc, char *argv[])
   if (dictionary == NULL && in_transc_fmt == TF_HTK) 
   {
     // Word alignment is inpossible in this case.
-    if (alignment & WORD_ALIGNMENT) {
+    if (alignment & WORD_ALIGNMENT) 
+    {
       alignment &= ~WORD_ALIGNMENT;
       alignment |= MODEL_ALIGNMENT;
     }
     out_lbl_fmt.WORDS_OFF = 1;
   }
   
-  if (!network_file) 
+  if (network_file) 
+  { // Unsupervised training
+    Node *node = NULL;
+    IStkStream input_stream;    
+    
+    input_stream.open(network_file, ios::in, transc_filter? transc_filter : "");
+    
+    if (!input_stream.good())
+    {
+      Error("Cannot open network file: %s", network_file);
+    }
+    
+    ilfp = input_stream.file();
+    
+    if (in_transc_fmt == TF_HTK) 
+    {
+      //:TODO:
+      // header.mSamplePeriod not initialized yet... 
+      labels = ReadLabels(
+          ilfp, 
+          dictionary ? &dictHash : &phoneHash,
+          dictionary ? UL_ERROR : UL_INSERT, 
+          in_lbl_fmt,
+          feature_repo.CurrentHeader().mSamplePeriod, 
+          network_file, 
+          NULL, 
+          NULL);
+              
+      node = MakeNetworkFromLabels(labels, 
+          dictionary ? NT_WORD : NT_PHONE);
+              
+      ReleaseLabels(labels);
+    }
+    else if (in_transc_fmt == TF_STK) 
+    {
+      //:TODO:
+      // header.mSamplePeriod not initialized yet... 
+      node = ReadSTKNetwork(
+         ilfp, 
+         &dictHash,
+         &phoneHash, 
+         notInDictAction, 
+         in_lbl_fmt,
+         feature_repo.CurrentHeader().mSamplePeriod, 
+         network_file, 
+         NULL);
+    }
+    else 
+    {
+      Error("Too bad. What did you do ?!?");
+    }
+                                
+    NetworkExpansionsAndOptimizations(
+        node, 
+        expOptions, 
+        in_net_fmt, 
+        &dictHash,
+        &nonCDphHash, 
+        &phoneHash);
+                                      
+    net.Init(node, &hset, NULL);
+  } 
+  else 
   {
     ilfp = OpenInputMLF(in_MLF);
-  } else {
-    ilfp = fopen(network_file, "rt");
-    if (ilfp  == NULL) Error("Cannot open network file: %s", network_file);
-
-    Node *node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash,
-                                notInDictAction, in_lbl_fmt,
-                                header.mSamplePeriod, network_file, NULL);
-    NetworkExpansionsAndOptimizations(node, expOptions, in_net_fmt, &dictHash,
-                                      &nonCDphHash, &phoneHash);
-    //InitNetwork(&net, node, &hset, NULL);
-    net.Init(node, &hset, NULL);
-    fclose(ilfp);
   }
+
   lfp = OpenOutputMLF(out_MLF);
 
-  for (file_name = feature_files; file_name; file_name = file_name->mpNext) {
+  // we are going to read from the feature repository
+  feature_repo.Rewind();
 
-    if (trace_flag & 1) {
-      TraceLog("Processing file %d/%d '%s'", ++fcnt,
-                 nfeature_files,file_name->mpPhysical);
+
+  //////////////////////////////////////////////////////////////////////////////
+  // read consequently all the feature files 
+  while (!feature_repo.EndOfList())
+  {
+    if (trace_flag & 1) 
+    {
+      TraceLog("Processing file %d/%d '%s'", ++fcnt, feature_repo.QueueSize(), 
+          feature_repo.FollowingPhysical().c_str());
     }
     
-    if (cmn_mask) process_mask(file_name->logical, cmn_mask, cmn_file);
-    if (cvn_mask) process_mask(file_name->logical, cvn_mask, cvn_file);
-    
-    obsMx = ReadHTKFeatures(file_name->mpPhysical, swap_features,
-                            startFrmExt, endFrmExt, targetKind,
-                            derivOrder, derivWinLengths, &header,
-                            cmn_path, cvn_path, cvg_file, &rhfbuff);
+    // read the feature matrix .................................................
+    feature_repo.ReadFullMatrix(feature_matrix);
 
-/*  lfp = fopen("xxx.fea", "w");
-    header.mSampleKind = 9;
-    WriteHTKHeader(lfp, header, 1);
-    WriteHTKFeature(lfp, obsMx, header.mNSamples * header.mSampleSize / sizeof(float), 1);
-    fclose(lfp);
-    exit(0); */
-
-    if (hset.mInputVectorSize != static_cast<int>(header.mSampleSize / sizeof(float))) {
+    if (hset.mInputVectorSize != static_cast<int>(feature_matrix.Cols()))
+    {
       Error("Vector size [%d] in '%s' is incompatible with HMM set [%d]",
-            header.mSampleSize/sizeof(float), file_name->mpPhysical, hset.mInputVectorSize);
+          feature_matrix.Cols(), feature_repo.CurrentPhysical().c_str(), 
+          hset.mInputVectorSize);
+    }
+
+    // parse per-datafile models ...............................................
+    if (mmf_mask != NULL) 
+    {
+      static string    last_speaker_mmf;
+      string           speaker_mmf;
+
+      ProcessMask(feature_repo.CurrentLogical(), mmf_mask, speaker_mmf);
+        
+      if (last_speaker_mmf != speaker_mmf) 
+      {
+        hset.ParseMmf((string(mmf_dir) + "/" + speaker_mmf).c_str(), NULL);
+        last_speaker_mmf = speaker_mmf;
+      }
     }
     
+    // read the network file if given ..........................................
     if (!network_file) 
     {
-      Node *node = NULL;
-      strcpy(label_file, file_name->logical);
-      ilfp = OpenInputLabelFile(label_file, in_lbl_dir,
-                              in_lbl_ext ? in_lbl_ext :
-                              in_transc_fmt == TF_STK ? "net" : "lab",
-                              ilfp, in_MLF);
+      Node* node = NULL;
 
-      if (in_transc_fmt == TF_HTK) {
-        labels = ReadLabels(ilfp, dictionary ? &dictHash : &phoneHash,
-                                  dictionary ? UL_ERROR : UL_INSERT, in_lbl_fmt,
-                                  header.mSamplePeriod, label_file, in_MLF, NULL);
+      strcpy(label_file, feature_repo.CurrentLogical().c_str());
+
+      ilfp = OpenInputLabelFile(label_file, in_lbl_dir, 
+          in_lbl_ext ? in_lbl_ext :
+          in_transc_fmt == TF_STK ? "net" : "lab",
+          ilfp, in_MLF);
+
+      if (in_transc_fmt == TF_HTK) 
+      {
+        labels = ReadLabels(ilfp, dictionary ? &dictHash : &phoneHash, 
+            dictionary ? UL_ERROR : UL_INSERT, in_lbl_fmt,
+            feature_repo.CurrentHeader().mSamplePeriod, label_file, in_MLF, NULL);
+
         node = MakeNetworkFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
         ReleaseLabels(labels);
-      } else if (in_transc_fmt == TF_STK) {
+      } 
+      else if (in_transc_fmt == TF_STK) 
+      {
         node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash, notInDictAction,
-                              in_lbl_fmt, header.mSamplePeriod, label_file, in_MLF);
-      } else Error("Too bad. What did you do ?!?");
+            in_lbl_fmt, feature_repo.CurrentHeader().mSamplePeriod, label_file, in_MLF);
+      } 
+      else 
+      {
+        Error("Too bad. What did you do ?!?");
+      }
 
       NetworkExpansionsAndOptimizations(node, expOptions, in_net_fmt, &dictHash,
-                                        &nonCDphHash, &phoneHash);
-      net.Init(node, &hset, NULL);
+          &nonCDphHash, &phoneHash);
 
+      net.Init(node, &hset, NULL);
 
       CloseInputLabelFile(ilfp, in_MLF);
     }
@@ -471,70 +616,96 @@ int main(int argc, char *argv[])
     net.mAlignment     = alignment;
     net.mPruningThresh = state_pruning > 0.0 ? state_pruning : -LOG_0;
 
-    if (alignment & STATE_ALIGNMENT && out_lbl_fmt.MODEL_OFF) net.mAlignment &= ~MODEL_ALIGNMENT;
-    if (alignment & MODEL_ALIGNMENT && out_lbl_fmt.WORDS_OFF) net.mAlignment &= ~WORD_ALIGNMENT;
-    if (alignment & STATE_ALIGNMENT && out_lbl_fmt.FRAME_SCR) net.mAlignment |=  FRAME_ALIGNMENT;
+    if (alignment & STATE_ALIGNMENT && out_lbl_fmt.MODEL_OFF) 
+      net.mAlignment &= ~MODEL_ALIGNMENT;
+    if (alignment & MODEL_ALIGNMENT && out_lbl_fmt.WORDS_OFF)
+      net.mAlignment &= ~WORD_ALIGNMENT;
+    if (alignment & STATE_ALIGNMENT && out_lbl_fmt.FRAME_SCR)
+      net.mAlignment |=  FRAME_ALIGNMENT;
 
     for (;;) 
     {
-      //ViterbiInit(&net);
       net.ViterbiInit();
       net.PassTokenInNetwork = baum_welch ? &PassTokenSum : &PassTokenMax;
       net.PassTokenInModel   = baum_welch ? &PassTokenSum : &PassTokenMax;
 
-      for (i = 0; i < header.mNSamples; i++) {
-        //ViterbiStep(&net, obsMx + i * hset.mInputVectorSize);
-        net.ViterbiStep(obsMx + i * hset.mInputVectorSize);
+      for (i = 0; i < feature_matrix.Rows(); i++) 
+      {
+        net.ViterbiStep(feature_matrix[i]);
       }
       
-      //like = ViterbiDone(&net, &labels);
       like = net.ViterbiDone(&labels);
 
-      if (labels) {
+      if (labels) 
         break;
-      }
-      if (net.mPruningThresh <= LOG_MIN ||
-         stprn_step <= 0.0 ||
-         (net.mPruningThresh += stprn_step) > stprn_limit ) {
+
+      if (net.mPruningThresh <= LOG_MIN 
+      || (stprn_step <= 0.0) 
+      || ((net.mPruningThresh += stprn_step) > stprn_limit)) 
+      {
         Warning("No tokens survived");
         break;
       }
-      Warning("No tokens survived, trying pruning threshold: %.2f", net.mPruningThresh);
+
+      Warning("No tokens survived, trying pruning threshold: %.2f", 
+          net.mPruningThresh);
     }
-    if (trace_flag & 1 && labels) {
-      Label *label;
-      int nFrames = header.mNSamples - hset.mTotalDelay;
-      for (label = labels; label->mpNextLevel != NULL; label = label->mpNextLevel);
-      for (; label != NULL; label = label->mpNext) {
+
+    if (trace_flag & 1 && labels) 
+    {
+      Label* label;
+      int    n_frames = feature_matrix.Rows() - hset.mTotalDelay;
+
+      for (label = labels; 
+          label->mpNextLevel != NULL;
+          label = label->mpNextLevel)
+      {}
+
+      for (; label != NULL; label = label->mpNext) 
+      {
         fprintf(stdout, "%s ", label->mpName);
       }
-      TraceLog(" ==  [%d frames] %f", nFrames, like / nFrames);
-    }
-    free(obsMx);
-    strcpy(label_file, file_name->logical);
-    lfp = OpenOutputLabelFile(label_file, out_lbl_dir, out_lbl_ext, lfp, out_MLF);
 
-    if (out_transc_fmt == TF_HTK) {
-      WriteLabels(lfp, labels, out_lbl_fmt, header.mSamplePeriod, label_file, out_MLF);
-    } else {
-      Node *node = MakeNetworkFromLabels(labels,
-                                         alignment & (MODEL_ALIGNMENT|STATE_ALIGNMENT)
-                                         ? NT_MODEL : NT_WORD);
-      WriteSTKNetwork(lfp, node, out_net_fmt, header.mSamplePeriod, label_file, out_MLF);
+      TraceLog(" ==  [%d frames] %f", n_frames, like / n_frames);
+    }
+
+    strcpy(label_file, feature_repo.CurrentLogical().c_str());
+    
+    lfp = OpenOutputLabelFile(label_file, out_lbl_dir, out_lbl_ext, lfp, 
+        out_MLF);
+
+    if (out_transc_fmt == TF_HTK) 
+    {
+      WriteLabels(lfp, labels, out_lbl_fmt, feature_repo.CurrentHeader().mSamplePeriod, label_file,
+          out_MLF);
+    } 
+    else 
+    {
+      Node* node = MakeNetworkFromLabels(labels, 
+          alignment & (MODEL_ALIGNMENT|STATE_ALIGNMENT) ? NT_MODEL : NT_WORD);
+      
+      WriteSTKNetwork(lfp, node, out_net_fmt, feature_repo.CurrentHeader().mSamplePeriod,
+          label_file, out_MLF);
+
       FreeNetwork(node);
     }
+
     CloseOutputLabelFile(lfp, out_MLF);
     ReleaseLabels(labels);
 
-    if (!network_file) {
+    if (!network_file) 
+    {
       net.Release();
     }
-  }
-  if (network_file) {
+  } // while (!feature_repo.EndOfList())
+
+
+  // clean up ..................................................................
+  if (network_file) 
+  {
     net.Release();
   }
   
-  //ReleaseHMMSet(&hset);
   hset.Release();
   
 // my_hdestroy_r(&labelHash,   0);
@@ -559,3 +730,4 @@ int main(int argc, char *argv[])
 }
 
 //HVite -T 05 -H models -w wdnet dict words4 MAL_4379315A.fea > htk.log
+

@@ -13,23 +13,123 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+// include config.h if desired
+#if HAVE_CONFIG_H
+#  include <config.h>
+#endif /* HAVE_CONFIG_H */
+
 #include "Error.h"
-#include "Math.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <float.h>
 #include <math.h>
 
+#include <malloc.h>
+
 #ifndef _GNU_SOURCE
-#define _GNU_SOURCE
+#  define _GNU_SOURCE
 #endif
+
 #include <limits.h>
-#include <search.h>
 #include <string>
 
 
+
+#if defined __CYGWIN32__ && !defined __CYGWIN__
+   /* For backwards compatibility with Cygwin b19 and
+      earlier, we define __CYGWIN__ here, so that
+      we can rely on checking just for that macro. */
+#  define __CYGWIN__  __CYGWIN32__
+#endif
+
+#if defined _WIN32 && !defined __CYGWIN__
+   /* Use Windows separators on all _WIN32 defining
+      environments, except Cygwin. */
+#  define DIR_SEPARATOR_CHAR		'\\'
+#  define DIR_SEPARATOR_STR		"\\"
+#  define PATH_SEPARATOR_CHAR		';'
+#  define PATH_SEPARATOR_STR		";"
+#endif
+#ifndef DIR_SEPARATOR_CHAR
+   /* Assume that not having this is an indicator that all
+      are missing. */
+#  define DIR_SEPARATOR_CHAR		'/'
+#  define DIR_SEPARATOR_STR		"/"
+#  define PATH_SEPARATOR_CHAR		':'
+#  define PATH_SEPARATOR_STR		":"
+#endif /* !DIR_SEPARATOR_CHAR */
+
+
+#if !HAVE_REENTRANT_SEARCH
+#  include <gnusearch.h>
+#else
+#  include <search.h>
+#endif
+
+#include <vector>
+
+
+
+/* Alignment of critical dynamic data structure
+ *
+ * Not all platforms support memalign so we provide a stk_memalign wrapper
+ * void *stk_memalign( size_t align, size_t size, void **pp_orig )
+ * *pp_orig is the pointer that has to be freed afterwards.
+ */
+#ifdef HAVE_POSIX_MEMALIGN
+#  define stk_memalign(align,size,pp_orig) \
+     ( !posix_memalign( pp_orig, align, size ) ? *(pp_orig) : NULL )
+#  ifdef STK_MEMALIGN_MANUAL
+#    undef STK_MEMALIGN_MANUAL
+#  endif
+#elif defined(HAVE_MEMALIGN)
+   /* Some systems have memalign() but no declaration for it */
+   //void * memalign( size_t align, size_t size );
+#  define stk_memalign(align,size,pp_orig) \
+     ( *(pp_orig) = memalign( align, size ) )
+#  ifdef STK_MEMALIGN_MANUAL
+#    undef STK_MEMALIGN_MANUAL
+#  endif
+#else /* We don't have any choice but to align manually */
+#  define stk_memalign(align,size,pp_orig) \
+     (( *(pp_orig) = malloc( size + align - 1 )) ? \
+     (void *)( (((unsigned long)*(pp_orig)) + 15) & ~0xFUL ) : NULL )
+#  define STK_MEMALIGN_MANUAL
+#endif
+
+/// Define this, if new matrix will be used instead of plain pointer array
+#define USE_NEW_MATRIX                                                  
+
+#ifdef USE_NEW_MATRIX
+#  define FEATURES_16_ALIGNED
+#endif
+
+
+// some extra code to handle strchr and strrchr 
+#if !STDC_HEADERS
+#  if !HAVE_STRCHR
+#    define strchr index
+#    define strrchr rindex
+#  endif
+#endif
+
+
+
+// vector of four single floats
+// vector of four single doubles
+typedef float v4sf __attribute__((vector_size(16))); 
+typedef double v4sd __attribute__((vector_size(16))); 
+
+typedef union 
+{
+  v4sf    v;
+  float   f[4];
+} f4vector; 
+
+
 #ifndef M_PI
-#define M_PI 3.1415926535897932384626433832795
+#  define M_PI 3.1415926535897932384626433832795
 #endif
 
 #define M_LOG_2PI 1.8378770664093454835606594728112
@@ -47,31 +147,27 @@
 
 
 #ifndef DOUBLEPRECISION
-#define DOUBLEPRECISION 1
+#  define DOUBLEPRECISION 1
 #endif
 
 #if DOUBLEPRECISION
-#define FLOAT double
-#define EPSILON DBL_EPSILON
-#define FLOAT_FMT "%lg"
-#define swapFLOAT swap8
-#define _EXP  exp
-#define _LOG  log
-#define _SQRT sqrt
+#  define FLOAT double
+#  define EPSILON DBL_EPSILON
+#  define FLOAT_FMT "%lg"
+#  define swapFLOAT swap8
+#  define _EXP  exp
+#  define _LOG  log
+#  define _SQRT sqrt
 #else
-#define FLOAT float
-#define EPSILON FLT_EPSILON
-#define FLOAT_FMT "%g"
-#define swapFLOAT swap4
-#define _EXP  expf
-#define _LOG  logf
-#define _SQRT sqrtf
+#  define FLOAT float
+#  define EPSILON FLT_EPSILON
+#  define FLOAT_FMT "%g"
+#  define swapFLOAT swap4
+#  define _EXP  expf
+#  define _LOG  logf
+#  define _SQRT sqrtf
 #endif
 
-
-//#define BOOL  int
-//#define TRUE  1
-//#define FALSE 0
 
 #define LOG_0     (-1.0e10)
 #define LOG_MIN   (0.5 * LOG_0)
@@ -82,7 +178,7 @@
 #define UNDEF_TIME -10000
 
 #ifdef WIN32
-#define access _access
+#  define access _access
 #endif
 
 
@@ -92,21 +188,66 @@
 #define INT_32   int
 #define FLOAT_32 float
 
+#define LOG_INC(a, b) ((a) = LogAdd((a),(b)))
+
+#define PARAMKIND_WAVEFORM  0
+#define PARAMKIND_LPC       1
+#define PARAMKIND_LPREFC    2
+#define PARAMKIND_LPCEPSTRA 3
+#define PARAMKIND_LPDELCEP  4
+#define PARAMKIND_IREFC     5
+#define PARAMKIND_MFCC      6
+#define PARAMKIND_FBANK     7
+#define PARAMKIND_MELSPEC   8
+#define PARAMKIND_USER      9
+#define PARAMKIND_DISCRETE 10
+#define PARAMKIND_PLP      11
+#define PARAMKIND_ANON     12
+
+#define PARAMKIND_E   0000100 /// has energy
+#define PARAMKIND_N   0000200 /// absolute energy suppressed
+#define PARAMKIND_D   0000400 /// has delta coefficients
+#define PARAMKIND_A   0001000 /// has acceleration coefficients
+#define PARAMKIND_C   0002000 /// is compressed
+#define PARAMKIND_Z   0004000 /// has zero mean static coef.
+#define PARAMKIND_K   0010000 /// has CRC checksum
+#define PARAMKIND_0   0020000 /// has 0'th cepstral coef.  cccccc
+#define PARAMKIND_V   0040000 /// has VQ codebook index
+#define PARAMKIND_T   0100000 /// has triple delta coefficients
+
+
+/// Defines the white chars for string trimming
+#if !defined(WHITE_CHARS)
+#  define WHITE_CHARS " \t"
+#endif
+
 using namespace STK;
 
+    
 //namespace STK
 //{
   /// This type will be used for flag passing
   typedef unsigned int    FlagType;
   
   
-  typedef enum 
-  {
-    FALSE = 0,
-    TRUE  = 1
-  } BOOL;
+  /** **************************************************************************
+   ** **************************************************************************
+   * @brief Aligns a number to a specified base
+   * @param n Number of type @c _T to align
+   * @return Aligned value of type @c _T
+   */
+  template<const size_t _align, typename _T>
+    inline _T 
+    align(const _T n)
+    {
+      const _T x(_align - 1); 
+      return (n + x) & ~(x);
+    }
   
   
+  /** **************************************************************************
+   ** **************************************************************************
+   */
   enum PropagDirectionType
   {
     FORWARD,
@@ -114,26 +255,35 @@ using namespace STK;
   };
   
   
+  /** **************************************************************************
+   ** **************************************************************************
+   */
   struct MyHSearchData 
   {
     ENTRY **            mpEntry;
     size_t              mNEntries;
   
-  //private
     struct hsearch_data mTab;
     size_t              mTabSize;
   };
   
   
+  /** **************************************************************************
+   ** **************************************************************************
+   */
   struct ReadlineData 
   {
-    char *              buffer;
+    char*               buffer;
     int                 size;
   };
   
   
+  /** **************************************************************************
+   ** **************************************************************************
+   */
   class FileListElem
   {
+  private:
     std::string         mLogical;     ///< Logical file name representation
     std::string         mPhysical;    ///< Pysical file name representation
     
@@ -150,29 +300,26 @@ using namespace STK;
     FileListElem *      mpNext;
     char *              mpPhysical;
     char                logical[1];
-    
-    
   };
   
   
+  /** **************************************************************************
+   ** **************************************************************************
+   */
   typedef struct 
   {
     double logvalue; 
     unsigned negative:1;
   } FloatInLog;
   
-  //#define Error(...) _Error_(__func__, __FILE__, __LINE__, __VA_ARGS__)
-  //#define Warning(...) _Warning_(__func__, __FILE__, __LINE__, __VA_ARGS__)
   
-  //void _Error_(const char *func, const char *file, int line, char *msg, ...);
-  //void _Warning_(const char *func, const char *file, int line, char *msg, ...);
-  //void TraceLog(char *msg, ...);
+  
   int     ReadParmKind(const char *str, bool checkBrackets);
   int     ParmKind2Str(unsigned parmKind, char *outstr);
   void    MakeFileName(char *outFileName, const char* inFileName,
                     const char *out_dir, const char *out_ext);
   
-  char *  strtoupper(char *str);
+  char*   strtoupper(char *str);
   int     qsstrcmp(const void *a, const void *b);
   int     qsptrcmp(const void *a, const void *b);
   
@@ -197,6 +344,9 @@ using namespace STK;
   
   void fast_softmax_vec(float *in, float *out, int size);
   void fast_sigmoid_vec(float *in, float *out, int size);
+  
+  void fast_softmax_vec(double *in, double *out, int size);
+  void fast_sigmoid_vec(double *in, double *out, int size);
   
   int my_hcreate_r(size_t nel,
                   MyHSearchData *tab);
@@ -268,18 +418,23 @@ using namespace STK;
     int pseudoModeule);
   
   int ParseOptions(
-    int argc,
-    char *argv[],
-    const char *optionMapping,
-    const char *toolName,
-    MyHSearchData *cfgHash);
+    int             argc,
+    char*           argv[],
+    const char*     optionMapping,
+    const char*     toolName,
+    MyHSearchData*  cfgHash);
   
   FileListElem **AddFileElem(FileListElem **last, char *fileElem);
   
   int npercents(const char *str);
   int process_mask(const char *normstr, const char *wildcard, char *substr);
   
+  void fprintf_ll(FILE* fp, long long n);
   
+
+  //////////////////////////////////////////////////////////////////////////////
+  // THE C++ COMMON ROUTINES
+  //////////////////////////////////////////////////////////////////////////////
   /**
   *  @brief Returns true if rString matches rWildcard and fills substr with
   *         corresponding %%% matched pattern
@@ -294,46 +449,65 @@ using namespace STK;
   ProcessMask(const std::string & rString,
               const std::string & rWildcard,
                     std::string & rSubstr);
+
+  /**
+  *  @brief Returns true if rString matches rWildcard and fills substr with
+  *         corresponding %%% matched pattern
+  *  @param rString    String to be parsed
+  *  @param rWildcard  String containing wildcard pattern
+  *  @param Substr     The mathced %%% pattern is stored here
+  *
+  *  This is a C++ extension to the original process_mask function.
+  *
+  */
+  bool
+  ProcessMask(const std::string & rString,
+              const std::string & rWildcard,
+              char*               pSubstr);
   
   
-  #define LOG_INC(a, b) ((a) = LogAdd((a),(b)))
-  
-  #define PARAMKIND_WAVEFORM  0
-  #define PARAMKIND_LPC       1
-  #define PARAMKIND_LPREFC    2
-  #define PARAMKIND_LPCEPSTRA 3
-  #define PARAMKIND_LPDELCEP  4
-  #define PARAMKIND_IREFC     5
-  #define PARAMKIND_MFCC      6
-  #define PARAMKIND_FBANK     7
-  #define PARAMKIND_MELSPEC   8
-  #define PARAMKIND_USER      9
-  #define PARAMKIND_DISCRETE 10
-  #define PARAMKIND_PLP      11
-  #define PARAMKIND_ANON     12
-  
-  #define PARAMKIND_E   0000100 /// has energy
-  #define PARAMKIND_N   0000200 /// absolute energy suppressed
-  #define PARAMKIND_D   0000400 /// has delta coefficients
-  #define PARAMKIND_A   0001000 /// has acceleration coefficients
-  #define PARAMKIND_C   0002000 /// is compressed
-  #define PARAMKIND_Z   0004000 /// has zero mean static coef.
-  #define PARAMKIND_K   0010000 /// has CRC checksum
-  #define PARAMKIND_0   0020000 /// has 0'th cepstral coef.  cccccc
-  #define PARAMKIND_V   0040000 /// has VQ codebook index
-  #define PARAMKIND_T   0100000 /// has triple delta coefficients
+  /**
+   * @brief Splits the string into tokens based on the specified separator
+   *
+   * @param rString The original string
+   * @param rTokens STL vector (not necesarilly empty) of strings
+   * @param rSeparators String containing separators
+   *
+   * @return Returns a refference to the original vector
+   */
+  std::vector<std::string>&
+  TokenizeString(
+      const std::string&              rString, 
+            std::vector<std::string>& rTokens, 
+      const std::string&              rSeparators = ",");
+
+
+  /** 
+   * @brief Removes the leading and trailing white chars
+   * 
+   * @param rStr Refference to the string to be processed
+   *
+   * @return Refference to the original string
+   *
+   * The white characters are determined by the @c WHITE_CHARS macro defined 
+   * above.
+   */
+  std::string&
+  Trim(std::string& rStr);
+
+
   
   /// Sets application HTK compatibility. If true, all functions work to
   /// be HTK compatible.
   extern bool           gHtkCompatible;
   
-  extern const char *   gpFilterWldcrd;
-  extern const char *   gpHListOFilter;
-  extern const char *   gpMmfFilter;
-  extern const char *   gpMmfOFilter;
-  extern const char *   gpParmFilter;
-  extern const char *   gpParmOFilter;
-  extern const char *   gpScriptFilter;
+  extern const char*    gpFilterWldcrd;
+  extern const char*    gpHListOFilter;
+  extern const char*    gpMmfFilter;
+  extern const char*    gpMmfOFilter;
+  extern const char*    gpParmFilter;
+  extern const char*    gpParmOFilter;
+  extern const char*    gpScriptFilter;
   
 //}; //namespace STK
 

@@ -26,75 +26,132 @@
 #include <iostream>
 
 #include <string>
-
+#include <vector>
 
 static union
 {
         double d;
         struct
         {
-                int j,i;
+                int j,i;      // LITTLE ENDIAN
+                // int i,j;   // BIG ENDIAN
         } n;
-} qn_d2i;
+} sn_d2i;
 
-#define QN_EXP_A (1048576/M_LN2)
-#define QN_EXP_C 60801
-//#define EXP2(y) (qn_d2i.n.j = (int) (QN_EXP_A*(y)) + (1072693248 - QN_EXP_C), qn_d2i.d)
-#define FAST_EXP(y) (qn_d2i.n.i = (int) (QN_EXP_A*(y)) + (1072693248 - QN_EXP_C), qn_d2i.d)
+#define SN_EXP_A (1048576/M_LN2)
+#define SN_EXP_C 60801
+#define FAST_EXP(y) (sn_d2i.n.i = (int) (SN_EXP_A*(y)) + (1072693248 - SN_EXP_C), sn_d2i.d)  
 
-void fast_sigmoid_vec(FLOAT *in, FLOAT *out, int size)
+//***************************************************************************
+//***************************************************************************
+void fast_sigmoid_vec(float* in, float* out, int size)
 {
   while(size--) *out++ = 1.0/(1.0 + FAST_EXP(-*in++));
 }
 
-FLOAT i_max_double (FLOAT *a, int len) {
-	int i;
-	FLOAT max;
-	max = a[0];
-	for (i=1; i<len; i++) {
-		if (a[i] > max) {
-			max = a[i];
-		}
-	}
-	return max;
+
+//***************************************************************************
+//***************************************************************************
+void fast_sigmoid_vec(double* in, double* out, int size)
+{
+  while(size--) *out++ = 1.0/(1.0 + FAST_EXP(-*in++));
 }
 
-void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
+
+//***************************************************************************
+//***************************************************************************
+float i_max_double (float *a, int len) 
 {
-	int i;
-	FLOAT maxa,sum;
-	// first find the max
-	maxa = i_max_double (in, size);
-	// normalize, exp and get the sum
-	sum = 0.0;
-	for (i=0; i<size; i++) {
-		out[i] = FAST_EXP(in[i] - maxa);
-		sum += out[i];
-	}
-	// now normalize bu the sum
-	for (i=0; i<size; i++) {
-		out[i] /= sum;
-	}
+  int i;
+  float max;
+  max = a[0];
+  for (i=1; i<len; i++) 
+  {
+    if (a[i] > max) 
+    {
+      max = a[i];
+    }
+  }
+  return max;
+}
+
+
+//***************************************************************************
+//***************************************************************************
+double i_max_double (double *a, int len) 
+{
+  int i;
+  double max;
+  max = a[0];
+  for (i=1; i<len; i++) 
+  {
+    if (a[i] > max) 
+    {
+      max = a[i];
+    }
+  }
+  return max;
+}
+
+
+//***************************************************************************
+//***************************************************************************
+void fast_softmax_vec(float *in, float *out, int size)
+{
+  int i;
+  float maxa,sum;
+  // first find the max
+  maxa = i_max_double (in, size);
+  // normalize, exp and get the sum
+  sum = 0.0;
+  for (i=0; i<size; i++) {
+    out[i] = FAST_EXP(in[i] - maxa);
+    sum += out[i];
+  }
+  // now normalize bu the sum
+  for (i=0; i<size; i++) {
+    out[i] /= sum;
+  }
+}
+
+//***************************************************************************
+//***************************************************************************
+void fast_softmax_vec(double *in, double *out, int size)
+{
+  int i;
+  double maxa,sum;
+  // first find the max
+  maxa = i_max_double (in, size);
+  // normalize, exp and get the sum
+  sum = 0.0;
+  for (i=0; i<size; i++) {
+    out[i] = FAST_EXP(in[i] - maxa);
+    sum += out[i];
+  }
+  // now normalize bu the sum
+  for (i=0; i<size; i++) {
+    out[i] /= sum;
+  }
 }
 
 
 //namespace STK
 //{
   
-  const char *    gpFilterWldcrd;
+  const char*     gpFilterWldcrd;
   // :WARNING: default HTK compatibility is set to false
   bool            gHtkCompatible = false;
   FLOAT           gMinLogDiff;
   
-  const char *    gpScriptFilter;
-  const char *    gpParmFilter;
-  const char *    gpMmfFilter;
-  const char *    gpHListOFilter;
-  const char *    gpMmfOFilter;
-  const char *    gpParmOFilter;
+  const char*     gpScriptFilter;
+  const char*     gpParmFilter;
+  const char*     gpMmfFilter;
+  const char*     gpHListOFilter;
+  const char*     gpMmfOFilter;
+  const char*     gpParmOFilter;
 
     
-  static char *   gpParmKindNames[] = 
+  static char*    gpParmKindNames[] = 
   {
     "WAVEFORM",
     "LPC",
@@ -154,13 +211,23 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
   //***************************************************************************
   //***************************************************************************
   void 
-  MakeFileName(char * pOutFileName, const char* inFileName,
-               const char *out_dir, const char *out_ext)
+  MakeFileName(char* pOutFileName,  const char* inFileName,
+               const char* out_dir, const char* out_ext)
   {
-    const char *base_name, *bname_end = NULL, *chrptr;
+    const char* base_name;
+    const char* bname_end = NULL;
+    const char* chrptr;
   
-  //  if (*inFileName == '*' && *++inFileName == '/') ++inFileName;
-  
+    //  if (*inFileName == '*' && *++inFileName == '/') ++inFileName;
+    
+    // we don't do anything if file is stdin/out
+    if (!strcmp(inFileName, "-"))
+    {
+      pOutFileName[0] = '-';
+      pOutFileName[1] = '\0';
+      return;
+    }    
+    
     base_name = strrchr(inFileName, '/');
     base_name = base_name != NULL ? base_name + 1 : inFileName;
     
@@ -237,6 +304,7 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
     gMinLogDiff = log(DBL_EPSILON);
   }
   
+  
   //***************************************************************************
   //***************************************************************************
   double 
@@ -259,7 +327,8 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
         return  x;
     }
   
-    return x + log(1.0 + exp(diff));
+    //return x + log(1.0 + exp(diff));
+    return x + log(1.0 + FAST_EXP(diff));
   }
   
   //***************************************************************************
@@ -332,7 +401,7 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
   //***************************************************************************
   //***************************************************************************
   void 
-  sigmoid_vec(FLOAT * pIn, FLOAT * pOut, int size)
+  sigmoid_vec(FLOAT* pIn, FLOAT* pOut, int size)
   {
     while (size--) *pOut++ = 1.0/(1.0 + _EXP(-*pIn++));
   }
@@ -340,7 +409,7 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
   //***************************************************************************
   //***************************************************************************
   void 
-  exp_vec(FLOAT *pIn, FLOAT *pOut, int size)
+  exp_vec(FLOAT* pIn, FLOAT* pOut, int size)
   {
     while (size--) *pOut++ = _EXP(*pIn++);
   }
@@ -348,21 +417,21 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
   //***************************************************************************
   //***************************************************************************
   void 
-  log_vec(FLOAT *pIn, FLOAT *pOut, int size)
+  log_vec(FLOAT* pIn, FLOAT* pOut, int size)
   {
     while (size--) *pOut++ = _LOG(*pIn++);
   }
   
   //***************************************************************************
   //***************************************************************************
-  void sqrt_vec(FLOAT *pIn, FLOAT *pOut, int size)
+  void sqrt_vec(FLOAT* pIn, FLOAT* pOut, int size)
   {
     while (size--) *pOut++ = _SQRT(*pIn++);
   }
   
   //***************************************************************************
   //***************************************************************************
-  void softmax_vec(FLOAT *pIn, FLOAT *pOut, int size)
+  void softmax_vec(FLOAT* pIn, FLOAT* pOut, int size)
   {
     int i;
     FLOAT sum = 0.0;
@@ -373,7 +442,7 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
   
   //***************************************************************************
   //***************************************************************************
-  int ParmKind2Str(unsigned parmKind, char * pOutString) 
+  int ParmKind2Str(unsigned parmKind, char* pOutString) 
   {
     // :KLUDGE: Absolutely no idea what this is...
       if ((parmKind & 0x003F) >= sizeof(gpParmKindNames)/sizeof(gpParmKindNames[0])) 
@@ -629,7 +698,7 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
   
     if (data->size == 0) {
       data->size = LINEBUFF_INIT_SIZE;
-      data->buffer = (char *) malloc(data->size);
+      data->buffer = (char*) malloc(data->size);
       if (data->buffer == NULL) Error("Insufficient memory");
     } else if (data->size == -1) { // EOF reached in previous call
       data->size = 0;
@@ -679,7 +748,8 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
     const char *pParamName,
     const char *value,
     int optionChar) {
-    ENTRY e, *ep;
+    ENTRY e = {0};  // {0} is just to make compiler happy
+    ENTRY *ep;
     int i;
     char *bmod, *emod;
   
@@ -821,11 +891,10 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
   
   //***************************************************************************
   //***************************************************************************
-  ENTRY *GetParam(
-    MyHSearchData *pConfigHash,
-    const char *pParamName)
+  ENTRY* GetParam(MyHSearchData *pConfigHash, const char *pParamName)
   {
-    ENTRY e, *ep;
+    ENTRY e={0}; // {0} is just to make compiler happy
+    ENTRY *ep;
   
     e.key = (char *) (pParamName - 1);
     do {
@@ -889,7 +958,7 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
   //***************************************************************************
   FLOAT 
   GetParamFlt(
-    MyHSearchData *   pConfigHash,
+    MyHSearchData*    pConfigHash,
     const char *      pParamName,
     FLOAT             default_value)
   {
@@ -1029,7 +1098,7 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
     *CVGFile     = GetParamStr(pConfigHash, paramName, NULL);
     strcpy(chrptr, "TARGETKIND");
     str = GetParamStr(pConfigHash, paramName, "ANON");
-    targetKind = ReadParmKind(str, FALSE);
+    targetKind = ReadParmKind(str, false);
     if (targetKind == -1) Error("Invalid TARGETKIND = '%s'", str);
   
     strcpy(chrptr, "DERIVWINDOWS");
@@ -1037,16 +1106,22 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
       long lval;
       *derivOrder      = 0;
       *derivWinLens = NULL;
-      while ((str = strtok((char *) str, " \t_")) != NULL) {
-        lval = strtol(str, &chrptr, 0);
-        if (!*str || *chrptr) {
-          Error("Integers separated by '_' expected for parameter DERIVWINDOWS");
+      
+      if (NULL != str)
+      {
+        while ((str = strtok((char *) str, " \t_")) != NULL) 
+        {
+          lval = strtol(str, &chrptr, 0);
+          if (!*str || *chrptr) {
+            Error("Integers separated by '_' expected for parameter DERIVWINDOWS");
+          }
+          *derivWinLens = (int *)realloc(*derivWinLens, ++*derivOrder*sizeof(int));
+          if (*derivWinLens == NULL) Error("Insufficient memory");
+          (*derivWinLens)[*derivOrder-1] = lval;
+          str = NULL;
         }
-        *derivWinLens = (int *)realloc(*derivWinLens, ++*derivOrder*sizeof(int));
-        if (*derivWinLens == NULL) Error("Insufficient memory");
-        (*derivWinLens)[*derivOrder-1] = lval;
-        str = NULL;
       }
+      
       return targetKind;
     }
     *derivOrder = targetKind & PARAMKIND_T ? 3 :
@@ -1110,7 +1185,7 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
     if (fp == stdin || fp == stdout) return 0;
   
     if (fstat(fileno(fp), &sb)) {
-//      return EOF;
+      return EOF;
     }
     if (S_ISFIFO(sb.st_mode)) return pclose(fp);
     else return fclose(fp);
@@ -1174,11 +1249,13 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
       value = strchr(bptr, '=');
       if (!value) Error("Character '=' expected after option '%s'", argv[optind]);
       *value++ = '\0';
+      
+      
       InsertConfigParam(cfgHash, bptr, value /*? value : "TRUE"*/, '-');
       free(bptr);
     }
     for (optind = 1; optind < argc && IS_OPTION(argv[optind]); optind++) {
-      option_must_follow = FALSE;
+      option_must_follow = false;
       tstr[2] = opt = argv[optind][1];
       optarg = argv[optind][2] != '\0' ? argv[optind] + 2 : NULL;
   
@@ -1288,7 +1365,7 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
   FileListElem::
   FileListElem(const std::string & rFileName)
   {
-    std::size_t  pos;
+    std::string::size_type  pos;
     
     mLogical = rFileName;
     
@@ -1303,10 +1380,16 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
       // copy all from mLogical[pos+1] till the end to mPhysical
       mPhysical.assign(mLogical.begin() + pos + 1, mLogical.end());
       // erase all from pos + 1 till the end from mLogical
-      mLogical.erase(pos + 1);
+      mLogical.erase(pos);
+      // trim the leading and trailing spaces
+      Trim(mPhysical);
+      Trim(mLogical);
     }
     else
     {
+      // trim the leading and trailing spaces
+      Trim(mLogical);
+
       mPhysical = mLogical;
     }    
   }    
@@ -1338,10 +1421,21 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
     return ret;
   }
   
+
   //***************************************************************************
   //***************************************************************************
   int 
-  process_mask(const char *normstr, const char *wildcard, char *substr)
+  process_mask(const char* pNormstr, const char* pWildcard, char* pSubstr)
+  {
+    return match(pWildcard, pNormstr, pSubstr);
+  }
+
+
+
+  //***************************************************************************
+  //***************************************************************************
+  int 
+  process_mask_old(const char *normstr, const char *wildcard, char *substr)
   {
     char *hlpptr;
     const char  *endwc = wildcard + strlen(wildcard);
@@ -1349,7 +1443,8 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
   
     *substr = '\0';
   
-    if ((hlpptr = (char *) memchr(wildcard, '*', endwc-wildcard)) == NULL) {//hvezdicka neni
+    if ((hlpptr = (char *) memchr(wildcard, '*', endwc-wildcard)) == NULL) 
+    {//hvezdicka neni
       return !((endwc-wildcard != endns-normstr) ||
               memcmpw(normstr, wildcard, endns-normstr, &substr));
     }
@@ -1383,18 +1478,41 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
   }
   
   
-  using std::string;
+  //***************************************************************************
+  //***************************************************************************
+  void fprintf_ll(FILE* fp, long long n)
+  {
+    const char digit_map[]      = "0123456789abcdef";
+    const int  base            = 10;
+    const int  n_leading_zeros = 8;
+    // the max number for long long is 9223372036854775807LL =>
+    // reserve 19 places for number, 1 place for sign, 1 place for string 
+    // zero termination, 8 places for leading zeros
+    const int  buffer_size     = 19 + 1 + 1 + n_leading_zeros;
+    char       buffer[buffer_size];
+    int        buffer_i        = buffer_size - 1;
+    
+    assert(n >= 0);
+    
+    buffer[buffer_i--] = '\0';
+    
+    for (int i=32; n && i; i--, n /= base)
+    {
+      buffer[buffer_i--] = digit_map[n % base];
+    }
+    
+    for (; buffer_i + n_leading_zeros + 2 > buffer_size; buffer_i--)
+    {
+      buffer[buffer_i] = '0';
+    }
+    
+    fprintf(fp, "%s", buffer + buffer_i + 1);
+  } // void fprintf_ll(FILE* fp, long long n)
+        
   
-  /**
-  *  @brief Returns true if rString matches rWildcard and fills substr with
-  *         corresponding %%% matched pattern
-  *  @param rString    String to be parsed
-  *  @param rWildcard  String containing wildcard pattern
-  *  @param Substr     The mathced %%% pattern is stored here
-  *
-  *  This is a C++ extension to the original process_mask function.
-  *
-  */
+  
+  //***************************************************************************
+  //***************************************************************************
   bool
   ProcessMask(const std::string & rString,
               const std::string & rWildcard,
@@ -1414,15 +1532,54 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
 
     // allocate space for the substring
     substr = new char[percent_count + 1];
+    substr[percent_count] = 0;
+    substr[0]             = '\0';
 
     // parse the string
-    if (ret = match(rWildcard.c_str(), rString.c_str(), substr))
+    if (0 != (ret = match(rWildcard.c_str(), rString.c_str(), substr)))
     {
       rSubstr = substr;
     }
     delete[] substr;
     return ret;
   } // ProcessMask
+
+
+
+  //***************************************************************************
+  //***************************************************************************
+  bool
+  ProcessMask(const std::string & rString,
+              const std::string & rWildcard,
+                    char*         pSubstr)
+  {
+    char *  substr;
+    int     percent_count        = 0;
+    int     ret ;
+    size_t  pos                  = 0;
+
+    // let's find how many % to allocate enough space for the return substring
+    while ((pos = rWildcard.find('%', pos)) != rWildcard.npos)
+    {
+      percent_count++;
+      pos++;
+    }
+
+    // allocate space for the substring
+    substr = new char[percent_count + 1];
+    substr[percent_count] = 0;
+    substr[0]             = '\0';
+
+    // parse the string
+    if (0 != (ret = match(rWildcard.c_str(), rString.c_str(), substr)))
+    {
+      strcpy(pSubstr, substr);
+    }
+    delete[] substr;
+    return ret;
+  } // ProcessMask
+
+
 
 
   //*****************************************************************************
@@ -1456,10 +1613,59 @@ void fast_softmax_vec(FLOAT *in, FLOAT *out, int size)
     {
       throw std::logic_error("Unexpected error parsing HTK string");
     }
-
   }
 
   
+  //**************************************************************************** 
+  //**************************************************************************** 
+  std::vector<std::string>&
+  TokenizeString(
+      const std::string&                rString, 
+            std::vector<std::string>&   rTokens, 
+      const std::string&                rSeparators)
+  {
+    std::vector<std::string>::size_type last_pos = 
+        rString.find_first_not_of(rSeparators, 0);
+    
+    std::vector<std::string>::size_type this_pos = 
+        rString.find_first_of(rSeparators, last_pos);
+
+    
+    while (std::string::npos != this_pos || std::string::npos != last_pos)
+    {
+      // Found a token, add it to the vector.
+      rTokens.push_back(rString.substr(last_pos, this_pos - last_pos));
+      // Skip delimiters.  Note the "not_of"
+      last_pos = rString.find_first_not_of(rSeparators, this_pos);
+      // Find next "non-delimiter"
+      this_pos = rString.find_first_of(rSeparators, last_pos);
+    }
+    
+    return rTokens;
+  } // TokenizeString(...) //
+
+  
+
+  //**************************************************************************** 
+  //**************************************************************************** 
+  std::string&
+  Trim(std::string& rStr)
+  {
+    // WHITE_CHARS is defined in common.h
+    std::string::size_type pos = rStr.find_last_not_of(WHITE_CHARS);
+    if(pos != std::string::npos) 
+    {
+      rStr.erase(pos + 1);
+      pos = rStr.find_first_not_of(WHITE_CHARS);
+      if(pos != std::string::npos) rStr.erase(0, pos);
+    }
+    else 
+      rStr.erase(rStr.begin(), rStr.end());
+
+    return rStr;
+  }
+
+
   /**
   * @brief Builds new filename based on the parameters given
   * @param rOutFileName reference to a string where new file name is stored

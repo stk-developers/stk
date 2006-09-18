@@ -10,7 +10,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#define VERSION "0.1 "__TIME__" "__DATE__
+#define MODULE_VERSION "0.1 "__TIME__" "__DATE__
 
 #include "STKLib/labels.h"
 #include "STKLib/common.h"
@@ -225,7 +225,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (print_version) {
-    puts("Version: "VERSION"\n");
+    puts("Version: "MODULE_VERSION"\n");
     if (labelHash.mTabSize == 0) exit(0);
   }
 

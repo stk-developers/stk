@@ -25,6 +25,15 @@
 
 #define IS_ACTIVE(token) ((token).mLike > LOG_MIN)
 
+#ifndef MIX_P_CACHES
+#  define MIX_P_CACHES 1
+#endif
+
+#ifndef OUT_P_CACHES
+#  define OUT_P_CACHES 1
+#endif
+
+
 
 namespace STK
 {
@@ -37,6 +46,13 @@ namespace STK
   class Cache;
   class WordLinkRecord;
   class Network;
+  
+  
+  //###########################################################################
+  //###########################################################################
+  // GENERAL CONSTS
+  //###########################################################################
+  //###########################################################################
   
   
   //###########################################################################
@@ -66,7 +82,8 @@ namespace STK
     AT_ML=0,
     AT_MPE,
     AT_MFE,
-    AT_MCE
+    AT_MCE,
+    AT_MMI
   } AccumType;
   
   
@@ -75,8 +92,6 @@ namespace STK
   // CLASS DEFINITIONS
   //###########################################################################
   //###########################################################################
-  
-  
   class Cache 
   {
   public:
@@ -84,6 +99,17 @@ namespace STK
     long  mTime;
   };
   
+  
+  /** 
+   * @brief Description of the NBest mixtures structure
+   */
+  struct NBestRecord 
+  {
+    FLOAT    like;
+    FLOAT    P;
+    size_t   index;
+  };
+
   
   /** *************************************************************************
    ** *************************************************************************
@@ -114,6 +140,17 @@ namespace STK
     int 
     HasCycle();
     
+
+    /** 
+     * @brief State reestimation procedure
+     * 
+     * @param pNode 
+     * @param stateIndex 
+     * @param logPriorProb 
+     * @param updateDir 
+     * @param obs 
+     * @param obs2 
+     */
     void 
     ReestState(Node *    pNode,
                int       stateIndex, 
@@ -130,7 +167,11 @@ namespace STK
      *         accuracy
      */
     Network::FWBWRet
-    ForwardBackward(FLOAT * pObsMx, int nFrames);
+    ForwardBackward(FLOAT* pObsMx, int nFrames);
+    
+    Network::FWBWRet
+    ForwardBackward(const Matrix<FLOAT>& rFeatureMatrix, size_t nFrames);
+    
     
     /**
      * @brief Frees 
@@ -144,8 +185,8 @@ namespace STK
     const bool
     InForwardPass() const {return mPropagDir == FORWARD;}
     
-    Node *
-    pActivateWordNodesLeadingFrom(Node * pNode);
+    Node*
+    pActivateWordNodesLeadingFrom(Node* pNode);
     
     void
     ActivateModel(Node * pNode);
@@ -154,10 +195,10 @@ namespace STK
     DeactivateModel(Node *pNode);
     
     void
-    DeactivateWordNodesLeadingFrom(Node *pNode);
+    DeactivateWordNodesLeadingFrom(Node* pNode);
     
     void 
-    MarkWordNodesLeadingFrom(Node *node);
+    MarkWordNodesLeadingFrom(Node* node);
     
     bool
     AllWordSuccessorsAreActive();
@@ -169,31 +210,40 @@ namespace STK
     TokenPropagationInNetwork();
 
     void
-    TokenPropagationInModels(FLOAT *observation);
+    TokenPropagationInModels(FLOAT* observation);
         
     void 
     TokenPropagationDone();
 
+    FLOAT 
+    DiagCGaussianDensity(const Mixture* mix, const FLOAT* pObs);
+  
+    FLOAT 
+    DiagCGaussianMixtureDensity(State* pState, FLOAT* pObs);
+    
+    FLOAT 
+    FromObservationAtStateId(State* pState, FLOAT* pObs);
+    
   public:
     //Subnet part
-    Node  *                 mpFirst;
-    Node  *                 mpLast;
+    Node*                   mpFirst;
+    Node*                   mpLast;
   
-    Node  *                 mpActiveModels;
-    Node  *                 mpActiveNodes;
+    Node*                   mpActiveModels;
+    Node*                   mpActiveNodes;
     int                     mActiveTokens;
                             
     int                     mNumberOfNetStates;
-    Token *                 mpAuxTokens;
-    Cache *                 mpOutPCache;
-    Cache *                 mpMixPCache;
+    Token*                  mpAuxTokens;
+    Cache*                  mpOutPCache;
+    Cache*                  mpMixPCache;
   
     long                    mTime;
-    Token *                 mpBestToken;
-    Node  *                 mpBestNode;
+    Token*                  mpBestToken;
+    Node*                   mpBestNode;
     
     // Passing parameters
-    State *                 mpThreshState;
+    State*                  mpThreshState;
     FLOAT                   mBeamThresh;
     FLOAT                   mWordThresh;
                             
@@ -208,6 +258,8 @@ namespace STK
     SearchPathsType         mSearchPaths;
                               
     FLOAT   (*OutputProbability) (State *state, FLOAT *observation, Network *network);
+    FLOAT   (*mpOutputProbability) (State *state, FLOAT *observation);
+    //FLOAT   (*OutputProbability) (State* pState, FLOAT* pObs);
     int     (*PassTokenInNetwork)(Token *from, Token *to, FLOAT addLogLike);
     int     (*PassTokenInModel)  (Token *from, Token *to, FLOAT addLogLike);
     
@@ -217,8 +269,8 @@ namespace STK
     
   //  int                     mmi_den_pass;
     AccumType               mAccumType;
-    ModelSet *              mpModelSet;
-    ModelSet *              mpModelSetToUpdate;
+    ModelSet*               mpModelSet;
+    ModelSet*               mpModelSetToUpdate;
     
     
     //*************************************************************************
@@ -243,20 +295,29 @@ namespace STK
     ViterbiInit();  
     
     void              
-    ViterbiStep(FLOAT * pObservation);
+    ViterbiStep(FLOAT* pObservation);
     
     FLOAT             
-    ViterbiDone(Label ** pLabels);
+    ViterbiDone(Label** pLabels);
     
     FLOAT 
-    MCEReest(FLOAT * pObsMx, FLOAT * pObsMx2, int nFrames, FLOAT weight, FLOAT sigSlope);
+    MCEReest(FLOAT* pObsMx, FLOAT * pObsMx2, int nFrames, FLOAT weight, FLOAT sigSlope);
     
     FLOAT 
-    ViterbiReest(FLOAT * pObsMx, FLOAT * pObsMx2, int nFrames, FLOAT weight);
+    MCEReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, 
+            int nFrames, FLOAT weight, FLOAT sigSlope);
+            
+    FLOAT 
+    ViterbiReest(FLOAT* pObsMx, FLOAT* pObsMx2, int nFrames, FLOAT weight);
     
     FLOAT
-    BaumWelchReest(FLOAT * pObsMx, FLOAT * pObsMx2, int nFrames, FLOAT weight);
+    ViterbiReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, int nFrames, FLOAT weight);
+    
+    FLOAT
+    BaumWelchReest(FLOAT* pObsMx, FLOAT* pObsMx2, int nFrames, FLOAT weight);
 
+    FLOAT
+    BaumWelchReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, int nFrames, FLOAT weight);
   }; // class Network
   //***************************************************************************
   //***************************************************************************
@@ -270,28 +331,29 @@ namespace STK
   {
   public:
     double                  mLike;            ///< Likelihood
-    WordLinkRecord   *      mpWlr;            ///< Associated word link record
+    WordLinkRecord*         mpWlr;            ///< Associated word link record
     FloatInLog              mAccuracy;        ///< Accuracy
     
 #   ifdef bordel_staff
-    WordLinkRecord   *      mpTWlr;
+    WordLinkRecord*         mpTWlr;
     FLOAT                   mBestLike;
 #   endif
   
     /**
      * @brief Returns true if token is active
      */
-    bool
-    IsActive() const {return mLike > LOG_MIN;}
+    inline const bool
+    IsActive() const 
+    { return mLike > LOG_MIN; }
     
     /**
      * @brief Returns pointer to an array of this token's labels
      */
-    Label *
+    Label*
     pGetLabels();
     
     void
-    AddWordLinkRecord(Node *node, int state_idx, int time);
+    AddWordLinkRecord(Node* pNode, int stateIdx, int time);
   };
     
   
@@ -311,7 +373,7 @@ namespace STK
   class FWBWR 
   {
   public:
-    FWBWR *           mpNext;
+    FWBWR*            mpNext;
     int               mTime;
     AlphaBeta         mpState[1];
   };
@@ -320,51 +382,72 @@ namespace STK
   class WordLinkRecord 
   {
   public:
-    Node  *           mpNode;
+    Node*             mpNode;
     int               mStateIdx;
     FLOAT             mLike;
     long              mTime;
-    WordLinkRecord *  mpNext;
+    WordLinkRecord*   mpNext;
     int               mNReferences;
   #ifdef DEBUG_MSGS
-    WordLinkRecord *  mpTmpNext;
+    WordLinkRecord*   mpTmpNext;
     bool              mIsFreed;
   #endif
   };
   
   
   
-  void              KillToken(Token *token);
+  void              
+  KillToken(Token *token);
   
-  FLOAT             DiagCGaussianMixtureDensity(State *state, FLOAT *obs, Network *network);
-  FLOAT             FromObservationAtStateId(State *state, FLOAT *obs, Network *network);
-  int               PassTokenMax(Token *from, Token *to, FLOAT addLogLike);
-  int               PassTokenSum(Token *from, Token *to, FLOAT addLogLike);
-  int               PassTokenSumUnlogLikes(Token *from, Token *to, FLOAT addLogLike);
+  void
+  FindNBestMixtures(State* pState, FLOAT* pObs, NBestRecord* pNBest, 
+      size_t nBest, int time);
+
+  FLOAT             
+  DiagCGaussianDensity(const Mixture* mix, const FLOAT* pObs, Network* net);
+
+  FLOAT             
+  DiagCGaussianMixtureDensity(State *state, FLOAT *obs, Network *network);
+
+  FLOAT             
+  FromObservationAtStateId(State *state, FLOAT *obs, Network *network);
+
+  int               
+  PassTokenMax(Token *from, Token *to, FLOAT addLogLike);
+
+  int               
+  PassTokenSum(Token *from, Token *to, FLOAT addLogLike);
+
+  int               
+  PassTokenSumUnlogLikes(Token* pFrom, Token* pTo, FLOAT addLogLike);
   
-  WordLinkRecord *  TimePruning(Network *network, int frame_delay);
+  WordLinkRecord*  
+  TimePruning(Network* pNetwork, int frameDelay);
   
-  void LoadRecognitionNetwork(
-    char *        netFileName,
-    ModelSet *    hmms,
-    Network *     net);
+  void 
+  LoadRecognitionNetwork(
+      char *        netFileName,
+      ModelSet *    hmms,
+      Network *     net);
   
-  void ReadRecognitionNetwork(
-    FILE *        fp,
-    ModelSet *    hmms,
-    Network *     network,
-    LabelFormat   labelFormat,
-    long          sampPeriod,
-    const char *  file_name,
-    const char *  in_MLF);
+  void 
+  ReadRecognitionNetwork(
+      FILE *        fp,
+      ModelSet *    hmms,
+      Network *     network,
+      LabelFormat   labelFormat,
+      long          sampPeriod,
+      const char *  file_name,
+      const char *  in_MLF);
   
-  FLOAT *StateOccupationProbability(
-    Network *     network,
-    FLOAT *       observationMx,
-    ModelSet *    hmmset,
-    int           nFrames,
-    FLOAT **      outProbOrMahDist,
-    int           getMahalDist);
+  FLOAT 
+  *StateOccupationProbability(
+      Network *     network,
+      FLOAT *       observationMx,
+      ModelSet *    hmmset,
+      int           nFrames,
+      FLOAT **      outProbOrMahDist,
+      int           getMahalDist);
     
   /*
   FLOAT MCEReest(
