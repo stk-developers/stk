@@ -65,7 +65,7 @@ void usage(char *progname)
 " -o s       Output label formating NCSTWMXF                 None\n"
 " -p f       Inter word trans penalty (log)                  0.0\n"
 " -q s       Output network formating JMRVWXalpstv           tvl\n"
-////"  -q s    output lattice formating ABtvaldmn              tvaldmn\n"
+////" -q s       Output lattice formating ABtvaldmn              tvaldmn\n"
 " -r f       Pronunciation prob scale factor                 1.0\n"
 " -s f       Grammar scale factor                            1.0\n"
 " -t f [i l] Set pruning to f [inc limit]                    Off\n"
@@ -112,6 +112,7 @@ char *optionStr =
 " -w o   RECOGNET"
 " -x r   SOURCEMODELEXT"
 " -y r   TARGETTRANSCEXT"
+" -z r   LATTICEEXT"
 " -D n   PRINTCONFIG=TRUE"
 " -G r   SOURCETRANSCFMT"
 " -H l   SOURCEMMF"
@@ -137,14 +138,15 @@ int main(int argc, char *argv[])
   int                           i;
   int                           fcnt = 0;
   Label *                       labels;
+  Node *                        pLattice;
   char                          line[1024];
   char                          label_file[1024];
   const char *                  cchrptr;
   
-  MyHSearchData                 nonCDphHash;
-  MyHSearchData                 phoneHash;
-  MyHSearchData                 dictHash;
-  MyHSearchData                 cfgHash;
+  MyHSearchData        nonCDphHash;
+  MyHSearchData        phoneHash;
+  MyHSearchData        dictHash;
+  MyHSearchData        cfgHash;
   
   FileListElem *                feature_files = NULL;
   FileListElem *                file_name = NULL;
@@ -190,6 +192,7 @@ int main(int argc, char *argv[])
   const char *                  cvg_file;
   const char *                  mmf_dir;
   const char *                  mmf_mask;
+  const char *                  lat_ext;
 
   int                           trace_flag;
   int                           targetKind;
@@ -308,6 +311,7 @@ int main(int argc, char *argv[])
   
   mmf_dir      = GetParamStr(&cfgHash, SNAME":MMFDIR",          ".");
   mmf_mask     = GetParamStr(&cfgHash, SNAME":MMFMASK",         NULL);
+  lat_ext      = GetParamStr(&cfgHash, SNAME":LATTICEEXT",      NULL);
 
 
   cchrptr      = GetParamStr(&cfgHash, SNAME":LABELFORMATING",  "");
@@ -464,7 +468,7 @@ int main(int argc, char *argv[])
     Node *node = NULL;
     IStkStream input_stream;    
     
-    input_stream.open(network_file, ios::in, transc_filter? transc_filter : "");
+    input_stream.open(network_file, ios::in, transc_filter ? transc_filter : "");
     
     if (!input_stream.good())
     {
@@ -615,18 +619,25 @@ int main(int argc, char *argv[])
     net.mOcpScale     = occprb_scale;
     net.mAlignment     = alignment;
     net.mPruningThresh = state_pruning > 0.0 ? state_pruning : -LOG_0;
+    net.mLatticeGeneration = (lat_ext != NULL);
 
-    if (alignment & STATE_ALIGNMENT && out_lbl_fmt.MODEL_OFF) 
-      net.mAlignment &= ~MODEL_ALIGNMENT;
-    if (alignment & MODEL_ALIGNMENT && out_lbl_fmt.WORDS_OFF)
-      net.mAlignment &= ~WORD_ALIGNMENT;
-    if (alignment & STATE_ALIGNMENT && out_lbl_fmt.FRAME_SCR)
-      net.mAlignment |=  FRAME_ALIGNMENT;
+    if(net.mLatticeGeneration)
+    {
+      net.mAlignment = WORD_ALIGNMENT | MODEL_ALIGNMENT;
+    }
+    else
+    {
+      if (alignment & STATE_ALIGNMENT && out_lbl_fmt.MODEL_OFF) net.mAlignment &= ~MODEL_ALIGNMENT;
+      if (alignment & MODEL_ALIGNMENT && out_lbl_fmt.WORDS_OFF) net.mAlignment &= ~WORD_ALIGNMENT;
+      if (alignment & STATE_ALIGNMENT && out_lbl_fmt.FRAME_SCR) net.mAlignment |=  FRAME_ALIGNMENT;
+    }
 
     for (;;) 
     {
       net.ViterbiInit();
-      net.PassTokenInNetwork = baum_welch ? &PassTokenSum : &PassTokenMax;
+      net.PassTokenInNetwork = net.mLatticeGeneration ? &PassTokenMaxForLattices :
+                               baum_welch             ? &PassTokenSum : &PassTokenMax;
+                               
       net.PassTokenInModel   = baum_welch ? &PassTokenSum : &PassTokenMax;
 
       for (i = 0; i < feature_matrix.Rows(); i++) 
@@ -634,7 +645,7 @@ int main(int argc, char *argv[])
         net.ViterbiStep(feature_matrix[i]);
       }
       
-      like = net.ViterbiDone(&labels);
+      like = net.ViterbiDone(&labels, &pLattice);
 
       if (labels) 
         break;
@@ -663,21 +674,32 @@ int main(int argc, char *argv[])
 
       for (; label != NULL; label = label->mpNext) 
       {
-        fprintf(stdout, "%s ", label->mpName);
+        if(label->mpName != NULL)
+          fprintf(stdout, "%s ", label->mpName);
       }
 
       TraceLog(" ==  [%d frames] %f", n_frames, like / n_frames);
     }
 
-    strcpy(label_file, feature_repo.CurrentLogical().c_str());
-    
-    lfp = OpenOutputLabelFile(label_file, out_lbl_dir, out_lbl_ext, lfp, 
-        out_MLF);
-
-    if (out_transc_fmt == TF_HTK) 
+    if (pLattice)
     {
-      WriteLabels(lfp, labels, out_lbl_fmt, feature_repo.CurrentHeader().mSamplePeriod, label_file,
-          out_MLF);
+      NetworkExpansionsAndOptimizations(pLattice, expOptions, out_net_fmt, NULL, NULL, NULL);
+    }
+
+    strcpy(label_file, feature_repo.CurrentLogical().c_str());
+    lfp = OpenOutputLabelFile(label_file, out_lbl_dir, out_lbl_ext, lfp, out_MLF);
+
+    if (pLattice)
+    {
+      WriteSTKNetwork(lfp, pLattice, out_net_fmt, feature_repo.CurrentHeader().mSamplePeriod,
+          label_file, out_MLF);
+          
+      FreeNetwork(pLattice);
+    } 
+    else if (out_transc_fmt == TF_HTK) 
+    {
+      WriteLabels(lfp, labels, out_lbl_fmt, feature_repo.CurrentHeader().mSamplePeriod,
+          label_file, out_MLF);
     } 
     else 
     {

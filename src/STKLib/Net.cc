@@ -1471,11 +1471,9 @@ namespace STK
       }
     }
     free(corr_phn);
-  }
-  
-  
-  
-  
+  }  
+
+#ifndef NDEBUG
   // Debug function showing network using AT&T dot utility
   void dnet(Node *net, int nAuxNodePtrs, ...)
   {
@@ -1558,7 +1556,7 @@ namespace STK
     fprintf(fp, "}\n");
     pclose(fp);
   }
-  
+#endif
   
   
   void NetworkExpansionsAndOptimizations(
@@ -1570,20 +1568,6 @@ namespace STK
     MyHSearchData *triphHash)
   {
 
-/*  
-<<<<<<< .mine Ondra Glembek
-    if (expOptions.mNoWordExpansion &&  expOptions.mCDPhoneExpansion
-    && expOptions.mNoOptimization   && !out_net_fmt.mNoLMLikes
-    &&!out_net_fmt.mNoTimes         && !out_net_fmt.mNoWordNodes &&
-      !out_net_fmt.mNoModelNodes   && !out_net_fmt.mNoPronunVars) return;
-=======
-    if (expOptions.no_word_expansion && !expOptions.CD_phone_expansion
-    && expOptions.no_optimization    && !out_net_fmt.no_LM_likes
-    &&!out_net_fmt.no_times          && !out_net_fmt.no_word_nodes &&
-      !out_net_fmt.no_model_nodes    && !out_net_fmt.no_pronun_vars) return;
->>>>>>> .r44
-*/
-    
     if (expOptions.mNoWordExpansion  && !expOptions.mCDPhoneExpansion &&
         expOptions.mNoOptimization   && !out_net_fmt.mNoLMLikes &&
         !out_net_fmt.mNoTimes        && !out_net_fmt.mNoWordNodes &&
@@ -1597,6 +1581,7 @@ namespace STK
       if (!expOptions.mNoOptimization) {
         LatticeLocalOptimization(node, expOptions.mStrictTiming, expOptions.mTraceFlag);
       }
+      assert(wordHash != NULL);
       ExpandWordNetworkByDictionary(node, wordHash, !expOptions.mRemoveWordsNodes,
                                                     !expOptions.mRespectPronunVar);
     }
@@ -1604,6 +1589,7 @@ namespace STK
       if (!expOptions.mNoOptimization) {
         LatticeLocalOptimization(node, expOptions.mStrictTiming, expOptions.mTraceFlag);
       }
+      assert(triphHash != NULL && nonCDphHash != NULL);
       ExpandMonophoneNetworkToTriphones(node, nonCDphHash, triphHash);
     }
     DiscardUnwantedInfoInNetwork(node, out_net_fmt);

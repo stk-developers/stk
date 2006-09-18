@@ -24,8 +24,8 @@ namespace STK
   //
   class Node;
   class Link;
-  class Token;
   class FWBWR;
+  class ActiveNodeRecord;
   
   
   // Enums
@@ -63,59 +63,63 @@ namespace STK
     Node *        mpNode;
     FLOAT         mLike;
   }; // Link
+
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Network node representation class
+   */   
   
+  class NodeBasic
+  {
+  public:
+    union {
+      char*         mpName;
+      Hmm*          mpHmm;
+      Pronun*       mpPronun;
+    };
+  
+    int           mAux;
+    int           mType;
+    int           mNLinks;
+    Link*         mpLinks;
+    
+#   ifndef NDEBUG
+    //id of first emiting state - apply only for model type
+    int           mEmittingStateId;
+    int           mAux2;
+#   endif
+#   ifndef EXPANDNET_ONLY    
+    ActiveNodeRecord * mpAnr;
+#   endif
+
+    NodeBasic() : mpPronun(NULL), mType(NT_UNDEF), mNLinks(0), mpLinks(NULL) {}
+  }; // class Node
   
   /** *************************************************************************
    ** *************************************************************************
    *  @brief Network node representation class
-   */
-  class Node
+   */   
+  
+  class Node : public NodeBasic
   {
   public:
-    char*         mpName;
-    Hmm*          mpHmm;
-    Hmm*          mpHmmToUpdate;
-    Pronun*       mpPronun;
-  
-    int           mAux;
-    int           mType;
     Node*         mpNext;
     Node*         mpBackNext;
-    int           mNLinks;
     int           mNBackLinks;
-    Link*         mpLinks;
     Link*         mpBackLinks;
-  
+
     //time range when model can be active - apply only for model type
     long long     mStart;
     long long     mStop;
     FLOAT         mPhoneAccuracy;
   
 #   ifndef EXPANDNET_ONLY
-    Token*        mpTokens;
-    Token*        mpExitToken;
-  
-    //id of first emiting state - apply only for model type
-    int           mEmittingStateId;
-  
-    FWBWR*        mpAlphaBetaList;
-    FWBWR*        mpAlphaBetaListReverse;
-  
-    Node*         mpNextActiveModel;
-    Node*         mpPrevActiveModel;
-  
-    Node*         mpNextActiveNode;
-    Node*         mpPrevActiveNode;
-    
-    int           mIsActive;
-    int           mIsActiveNode;
-#   ifndef NDEBUG
-    int           mAux2;
-#   endif
-#   endif
+    Hmm*               mpHmmToUpdate;
+    FWBWR*             mpAlphaBetaList;
+    FWBWR*             mpAlphaBetaListReverse;
+#   endif        
   }; // class Node
-  
-  
+
   /** *************************************************************************
    ** *************************************************************************
    *  @brief STK network specific output format options
@@ -211,7 +215,8 @@ namespace STK
     LabelFormat labelFormat,
     long sampPeriod,
     const char *file_name,
-    const char *in_MLF);
+    const char *in_MLF,
+    bool compactRepresentation = false);
   
   Node *ReadSTKNetworkInOldFormat(
     FILE *lfp,
@@ -221,6 +226,9 @@ namespace STK
     long sampPeriod,
     const char *file_name,
     const char *in_MLF);
+
+  Node * find_or_create_node(struct MyHSearchData *node_hash, const char *node_id, Node **last);
+
   
   Node *ReadHTKLattice(
     FILE *lfp,

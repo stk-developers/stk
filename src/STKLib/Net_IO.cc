@@ -43,7 +43,7 @@ namespace STK
   //***************************************************************************
   //***************************************************************************
   Node *
-  find_or_create_node(struct MyHSearchData *node_hash, char *node_id, Node **last)
+  find_or_create_node(struct MyHSearchData *node_hash, const char *node_id, Node **last)
   // Auxiliary function used by ReadHTKLattice_new. (Optionally initialize
   // uninitialized node_hash) Search for node record at key node_id. If found,
   // pointer to this record is returned, otherwise new node record is allocated
@@ -57,7 +57,7 @@ namespace STK
     if (node_hash->mTabSize == 0 && !my_hcreate_r(INIT_NODE_HASH_SIZE, node_hash))
       Error("Insufficient memory");
     
-    e.key = node_id;
+    e.key = const_cast<char *>(node_id);
     my_hsearch_r(e, FIND, &ep, node_hash);
   
     if (ep != NULL) 
@@ -69,14 +69,14 @@ namespace STK
       Error("Insufficient memory");
   
     node->mNLinks     = 0;
-    node->mpLinks      = NULL;
+    node->mpLinks     = NULL;
     node->mNBackLinks = 0;
-    node->mpBackLinks  = NULL;
+    node->mpBackLinks = NULL;
     node->mType       = NT_WORD;
     node->mStart      = UNDEF_TIME;
     node->mStop       = UNDEF_TIME;
-    node->mpPronun     = NULL;
-    node->mpBackNext   = *last;
+    node->mpPronun    = NULL;
+    node->mpBackNext  = *last;
     node->mPhoneAccuracy = 1.0;
     
     *last  = node;
@@ -643,7 +643,7 @@ namespace STK
   
     // create back links
     for (i = 0; i < numOfNodes; i++) {
-      if (!nodes[i]->mpBackLinks) // Could be already alocated for subnetwork
+      if (!nodes[i]->mpBackLinks) // Could be allready alocated for subnetwork
         nodes[i]->mpBackLinks = (Link *) malloc(nodes[i]->mNBackLinks * sizeof(Link));
       if (nodes[i]->mpBackLinks == NULL) Error("Insufficient memory");
       nodes[i]->mNBackLinks = 0;
@@ -686,13 +686,15 @@ namespace STK
     LabelFormat labelFormat,
     long sampPeriod,
     const char *file_name,
-    const char *in_MLF)
+    const char *in_MLF,
+    bool compactRepresentation)
   {
     Node *node, *enode = NULL,
         *first = NULL, *last = NULL,
         *fnode = NULL, *lnode;
     char *line;
     int line_no   =  0;
+    int nnodes    =  0;
     char *chptr, *valptr, *phn_marks = NULL;
     Word *word     = NULL;
     int  i, pron_var  = 1;
@@ -746,10 +748,19 @@ namespace STK
         }
         if (state == LINE_START) {
           if (!*chptr || !strcmp(chptr, "I")) {
-            if (getHTKstr(valptr, &chptr)) {
-              Error("%s (%s:%d)", chptr, file_name, line_no);
+            if (compactRepresentation)
+            {
+               node = &first[getInteger(valptr, &chptr, file_name, line_no)];
+               if (node->mType == NT_UNDEF)
+                 node->mType = NT_WORD;
             }
-            node = find_or_create_node(&node_hash, valptr, &last);
+            else
+            {
+              if (getHTKstr(valptr, &chptr)) {
+                Error("%s (%s:%d)", chptr, file_name, line_no);
+              }
+              node = find_or_create_node(&node_hash, valptr, &last);
+            }
             word     = NULL;
             pron_var = 1;
             state    = NODE_DEF;
@@ -761,9 +772,16 @@ namespace STK
           if (!strcmp(chptr, "S") || !strcmp(chptr, "SUBLAT")) {
             Error("%s not supported (%s:%d)", chptr, file_name, line_no);
           } else if (!strcmp(chptr, "N") || !strcmp(chptr, "NODES")) {
-            int nnodes  = getInteger(valptr, &chptr, file_name, line_no);
-  
-            if (node_hash.mTabSize == 0 && !my_hcreate_r(nnodes, &node_hash)) {
+            nnodes  = getInteger(valptr, &chptr, file_name, line_no);
+            if (compactRepresentation)
+            {
+              if (first != NULL)
+                Error("Redefinition of N= (NODES=) is not allowed in CSTK format (%s:%d)", file_name, line_no);
+                
+              first = reinterpret_cast<Node *>(new NodeBasic[nnodes]);
+            }
+            else if (node_hash.mTabSize == 0 && !my_hcreate_r(nnodes, &node_hash)) 
+            {
               Error("Insufficient memory");
             }
           } else { // Skip unknown header term
@@ -774,7 +792,8 @@ namespace STK
           continue;
         }
         if (state == NODE_DEF) {
-          if ((!strcmp(chptr, "time") || !strcmp(chptr, "t")) && !(labelFormat.TIMES_OFF)) {
+          if ((!strcmp(chptr, "time") || !strcmp(chptr, "t")) 
+          && !(labelFormat.TIMES_OFF) && !compactRepresentation) {
             char *colonptr=valptr;
             while (*colonptr && !isspace(*colonptr) && *colonptr != ',') colonptr++;
   
@@ -793,7 +812,7 @@ namespace STK
             if (pron_var < 1) {
               Error("Invalid pronunciation variant (%s:%d)", file_name, line_no);
             }
-          } else if (!strcmp(chptr, "p")) {
+          } else if (!strcmp(chptr, "p") && !compactRepresentation) {
             node->mPhoneAccuracy = getFloat(valptr, &chptr, file_name, line_no);
           } else if (!strcmp(chptr, "flag") || !strcmp(chptr, "f")) {
             if (getHTKstr(valptr, &chptr)) {
@@ -874,7 +893,7 @@ namespace STK
             state = ARC_DEF;
           } else if (getHTKstr(valptr, &chptr)) { // Skip unknown term
             Error("%s (%s:%d)", chptr, file_name, line_no);
-          }
+          }          
           if (state == ARC_DEF || *chptr == '\0') {
             // Node definition is over. For NT_WORD, select right pronun according to
             // word and pron_var; and continue with parsing the arc definition below
@@ -894,7 +913,7 @@ namespace STK
                   word->pronuns[i] = (Pronun *) malloc(sizeof(Pronun));
                   if (word->pronuns[i] == NULL) Error("Insufficient memory");
   
-                  word->pronuns[i]->mpWord       = word;
+                  word->pronuns[i]->mpWord     = word;
                   word->pronuns[i]->outSymbol  = word->mpName;
                   word->pronuns[i]->nmodels    = 0;
                   word->pronuns[i]->model      = NULL;
@@ -905,35 +924,77 @@ namespace STK
               }
               node->mpPronun = word->pronuns[pron_var-1];
             }
+            if (state == ARC_DEF) {
+              // Count number of link definitions on the rest of the line and prealocate memory for links
+              char *pCh;
+              int nl = 1;
+              
+              if (skipHTKstr(valptr, &pCh)) 
+                Error("%s (%s:%d)", pCh, file_name, line_no);
+              
+              while(*pCh != '\0') {
+                if (!strncmp("END=", pCh, 4) || !strncmp("E=", pCh, 2)) nl++;
+              
+              
+                while(isalnum(*pCh)) pCh++;
+                
+                if (*pCh == '=')
+                {
+                  if (skipHTKstr(pCh, &pCh)) 
+                    Error("%s (%s:%d)", pCh, file_name, line_no);      
+                    
+                  continue;
+                }
+                
+                nl++;
+                if(!isspace(*pCh) && *pCh != '\0')
+                  Error("Invalid character '%c' (%s:%d, char %d)",
+                        *pCh, file_name, line_no, pCh-line+1);
+                
+                while(isspace(*pCh)) pCh++;
+              }
+              
+              node->mpLinks = (Link *) realloc(node->mpLinks, (node->mNLinks + nl) * sizeof(Link));
+              if (node->mpLinks == NULL) Error("Insufficient memory");              
+            }
           }
         }
         if (state == ARC_DEF) {
           if (!*chptr || !strcmp(chptr, "END") || !strcmp(chptr, "E")) {
-            if (getHTKstr(valptr, &chptr)) {
-              Error("%s (%s:%d)", chptr, file_name, line_no);
+            if (compactRepresentation)
+            {
+               enode = &first[getInteger(valptr, &chptr, file_name, line_no)];
+               if (enode->mType == NT_UNDEF)
+                 enode->mType = NT_WORD;
             }
-            enode = find_or_create_node(&node_hash, valptr, &last);
+            else
+            {
+              if (getHTKstr(valptr, &chptr)) {
+                Error("%s (%s:%d)", chptr, file_name, line_no);
+              }
+              enode = find_or_create_node(&node_hash, valptr, &last);
+            }
   
             int nl = ++node->mNLinks;
-            node->mpLinks = (Link *) realloc(node->mpLinks, nl * sizeof(Link));
-            if (node->mpLinks == NULL) Error("Insufficient memory");
+            
+            // Links are counted and node->mpLinks is properly realocated 
+            // at the end of the node definition above
             node->mpLinks[nl-1].mpNode = enode;
             node->mpLinks[nl-1].mLike = 0.0;
   
-            nl = ++enode->mNBackLinks;
-            enode->mpBackLinks = (Link *) realloc(enode->mpBackLinks, nl * sizeof(Link));
-            if (enode->mpBackLinks == NULL) Error("Insufficient memory");
-            enode->mpBackLinks[nl-1].mpNode = node;
-            enode->mpBackLinks[nl-1].mLike = 0.0;
-  
+            if (!compactRepresentation)
+              ++enode->mNBackLinks;  
           } else if (!strcmp(chptr, "language") || !strcmp(chptr, "l")) {
             FLOAT mLike = getFloat(valptr, &chptr, file_name, line_no);
-            //Set LM score to link pointing to enode. This link can possibly start
-            //from a phone node already inserted (div=) between 'node' ans 'enode'
-            Node *last = enode->mpBackLinks[enode->mNBackLinks-1].mpNode;
-            last->mpLinks[last->mNLinks-1].mLike = mLike;
-            enode->mpBackLinks[enode->mNBackLinks-1].mLike = mLike;
+            
+          // Set LM score to link starting in node. This link can possibly
+          // lead to a phone node already inserted (div=) between 'node' and'enode'
+            node->mpLinks[node->mNLinks-1].mLike = mLike;
           } else if (!strcmp(chptr, "div") || !strcmp(chptr, "d")) {
+            
+            if (compactRepresentation)
+              Error("d= or div= is not allowed in CSTK format (%s:%d)", file_name, line_no);
+            
             ENTRY e, *ep;
             char  name[1024];
             float time;
@@ -952,9 +1013,9 @@ namespace STK
               Node *tnode;
               phn_marks+=n;
   
-              if ((tnode            = (Node *) calloc(1, sizeof(Node))) == NULL ||
-                (tnode->mpLinks     = (Link *) malloc(sizeof(Link))) == NULL ||
-                (tnode->mpBackLinks = (Link *) malloc(sizeof(Link))) == NULL) {
+              if ((tnode            = (Node *) calloc(1, sizeof(Node))) == NULL
+              || (tnode->mpLinks     = (Link *) malloc(sizeof(Link))) == NULL
+              ) {
                 Error("Insufficient memory");
               }
   
@@ -984,8 +1045,6 @@ namespace STK
               tnode->mpName = (char *) ep->data;
               last->mpLinks[last->mNLinks-1].mpNode = tnode;
               last->mpLinks[last->mNLinks-1].mLike = 0.0;
-              tnode->mpBackLinks[0].mpNode = last;
-              tnode->mpBackLinks[0].mLike = 0.0;
               last = tnode;
             }
             if (strcmp(phn_marks,":")) {
@@ -994,142 +1053,171 @@ namespace STK
             }
             last->mpLinks[last->mNLinks-1].mpNode = enode;
             last->mpLinks[last->mNLinks-1].mLike = mLike;
-            enode->mpBackLinks[enode->mNBackLinks-1].mpNode = last;
-            enode->mpBackLinks[enode->mNBackLinks-1].mLike = mLike;
-  
           } else if (getHTKstr(valptr, &chptr)) { // Skip unknown term
             Error("%s (%s:%d)", chptr, file_name, line_no);
           }
         }
       }
     }
-    my_hdestroy_r(&node_hash, 1);
-    lnode = last;
-    first = last = NULL;
-    if (lnode) lnode->mpNext = NULL;
-    for (node = lnode; node != NULL; fnode = node, node = node->mpBackNext) {
-      if (node->mpBackNext) node->mpBackNext->mpNext = node;
-  
-      if (node->mNLinks == 0) {
-        if (last)
-          Error("Network has multiple nodes with no successors (%s)", file_name);
-        last = node;
+    
+    if (compactRepresentation)
+    {
+    }
+    else
+    {
+      my_hdestroy_r(&node_hash, 1);
+      lnode = last;
+      first = last = NULL;
+      if (lnode) lnode->mpNext = NULL;
+    
+      for (node = lnode; node != NULL; node = node->mpBackNext)
+      {
+        node->mpBackLinks = (Link *) malloc(node->mNBackLinks * sizeof(Link));
+        if (node->mpBackLinks == NULL) Error("Insufficient memory");
+        
+        if (node->mpBackNext) 
+          node->mpBackNext->mpNext = node;
+    
+        if (node->mNLinks == 0) 
+        {
+          if (last)
+            Error("Network has multiple nodes with no successors (%s)", file_name);
+          last = node;
+        }
+        
+        if (node->mNBackLinks == 0) 
+        {
+          if (first)
+            Error("Network has multiple nodes with no predecessor (%s)", file_name);
+          first = node;
+        }
+      
+        node->mNBackLinks = 0;
       }
-      if (node->mNBackLinks == 0) {
-        if (first)
-          Error("Network has multiple nodes with no predecessor (%s)", file_name);
+      if (!first || !last) {
+        Error("Network contain no start node or no final node (%s)", file_name);
+      }
+
+      for (node = lnode; node != NULL; node = node->mpBackNext)
+      {
+        int i;
+        for (i = 0; i < node->mNLinks; i++) {
+          Node *forwnode = node->mpLinks[i].mpNode;
+          forwnode->mpBackLinks[forwnode->mNBackLinks].mpNode = node;
+          forwnode->mpBackLinks[forwnode->mNBackLinks++].mLike = node->mpLinks[i].mLike;
+        }
+      }
+    
+      for (node = lnode; node != NULL; fnode = node, node = node->mpBackNext) {
+        //If only stop time is specified, set start time to lowest predecessor stop time
+        if (node->mStart == UNDEF_TIME && node->mStop != UNDEF_TIME) {
+          int i;
+          for (i = 0; i < node->mNBackLinks; i++) {
+            Node *backnode = node->mpBackLinks[i].mpNode;
+            // skip nodes inserted by d=...
+            while (backnode->mType == (NT_PHONE | NT_MODEL)) {
+              assert(backnode->mNBackLinks == 1);
+              backnode = backnode->mpBackLinks[0].mpNode;
+            }
+            if (backnode->mStop != UNDEF_TIME) {
+              node->mStart = node->mStart == UNDEF_TIME
+                            ?          backnode->mStop
+                            : LOWER_OF(backnode->mStop, node->mStart);
+            }
+          }
+          if (node->mStart == UNDEF_TIME) node->mStart = 0;
+        }
+        //For model nodes defined by d=... (NT_PHONE | NT_MODEL), node->mStart contains
+        //only phone durations. Absolute times must be computed derived starting from
+        //the end time of the node to which arc with d=... definition points.
+        if (node->mType == (NT_PHONE | NT_MODEL)) {
+          assert(node->mNLinks == 1);
+          node->mStop = node->mpLinks[0].mpNode->mType == (NT_PHONE | NT_MODEL)
+                      && node->mStart != UNDEF_TIME
+                      ? node->mpLinks[0].mpNode->mStart : node->mpLinks[0].mpNode->mStop;
+          node->mStart = node->mStart != UNDEF_TIME && node->mStop != UNDEF_TIME
+                        ? node->mStop - node->mStart : node->mpLinks[0].mpNode->mStart;
+        }
+      }
+      
+      if (first != fnode) {
+        if (first->mpNext)     first->mpNext->mpBackNext = first->mpBackNext;
+        if (first->mpBackNext) first->mpBackNext->mpNext = first->mpNext;
+        if (first == lnode)  lnode = first->mpBackNext;
+    
+        first->mpBackNext = NULL;
+        fnode->mpBackNext = first;
+        first->mpNext = fnode;
+      }
+      if (last != lnode) {
+        if (last->mpNext)     last->mpNext->mpBackNext = last->mpBackNext;
+        if (last->mpBackNext) last->mpBackNext->mpNext = last->mpNext;
+        last->mpNext = NULL;
+        lnode->mpNext = last;
+        last->mpBackNext = lnode;
+      }
+      for (node = first; node != NULL; node = node->mpNext) {
+        if (node->mType == (NT_PHONE | NT_MODEL)) {
+          node->mType = NT_PHONE;
+        }
+        if (node->mStart != UNDEF_TIME) {
+          node->mStart = (node->mStart - labelFormat.left_extent) / sampPeriod;
+        }
+        if (node->mStop  != UNDEF_TIME) {
+          node->mStop  = (node->mStop + labelFormat.right_extent) / sampPeriod;
+        }
+      }
+      if (first->mpPronun != NULL) {
+        node = (Node *) calloc(1, sizeof(Node));
+        if (node == NULL) Error("Insufficient memory");
+        node->mpNext       = first;
+        node->mpBackNext   = NULL;
+        first->mpBackNext  = node;
+        node->mType       = NT_WORD;
+        node->mpPronun     = NULL;
+        node->mStart      = UNDEF_TIME;
+        node->mStop       = UNDEF_TIME;
+        node->mNBackLinks = 0;
+        node->mpBackLinks  = NULL;
+        node->mNLinks     = 1;
+        node->mpLinks      = (Link*) malloc(sizeof(Link));
+        if (node->mpLinks == NULL) Error("Insufficient memory");
+        node->mpLinks[0].mLike = 0.0;
+        node->mpLinks[0].mpNode = first;
+        first->mNBackLinks = 1;
+        first->mpBackLinks  = (Link*) malloc(sizeof(Link));
+        if (first->mpBackLinks == NULL) Error("Insufficient memory");
+        first->mpBackLinks[0].mLike = 0.0;
+        first->mpBackLinks[0].mpNode = node;
         first = node;
       }
-      //If only stop time is specified, set start time to lowest predecessor stop time
-      if (node->mStart == UNDEF_TIME && node->mStop != UNDEF_TIME) {
-        int i;
-        for (i = 0; i < node->mNBackLinks; i++) {
-          Node *backnode = node->mpBackLinks[i].mpNode;
-          //When seraring predecessors, skip nodes inserted by d=...
-          while (backnode->mType == (NT_PHONE | NT_MODEL)) {
-            assert(backnode->mNBackLinks == 1);
-            backnode = backnode->mpBackLinks[0].mpNode;
-          }
-          if (backnode->mStop != UNDEF_TIME) {
-            node->mStart = node->mStart == UNDEF_TIME
-                          ?          backnode->mStop
-                          : LOWER_OF(backnode->mStop, node->mStart);
-          }
-        }
-        if (node->mStart == UNDEF_TIME) node->mStart = 0;
+      if (last->mpPronun != NULL) {
+        node = (Node *) calloc(1, sizeof(Node));
+        if (node == NULL) Error("Insufficient memory");
+        last->mpNext      = node;
+        node->mpNext      = NULL;
+        node->mpBackNext  = last;
+        node->mType      = NT_WORD;
+        node->mpPronun    = NULL;
+        node->mStart     = UNDEF_TIME;
+        node->mStop      = UNDEF_TIME;
+        node->mNLinks    = 0;
+        node->mpLinks     = NULL;
+        last->mNLinks = 1;
+        last->mpLinks  = (Link*) malloc(sizeof(Link));
+        if (last->mpLinks == NULL) Error("Insufficient memory");
+        last->mpLinks[0].mLike = 0.0;
+        last->mpLinks[0].mpNode = node;
+        node->mNBackLinks = 1;
+        node->mpBackLinks  = (Link*) malloc(sizeof(Link));
+        if (node->mpBackLinks == NULL) Error("Insufficient memory");
+        node->mpBackLinks[0].mLike = 0.0;
+        node->mpBackLinks[0].mpNode = last;
       }
-      //For model nodes defined by d=... (NT_PHONE | NT_MODEL), node->mStart contains
-      //only phone durations. Absolute times must be computed derived starting from
-      //the end time of the node to which arc with d=... definition points.
-      if (node->mType == (NT_PHONE | NT_MODEL)) {
-        assert(node->mNLinks == 1);
-        node->mStop = node->mpLinks[0].mpNode->mType == (NT_PHONE | NT_MODEL)
-                    && node->mStart != UNDEF_TIME
-                    ? node->mpLinks[0].mpNode->mStart : node->mpLinks[0].mpNode->mStop;
-        node->mStart = node->mStart != UNDEF_TIME && node->mStop != UNDEF_TIME
-                      ? node->mStop - node->mStart : node->mpLinks[0].mpNode->mStart;
-      }
-    }
-    if (!first || !last) {
-      Error("Network contain no start node or no final node (%s)", file_name);
-    }
-    if (first != fnode) {
-      if (first->mpNext)     first->mpNext->mpBackNext = first->mpBackNext;
-      if (first->mpBackNext) first->mpBackNext->mpNext = first->mpNext;
-      if (first == lnode)  lnode = first->mpBackNext;
-  
-      first->mpBackNext = NULL;
-      fnode->mpBackNext = first;
-      first->mpNext = fnode;
-    }
-    if (last != lnode) {
-      if (last->mpNext)     last->mpNext->mpBackNext = last->mpBackNext;
-      if (last->mpBackNext) last->mpBackNext->mpNext = last->mpNext;
-      last->mpNext = NULL;
-      lnode->mpNext = last;
-      last->mpBackNext = lnode;
-    }
-    for (node = first; node != NULL; node = node->mpNext) {
-      if (node->mType == (NT_PHONE | NT_MODEL)) {
-        node->mType = NT_PHONE;
-      }
-      if (node->mStart != UNDEF_TIME) {
-        node->mStart = (node->mStart - labelFormat.left_extent) / sampPeriod;
-      }
-      if (node->mStop  != UNDEF_TIME) {
-        node->mStop  = (node->mStop + labelFormat.right_extent) / sampPeriod;
-      }
-    }
-    if (first->mpPronun != NULL) {
-      node = (Node *) calloc(1, sizeof(Node));
-      if (node == NULL) Error("Insufficient memory");
-      node->mpNext       = first;
-      node->mpBackNext   = NULL;
-      first->mpBackNext  = node;
-      node->mType       = NT_WORD;
-      node->mpPronun     = NULL;
-      node->mStart      = UNDEF_TIME;
-      node->mStop       = UNDEF_TIME;
-      node->mNBackLinks = 0;
-      node->mpBackLinks  = NULL;
-      node->mNLinks     = 1;
-      node->mpLinks      = (Link*) malloc(sizeof(Link));
-      if (node->mpLinks == NULL) Error("Insufficient memory");
-      node->mpLinks[0].mLike = 0.0;
-      node->mpLinks[0].mpNode = first;
-      first->mNBackLinks = 1;
-      first->mpBackLinks  = (Link*) malloc(sizeof(Link));
-      if (first->mpBackLinks == NULL) Error("Insufficient memory");
-      first->mpBackLinks[0].mLike = 0.0;
-      first->mpBackLinks[0].mpNode = node;
-      first = node;
-    }
-    if (last->mpPronun != NULL) {
-      node = (Node *) calloc(1, sizeof(Node));
-      if (node == NULL) Error("Insufficient memory");
-      last->mpNext      = node;
-      node->mpNext      = NULL;
-      node->mpBackNext  = last;
-      node->mType      = NT_WORD;
-      node->mpPronun    = NULL;
-      node->mStart     = UNDEF_TIME;
-      node->mStop      = UNDEF_TIME;
-      node->mNLinks    = 0;
-      node->mpLinks     = NULL;
-      last->mNLinks = 1;
-      last->mpLinks  = (Link*) malloc(sizeof(Link));
-      if (last->mpLinks == NULL) Error("Insufficient memory");
-      last->mpLinks[0].mLike = 0.0;
-      last->mpLinks[0].mpNode = node;
-      node->mNBackLinks = 1;
-      node->mpBackLinks  = (Link*) malloc(sizeof(Link));
-      if (node->mpBackLinks == NULL) Error("Insufficient memory");
-      node->mpBackLinks[0].mLike = 0.0;
-      node->mpBackLinks[0].mpNode = last;
     }
     return first;
   }
-  
+    
   //***************************************************************************
   //***************************************************************************
   Node *ReadHTKLattice(

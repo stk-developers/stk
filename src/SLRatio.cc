@@ -39,7 +39,7 @@ struct _LRTrace {
   long long candidateEndTime;
 };
 
-LRTrace *MakeLRTraceTable(Network *net, int *nWords, Token **filler_end)
+LRTrace *MakeLRTraceTable(Network *net, int *nWords, Node*& filler_end)
 {
   LRTrace *lrt;
   Node *node;
@@ -53,7 +53,7 @@ LRTrace *MakeLRTraceTable(Network *net, int *nWords, Token **filler_end)
   if (node == NULL) {
     Error("Network contains no null node with flag=F (reference model end)");
   }
-  *filler_end = node->mpExitToken;
+  filler_end = node;
 
   for (node=net->mpFirst; node != NULL; node = node->mpNext) {
     if (node->mType == (NT_WORD | NT_STICKY) && node->mpPronun != NULL) ++*nWords;
@@ -287,7 +287,7 @@ int main(int argc, char *argv[]) {
 
   int nWords, j;
   LRTrace *lrt = NULL;
-  Token *filler_end;
+  Node *filler_end;
 
   if (argc == 1) usage(argv[0]);
 
@@ -438,7 +438,7 @@ int main(int argc, char *argv[]) {
     //InitNetwork(&net, node, &hset, NULL);
     net.Init(node, &hset, NULL);
     fclose(ilfp);
-    lrt = MakeLRTraceTable(&net, &nWords, &filler_end);
+    lrt = MakeLRTraceTable(&net, &nWords, filler_end);
   }
   lfp = OpenOutputMLF(out_MLF);
 
@@ -483,7 +483,7 @@ int main(int argc, char *argv[]) {
       //InitNetwork(&net, node, &hset, NULL);
       net.Init(node, &hset, NULL);
       CloseInputLabelFile(ilfp, in_MLF);
-      lrt = MakeLRTraceTable(&net, &nWords, &filler_end);
+      lrt = MakeLRTraceTable(&net, &nWords, filler_end);
     }
     net.mWPenalty     = word_penalty;
     net.mMPenalty     = model_penalty;
@@ -509,10 +509,11 @@ int main(int argc, char *argv[]) {
     net.PassTokenInNetwork = fulleval ? &PassTokenSum : &PassTokenMax;
     net.PassTokenInModel   = fulleval ? &PassTokenSum : &PassTokenMax;
 
-    KillToken(filler_end);
+    if (filler_end->mpAnr != NULL) KillToken(filler_end->mpAnr->mpExitToken);
     
     for (j = 0; j < nWords; j++) 
-      KillToken(lrt[j].mpWordEnd->mpExitToken);
+      if (lrt[j].mpWordEnd->mpAnr != NULL)
+        KillToken(lrt[j].mpWordEnd->mpAnr->mpExitToken);
 
     if (trace_flag & 2) 
     {
@@ -531,38 +532,51 @@ int main(int argc, char *argv[]) {
 #endif
 
       if (trace_flag & 2) {
-        printf("      %13e", filler_end->mLike);
+        printf("      %13e", filler_end->mpAnr == NULL 
+                             ? LOG_0 
+                             : filler_end->mpAnr->mpExitToken->mLike);
+        
         for (j = 0; j < nWords; j++) {
-          printf(" %13e", lrt[j].mpWordEnd->mpExitToken->mLike);
+          printf(" %13e", lrt[j].mpWordEnd->mpAnr == NULL
+                          ? LOG_0
+                          : lrt[j].mpWordEnd->mpAnr->mpExitToken->mLike);
         }
         puts("");
       }
       
       for (j = 0; j < nWords; j++) 
       {
-        long long   wordStartTime;
-        float       lhRatio;
-        Token *     word_end = lrt[j].mpWordEnd->mpExitToken;
+        long long  wordStartTime;
+        float      lhRatio;
+        Node *     word_end = lrt[j].mpWordEnd;
 
-        if (!word_end->IsActive() || !filler_end->IsActive()) 
+        if (word_end  ->mpAnr == NULL || !word_end  ->mpAnr->mpExitToken->IsActive() || 
+            filler_end->mpAnr == NULL || !filler_end->mpAnr->mpExitToken->IsActive()) 
         {
           lrt[j].lastLR = -FLT_MAX;
-          KillToken(word_end);
+
+          if (word_end->mpAnr != NULL) 
+             KillToken(word_end->mpAnr->mpExitToken);
+             
           continue;
         }
         
-        lhRatio = word_end->mLike - filler_end->mLike;
+        lhRatio = word_end  ->mpAnr->mpExitToken->mLike
+                - filler_end->mpAnr->mpExitToken->mLike;
 
         if (lrt[j].lastLR > lhRatio) { // LR is not growing, cannot be max.
           lrt[j].lastLR = lhRatio;
-          KillToken(word_end);
+
+          KillToken(word_end->mpAnr->mpExitToken);
+
           continue;
         }
         lrt[j].lastLR = lhRatio;
-        wordStartTime = (long long) (word_end->mpWlr && word_end->mpWlr->mpNext
-                        ? word_end->mpWlr->mpNext->mTime : 0);
+        wordStartTime = (long long) (word_end->mpAnr->mpExitToken->mpWlr 
+                        && word_end->mpAnr->mpExitToken->mpWlr->mpNext
+                        ? word_end->mpAnr->mpExitToken->mpWlr->mpNext->mTime : 0);
 
-        KillToken(word_end);
+        KillToken(word_end->mpAnr->mpExitToken);
         if (lrt[j].candidateLR > lhRatio && lrt[j].candidateEndTime > wordStartTime) {
           continue;
         }
@@ -574,7 +588,7 @@ int main(int argc, char *argv[]) {
         lrt[j].candidateEndTime = (long long) net.mTime;
         lrt[j].candidateLR = lhRatio;
       }
-      KillToken(filler_end);
+      if (filler_end->mpAnr != NULL) KillToken(filler_end->mpAnr->mpExitToken);
     }
     for (j = 0; j < nWords; j++) {
       PutCandidateToLabels(&lrt[j], score_thresh, lfp, label_file,

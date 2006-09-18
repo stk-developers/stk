@@ -20,6 +20,9 @@
 #include "dict.h"
 #include "Net.h"
 
+
+#include <list>
+
 //#define DEBUG_MSGS
 //#define TRACE_TOKENS
 
@@ -46,7 +49,8 @@ namespace STK
   class Cache;
   class WordLinkRecord;
   class Network;
-  
+  class ActiveNodeRecord;
+  class Token;
   
   //###########################################################################
   //###########################################################################
@@ -131,8 +135,8 @@ namespace STK
     /**
      * @brief Sorts nodes in this network
      */
-    void 
-    SortNodes();
+//    void 
+//    SortNodes();
     
     /**
      * @brief Checks for a cyclic structure in network
@@ -223,6 +227,10 @@ namespace STK
     
     FLOAT 
     FromObservationAtStateId(State* pState, FLOAT* pObs);
+
+    void 
+    AddLinkToLattice(Node *from, Node *to, FLOAT lmLike);
+
     
   public:
     //Subnet part
@@ -256,6 +264,11 @@ namespace STK
     FLOAT                   mOcpScale;
     FLOAT                   mPruningThresh;
     SearchPathsType         mSearchPaths;
+    bool                    mLatticeGeneration;
+    
+    MyHSearchData           mLatticeNodeHash;
+    Node *                  mpLatticeLastNode;
+
                               
     FLOAT   (*OutputProbability) (State *state, FLOAT *observation, Network *network);
     FLOAT   (*mpOutputProbability) (State *state, FLOAT *observation);
@@ -298,7 +311,7 @@ namespace STK
     ViterbiStep(FLOAT* pObservation);
     
     FLOAT             
-    ViterbiDone(Label** pLabels);
+    ViterbiDone(Label** pLabels, Node ** pLattice = NULL);
     
     FLOAT 
     MCEReest(FLOAT* pObsMx, FLOAT * pObsMx2, int nFrames, FLOAT weight, FLOAT sigSlope);
@@ -330,9 +343,12 @@ namespace STK
   class Token 
   {
   public:
+    typedef std::list<WordLinkRecord*> AltHypList;
+
     double                  mLike;            ///< Likelihood
     WordLinkRecord*         mpWlr;            ///< Associated word link record
     FloatInLog              mAccuracy;        ///< Accuracy
+    AltHypList*             mpAltHyps;
     
 #   ifdef bordel_staff
     WordLinkRecord*         mpTWlr;
@@ -342,6 +358,8 @@ namespace STK
     /**
      * @brief Returns true if token is active
      */
+    Token() : mLike(LOG_0), mpWlr(NULL), mpAltHyps(NULL), mpTWlr(NULL) {}
+     
     inline const bool
     IsActive() const 
     { return mLike > LOG_MIN; }
@@ -352,9 +370,41 @@ namespace STK
     Label*
     pGetLabels();
     
+    Node *
+    pGetLattice();
+    
     void
     AddWordLinkRecord(Node* pNode, int stateIdx, int time);
+    
+    void 
+    AddAlternativeHypothesis(WordLinkRecord* pWlr);
   };
+  
+  class ActiveNodeRecord
+  {
+  public:
+    Node *  mpNode;
+    Node *  mpNextActiveModel;
+    Node *  mpPrevActiveModel;
+    Node *  mpNextActiveNode;
+    Node *  mpPrevActiveNode;
+    
+    bool    mIsActiveModel;
+    int     mIsActiveNode;
+
+    Token * mpExitToken;
+    Token * mpTokens;
+
+    ActiveNodeRecord(Node *n) : mpNode(n), mIsActiveModel(false), mIsActiveNode(0)
+    {
+      int numOfTokens = mpNode->mType & NT_MODEL ? mpNode->mpHmm->mNStates : 1;
+      mpTokens = new Token[numOfTokens];
+      mpExitToken = &mpTokens[numOfTokens-1];
+    }
+    
+    ~ActiveNodeRecord() { delete [] mpTokens; }
+  };
+
     
   
   /** *************************************************************************
@@ -382,12 +432,14 @@ namespace STK
   class WordLinkRecord 
   {
   public:
-    Node*             mpNode;
-    int               mStateIdx;
-    FLOAT             mLike;
-    long              mTime;
-    WordLinkRecord*   mpNext;
-    int               mNReferences;
+    Node*              mpNode;
+    int                mStateIdx;
+    int                mAux;             
+    FLOAT              mLike;
+    long               mTime;
+    WordLinkRecord*    mpNext;
+    Token::AltHypList* mpAltHyps;
+    int                mNReferences;
   #ifdef DEBUG_MSGS
     WordLinkRecord*   mpTmpNext;
     bool              mIsFreed;
@@ -413,14 +465,14 @@ namespace STK
   FromObservationAtStateId(State *state, FLOAT *obs, Network *network);
 
   int               
+  PassTokenMaxForLattices(Token *from, Token *to, FLOAT addLogLike);
+
+  int               
   PassTokenMax(Token *from, Token *to, FLOAT addLogLike);
 
   int               
   PassTokenSum(Token *from, Token *to, FLOAT addLogLike);
 
-  int               
-  PassTokenSumUnlogLikes(Token* pFrom, Token* pTo, FLOAT addLogLike);
-  
   WordLinkRecord*  
   TimePruning(Network* pNetwork, int frameDelay);
   

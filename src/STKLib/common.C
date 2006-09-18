@@ -658,6 +658,53 @@ void fast_softmax_vec(double *in, double *out, int size)
     return 0;
   }
   
+  //***************************************************************************
+  //***************************************************************************
+  int skipHTKstr(char *chrptr, char **endPtrOrErrMsg)
+  {
+    char termChar = '\0';
+      
+    while (isspace(*chrptr)) ++chrptr;
+  
+    if (*chrptr == '\'' || *chrptr == '"') {
+      termChar = *chrptr;
+      chrptr++;
+    }
+  
+    for (; *chrptr; chrptr++) {
+      if (*chrptr == '\'' || *chrptr == '"') {
+        if (termChar == *chrptr) {
+          termChar = '\0';
+          chrptr++;
+          break;
+        }
+      }
+  
+      if (isspace(*chrptr) && !termChar) {
+        break;
+      }
+  
+      if (*chrptr == '\\') {
+        ++chrptr;
+        if (*chrptr == '\0' || (*chrptr    >= '0' && *chrptr <= '7' &&
+                               (*++chrptr  <  '0' || *chrptr >  '7' ||
+                                *++chrptr  <  '0' || *chrptr >  '7'))) {
+          *endPtrOrErrMsg = "Invalid escape sequence";
+          return -1;
+        }
+      }
+    }
+  
+    if (termChar) {
+      *endPtrOrErrMsg = "Unterminated quoted string";
+      return -2;
+    }
+
+    while (isspace(*chrptr)) ++chrptr;
+    *endPtrOrErrMsg = chrptr;
+  
+    return 0;
+  }
   
   //***************************************************************************
   //***************************************************************************
