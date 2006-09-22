@@ -1,5 +1,7 @@
 #include "Models.h"
-
+#include "SigP.h"
+#include <stdarg.h>
+ 
 namespace STK
 {
   int             gCurrentMmfLine       = 1;
@@ -20,50 +22,52 @@ namespace STK
   //***************************************************************************
   void InitKwdTable()
   {
-    gpKwds[KID_BeginHMM   ] = "BeginHMM";    gpKwds[KID_Use        ] = "Use";
-    gpKwds[KID_EndHMM     ] = "EndHMM";      gpKwds[KID_NumMixes   ] = "NumMixes";
-    gpKwds[KID_NumStates  ] = "NumStates";   gpKwds[KID_StreamInfo ] = "StreamInfo";
-    gpKwds[KID_VecSize    ] = "VecSize";     gpKwds[KID_NullD      ] = "NullD";
-    gpKwds[KID_PoissonD   ] = "PoissonD";    gpKwds[KID_GammaD     ] = "GammaD";
-    gpKwds[KID_RelD       ] = "RelD";        gpKwds[KID_GenD       ] = "GenD";
-    gpKwds[KID_DiagC      ] = "DiagC";       gpKwds[KID_FullC      ] = "FullC";
-    gpKwds[KID_XformC     ] = "XformC";      gpKwds[KID_State      ] = "State";
-    gpKwds[KID_TMix       ] = "TMix";        gpKwds[KID_Mixture    ] = "Mixture";
-    gpKwds[KID_Stream     ] = "Stream";      gpKwds[KID_SWeights   ] = "SWeights";
-    gpKwds[KID_Mean       ] = "Mean";        gpKwds[KID_Variance   ] = "Variance";
-    gpKwds[KID_InvCovar   ] = "InvCovar";    gpKwds[KID_Xform      ] = "Xform";
-    gpKwds[KID_GConst     ] = "GConst";      gpKwds[KID_Duration   ] = "Duration";
-    gpKwds[KID_InvDiagC   ] = "InvDiagC";    gpKwds[KID_TransP     ] = "TransP";
-    gpKwds[KID_DProb      ] = "DProb";       gpKwds[KID_LLTC       ] = "LLTC";
-    gpKwds[KID_LLTCovar   ] = "LLTCovar";    gpKwds[KID_XformKind  ] = "XformKind";
-    gpKwds[KID_ParentXform] = "ParentXform"; gpKwds[KID_NumXforms  ] = "NumXforms";
-    gpKwds[KID_XformSet   ] = "XformSet";    gpKwds[KID_LinXform   ] = "LinXform";
-    gpKwds[KID_Offset     ] = "Offset";      gpKwds[KID_Bias       ] = "Bias";
-    gpKwds[KID_BlockInfo  ] = "BlockInfo";   gpKwds[KID_Block      ] = "Block";
-    gpKwds[KID_BaseClass  ] = "BaseClass";   gpKwds[KID_Class      ] = "Class";
-    gpKwds[KID_XformWgtSet] = "XformWgtSet"; gpKwds[KID_ClassXform ] = "ClassXform";
-    gpKwds[KID_MMFIDMask  ] = "MMFIDMask";   gpKwds[KID_Parameters ] = "Parameters";
-    gpKwds[KID_NumClasses ] = "NumClasses";  gpKwds[KID_AdaptKind  ] = "AdaptKind";
-    gpKwds[KID_Prequal    ] = "Prequal";     gpKwds[KID_InputXform ] = "InputXform";
-    gpKwds[KID_RClass     ] = "RClass";      gpKwds[KID_RegTree    ] = "RegTree";
-    gpKwds[KID_Node       ] = "Node";        gpKwds[KID_TNode      ] = "TNode";
-    gpKwds[KID_HMMSetID   ] = "HMMSetID";    gpKwds[KID_ParmKind   ] = "ParmKind";
+    gpKwds[KID_BeginHMM    ] = "BeginHMM";      gpKwds[KID_Use        ] = "Use";
+    gpKwds[KID_EndHMM      ] = "EndHMM";        gpKwds[KID_NumMixes   ] = "NumMixes";
+    gpKwds[KID_NumStates   ] = "NumStates";     gpKwds[KID_StreamInfo ] = "StreamInfo";
+    gpKwds[KID_VecSize     ] = "VecSize";       gpKwds[KID_NullD      ] = "NullD";
+    gpKwds[KID_PoissonD    ] = "PoissonD";      gpKwds[KID_GammaD     ] = "GammaD";
+    gpKwds[KID_RelD        ] = "RelD";          gpKwds[KID_GenD       ] = "GenD";
+    gpKwds[KID_DiagC       ] = "DiagC";         gpKwds[KID_FullC      ] = "FullC";
+    gpKwds[KID_XformC      ] = "XformC";        gpKwds[KID_State      ] = "State";
+    gpKwds[KID_TMix        ] = "TMix";          gpKwds[KID_Mixture    ] = "Mixture";
+    gpKwds[KID_Stream      ] = "Stream";        gpKwds[KID_SWeights   ] = "SWeights";
+    gpKwds[KID_Mean        ] = "Mean";          gpKwds[KID_Variance   ] = "Variance";
+    gpKwds[KID_InvCovar    ] = "InvCovar";      gpKwds[KID_Xform      ] = "Xform";
+    gpKwds[KID_GConst      ] = "GConst";        gpKwds[KID_Duration   ] = "Duration";
+    gpKwds[KID_InvDiagC    ] = "InvDiagC";      gpKwds[KID_TransP     ] = "TransP";
+    gpKwds[KID_DProb       ] = "DProb";         gpKwds[KID_LLTC       ] = "LLTC";
+    gpKwds[KID_LLTCovar    ] = "LLTCovar";      gpKwds[KID_XformKind  ] = "XformKind";
+    gpKwds[KID_ParentXform ] = "ParentXform";   gpKwds[KID_NumXforms  ] = "NumXforms";
+    gpKwds[KID_XformSet    ] = "XformSet";      gpKwds[KID_LinXform   ] = "LinXform";
+    gpKwds[KID_Offset      ] = "Offset";        gpKwds[KID_Bias       ] = "Bias";
+    gpKwds[KID_BlockInfo   ] = "BlockInfo";     gpKwds[KID_Block      ] = "Block";
+    gpKwds[KID_BaseClass   ] = "BaseClass";     gpKwds[KID_Class      ] = "Class";
+    gpKwds[KID_XformWgtSet ] = "XformWgtSet";   gpKwds[KID_ClassXform ] = "ClassXform";
+    gpKwds[KID_MMFIDMask   ] = "MMFIDMask";     gpKwds[KID_Parameters ] = "Parameters";
+    gpKwds[KID_NumClasses  ] = "NumClasses";    gpKwds[KID_AdaptKind  ] = "AdaptKind";
+    gpKwds[KID_Prequal     ] = "Prequal";       gpKwds[KID_InputXform ] = "InputXform";
+    gpKwds[KID_RClass      ] = "RClass";        gpKwds[KID_RegTree    ] = "RegTree";
+    gpKwds[KID_Node        ] = "Node";          gpKwds[KID_TNode      ] = "TNode";
+    gpKwds[KID_HMMSetID    ] = "HMMSetID";      gpKwds[KID_ParmKind   ] = "ParmKind";
   
     /* Non-HTK keywords */
-    gpKwds[KID_FrmExt     ] = "FrmExt";      gpKwds[KID_PDFObsVec  ] = "PDFObsVec";
-    gpKwds[KID_ObsCoef    ] = "ObsCoef";     gpKwds[KID_Input      ] = "Input";
-    gpKwds[KID_NumLayers  ] = "NumLayers";   gpKwds[KID_NumBlocks  ] = "NumBlocks";
-    gpKwds[KID_Layer      ] = "Layer";       gpKwds[KID_Copy       ] = "Copy";
-    gpKwds[KID_Stacking   ] = "Stacking";
+    gpKwds[KID_FrmExt      ] = "FrmExt";        gpKwds[KID_PDFObsVec  ] = "PDFObsVec";
+    gpKwds[KID_ObsCoef     ] = "ObsCoef";       gpKwds[KID_Input      ] = "Input";
+    gpKwds[KID_NumLayers   ] = "NumLayers";     gpKwds[KID_NumBlocks  ] = "NumBlocks";
+    gpKwds[KID_Layer       ] = "Layer";         gpKwds[KID_Copy       ] = "Copy";
+    gpKwds[KID_Stacking    ] = "Stacking";      gpKwds[KID_Transpose  ] = "Transpose";    
+    gpKwds[KID_XformPredef ] = "XformPredef";   gpKwds[KID_Window     ] = "Window";  
+    gpKwds[KID_WindowPredef] = "WindowPredef";  gpKwds[KID_BlockCopy  ] = "BlockCopy";       
     
     gpKwds[KID_ExtendedXform    ] = "ExtendedXform";
     
     /* Numeric functions - FuncXform*/
-    gpKwds[KID_Sigmoid    ] = "Sigmoid";     gpKwds[KID_Log        ] = "Log";
-    gpKwds[KID_Exp        ] = "Exp";         gpKwds[KID_Sqrt       ] = "Sqrt";
-    gpKwds[KID_SoftMax    ] = "SoftMax";
+    gpKwds[KID_Sigmoid     ] = "Sigmoid";       gpKwds[KID_Log        ] = "Log";
+    gpKwds[KID_Exp         ] = "Exp";           gpKwds[KID_Sqrt       ] = "Sqrt";
+    gpKwds[KID_SoftMax     ] = "SoftMax";
     
-    gpKwds[KID_Weights    ] = "Weights";
+    gpKwds[KID_Weights     ] = "Weights";
   }
   
   
@@ -158,7 +162,7 @@ namespace STK
       else           Error("Unexpected end of file %s", gpCurrentMmfName);
       }
     } else {
-      while ((ch != EOF) &&
+      while ((ch != EOF) && (ch != '\0') &&
             !isspace(ch) &&
             (chptr-buffer) < static_cast<int>(sizeof(buffer)-1)) 
       {
@@ -167,7 +171,9 @@ namespace STK
       }
   
       if (ch != EOF) {
-        ungetc(ch, fp);
+        if(ch != ' ' || !gHmmReadBinary) {	
+          ungetc(ch, fp);
+        }
       } else if (ferror(fp)) {
         Error("Cannot read input file %s", gpCurrentMmfName);
       }
@@ -185,7 +191,20 @@ namespace STK
     return buffer;
   
   }
-  
+
+  //***************************************************************************
+  //***************************************************************************  
+  void PutString(FILE *fp, bool binary, char *msg, ...)
+  {
+    va_list ap;
+    va_start(ap, msg);
+    vfprintf(fp, msg, ap);
+    if(binary)
+    {
+      fputc(' ', fp);
+    }    
+    va_end(ap);    
+  }
   
   //***************************************************************************
   //***************************************************************************
@@ -206,8 +225,8 @@ namespace STK
     if (gHmmReadBinary) {
       INT_16 i;
       cc = fread(&i, sizeof(INT_16), 1, fp);
-      ret = i;
-      if (!isBigEndian()) swap2(ret);
+      if (!isBigEndian()) swap2(i);
+      ret = i;      
     } else {
       RemoveSpaces(fp);
       cc = fscanf(fp, "%d", &ret);
@@ -301,7 +320,6 @@ namespace STK
     else return KID_UNSET;
   }
   
-  
   //***************************************************************************
   //***************************************************************************
   KeywordID ReadDurKind(char *str)
@@ -333,7 +351,7 @@ namespace STK
   void PutInt(FILE *fp, bool binary, int i)
   {
     if (binary) {
-      INT_16 b = i;
+      INT_16 b = i;      
       if (!isBigEndian()) swap2(b);
       fwrite(&b, sizeof(INT_16), 1, fp);
     } else {
@@ -361,6 +379,12 @@ namespace STK
     if (!binary) putc('\n', fp);
   }
   
+  //***************************************************************************
+  //***************************************************************************
+  void PutSpace(FILE *fp, bool binary)
+  {
+    if (!binary) putc(' ', fp);
+  }
   
   //###########################################################################################################
   
@@ -1321,15 +1345,35 @@ namespace STK
     }
   
     if (CheckKwd(keyword, KID_Xform)) {
-      return (Xform *) ReadLinearXform(fp, macro);
+      return (Xform *) ReadLinearXform(fp, macro, false);
     }
-  
+
+    if (CheckKwd(keyword, KID_XformPredef)) {
+      return (Xform *) ReadLinearXform(fp, macro, true);
+    }    
+      
     if (CheckKwd(keyword, KID_Bias)) {
       return (Xform *) ReadBiasXform(fp, macro);
     }
   
     if (CheckKwd(keyword, KID_Copy)) {
       return (Xform *) ReadCopyXform(fp, macro);
+    }
+
+    if (CheckKwd(keyword, KID_BlockCopy)) {
+      return (Xform *) ReadBlockCopyXform(fp, macro);
+    }    
+    
+    if (CheckKwd(keyword, KID_Transpose)) {
+      return (Xform *) ReadTransposeXform(fp, macro);
+    }
+
+    if (CheckKwd(keyword, KID_Window)) {
+      return (Xform *) ReadWindowXform(fp, macro, false);
+    }
+    
+    if (CheckKwd(keyword, KID_WindowPredef)) {
+      return (Xform *) ReadWindowXform(fp, macro, true);
     }
     
     if (CheckKwd(keyword, KID_Stacking)) {
@@ -1563,7 +1607,7 @@ namespace STK
   //***************************************************************************
   LinearXform *
   ModelSet::
-  ReadLinearXform(FILE *fp, Macro *macro)
+  ReadLinearXform(FILE *fp, Macro *macro, bool predefined)
   {
     LinearXform *   ret;
     int             in_size;
@@ -1579,19 +1623,75 @@ namespace STK
   
     // create new object
     ret = new LinearXform(in_size, out_size);
+    ret->mPredefinedID = PLXID_NONE;
     
-    // fill the object with data    
-    i = 0;
-    for (c=0; c < out_size; c++)
+    // generating of predefined transforms 
+    // - predefined transforms are suported in text format only
+    if(predefined)
     {
-      for (r = 0; r < in_size; r++)
+      char *p_tr_name = GetString(fp, false);
+      for(i = 0; i < strlen(p_tr_name); i++) 
       {
-        tmp = GetFloat(fp);
-        
-        ret->mMatrix[c][r] = tmp;        
-        
-        //ret->mpMatrixO[i]  = tmp;  //:TODO: Get rid of this old stuff
-        i++;
+        p_tr_name[i] = toupper(p_tr_name[i]);
+      }
+    
+      if(!strcmp(p_tr_name, "DCT")) 
+      {
+        ret->mPredefinedID = PLXID_DCT;            
+        ret->mIncludeC0 = (GetInt(fp) != 0);
+        ret->mNRepetitions = GetInt(fp);
+        size_t n_basis = out_size / ret->mNRepetitions;
+  
+        if(n_basis * ret->mNRepetitions != out_size) 
+        {
+          Error("DCT transforms do not fit to the Xform (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+        }
+        if(n_basis > in_size || (n_basis == in_size && !ret->mIncludeC0))
+        {
+          Error("Number of base components (%d) of DCT can not be higher then input vector size (%d) (%s:%d)", n_basis, in_size, gpCurrentMmfName, gCurrentMmfLine);
+        }
+  
+        GenerateDCTMatrix(ret->mMatrix, n_basis, in_size, ret->mNRepetitions, ret->mIncludeC0);	    
+      } 
+      else if(!strcmp(p_tr_name, "CONST"))
+      {
+         ret->mPredefinedID = PLXID_CONST;
+         ret->mConstant = GetFloat(fp);
+
+         GenerateConstantMatrix(ret->mMatrix, out_size, in_size, ret->mConstant);
+      }
+      else if(!strcmp(p_tr_name, "DIAG"))
+      {
+         ret->mPredefinedID = PLXID_DIAG;
+         ret->mConstant = GetFloat(fp);
+         
+         GenerateDiagMatrix(ret->mMatrix, out_size, in_size, ret->mConstant);         
+      }
+      else if(!strcmp(p_tr_name, "RANDOM"))
+      {
+        ret->mPredefinedID = PLXID_RANDOM;
+        ret->mMinValue = GetFloat(fp);
+        ret->mMaxValue = GetFloat(fp);
+        ret->mSeed = static_cast<unsigned int>(GetInt(fp));
+            
+        GenerateRandomMatrix(ret->mMatrix, out_size, in_size, ret->mMinValue, ret->mMaxValue, ret->mSeed);
+      }
+      else 
+      {
+        Error("Unknown predefined Xform %s (%s:%d)", p_tr_name, gpCurrentMmfName, gCurrentMmfLine);	  
+      }
+    } 
+    else
+    {
+      i = 0;
+      for (c=0; c < out_size; c++)
+      {
+        for (r = 0; r < in_size; r++)
+        {
+          tmp = GetFloat(fp);
+          ret->mMatrix[c][r] = tmp;                
+          i++;
+        }
       }
     }
   
@@ -1699,6 +1799,261 @@ namespace STK
     ret->mpMacro      = macro;
     return ret;
   }; //ReadCopyXform(FILE *fp, Macro *macro)
+
+  //***************************************************************************
+  //***************************************************************************
+  BlockCopyXform *
+  ModelSet::
+  ReadBlockCopyXform(FILE *fp, Macro *macro)
+  {
+    BlockCopyXform *   ret;
+    int           n;
+    int           from;
+    int           step;
+    int           to;
+
+    int           out_size = 0;
+      
+    int n_blocks = GetInt(fp);
+    int n_rows = GetInt(fp);
+    int n_cols = GetInt(fp);
+  
+    BlockCopyXform::Block *p_blocks = new BlockCopyXform::Block [n_blocks];
+
+    int i;        
+    int j;
+    int k;
+    for(i = 0; i < n_blocks; i++)
+    {
+      if(!gHmmReadBinary)
+      {
+        // first dimension
+        RemoveSpaces(fp);
+        if ((n = fscanf(fp, "%d:%d:%d", &from, &step, &to)) < 1) {
+          if (ferror(fp)) {
+            Error("Cannot read input file %s", gpCurrentMmfName);
+          }
+          Error("Integral number expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+        }
+      
+        if (n == 2)      { to = step; step = 1; }
+        else if (n == 1) { to = from; step = 1; }
+  
+        p_blocks[i].mFromR = from;
+        p_blocks[i].mStepR = step;
+        p_blocks[i].mToR = to;
+      
+        // second dimension
+        char buff[256];
+        if(fscanf(fp, "%255[,]", buff) == 1)
+        {
+          if ((n = fscanf(fp, "%d:%d:%d", &from, &step, &to)) < 1) {
+            if (ferror(fp)) {
+              Error("Cannot read input file %s", gpCurrentMmfName);
+            }
+            Error("Integral number expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+          }
+      
+          if (n == 2)      { to = step; step = 1; }
+          else if (n == 1) { to = from; step = 1; }
+  
+          p_blocks[i].mFromC = from;
+          p_blocks[i].mStepC = step;
+          p_blocks[i].mToC = to;                  
+        }
+        else
+        {
+          p_blocks[i].mFromC = p_blocks[i].mFromR;
+          p_blocks[i].mStepC = p_blocks[i].mStepR;
+          p_blocks[i].mToC = p_blocks[i].mToR;      
+
+          p_blocks[i].mFromR = 1;
+          p_blocks[i].mStepR = 1;
+          p_blocks[i].mToR = 1;      
+        }
+      }
+      else
+      {
+          p_blocks[i].mFromR = GetInt(fp);
+          p_blocks[i].mStepR = GetInt(fp);
+          p_blocks[i].mToR = GetInt(fp);
+          
+          p_blocks[i].mFromC = GetInt(fp);
+          p_blocks[i].mStepC = GetInt(fp);
+          p_blocks[i].mToC = GetInt(fp);
+      }
+                  
+      if (p_blocks[i].mToR < 1 || p_blocks[i].mToR > n_rows) {
+        Error("BlockCopy index %d out of range (%s:%d)",
+              p_blocks[i].mToR, gpCurrentMmfName, gCurrentMmfLine);
+      }
+      
+      if (p_blocks[i].mToC < 1 || p_blocks[i].mToC > n_cols) {
+        Error("BlockCopy index %d out of range (%s:%d)",
+              p_blocks[i].mToC, gpCurrentMmfName, gCurrentMmfLine);
+      }
+        
+      int n_vals_r = 0;
+      for(j = p_blocks[i].mFromR; j <= p_blocks[i].mToR; j += p_blocks[i].mStepR)
+      {
+        n_vals_r++;
+      }
+      int n_vals_c = 0;
+      for(j = p_blocks[i].mFromC; j <= p_blocks[i].mToC; j += p_blocks[i].mStepC)
+      {
+        n_vals_c++;
+      }
+      
+      out_size += (n_vals_r * n_vals_c);        
+      
+//      printf(" %d:%d:%d,%d:%d:%d\n", p_blocks[i].mFromR, p_blocks[i].mStepR, p_blocks[i].mToR,
+//                                     p_blocks[i].mFromC, p_blocks[i].mStepC, p_blocks[i].mToC);
+                         
+    }
+        
+    // create new object
+    ret = new BlockCopyXform(n_blocks);
+    ret->mpBlocks  = p_blocks;
+    ret->mNBlocks  = n_blocks;
+    ret->mNRows    = n_rows;
+    ret->mInSize  = n_rows * n_cols;
+    ret->mOutSize = out_size;
+    ret->mpIndices = new int [out_size];
+    
+    // fill in indices
+    int idx = 0;
+    for(i = 0; i < n_blocks; i++)
+    {
+      for(j = p_blocks[i].mFromR; j <= p_blocks[i].mToR; j += p_blocks[i].mStepR)
+      {
+        for(k = p_blocks[i].mFromC; k <= p_blocks[i].mToC; k += p_blocks[i].mStepC)
+        {
+          ret->mpIndices[idx] = (j - 1) * n_cols + (k - 1);
+          idx++;
+        }
+      }
+    }  
+    
+    ret->mpMacro      = macro;
+    return ret;
+  }; //ReadCopyXform(FILE *fp, Macro *macro)
+
+  
+  //***************************************************************************
+  //***************************************************************************
+  TransposeXform *
+  ModelSet::
+  ReadTransposeXform(FILE *fp, Macro *macro)
+  {
+    TransposeXform *  ret;
+  
+    size_t in_rows = GetInt(fp);
+    size_t in_cols = GetInt(fp);
+      
+    // create new object
+    ret = new TransposeXform(in_rows, in_cols);
+    
+    ret->mpMacro      = macro;
+    return ret;
+  }; //ReadTransposeXform(FILE *fp, Macro *macro)
+
+
+  //***************************************************************************  
+  //***************************************************************************  
+  WindowXform *
+  ModelSet::
+  ReadWindowXform(FILE *fp, Macro *macro, bool predefined)
+  {
+    WindowXform *   ret;
+    size_t        size;
+    size_t        i;
+    
+    size = GetInt(fp);
+    ret  = new WindowXform(size);
+    ret->mPredefinedID = PWID_NONE;
+    
+    if(predefined)
+    {
+      char *p_win_name = GetString(fp, false);
+      for(i = 0; i < strlen(p_win_name); i++)
+      {
+        p_win_name[i] = toupper(p_win_name[i]);
+      }
+    
+      if(!strcmp(p_win_name, "HAMMING")) 
+      {
+        ret->mPredefinedID = PWID_HAMMING;
+        ret->mNRepetitions = GetInt(fp);
+            
+        size_t win_len = size / ret->mNRepetitions;
+        if(win_len * ret->mNRepetitions != size)
+        {
+          Error("Hamming windows do not fit to the vector size (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+        }
+
+        GenerateHammingWindow(ret->mVector, win_len, ret->mNRepetitions);  
+      }
+      else if(!strcmp(p_win_name, "TRIANG")) 
+      {
+        ret->mPredefinedID = PWID_TRIANG;
+        ret->mNRepetitions = GetInt(fp);
+
+        size_t win_len = size / ret->mNRepetitions;
+        if(win_len * ret->mNRepetitions != size)
+        {
+          Error("Triangular windows do not fit to the vector size (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+        }
+            
+        GenerateTriangWindow(ret->mVector, win_len, ret->mNRepetitions);
+      }
+      else if(!strcmp(p_win_name, "CONST")) 
+      {
+        ret->mPredefinedID = PWID_CONST;
+        ret->mConstant = GetFloat(fp);
+            
+        GenerateConstantWindow(ret->mVector, size, ret->mConstant);
+      }
+      else if(!strcmp(p_win_name, "RANDOM")) 
+      {
+        ret->mPredefinedID = PWID_RANDOM;
+        ret->mMinValue = GetFloat(fp);
+        ret->mMaxValue = GetFloat(fp);
+        ret->mSeed = static_cast<unsigned int>(GetInt(fp));
+  
+        GenerateRandomWindow(ret->mVector, size, ret->mMinValue, ret->mMaxValue, ret->mSeed);
+      }
+      else if(!strcmp(p_win_name, "LINSPACE")) 
+      {
+        ret->mPredefinedID = PWID_LINSPACE;
+        ret->mStartValue = GetFloat(fp);
+        ret->mEndValue = GetFloat(fp);
+        ret->mNRepetitions = GetInt(fp);
+
+        size_t win_len = size / ret->mNRepetitions;
+        if(win_len * ret->mNRepetitions != size)
+        {
+          Error("LinSpace windows do not fit to the vector size (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+        }
+
+        GenerateLinSpaceWindow(ret->mVector, win_len, ret->mStartValue, ret->mEndValue, ret->mNRepetitions);
+      }
+      else 
+      {
+        Error("Unknown predefined window %s (%s:%d)", p_win_name, gpCurrentMmfName, gCurrentMmfLine);  
+      }
+    } 
+    else
+    {
+      // fill the object with data    
+      for (i=0; i < size; i++) 
+      {
+        ret->mVector[i] = GetFloat(fp);
+      }
+    }
+  
+    ret->mpMacro      = macro;
+    return ret;
+  }; // ReadWindowXform(FILE *fp, Macro *macro)
 
   
   //***************************************************************************
@@ -2144,8 +2499,7 @@ namespace STK
     if (output_stream.is_open())
       output_stream.close();
   }
-
-
+  
   //***************************************************************************
   //***************************************************************************
   void 
@@ -2512,7 +2866,10 @@ namespace STK
     switch (type)
     {
       case XT_LINEAR    : WriteLinearXform   (fp, binary, static_cast<LinearXform *>(xform)); break;
-      case XT_COPY      : WriteCopyXform     (fp, binary, static_cast<CopyXform *>(xform)); break;
+      case XT_COPY      : WriteCopyXform     (fp, binary, static_cast<CopyXform *>(xform)); break;      
+      case XT_BLOCKCOPY : WriteBlockCopyXform(fp, binary, static_cast<BlockCopyXform *>(xform)); break;      
+      case XT_TRANSPOSE : WriteTransposeXform(fp, binary, static_cast<TransposeXform *>(xform)); break;
+      case XT_WINDOW    : WriteWindowXform   (fp, binary, static_cast<WindowXform *>(xform)); break;
       case XT_FEATURE_MAPPING: WriteFeatureMappingXform     (fp, binary, static_cast<FeatureMappingXform *>(xform)); break;
       case XT_FRANTA_PRODUCT : WriteFrantaProductXform      (fp, binary, static_cast<FrantaProductXform  *>(xform)); break;
       case XT_FUNC      : WriteFuncXform     (fp, binary, static_cast<FuncXform *>(xform)); break;
@@ -2633,6 +2990,73 @@ namespace STK
     PutNLn(fp, binary);
   } //WriteBiasXform(FILE *fp, bool binary, BiasXform *xform)
 
+  //*****************************************************************************  
+  //*****************************************************************************  
+  void 
+  ModelSet::
+  WriteWindowXform(FILE *fp, bool binary, WindowXform* xform)
+  {
+    size_t  i;
+
+    if(xform->mPredefinedID != PWID_NONE)  
+    { 
+           
+      PutKwd(fp, binary, KID_WindowPredef);
+      PutInt(fp, binary, xform->mOutSize);
+      //PutNLn(fp, binary);
+
+      switch(xform->mPredefinedID)
+      {
+        case PWID_HAMMING:
+          PutString(fp, binary, "Hamming");
+          PutSpace(fp, binary);
+          PutInt(fp, binary, xform->mNRepetitions);
+          PutNLn(fp, binary);
+          break;
+        case PWID_TRIANG:
+          PutString(fp, binary, "Triang");
+          PutSpace(fp, binary);
+          PutInt(fp, binary, xform->mNRepetitions);
+          PutNLn(fp, binary);
+          break;
+        case PWID_CONST:
+          PutString(fp, binary, "Const");
+          PutSpace(fp, binary);
+          PutFlt(fp, binary, xform->mConstant);
+          PutNLn(fp, binary);
+          break;
+        case PWID_RANDOM:
+          PutString(fp, binary, "Random");
+          PutSpace(fp, binary);
+          PutFlt(fp, binary, xform->mMinValue);
+          PutFlt(fp, binary, xform->mMaxValue);
+          PutInt(fp, binary, static_cast<int>(xform->mSeed));
+          PutNLn(fp, binary);
+          break;
+        case PWID_LINSPACE:
+          PutString(fp, binary, "LinSpace");
+          PutSpace(fp, binary);
+          PutFlt(fp, binary, xform->mStartValue);
+          PutFlt(fp, binary, xform->mEndValue);
+          PutInt(fp, binary, xform->mNRepetitions);
+          PutNLn(fp, binary);
+          break;
+      }
+    }
+    else            
+    {
+      PutKwd(fp, binary, KID_Window);
+      PutInt(fp, binary, xform->mOutSize);
+      PutNLn(fp, binary);
+      
+      // save raw data
+      for (i=0; i < xform->mOutSize; i++) 
+      {
+        PutFlt(fp, binary, xform->mVector[i]);
+      }
+      PutNLn(fp, binary);
+    } 
+  } //WriteWindowXform(FILE *fp, bool binary, WindowXform *xform)
 
   //*****************************************************************************  
   //*****************************************************************************  
@@ -2642,26 +3066,72 @@ namespace STK
   {
     size_t  i;
     size_t  j;
-  
-    PutKwd(fp, binary, KID_Xform);
-    PutInt(fp, binary, xform->mOutSize);
-    PutInt(fp, binary, xform->mInSize);
-    PutNLn(fp, binary);
-    for (i=0; i < xform->mOutSize; i++) 
-    {
-      for (j=0; j < xform->mInSize; j++) 
+    
+    if(xform->mPredefinedID != PLXID_NONE)
+    {    
+      PutKwd(fp, binary, KID_XformPredef);
+      PutInt(fp, binary, xform->mOutSize);
+      PutInt(fp, binary, xform->mInSize);
+      // PutNLn(fp, binary);
+
+      switch(xform->mPredefinedID)
       {
+        case PLXID_DCT:
+          PutString(fp, binary, "Dct");
+          PutSpace(fp, binary);
+          PutInt(fp, binary, (xform->mIncludeC0 ? 1 : 0));
+          PutInt(fp, binary, xform->mNRepetitions);
+          PutNLn(fp, binary);
+          break;
+
+        case PLXID_CONST:
+          PutString(fp, binary, "Const");
+          PutSpace(fp, binary);
+          PutFlt(fp, binary, xform->mConstant);
+          PutNLn(fp, binary);
+          break;
+
+        case PLXID_DIAG:
+          PutString(fp, binary, "Diag");
+          PutSpace(fp, binary);
+          PutFlt(fp, binary, xform->mConstant);
+          PutNLn(fp, binary);
+          break;
+  
+        case PLXID_RANDOM:
+          PutString(fp, binary, "Random");
+          PutSpace(fp, binary);  
+          PutFlt(fp, binary, xform->mMinValue);
+          PutFlt(fp, binary, xform->mMaxValue);
+          PutInt(fp, binary, static_cast<int>(xform->mSeed));
+          PutNLn(fp, binary);
+          break;
+      }       
+    }
+    else
+    {
+      PutKwd(fp, binary, KID_Xform);
+      PutInt(fp, binary, xform->mOutSize);
+      PutInt(fp, binary, xform->mInSize);
+      PutNLn(fp, binary);    
+       
+      // save raw data
+      for (i=0; i < xform->mOutSize; i++) 
+      {
+        for (j=0; j < xform->mInSize; j++) 
+        {
 //        if (mUseNewMatrix)
 //        {
-          PutFlt(fp, binary, xform->mMatrix[i][j]);
+            PutFlt(fp, binary, xform->mMatrix[i][j]);
 //        }
 //        else
 //        {
 //          PutFlt(fp, binary, xform->mpMatrixO[i * xform->mInSize + j]);
 //        }
-      }
-      PutNLn(fp, binary);
-    }
+        }
+        PutNLn(fp, binary);
+      }       
+    }   
   } //WriteLinearXform(FILE *fp, bool binary, LinearXform *xform)
   
 
@@ -2718,6 +3188,97 @@ namespace STK
     
     fputs("\n", fp);
   } //WriteCopyXform(FILE *fp, bool binary, CopyXform *xform)
+
+  
+  //*****************************************************************************
+  //*****************************************************************************  
+  void
+  ModelSet::
+  WriteBlockCopyXform(FILE *fp, bool binary, BlockCopyXform *xform)
+  {
+    size_t      i;
+    size_t      j;
+    int         step = 0;
+    int *       ids = xform->mpIndices;
+  
+    BlockCopyXform::Block *p_blocks = xform->mpBlocks;    
+    
+    if(!binary)
+    {
+      fprintf(fp, "<BlockCopy> %d %d %d\n", (int) xform->mNBlocks, (int)xform->mNRows, (int)(xform->mInSize / xform->mNRows));
+    
+      for (i=0; i < xform->mNBlocks; i++) 
+      {
+        fputs(" ", fp);
+        if(p_blocks[i].mFromR != 1 || p_blocks[i].mToR != 1)  // ignore row range if 1:1:1
+        {
+          if(p_blocks[i].mStepR == 1)                         // ignore step if step == 1
+          {
+            if(p_blocks[i].mFromR == p_blocks[i].mToR)        // ignore range end if if from == to
+            {
+              fprintf(fp, "%d,", p_blocks[i].mFromR);
+            }
+            else
+            {
+              fprintf(fp, "%d:%d,", p_blocks[i].mFromR, p_blocks[i].mToR);          
+            }
+          }
+          else
+          {
+            fprintf(fp, "%d:%d:%d,", p_blocks[i].mFromR, p_blocks[i].mStepR, p_blocks[i].mToR);      
+          }
+        }
+        if(p_blocks[i].mStepC == 1)                          // ignore step if step == 1
+        {
+          if(p_blocks[i].mFromC == p_blocks[i].mToC)         // ignore range end if if from == to
+          {
+            fprintf(fp, "%d", p_blocks[i].mFromC);
+          }
+          else
+          {
+            fprintf(fp, "%d:%d", p_blocks[i].mFromC, p_blocks[i].mToC);        
+          }
+        }
+        else
+        {
+          fprintf(fp, "%d:%d:%d", p_blocks[i].mFromC, p_blocks[i].mStepC, p_blocks[i].mToC);      
+        }
+      }
+    
+      fputs("\n", fp);
+    }
+    else
+    {
+      PutKwd(fp, binary, KID_BlockCopy);
+      
+      PutInt(fp, binary, xform->mNBlocks);
+      PutInt(fp, binary, xform->mNRows);
+      PutInt(fp, binary, xform->mInSize / xform->mNRows);
+      
+      for (i=0; i < xform->mNBlocks; i++)
+      {
+        PutInt(fp, binary, p_blocks[i].mFromR);
+        PutInt(fp, binary, p_blocks[i].mStepR);
+        PutInt(fp, binary, p_blocks[i].mToR);
+        PutInt(fp, binary, p_blocks[i].mFromC);
+        PutInt(fp, binary, p_blocks[i].mStepC);
+        PutInt(fp, binary, p_blocks[i].mToC);        
+      }      
+    }
+  } //WriteCopyXform(FILE *fp, bool binary, CopyXform *xform)
+
+  
+  //*****************************************************************************
+  //*****************************************************************************  
+  void
+  ModelSet::
+  WriteTransposeXform(FILE *fp, bool binary, TransposeXform *xform)
+  {
+    PutKwd(fp, binary, KID_Transpose);
+    PutInt(fp, binary, xform->mInRows);
+    PutInt(fp, binary, xform->mOutSize / xform->mInRows);
+    PutNLn(fp, binary);
+  } //WriteTransposeXform(FILE *fp, bool binary, CopyXform *xform)
 
   
   //*****************************************************************************

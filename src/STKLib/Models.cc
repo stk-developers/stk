@@ -2290,7 +2290,26 @@ namespace STK
     }
   }
   
-    
+  //***************************************************************************
+  //***************************************************************************
+  void Xform::ExpandPredef(int macro_type, HMMSetNodeName nodeName,
+                 MacroData * pData, void *pUserData) 
+  {
+    Xform *p_xform = static_cast<Xform *>(pData);
+        
+    switch(p_xform->mXformType)
+    {
+      case XT_LINEAR:
+        LinearXform *p_lxform = static_cast<LinearXform *>(p_xform);
+        p_lxform->mPredefinedID = PLXID_NONE;
+        break;
+      case XT_WINDOW:
+        WindowXform *p_wxform = static_cast<WindowXform *>(p_xform);
+        p_wxform->mPredefinedID = PWID_NONE;
+        break;
+    }
+  }
+      
     
   //**************************************************************************  
   //**************************************************************************  
@@ -2403,6 +2422,7 @@ namespace STK
     mMemorySize   = 0;
     mDelay        = 0;
     mXformType    = XT_LINEAR;
+    mPredefinedID = PLXID_NONE;
   }
     
   
@@ -2546,7 +2566,7 @@ namespace STK
   {
     delete [] mpIndices;
   }
-  
+
   //**************************************************************************  
   //**************************************************************************  
   //virtual 
@@ -2565,7 +2585,161 @@ namespace STK
     }
     return pOutputVector;
   }; //Evaluate(...)
+  
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  // BlockCopyXform section
+  //**************************************************************************  
+  //**************************************************************************  
+  BlockCopyXform::
+  BlockCopyXform(size_t nBlocks)
+  {
+    mpIndices     = 0;
+    mpBlocks      = 0;
+    mNBlocks      = 0;
+    mNRows        = 0;
+    mOutSize      = 0;
+    mInSize       = 0;
+    mMemorySize   = 0;
+    mDelay        = 0;
+    mXformType    = XT_BLOCKCOPY;
+  }
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  BlockCopyXform::
+  ~ BlockCopyXform()
+  {
+    if(mpIndices)
+    {
+      delete [] mpIndices;
+    }
+    if(mpBlocks)
+    {
+      delete [] mpBlocks;
+    }
+  }  
+    
+  //**************************************************************************  
+  //**************************************************************************  
+  //virtual 
+  FLOAT *
+  BlockCopyXform::
+  Evaluate(FLOAT *    pInputVector, 
+           FLOAT *    pOutputVector,
+           char *     pMemory,
+           PropagDirectionType  direction)
+  {
+    size_t i;
+    
+    for (i = 0; i < mOutSize; i++) 
+    {
+      pOutputVector[i] = pInputVector[mpIndices[i]];
+    }
+    return pOutputVector;
+  }; //Evaluate(...)
 
+
+  //**************************************************************************  
+  //**************************************************************************  
+  // TransposeXform section
+  //**************************************************************************  
+  //**************************************************************************  
+  TransposeXform::
+  TransposeXform(size_t inRows, size_t inCols)
+  {
+    mInRows       = inRows;
+    mInSize       = inRows * inCols;
+    mOutSize      = mInSize;
+    mpIndices     = new int[mOutSize];
+    mMemorySize   = 0;
+    mDelay        = 0;
+    mXformType    = XT_TRANSPOSE;
+    
+    size_t i;
+    size_t j;
+    size_t k = 0;
+    for(i = 0; i < inCols; i++)
+    {
+      for(j = 0; j < inRows; j++)
+      {
+         mpIndices[k] = j * inCols + i;
+	 k++;      
+      }
+    }
+  }
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  TransposeXform::
+  ~ TransposeXform()
+  {
+    delete [] mpIndices;
+  }
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  //virtual 
+  FLOAT *
+  TransposeXform::
+  Evaluate(FLOAT *    pInputVector, 
+           FLOAT *    pOutputVector,
+           char *     pMemory,
+           PropagDirectionType  direction)
+  {
+    size_t i;
+    
+    for (i = 0; i < mOutSize; i++) 
+    {
+      pOutputVector[i] = pInputVector[mpIndices[i]];
+    }
+    return pOutputVector;
+  }; //Evaluate(...)
+
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  // WindowXform section
+  //**************************************************************************  
+  //**************************************************************************  
+  WindowXform::
+  WindowXform(size_t vectorSize) :
+     mVector(vectorSize)
+  {
+    mOutSize      = vectorSize;
+    mInSize       = vectorSize;
+    mMemorySize   = 0;
+    mDelay        = 0;
+    mXformType    = XT_WINDOW;
+    mPredefinedID = PWID_NONE;
+  }
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  WindowXform::
+  ~ WindowXform()
+  {}
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  //virtual 
+  FLOAT *
+  WindowXform::
+  Evaluate(FLOAT *    pInputVector, 
+           FLOAT *    pOutputVector,
+           char *     pMemory,
+           PropagDirectionType  direction)
+  {
+    size_t i;
+    
+    for (i = 0; i < mOutSize; i++) 
+    {
+      pOutputVector[i] = pInputVector[i] * mVector[i];
+    }
+    return pOutputVector;
+  }; //Evaluate(...)
+  
   
   //**************************************************************************  
   //**************************************************************************  
@@ -3056,6 +3230,14 @@ namespace STK
     }
   }; // ResetAccums()
   
+  //***************************************************************************
+  //***************************************************************************
+  void 
+  ModelSet::
+  ExpandPredefXforms()
+  {
+    Scan(MTM_XFORM, NULL, Xform::ExpandPredef, NULL);
+  }  
   
   //**************************************************************************  
   //**************************************************************************  

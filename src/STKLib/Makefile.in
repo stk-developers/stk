@@ -67,7 +67,7 @@ am_libSTKLib_a_OBJECTS = libSTKLib_a-BasicVector.$(OBJEXT) \
 	libSTKLib_a-ZNorm.$(OBJEXT) libSTKLib_a-common.$(OBJEXT) \
 	libSTKLib_a-dict.$(OBJEXT) libSTKLib_a-filmatch.$(OBJEXT) \
 	libSTKLib_a-fileio.$(OBJEXT) libSTKLib_a-getopt.$(OBJEXT) \
-	libSTKLib_a-labels.$(OBJEXT)
+	libSTKLib_a-labels.$(OBJEXT) libSTKLib_a-SigP.$(OBJEXT)
 libSTKLib_a_OBJECTS = $(am_libSTKLib_a_OBJECTS)
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
@@ -201,7 +201,7 @@ libSTKLib_a_SOURCES = BasicVector.cc BasicVector.h BasicVector.tcc Error.cc \
     Error.h Features.cc Features.h Matrix.cc Matrix.h Matrix.tcc Models.cc \
     Models.h Models_IO.cc Net.cc Net.h Net_IO.cc Viterbi.cc Viterbi.h ZNorm.cc \
     ZNorm.h common.C common.h dict.C dict.h fileio.h filmatch.C filmatch.h \
-    fileio.C getopt.C getopt.h labels.C labels.h stkstream.h stkstream.tcc
+    fileio.C getopt.C getopt.h labels.C labels.h stkstream.h stkstream.tcc SigP.cc SigP.h
 
 all: all-am
 
@@ -284,6 +284,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-Models_IO.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-Net.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-Net_IO.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-SigP.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-Viterbi.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-ZNorm.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-common.Po@am__quote@
@@ -530,6 +531,20 @@ libSTKLib_a-labels.obj: labels.C
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='labels.C' object='libSTKLib_a-labels.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -c -o libSTKLib_a-labels.obj `if test -f 'labels.C'; then $(CYGPATH_W) 'labels.C'; else $(CYGPATH_W) '$(srcdir)/labels.C'; fi`
+
+libSTKLib_a-SigP.o: SigP.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -MT libSTKLib_a-SigP.o -MD -MP -MF "$(DEPDIR)/libSTKLib_a-SigP.Tpo" -c -o libSTKLib_a-SigP.o `test -f 'SigP.cc' || echo '$(srcdir)/'`SigP.cc; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libSTKLib_a-SigP.Tpo" "$(DEPDIR)/libSTKLib_a-SigP.Po"; else rm -f "$(DEPDIR)/libSTKLib_a-SigP.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='SigP.cc' object='libSTKLib_a-SigP.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -c -o libSTKLib_a-SigP.o `test -f 'SigP.cc' || echo '$(srcdir)/'`SigP.cc
+
+libSTKLib_a-SigP.obj: SigP.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -MT libSTKLib_a-SigP.obj -MD -MP -MF "$(DEPDIR)/libSTKLib_a-SigP.Tpo" -c -o libSTKLib_a-SigP.obj `if test -f 'SigP.cc'; then $(CYGPATH_W) 'SigP.cc'; else $(CYGPATH_W) '$(srcdir)/SigP.cc'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libSTKLib_a-SigP.Tpo" "$(DEPDIR)/libSTKLib_a-SigP.Po"; else rm -f "$(DEPDIR)/libSTKLib_a-SigP.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='SigP.cc' object='libSTKLib_a-SigP.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -c -o libSTKLib_a-SigP.obj `if test -f 'SigP.cc'; then $(CYGPATH_W) 'SigP.cc'; else $(CYGPATH_W) '$(srcdir)/SigP.cc'; fi`
 
 .cc.o:
 @am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \

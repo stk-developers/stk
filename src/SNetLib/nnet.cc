@@ -15,6 +15,9 @@ SNet::NNet::NNet(CompositeXform* nn, int cacheSize, int bunchSize, bool crossVal
       Error("First Xform in each NN layer has to be BiasXform");
     if(nn->mpLayer[3*i+2].mpBlock[0]->mXformType != XT_FUNC)
       Error("First Xform in each NN layer has to be FuncXform");
+    
+    static_cast<LinearXform*>(nn->mpLayer[3*i].mpBlock[0])->mPredefinedID = PLXID_NONE;  // do not save this transform as predefined macro
+    
     mpLayers[i] = new NLayer(&(static_cast<LinearXform*>(nn->mpLayer[3*i].mpBlock[0]))->mMatrix,
                              &(static_cast<BiasXform*>(nn->mpLayer[3*i+1].mpBlock[0]))->mVector,
                               (static_cast<FuncXform*>(nn->mpLayer[3*i+2].mpBlock[0]))->mFuncId);     

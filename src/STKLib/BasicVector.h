@@ -73,6 +73,19 @@ namespace STK
       Init(size_t length);
       
       /**
+       * @brief Dealocates the window from memory and resets the dimensions to (0)
+       */
+      void
+      Destroy();
+           
+      /**
+       * @brief Returns @c true if vector is initialized
+       */
+      const bool
+      IsInitialized() const
+      { return mpData != NULL; }            
+
+      /**
        * @brief Sets all elements to 0
        */
       void 
@@ -99,7 +112,7 @@ namespace STK
       _ElemT*
       pData() const
       { return mpData; }
-      
+
       /**
        *  @brief Gives access to the vector memory area
        *  @return pointer to the first field

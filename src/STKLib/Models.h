@@ -51,6 +51,9 @@ namespace STK
   class BiasXform;
   class CompositeXform;
   class CopyXform;
+  class BlockCopyXform;
+  class TransposeXform;
+  class WindowXform;
   class FeatureMappingXform;
   class FrantaProductXform;
   class FuncXform;
@@ -212,26 +215,28 @@ namespace STK
   enum KeywordID
   {
     KID_UNSET=-1,
-    KID_BeginHMM,    KID_Use,        KID_EndHMM,    KID_NumMixes,  KID_NumStates,
-    KID_StreamInfo,  KID_VecSize,    KID_NullD,     KID_PoissonD,  KID_GammaD,
-    KID_RelD,        KID_GenD,       KID_DiagC,     KID_FullC,     KID_XformC,
-    KID_State,       KID_TMix,       KID_Mixture,   KID_Stream,    KID_SWeights,
-    KID_Mean,        KID_Variance,   KID_InvCovar,  KID_Xform,     KID_GConst,
-    KID_Duration,    KID_InvDiagC,   KID_TransP,    KID_DProb,     KID_LLTC,
+    KID_BeginHMM,    KID_Use,        KID_EndHMM,     KID_NumMixes,  KID_NumStates,
+    KID_StreamInfo,  KID_VecSize,    KID_NullD,      KID_PoissonD,  KID_GammaD,
+    KID_RelD,        KID_GenD,       KID_DiagC,      KID_FullC,     KID_XformC,
+    KID_State,       KID_TMix,       KID_Mixture,    KID_Stream,    KID_SWeights,
+    KID_Mean,        KID_Variance,   KID_InvCovar,   KID_Xform,     KID_GConst,
+    KID_Duration,    KID_InvDiagC,   KID_TransP,     KID_DProb,     KID_LLTC,
     KID_LLTCovar,
-    KID_XformKind=90,KID_ParentXform,KID_NumXforms, KID_XformSet,  KID_LinXform,
-    KID_Offset,      KID_Bias,       KID_BlockInfo, KID_Block,     KID_BaseClass,
-    KID_Class,       KID_XformWgtSet,KID_ClassXform,KID_MMFIDMask, KID_Parameters,
-    KID_NumClasses,  KID_AdaptKind,  KID_Prequal,   KID_InputXform,
-    KID_RClass  =110,KID_RegTree,    KID_Node,      KID_TNode,
+    KID_XformKind=90,KID_ParentXform,KID_NumXforms,  KID_XformSet,  KID_LinXform,
+    KID_Offset,      KID_Bias,       KID_BlockInfo,  KID_Block,     KID_BaseClass,
+    KID_Class,       KID_XformWgtSet,KID_ClassXform, KID_MMFIDMask, KID_Parameters,
+    KID_NumClasses,  KID_AdaptKind,  KID_Prequal,    KID_InputXform,
+    KID_RClass  =110,KID_RegTree,    KID_Node,       KID_TNode,
     KID_HMMSetID=119,KID_ParmKind,
   
     /* Non-HTK keywords */
-    KID_FrmExt  =200,KID_PDFObsVec,  KID_ObsCoef,    KID_Input,    KID_NumLayers,
-    KID_NumBlocks,   KID_Layer,      KID_Copy,       KID_Stacking,
+    KID_FrmExt  =200,KID_PDFObsVec,  KID_ObsCoef,     KID_Input,    KID_NumLayers,
+    KID_NumBlocks,   KID_Layer,      KID_Copy,        KID_Stacking, KID_Transpose,   
+    KID_XformPredef, KID_Window,     KID_WindowPredef,KID_BlockCopy,
   
     /* Numeric functions - FuncXform*/
     KID_Sigmoid,     KID_Log,        KID_Exp,        KID_Sqrt,     KID_SoftMax,
+    
     
     KID_ExtendedXform, 
     
@@ -240,6 +245,24 @@ namespace STK
     KID_MaxKwdID
   };
  
+  enum PredefinedLinearXformID
+  {
+    PLXID_NONE=-1,
+    PLXID_DCT,
+    PLXID_CONST,
+    PLXID_RANDOM,
+    PLXID_DIAG
+  };
+
+  enum PredefinedWindowXformID
+  {
+    PWID_NONE=-1,
+    PWID_HAMMING,
+    PWID_TRIANG,
+    PWID_CONST,
+    PWID_RANDOM,
+    PWID_LINSPACE
+  };
   
   class MakeXformCommand 
   {
@@ -284,8 +307,11 @@ namespace STK
     XformInstance*  ReadXformInstance (FILE* fp, Macro* macro);
     Xform*          ReadXform         (FILE* fp, Macro* macro);
     CompositeXform* ReadCompositeXform(FILE* fp, Macro* macro);
-    LinearXform*    ReadLinearXform   (FILE* fp, Macro* macro);
+    LinearXform*    ReadLinearXform   (FILE* fp, Macro* macro, bool predefined);
     CopyXform*      ReadCopyXform     (FILE* fp, Macro* macro);
+    BlockCopyXform* ReadBlockCopyXform(FILE* fp, Macro* macro);
+    TransposeXform* ReadTransposeXform(FILE* fp, Macro* macro);
+    WindowXform*    ReadWindowXform   (FILE* fp, Macro* macro, bool predefined);
     FeatureMappingXform*    ReadFeatureMappingXform     (FILE* fp, Macro* macro);
     FrantaProductXform*     ReadFrantaProductXform      (FILE* fp, Macro* macro);
     MatlabXform*    ReadMatlabXform(FILE* fp, Macro* macro);
@@ -305,6 +331,9 @@ namespace STK
     void   WriteCompositeXform(FILE*fp, bool binary, CompositeXform*  xform);
     void   WriteLinearXform  (FILE* fp, bool binary,    LinearXform*  xform);
     void   WriteCopyXform    (FILE* fp, bool binary,      CopyXform*  xform);
+    void   WriteBlockCopyXform (FILE* fp, bool binary, BlockCopyXform* xform);
+    void   WriteTransposeXform (FILE* fp, bool binary, TransposeXform* xform);
+    void   WriteWindowXform  (FILE* fp, bool binary, WindowXform*  xform);
     void   WriteFeatureMappingXform (FILE* fp, bool binary, FeatureMappingXform* xform);
     void   WriteFrantaProductXform  (FILE* fp, bool binary, FrantaProductXform* xform);
     void   WriteFuncXform    (FILE* fp, bool binary,      FuncXform*  xform);
@@ -527,11 +556,15 @@ namespace STK
      * @return Pointer to the new macro object
      */
     Macro*
-    pAddMacro(const char type, const std::string & rNewName);    
-    
+    pAddMacro(const char type, const std::string & rNewName);        
+        
     MyHSearchData 
     MakeCIPhoneHash();
     
+    /**
+     * @brief Expands predefined macros in LinearXform and WindowXform (DCT, HAMMING ...)
+     */
+    void ExpandPredefXforms();
     
     void
     ComputeClusterWeightsVector(size_t i);
@@ -1124,7 +1157,10 @@ namespace STK
     XT_COMPOSITE,
     XT_FEATURE_MAPPING,
     XT_FRANTA_PRODUCT,
-    XT_MATLAB
+    XT_MATLAB,
+    XT_TRANSPOSE,
+    XT_WINDOW,
+    XT_BLOCKCOPY
   } XformType;
 
   
@@ -1171,6 +1207,15 @@ namespace STK
           HMMSetNodeName  nodeNameBuffer,
           ScanAction      action, 
           void*           pUserData);
+          
+    /**
+     * @brief ScanAction - expands predefined macros (LinearXform and WindowXform)
+     * @param mask bit mask of flags that tells which data to process by @c action
+     * @param nodeNameBuffer 
+     * @param action routine to apply on pUserData
+     * @param pUserData the data to process by @c action    
+     */
+    static void ExpandPredef(int macro_type, HMMSetNodeName nodeName, MacroData * pData, void *pUserData);
   };
 
   
@@ -1194,12 +1239,12 @@ namespace STK
     /// The destructor
     ~XformLayer();
     
-    Xform**
     /**
      * @brief Inits (creates) the blocks
      * @param nBlocks number of blocks in the layer
      * @return pointer to the newly created array of pointers to Xforms
      */
+    Xform**    
     InitBlocks(size_t nBlocks);
   }; // class XformLayer
   
@@ -1259,7 +1304,18 @@ namespace STK
     virtual
     ~LinearXform();
   
-    Matrix<FLOAT>       mMatrix;
+    Matrix<FLOAT>           mMatrix;
+    
+    /// Predefined transform ID
+    PredefinedLinearXformID mPredefinedID;
+    
+    /// Variables for predefined transforms
+    size_t mNRepetitions;
+    bool mIncludeC0;
+    FLOAT mConstant;
+    FLOAT mMinValue;
+    FLOAT mMaxValue;
+    unsigned int mSeed;
     
     /**
      * @brief Linear Xform evaluation 
@@ -1375,7 +1431,135 @@ namespace STK
              char*      pMemory,
              PropagDirectionType  direction);  
   };
+
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief BlockCopy Xform representation
+   */
+  class BlockCopyXform : public Xform 
+  {
+  public:
+    /**
+     * @brief The constructor
+     * @param inSize size of input vector
+     * @param outSize size of output vector
+     */
+    BlockCopyXform(size_t nBlocks);
+    
+    virtual
+    ~BlockCopyXform();
+    
+    struct Block
+    {
+      int mFromR; 
+      int mStepR; 
+      int mToR; 
+      int mFromC; 
+      int mStepC;
+      int mToC;
+    };
+    
+    int   *mpIndices;  
+    Block *mpBlocks;
+    size_t mNBlocks;
+    int    mNRows;
   
+    /**
+     * @brief Copy Xform evaluation 
+     * @param pInputVector pointer to the input vector
+     * @param pOutputVector pointer to the output vector
+     * @param pMemory pointer to the extra memory needed by the operation
+     * @param direction propagation direction (forward/backward)
+     */
+    virtual FLOAT* 
+    Evaluate(FLOAT*     pInputVector, 
+             FLOAT*     pOutputVector,
+             char*      pMemory,
+             PropagDirectionType  direction);  
+  };
+      
+
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Transpose stacked features - Xform representation
+   */
+  class TransposeXform : public Xform 
+  {
+  public:
+    /**
+     * @brief The constructor
+     * @param inRows number of rows in input matrix
+     * @param inCols number of columns in input matrix
+     */
+    TransposeXform(size_t inRows, size_t inCols);
+    
+    virtual
+    ~TransposeXform();
+    
+    int*                mpIndices;
+    int                 mInRows;
+  
+    /**
+     * @brief Transpose Xform evaluation 
+     * @param pInputVector pointer to the input vector
+     * @param pOutputVector pointer to the output vector
+     * @param pMemory pointer to the extra memory needed by the operation
+     * @param direction propagation direction (forward/backward)
+     */
+    virtual FLOAT* 
+    Evaluate(FLOAT*     pInputVector, 
+             FLOAT*     pOutputVector,
+             char*      pMemory,
+             PropagDirectionType  direction);  
+  };
+
+
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Window input by constant vector (value by value) - Xform representation
+   */
+
+  class WindowXform : public Xform 
+  {
+  public:
+    /**
+     * @brief The constructor
+     * @param inSize size of input vector
+     */
+    WindowXform(size_t vectorSize);
+    
+    virtual
+    ~WindowXform();
+
+    BasicVector<FLOAT> mVector;
+
+    // Predefined window ID
+    PredefinedWindowXformID mPredefinedID;
+
+    // Variables for predefined windows
+    size_t mNRepetitions;
+    bool mIncludeC0;
+    FLOAT mConstant;
+    FLOAT mMinValue;
+    FLOAT mMaxValue;
+    FLOAT mStartValue;
+    FLOAT mEndValue;
+    unsigned int mSeed;	
+
+    /**
+     * @brief Window Xform evaluation 
+     * @param pInputVector pointer to the input vector
+     * @param pOutputVector pointer to the output vector
+     * @param pMemory pointer to the extra memory needed by the operation
+     * @param direction propagation direction (forward/backward)
+     */
+    virtual FLOAT* 
+    Evaluate(FLOAT*     pInputVector, 
+             FLOAT*     pOutputVector,
+             char*      pMemory,
+             PropagDirectionType  direction);  
+  };
+
   
   /** *************************************************************************
    ** *************************************************************************

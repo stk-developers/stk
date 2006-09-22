@@ -100,6 +100,27 @@ namespace STK
         throw std::bad_alloc();
       }
     }
+
+
+  //****************************************************************************
+  //****************************************************************************
+  // The destructor
+  template<typename _ElemT>
+    void
+    BasicVector<_ElemT>::
+    Destroy()
+    {
+      // we need to free the data block if it was defined
+#ifndef STK_MEMALIGN_MANUAL
+      if (NULL != mpData) free(mpData);
+#else
+      if (NULL != mpFreeData) free(mpFreeData);
+#endif
+
+      mpData = NULL;
+      mLength = 0;
+    }
+
   
   
   //******************************************************************************    

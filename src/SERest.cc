@@ -1,3 +1,4 @@
+
 /***************************************************************************
  *   copyright            : (C) 2004 by Lukas Burget,UPGM,FIT,VUT,Brno     *
  *   email                : burget@fit.vutbr.cz                            *
@@ -235,6 +236,7 @@ int main(int argc, char* argv[])
   bool                swap_features;
   bool                swap_features_alig;
   bool                htk_compat;
+  bool                expand_predef_xforms;
   
   AccumType           accum_type;
   
@@ -376,7 +378,7 @@ int main(int argc, char* argv[])
   
   mmf_karkulka = GetParamStr(&cfgHash, SNAME":CWOUTDIR",        ".");
   karkulka     = GetParamBool(&cfgHash,SNAME":CWUPDATE",        false);
-  
+  expand_predef_xforms = GetParamBool(&cfgHash,SNAME":EXPANDPREDEFXFORMS", true);
   
   update_mode  = (Update_Mode) GetParamEnum(&cfgHash,SNAME":UPDATEMODE",    UM_UPDATE,
                    "UPDATE",UM_UPDATE,"DUMP",UM_DUMP,"BOTH",UM_BOTH, NULL);
@@ -398,7 +400,7 @@ int main(int argc, char* argv[])
                               "HTK", TF_HTK, "STK", TF_STK, NULL);
 
   cchrptr      = GetParamStr(&cfgHash, SNAME":UPDATE",  "");
-  
+    
   for (; *cchrptr; cchrptr++)
   {
     switch (*cchrptr) 
@@ -466,6 +468,10 @@ int main(int argc, char* argv[])
     for (src_mmf=strtok(src_mmf, ","); src_mmf != NULL; src_mmf=strtok(NULL, ",")) 
     {
       hset.ParseMmf(src_mmf, NULL);
+    }
+    if(expand_predef_xforms)
+    {
+      hset.ExpandPredefXforms();
     }
   }
   

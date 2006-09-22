@@ -155,13 +155,14 @@ int main(int argc, char *argv[])
   bool hmms_binary;
   bool swap_features;
   bool swap_features_out;
+  bool expand_predef_xforms;  
   const char *NNet_instance_name = NULL;
   XformInstance *NNet_instance   = NULL;
   XformInstance *NNet_input      = NULL;
   LabelFormat in_lbl_fmt = {0};
   RHFBuffer rhfbuff      = {0};
   RHFBuffer rhfbuff_out  = {0};
-  
+    
   bool cross_validation = false;
   int cache_size;
   int bunch_size;
@@ -257,6 +258,7 @@ int main(int argc, char *argv[])
   port = GetParamInt(&cfgHash, SNAME":PORT",            2020);
   seed = GetParamInt(&cfgHash, SNAME":SEED",            0);
   ncumrbu = GetParamInt(&cfgHash, SNAME":NCUMRBU",            clients);
+  expand_predef_xforms = GetParamBool(&cfgHash,SNAME":EXPANDPREDEFXFORMS", true);
   // NCUMRBU == number of client update matrixes received before update in async version
   
   if(clients != 0 && script != NULL) Error("Server should not have input data.");
@@ -293,6 +295,10 @@ int main(int argc, char *argv[])
     for (src_mmf=strtok(src_mmf, ","); src_mmf != NULL; src_mmf=strtok(NULL, ",")) {
       hset.ParseMmf(src_mmf, NULL);
     }
+    if(expand_predef_xforms)
+    {
+      hset.ExpandPredefXforms();
+    }    
   }
 //  if (src_hmm_list) ReadHMMList(&hset,     src_hmm_list, src_hmm_dir, src_hmm_ext);
 
