@@ -2301,12 +2301,16 @@ namespace STK
     {
       case XT_LINEAR:
         LinearXform *p_lxform = static_cast<LinearXform *>(p_xform);
-        p_lxform->mPredefinedID = PLXID_NONE;
+        p_lxform->mPredefinedID = PLTID_NONE;
         break;
       case XT_WINDOW:
         WindowXform *p_wxform = static_cast<WindowXform *>(p_xform);
-        p_wxform->mPredefinedID = PWID_NONE;
+        p_wxform->mUsePredefVector = false;
         break;
+      case XT_BIAS:
+        BiasXform *p_bxform = static_cast<BiasXform *>(p_xform);
+        p_bxform->mUsePredefVector = false;
+        break;        
     }
   }
       
@@ -2422,7 +2426,7 @@ namespace STK
     mMemorySize   = 0;
     mDelay        = 0;
     mXformType    = XT_LINEAR;
-    mPredefinedID = PLXID_NONE;
+    mPredefinedID = PLTID_NONE;
   }
     
   
@@ -2476,6 +2480,7 @@ namespace STK
     mMemorySize   = 0;
     mDelay        = 0;
     mXformType    = XT_BIAS;
+    mUsePredefVector = false;
   }
   
   //**************************************************************************  
@@ -2712,7 +2717,7 @@ namespace STK
     mMemorySize   = 0;
     mDelay        = 0;
     mXformType    = XT_WINDOW;
-    mPredefinedID = PWID_NONE;
+    mUsePredefVector = false;
   }
   
   //**************************************************************************  

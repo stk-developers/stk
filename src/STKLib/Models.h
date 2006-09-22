@@ -47,7 +47,7 @@ namespace STK
   class Transition;
   class XformInstance;
   class Xform;
-  
+
   class BiasXform;
   class CompositeXform;
   class CopyXform;
@@ -232,7 +232,7 @@ namespace STK
     /* Non-HTK keywords */
     KID_FrmExt  =200,KID_PDFObsVec,  KID_ObsCoef,     KID_Input,    KID_NumLayers,
     KID_NumBlocks,   KID_Layer,      KID_Copy,        KID_Stacking, KID_Transpose,   
-    KID_XformPredef, KID_Window,     KID_WindowPredef,KID_BlockCopy,
+    KID_XformPredef, KID_Window,     KID_WindowPredef,KID_BlockCopy,KID_BiasPredef,
   
     /* Numeric functions - FuncXform*/
     KID_Sigmoid,     KID_Log,        KID_Exp,        KID_Sqrt,     KID_SoftMax,
@@ -245,16 +245,16 @@ namespace STK
     KID_MaxKwdID
   };
  
-  enum PredefinedLinearXformID
+  enum PredefinedLinearTransformID
   {
-    PLXID_NONE=-1,
-    PLXID_DCT,
-    PLXID_CONST,
-    PLXID_RANDOM,
-    PLXID_DIAG
+    PLTID_NONE=-1,
+    PLTID_DCT,
+    PLTID_CONST,
+    PLTID_RANDOM,
+    PLTID_DIAG
   };
 
-  enum PredefinedWindowXformID
+  enum PredefinedWindowID
   {
     PWID_NONE=-1,
     PWID_HAMMING,
@@ -315,7 +315,7 @@ namespace STK
     FeatureMappingXform*    ReadFeatureMappingXform     (FILE* fp, Macro* macro);
     FrantaProductXform*     ReadFrantaProductXform      (FILE* fp, Macro* macro);
     MatlabXform*    ReadMatlabXform(FILE* fp, Macro* macro);
-    BiasXform*      ReadBiasXform     (FILE* fp, Macro* macro);
+    BiasXform*      ReadBiasXform     (FILE* fp, Macro* macro, bool preddefined);
     FuncXform*      ReadFuncXform     (FILE* fp, Macro* macro, int funcId);
     StackingXform*  ReadStackingXform (FILE* fp, Macro* macro);
     int             ReadGlobalOptions (FILE* fp);
@@ -1288,6 +1288,32 @@ namespace STK
   
   /** *************************************************************************
    ** *************************************************************************
+   *  @brief reads, saves, and stores parameters of predefined vectors, geterates vectors
+   */
+   class PredefinedVector
+   {
+      public:        
+        PredefinedWindowID mID;
+        size_t mSize;
+        
+        // parameters of predefined windows
+        size_t mNRepetitions;
+        bool mIncludeC0;
+        FLOAT mConstant;
+        FLOAT mMinValue;
+        FLOAT mMaxValue;
+        FLOAT mStartValue;
+        FLOAT mEndValue;
+        unsigned int mSeed;
+        
+        void Read(FILE *fp, size_t vctSize);
+        void Write(FILE *fp, bool binary);
+        void Generate(BasicVector<FLOAT> &rVct);  
+   };    
+
+  
+  /** *************************************************************************
+   ** *************************************************************************
    *  @brief Linear Xform representation
    */
   class LinearXform : public Xform 
@@ -1307,7 +1333,7 @@ namespace STK
     Matrix<FLOAT>           mMatrix;
     
     /// Predefined transform ID
-    PredefinedLinearXformID mPredefinedID;
+    PredefinedLinearTransformID mPredefinedID;
     
     /// Variables for predefined transforms
     size_t mNRepetitions;
@@ -1348,7 +1374,11 @@ namespace STK
     virtual
     ~BiasXform();
     
-    Matrix<FLOAT>       mVector;
+    Matrix<FLOAT> mVector;
+
+    // Predefined window ID
+    PredefinedVector mPredefVector;
+    bool mUsePredefVector;
     
     /**
      * @brief Bias Xform evaluation 
@@ -1513,7 +1543,6 @@ namespace STK
              PropagDirectionType  direction);  
   };
 
-
   /** *************************************************************************
    ** *************************************************************************
    *  @brief Window input by constant vector (value by value) - Xform representation
@@ -1534,17 +1563,8 @@ namespace STK
     BasicVector<FLOAT> mVector;
 
     // Predefined window ID
-    PredefinedWindowXformID mPredefinedID;
-
-    // Variables for predefined windows
-    size_t mNRepetitions;
-    bool mIncludeC0;
-    FLOAT mConstant;
-    FLOAT mMinValue;
-    FLOAT mMaxValue;
-    FLOAT mStartValue;
-    FLOAT mEndValue;
-    unsigned int mSeed;	
+    PredefinedVector mPredefVector;
+    bool mUsePredefVector;
 
     /**
      * @brief Window Xform evaluation 

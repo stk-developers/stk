@@ -59,7 +59,8 @@ namespace STK
     gpKwds[KID_Stacking    ] = "Stacking";      gpKwds[KID_Transpose  ] = "Transpose";    
     gpKwds[KID_XformPredef ] = "XformPredef";   gpKwds[KID_Window     ] = "Window";  
     gpKwds[KID_WindowPredef] = "WindowPredef";  gpKwds[KID_BlockCopy  ] = "BlockCopy";       
-    
+    gpKwds[KID_BiasPredef  ] = "BiasPredef";
+        
     gpKwds[KID_ExtendedXform    ] = "ExtendedXform";
     
     /* Numeric functions - FuncXform*/
@@ -1353,9 +1354,13 @@ namespace STK
     }    
       
     if (CheckKwd(keyword, KID_Bias)) {
-      return (Xform *) ReadBiasXform(fp, macro);
+      return (Xform *) ReadBiasXform(fp, macro, false);
     }
-  
+
+    if (CheckKwd(keyword, KID_BiasPredef)) {
+      return (Xform *) ReadBiasXform(fp, macro, true);
+    }    
+      
     if (CheckKwd(keyword, KID_Copy)) {
       return (Xform *) ReadCopyXform(fp, macro);
     }
@@ -1623,7 +1628,7 @@ namespace STK
   
     // create new object
     ret = new LinearXform(in_size, out_size);
-    ret->mPredefinedID = PLXID_NONE;
+    ret->mPredefinedID = PLTID_NONE;
     
     // generating of predefined transforms 
     // - predefined transforms are suported in text format only
@@ -1637,7 +1642,7 @@ namespace STK
     
       if(!strcmp(p_tr_name, "DCT")) 
       {
-        ret->mPredefinedID = PLXID_DCT;            
+        ret->mPredefinedID = PLTID_DCT;            
         ret->mIncludeC0 = (GetInt(fp) != 0);
         ret->mNRepetitions = GetInt(fp);
         size_t n_basis = out_size / ret->mNRepetitions;
@@ -1655,21 +1660,21 @@ namespace STK
       } 
       else if(!strcmp(p_tr_name, "CONST"))
       {
-         ret->mPredefinedID = PLXID_CONST;
+         ret->mPredefinedID = PLTID_CONST;
          ret->mConstant = GetFloat(fp);
 
          GenerateConstantMatrix(ret->mMatrix, out_size, in_size, ret->mConstant);
       }
       else if(!strcmp(p_tr_name, "DIAG"))
       {
-         ret->mPredefinedID = PLXID_DIAG;
+         ret->mPredefinedID = PLTID_DIAG;
          ret->mConstant = GetFloat(fp);
          
          GenerateDiagMatrix(ret->mMatrix, out_size, in_size, ret->mConstant);         
       }
       else if(!strcmp(p_tr_name, "RANDOM"))
       {
-        ret->mPredefinedID = PLXID_RANDOM;
+        ret->mPredefinedID = PLTID_RANDOM;
         ret->mMinValue = GetFloat(fp);
         ret->mMaxValue = GetFloat(fp);
         ret->mSeed = static_cast<unsigned int>(GetInt(fp));
@@ -1704,7 +1709,7 @@ namespace STK
   //***************************************************************************  
   BiasXform *
   ModelSet::
-  ReadBiasXform(FILE *fp, Macro *macro)
+  ReadBiasXform(FILE *fp, Macro *macro, bool predefined)
   {
     BiasXform *   ret;
     size_t        size;
@@ -1713,12 +1718,30 @@ namespace STK
     size = GetInt(fp);
     ret  = new BiasXform(size);
     
-    // load values
-    for (i=0; i < size; i++) 
+    if(predefined)
     {
-      ret->mVector[0][i]  = GetFloat(fp);
+      ret->mUsePredefVector = true;
+      ret->mPredefVector.Read(fp, size);
+      
+      // This is a hack, BiasXform should have vector instead of matrix.
+      // !!! It is hard to fix this in SNet
+      BasicVector<FLOAT> vct;
+      ret->mPredefVector.Generate(vct);
+      
+      for(i = 0; i < size; i++)
+      {
+        ret->mVector[0][i] = vct[i];
+      }
+    } 
+    else
+    {
+      // fill the object with data    
+      for (i=0; i < size; i++) 
+      {
+        ret->mVector[0][i] = GetFloat(fp);
+      }
     }
-  
+      
     ret->mpMacro      = macro;
     return ret;
   }; // ReadBiasXform(FILE *fp, Macro *macro)
@@ -1970,77 +1993,12 @@ namespace STK
     
     size = GetInt(fp);
     ret  = new WindowXform(size);
-    ret->mPredefinedID = PWID_NONE;
     
     if(predefined)
     {
-      char *p_win_name = GetString(fp, false);
-      for(i = 0; i < strlen(p_win_name); i++)
-      {
-        p_win_name[i] = toupper(p_win_name[i]);
-      }
-    
-      if(!strcmp(p_win_name, "HAMMING")) 
-      {
-        ret->mPredefinedID = PWID_HAMMING;
-        ret->mNRepetitions = GetInt(fp);
-            
-        size_t win_len = size / ret->mNRepetitions;
-        if(win_len * ret->mNRepetitions != size)
-        {
-          Error("Hamming windows do not fit to the vector size (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
-        }
-
-        GenerateHammingWindow(ret->mVector, win_len, ret->mNRepetitions);  
-      }
-      else if(!strcmp(p_win_name, "TRIANG")) 
-      {
-        ret->mPredefinedID = PWID_TRIANG;
-        ret->mNRepetitions = GetInt(fp);
-
-        size_t win_len = size / ret->mNRepetitions;
-        if(win_len * ret->mNRepetitions != size)
-        {
-          Error("Triangular windows do not fit to the vector size (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
-        }
-            
-        GenerateTriangWindow(ret->mVector, win_len, ret->mNRepetitions);
-      }
-      else if(!strcmp(p_win_name, "CONST")) 
-      {
-        ret->mPredefinedID = PWID_CONST;
-        ret->mConstant = GetFloat(fp);
-            
-        GenerateConstantWindow(ret->mVector, size, ret->mConstant);
-      }
-      else if(!strcmp(p_win_name, "RANDOM")) 
-      {
-        ret->mPredefinedID = PWID_RANDOM;
-        ret->mMinValue = GetFloat(fp);
-        ret->mMaxValue = GetFloat(fp);
-        ret->mSeed = static_cast<unsigned int>(GetInt(fp));
-  
-        GenerateRandomWindow(ret->mVector, size, ret->mMinValue, ret->mMaxValue, ret->mSeed);
-      }
-      else if(!strcmp(p_win_name, "LINSPACE")) 
-      {
-        ret->mPredefinedID = PWID_LINSPACE;
-        ret->mStartValue = GetFloat(fp);
-        ret->mEndValue = GetFloat(fp);
-        ret->mNRepetitions = GetInt(fp);
-
-        size_t win_len = size / ret->mNRepetitions;
-        if(win_len * ret->mNRepetitions != size)
-        {
-          Error("LinSpace windows do not fit to the vector size (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
-        }
-
-        GenerateLinSpaceWindow(ret->mVector, win_len, ret->mStartValue, ret->mEndValue, ret->mNRepetitions);
-      }
-      else 
-      {
-        Error("Unknown predefined window %s (%s:%d)", p_win_name, gpCurrentMmfName, gCurrentMmfLine);  
-      }
+      ret->mUsePredefVector = true;
+      ret->mPredefVector.Read(fp, size);
+      ret->mPredefVector.Generate(ret->mVector);
     } 
     else
     {
@@ -2979,15 +2937,27 @@ namespace STK
   WriteBiasXform(FILE *fp, bool binary, BiasXform* xform)
   {
     size_t  i;
-  
-    PutKwd(fp, binary, KID_Bias);
-    PutInt(fp, binary, xform->mOutSize);
-    PutNLn(fp, binary);
-    for (i=0; i < xform->mOutSize; i++) 
-    {
-      PutFlt(fp, binary, xform->mVector[0][i]);
+    
+    if(xform->mUsePredefVector)  
+    { 
+      PutKwd(fp, binary, KID_BiasPredef);
+      PutInt(fp, binary, xform->mOutSize);
+      
+      xform->mPredefVector.Write(fp, binary);               
     }
-    PutNLn(fp, binary);
+    else            
+    {      
+      PutKwd(fp, binary, KID_Bias);
+      PutInt(fp, binary, xform->mOutSize);
+      PutNLn(fp, binary);
+       
+      // save raw data
+      for (i=0; i < xform->mOutSize; i++) 
+      {
+        PutFlt(fp, binary, xform->mVector[0][i]);
+      }
+      PutNLn(fp, binary);
+    } 
   } //WriteBiasXform(FILE *fp, bool binary, BiasXform *xform)
 
   //*****************************************************************************  
@@ -2997,54 +2967,16 @@ namespace STK
   WriteWindowXform(FILE *fp, bool binary, WindowXform* xform)
   {
     size_t  i;
-
-    if(xform->mPredefinedID != PWID_NONE)  
+    
+    if(xform->mUsePredefVector)  
     { 
-           
       PutKwd(fp, binary, KID_WindowPredef);
       PutInt(fp, binary, xform->mOutSize);
-      //PutNLn(fp, binary);
-
-      switch(xform->mPredefinedID)
-      {
-        case PWID_HAMMING:
-          PutString(fp, binary, "Hamming");
-          PutSpace(fp, binary);
-          PutInt(fp, binary, xform->mNRepetitions);
-          PutNLn(fp, binary);
-          break;
-        case PWID_TRIANG:
-          PutString(fp, binary, "Triang");
-          PutSpace(fp, binary);
-          PutInt(fp, binary, xform->mNRepetitions);
-          PutNLn(fp, binary);
-          break;
-        case PWID_CONST:
-          PutString(fp, binary, "Const");
-          PutSpace(fp, binary);
-          PutFlt(fp, binary, xform->mConstant);
-          PutNLn(fp, binary);
-          break;
-        case PWID_RANDOM:
-          PutString(fp, binary, "Random");
-          PutSpace(fp, binary);
-          PutFlt(fp, binary, xform->mMinValue);
-          PutFlt(fp, binary, xform->mMaxValue);
-          PutInt(fp, binary, static_cast<int>(xform->mSeed));
-          PutNLn(fp, binary);
-          break;
-        case PWID_LINSPACE:
-          PutString(fp, binary, "LinSpace");
-          PutSpace(fp, binary);
-          PutFlt(fp, binary, xform->mStartValue);
-          PutFlt(fp, binary, xform->mEndValue);
-          PutInt(fp, binary, xform->mNRepetitions);
-          PutNLn(fp, binary);
-          break;
-      }
+      
+      xform->mPredefVector.Write(fp, binary);               
     }
     else            
-    {
+    {      
       PutKwd(fp, binary, KID_Window);
       PutInt(fp, binary, xform->mOutSize);
       PutNLn(fp, binary);
@@ -3067,7 +2999,7 @@ namespace STK
     size_t  i;
     size_t  j;
     
-    if(xform->mPredefinedID != PLXID_NONE)
+    if(xform->mPredefinedID != PLTID_NONE)
     {    
       PutKwd(fp, binary, KID_XformPredef);
       PutInt(fp, binary, xform->mOutSize);
@@ -3076,7 +3008,7 @@ namespace STK
 
       switch(xform->mPredefinedID)
       {
-        case PLXID_DCT:
+        case PLTID_DCT:
           PutString(fp, binary, "Dct");
           PutSpace(fp, binary);
           PutInt(fp, binary, (xform->mIncludeC0 ? 1 : 0));
@@ -3084,21 +3016,21 @@ namespace STK
           PutNLn(fp, binary);
           break;
 
-        case PLXID_CONST:
+        case PLTID_CONST:
           PutString(fp, binary, "Const");
           PutSpace(fp, binary);
           PutFlt(fp, binary, xform->mConstant);
           PutNLn(fp, binary);
           break;
 
-        case PLXID_DIAG:
+        case PLTID_DIAG:
           PutString(fp, binary, "Diag");
           PutSpace(fp, binary);
           PutFlt(fp, binary, xform->mConstant);
           PutNLn(fp, binary);
           break;
   
-        case PLXID_RANDOM:
+        case PLTID_RANDOM:
           PutString(fp, binary, "Random");
           PutSpace(fp, binary);  
           PutFlt(fp, binary, xform->mMinValue);
@@ -3974,5 +3906,141 @@ namespace STK
   }; // WriteAccums(...)
   
   
+  //###########################################################################
+  //###########################################################################
+  // PREDEFINED VECTOR
+  //###########################################################################
+  //##########################################################################
+  void PredefinedVector::Read(FILE *fp, size_t vctSize)
+  {
+    mSize = vctSize;
+  
+    char *p_win_name = GetString(fp, false);
+    int i;
+    for(i = 0; i < strlen(p_win_name); i++)
+    {
+      p_win_name[i] = toupper(p_win_name[i]);
+    }
+    
+    if(!strcmp(p_win_name, "HAMMING")) 
+    {
+      mID = PWID_HAMMING;
+      mNRepetitions = GetInt(fp);
+            
+      size_t win_len = vctSize / mNRepetitions;
+      if(win_len * mNRepetitions != vctSize)
+      {
+        Error("Hamming windows do not fit to the vector size (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      }
+    }
+    else if(!strcmp(p_win_name, "TRIANG")) 
+    {
+      mID = PWID_TRIANG;
+      mNRepetitions = GetInt(fp);
+
+      size_t win_len = vctSize / mNRepetitions;
+      if(win_len * mNRepetitions != vctSize)
+      {
+        Error("Triangular windows do not fit to the vector size (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      }
+    }
+    else if(!strcmp(p_win_name, "CONST")) 
+    {
+      mID = PWID_CONST;
+      mConstant = GetFloat(fp);
+    }
+    else if(!strcmp(p_win_name, "RANDOM")) 
+    {
+      mID = PWID_RANDOM;
+      mMinValue = GetFloat(fp);
+      mMaxValue = GetFloat(fp);
+      mSeed = static_cast<unsigned int>(GetInt(fp));
+    }
+    else if(!strcmp(p_win_name, "LINSPACE")) 
+    {
+      mID = PWID_LINSPACE;
+      mStartValue = GetFloat(fp);
+      mEndValue = GetFloat(fp);
+      mNRepetitions = GetInt(fp);
+
+      size_t win_len = vctSize / mNRepetitions;
+      if(win_len * mNRepetitions != vctSize)
+      {
+        Error("LinSpace windows do not fit to the vector size (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      }
+    }
+    else 
+    {
+      Error("Unknown predefined window %s (%s:%d)", p_win_name, gpCurrentMmfName, gCurrentMmfLine);  
+    }  
+  }
+  
+  void PredefinedVector::Write(FILE *fp, bool binary)
+  {
+    switch(mID)
+    {
+      case PWID_HAMMING:
+        PutString(fp, binary, "Hamming");
+        PutSpace(fp, binary);
+        PutInt(fp, binary, mNRepetitions);
+        PutNLn(fp, binary);
+        break;
+      case PWID_TRIANG:
+        PutString(fp, binary, "Triang");
+        PutSpace(fp, binary);
+        PutInt(fp, binary, mNRepetitions);
+        PutNLn(fp, binary);
+        break;
+      case PWID_CONST:
+        PutString(fp, binary, "Const");
+        PutSpace(fp, binary);
+        PutFlt(fp, binary, mConstant);
+        PutNLn(fp, binary);
+        break;
+      case PWID_RANDOM:
+        PutString(fp, binary, "Random");
+        PutSpace(fp, binary);
+        PutFlt(fp, binary, mMinValue);
+        PutFlt(fp, binary, mMaxValue);
+        PutInt(fp, binary, static_cast<int>(mSeed));
+        PutNLn(fp, binary);
+        break;
+      case PWID_LINSPACE:
+        PutString(fp, binary, "LinSpace");
+        PutSpace(fp, binary);
+        PutFlt(fp, binary, mStartValue);
+        PutFlt(fp, binary, mEndValue);
+        PutInt(fp, binary, mNRepetitions);
+        PutNLn(fp, binary);
+        break;
+    }  
+  }
+        
+  void PredefinedVector::Generate(BasicVector<FLOAT> &rVct)
+  {    
+    size_t win_len;
+    
+    switch(mID)
+    {
+      case PWID_HAMMING:
+        win_len = mSize / mNRepetitions;    
+        GenerateHammingWindow(rVct, win_len, mNRepetitions); 
+        break;
+      case PWID_TRIANG:
+        win_len = mSize / mNRepetitions;          
+        GenerateTriangWindow(rVct, win_len, mNRepetitions);
+        break;
+      case PWID_CONST:
+        GenerateConstantWindow(rVct, mSize, mConstant);
+        break;
+      case PWID_RANDOM:
+        GenerateRandomWindow(rVct, mSize, mMinValue, mMaxValue, mSeed);
+        break;
+      case PWID_LINSPACE:
+        win_len = mSize / mNRepetitions;
+        GenerateLinSpaceWindow(rVct, win_len, mStartValue, mEndValue, mNRepetitions);
+        break;
+    }
+  }    
     
 }; // namespace STK
