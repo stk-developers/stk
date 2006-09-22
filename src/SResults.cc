@@ -245,10 +245,10 @@ int main(int argc, char *argv[]) {
 
   if (word_spotting) {
     kwd_tab   = (t_kwd_tab *)   malloc(sizeof(t_kwd_tab)   * kwd_tab_size);
-    kwd_stats = (t_kwd_stats *) malloc(sizeof(t_kwd_stats) * (labelHash.mNEntries+1));
+    kwd_stats = (t_kwd_stats *) malloc(sizeof(t_kwd_stats) * (labelHash.mNEntries+2));
     if (kwd_tab == NULL || kwd_stats == NULL) Error("Insufficient memory");
 
-    for (size_t n = 0; n <= labelHash.mNEntries; n++) {
+    for (size_t n = 0; n <= (labelHash.mNEntries+1); n++) {
       kwd_stats[n].FA = kwd_stats[n].actual = kwd_stats[n].hits = 0;
     }
   }
@@ -381,7 +381,7 @@ int main(int argc, char *argv[]) {
     int nROCbins = (int) (maxFAperHour * totalTime + 0.49999) + 1;
     float lastBinWght =   maxFAperHour * totalTime - nROCbins + 1;
     
-    for (size_t n = 0; n <= labelHash.mNEntries; n++) {
+    for (size_t n = 0; n <= (labelHash.mNEntries+1); n++) {
       kwd_stats[n].ROC = (float *) malloc(nROCbins * sizeof(float));
       if (kwd_stats[n].ROC == NULL) Error("Insufficient memory");
     }
@@ -389,18 +389,23 @@ int main(int argc, char *argv[]) {
     qsort(kwd_tab, nkwds, sizeof(kwd_tab[0]), score_cmp);
     
     // Fill ROC tables
+    t_kwd_stats *glob_ks = &kwd_stats[labelHash.mNEntries+1];
     for (i = 0; i < nkwds; i++) {
       t_kwd_stats *ks = &kwd_stats[kwd_tab[i].id];
-      
-      if (kwd_tab[i].is_hit) { 
+      if (kwd_tab[i].is_hit) {
         ks->hits++;
+        glob_ks->hits++;
       } else {
         if (ks->FA < nROCbins) {
           ks->ROC[ks->FA] = ks->actual ? (float) ks->hits / ks->actual : 0.0;
           sufficientThreshold = kwd_tab[i].score;
         }
+        if (glob_ks->FA < nROCbins) {
+          glob_ks->ROC[glob_ks->FA] = glob_ks->hits;
+        }
         ks->FA++;
-      }      
+        glob_ks->FA++;
+      }
     }
         
     for (size_t n = 0; n < labelHash.mNEntries; n++) {
@@ -433,18 +438,18 @@ int main(int argc, char *argv[]) {
       }
       kwd_stats[labelHash.mNEntries].ROC[i] /= kwd_stats[labelHash.mNEntries].actual;
     }
-            
-//    printf("%13s: ", "Keyword");
-//    for (i = 0; i < nROCbins; i++) printf(" %4d", i);
-//    puts("");
-//    for (n = 0; n <= labelHash.mNEntries; n++) {    
-//      printf("%13s: ", n == labelHash.mNEntries ? "Overall" 
-//                                              : labelHash.mpEntry[n]->key);
-//      for (i = 0; i < nROCbins; i++) {
-//        printf(" %4.2f", kwd_stats[n].ROC[i]);
-//      }
-//      puts("");
-//    }
+
+    float hits=0;
+    for (i = 0; i < nROCbins; i++) {
+      hits=kwd_stats[labelHash.mNEntries+1].ROC[i];
+      kwd_stats[labelHash.mNEntries+1].ROC[i] = kwd_stats[labelHash.mNEntries].actual ? (float) hits / kwd_stats[labelHash.mNEntries].actual : 0.0;
+    }
+    for (i = kwd_stats[labelHash.mNEntries+1].FA; i < nROCbins; i++) {
+      kwd_stats[labelHash.mNEntries+1].ROC[i] = kwd_stats[labelHash.mNEntries].actual ? (float) kwd_stats[labelHash.mNEntries].hits / kwd_stats[labelHash.mNEntries].actual : 0.0;
+    }
+    kwd_stats[labelHash.mNEntries+1].actual=kwd_stats[labelHash.mNEntries].actual;
+    
+                
     if (full_results) {
       fputs(
       "------------------------- ROC Information ---------------------------"
@@ -452,9 +457,9 @@ int main(int argc, char *argv[]) {
       for (i = 0; i <= maxFAperHour; i++) printf(" %4d", i);
       fputs("\n", stdout);
 
-      for (size_t n = 0; n <= labelHash.mNEntries; n++) {
+      for (size_t n = 0; n <= (labelHash.mNEntries+1); n++) {
         t_kwd_stats *ks = &kwd_stats[n];
-        printf("%13s:", n == labelHash.mNEntries ? "Overall" : labelHash.mpEntry[n]->key);
+        printf("%13s:", n == labelHash.mNEntries ? "Overall" : n == (labelHash.mNEntries+1) ? "Global" : labelHash.mpEntry[n]->key);
         for (i = 0; i <= maxFAperHour; i++) {
           float y1, y2, hitr;
           float a = (i * totalTime + 0.5);
@@ -477,7 +482,7 @@ int main(int argc, char *argv[]) {
     "------------------------- Figures of Merit --------------------------"
     "\n\n      KeyWord:    #Hits     #FAs  #Actual      FOM");
 
-    for (size_t n = 0; n <= labelHash.mNEntries; n++) {
+    for (size_t n = 0; n <= (labelHash.mNEntries+1); n++) {
       t_kwd_stats *ks = &kwd_stats[n];
       float FOM = 0.0;
 
@@ -485,7 +490,7 @@ int main(int argc, char *argv[]) {
       FOM += ks->ROC[nROCbins-1] * lastBinWght;
       FOM *=  100.0 / (maxFAperHour * totalTime);
 
-      printf("%13s:", n == labelHash.mNEntries ? "Overall" : labelHash.mpEntry[n]->key);
+      printf("%13s:", n == labelHash.mNEntries ? "Overall" : n == (labelHash.mNEntries+1) ? "Global" : labelHash.mpEntry[n]->key);
       printf(" %8d %8d %8d %8.2f\n", ks->hits, ks->FA, ks->actual, FOM);
     }
   }

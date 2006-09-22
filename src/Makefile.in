@@ -55,8 +55,7 @@ am_SERest_OBJECTS = SERest.$(OBJEXT)
 SERest_OBJECTS = $(am_SERest_OBJECTS)
 SERest_LDADD = $(LDADD)
 am__DEPENDENCIES_1 =
-am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
-SERest_DEPENDENCIES = $(am__DEPENDENCIES_2)
+am__DEPENDENCIES_2 = ./STKLib/libSTKLib.a $(am__DEPENDENCIES_1)
 am_SExpand_OBJECTS = SExpand.$(OBJEXT)
 SExpand_OBJECTS = $(am_SExpand_OBJECTS)
 SExpand_LDADD = $(LDADD)
@@ -212,7 +211,7 @@ SUBDIRS = STKLib SNetLib .
 
 # These are the common libraries needed by all programs
 COMMONLDFLAGS = -L./STKLib -pthread
-COMMONLIBS = -lSTKLib $(LIBGETOPT)
+COMMONLIBS = ./STKLib/libSTKLib.a $(LIBGETOPT)
 
 ################################################################################
 INCLUDES = $(ATLASINCLUDEDIR) -I. -I$(top_builddir) -I$(top_srcdir) \
@@ -221,6 +220,7 @@ INCLUDES = $(ATLASINCLUDEDIR) -I. -I$(top_builddir) -I$(top_srcdir) \
 AM_LDFLAGS = $(COMMONLDFLAGS) 
 LDADD = $(COMMONLIBS)
 
+#am__DEPENDENCIES_1 = 
 # Specifications
 SERest_SOURCES = SERest.cc 
 SVite_SOURCES = SVite.cc
@@ -229,6 +229,13 @@ SFeaCat_SOURCES = SFeaCat.cc
 SLRatio_SOURCES = SLRatio.cc
 SResults_SOURCES = SResults.cc
 SRover_SOURCES = SRover.cc
+SERest_DEPENDENCIES = $(RECURSIVE_TARGETS) 
+#SVite_DEPENDENCIES     = $(RECURSIVE_TARGETS)
+#SExpand_DEPENDENCIES   = $(RECURSIVE_TARGETS)
+#SFeaCat_DEPENDENCIES   = $(RECURSIVE_TARGETS)
+#SLRatio_DEPENDENCIES   = $(RECURSIVE_TARGETS)
+#SResults_DEPENDENCIES  = $(RECURSIVE_TARGETS)
+#SRover_DEPENDENCIES    = $(RECURSIVE_TARGETS)
 
 # SNet is kind of special. It needs some files in the SNet source. This will probably change and separate SNetLib will be built
 SNet_SOURCES = SNet.cc 

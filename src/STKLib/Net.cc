@@ -55,9 +55,10 @@ namespace STK
     }
   }
   
+
   //***************************************************************************
   //***************************************************************************
-  Node *
+  Node*
   MakeNetworkFromLabels(Label * pLabels, NodeType nodeType)
   {
     Label * lp;
@@ -309,14 +310,14 @@ namespace STK
   }
   
   
-  Node *DiscardUnwantedInfoInNetwork(Node *pFirstNode, STKNetworkOutputFormat format)
+  Node* DiscardUnwantedInfoInNetwork(Node *pFirstNode, STKNetworkOutputFormat format)
   // The function discard the information in network records that is not to be
   // saved to the output. This should allow for more effective network
   // optimization, which will be run after calling this function and before
   // saving network to file.
   {
-    Node *node;
-    int  i;
+    Node* node;
+    int   i;
   
     for (node = pFirstNode; node != NULL; node = node->mpNext)  
     {
@@ -346,19 +347,28 @@ namespace STK
   //***************************************************************************
   static int lnkcmp(const void *a, const void *b)
   {
-  //  return ((Link *) a)->mpNode - ((Link *) b)->mpNode;
-  //  Did not work with gcc, probably bug in gcc pointer arithmetic
+    //  return ((Link *) a)->mpNode - ((Link *) b)->mpNode;
+    //  Did not work with gcc, probably bug in gcc pointer arithmetic
     return (char *)((Link *) a)->mpNode - (char *)((Link *) b)->mpNode;
   }
   
+  
   //***************************************************************************
   //***************************************************************************
-  static int LatticeLocalOptimization_ForwardPass(Node *pFirstNode, int strictTiming)
+  static int 
+  LatticeLocalOptimization_ForwardPass(Node* pFirstNode, int strictTiming)
   {
-    int i, j, k, l, m, rep;
-    Node *node, *tnode;
-    int node_removed = 0;
-    FLOAT tlike;
+    int       i; 
+    int       j; 
+    int       k; 
+    int       l; 
+    int       m; 
+    int       rep;
+    Node*     node;
+    Node*     tnode;
+    int       node_removed = 0;
+    FLOAT     tlike;
+
     for (node = pFirstNode; node != NULL; node = node->mpNext) 
     {
 /**/      for (i = 0; i < node->mNLinks; i++) 
@@ -378,7 +388,7 @@ namespace STK
         
         for (l=0; l < tnode->mNBackLinks; l++) 
         {
-          Node *backnode = tnode->mpBackLinks[l].mpNode;
+          Node* backnode = tnode->mpBackLinks[l].mpNode;
           tnode->mpBackLinks[l].mLike -= tlike;
           
           for (k=0; k<backnode->mNLinks && backnode->mpLinks[k].mpNode!=tnode; k++)
@@ -395,7 +405,7 @@ namespace STK
         
         for (l=0; l < tnode->mNLinks; l++) 
         {
-          Node *forwnode = tnode->mpLinks[l].mpNode;
+          Node* forwnode = tnode->mpLinks[l].mpNode;
           tnode->mpLinks[l].mLike += tlike;
           
           for (k=0; k<forwnode->mNBackLinks && forwnode->mpBackLinks[k].mpNode!=tnode;k++)
@@ -403,10 +413,14 @@ namespace STK
           
           assert(k < forwnode->mNBackLinks);
           forwnode->mpBackLinks[k].mLike += tlike;
+
 #ifndef NDEBUG
           for (k++; k<forwnode->mNBackLinks && forwnode->mpBackLinks[k].mpNode!=tnode;k++)
           {}
 #endif
+
+          // :TODO: 
+          // Ask Lukas, why we need this assertion
           assert(k == forwnode->mNBackLinks);
         }
       }
@@ -419,8 +433,8 @@ namespace STK
       {
         for (j = i+1; j < node->mNLinks; j++) 
         {
-          Node *inode = node->mpLinks[i].mpNode;
-          Node *jnode = node->mpLinks[j].mpNode;
+          Node* inode = node->mpLinks[i].mpNode;
+          Node* jnode = node->mpLinks[j].mpNode;
 
           // Final node may be never merged.
           if (inode->mNLinks == 0 || jnode->mNLinks == 0) 
@@ -451,12 +465,14 @@ namespace STK
             continue;
           }
 
-//Weights on the links from predecesors does not have to be exactely the same, but the must not
-//differ more than by SIGNIFICANT_PROB_DIFFERENCE
+          // Weights on the links from predecesors does not have to be exactely 
+          // the same, but the must not differ more than by SIGNIFICANT_PROB_DIFFERENCE
           for (l=0; l < inode->mNBackLinks; l++) 
           {
             if (inode->mpBackLinks[l].mpNode != jnode->mpBackLinks[l].mpNode) break;
+
             FLOAT ldiff =  inode->mpBackLinks[l].mLike - jnode->mpBackLinks[l].mLike;
+
             if (ldiff < -SIGNIFICANT_PROB_DIFFERENCE ||
               ldiff >  SIGNIFICANT_PROB_DIFFERENCE) 
             {

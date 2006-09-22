@@ -68,15 +68,15 @@ namespace STK
     if (node == NULL) 
       Error("Insufficient memory");
   
-    node->mNLinks     = 0;
-    node->mpLinks      = NULL;
-    node->mNBackLinks = 0;
-    node->mpBackLinks  = NULL;
-    node->mType       = NT_WORD;
-    node->mStart      = UNDEF_TIME;
-    node->mStop       = UNDEF_TIME;
-    node->mpPronun     = NULL;
-    node->mpBackNext   = *last;
+    node->mNLinks        = 0;
+    node->mpLinks        = NULL;
+    node->mNBackLinks    = 0;
+    node->mpBackLinks    = NULL;
+    node->mType          = NT_WORD;
+    node->mStart         = UNDEF_TIME;
+    node->mStop          = UNDEF_TIME;
+    node->mpPronun       = NULL;
+    node->mpBackNext     = *last;
     node->mPhoneAccuracy = 1.0;
     
     *last  = node;
@@ -374,7 +374,7 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  Node *ReadSTKNetworkInOldFormat(
+  Node* ReadSTKNetworkInOldFormat(
     FILE*                     lfp,
     struct MyHSearchData*     word_hash,
     struct MyHSearchData*     phone_hash,
@@ -401,7 +401,6 @@ namespace STK
     Node*     node;
     Node**    nodes;
   
-    std::stringstream ss; 
     
     RemoveCommentLines(lfp);
   
@@ -417,7 +416,8 @@ namespace STK
     int t1, t2;    
     if ((strcmp(wordOrModelName, "NUMNODES:") &&
         strcmp(wordOrModelName, "NUMBEROFNODES")) ||        //Obsolete NumerOfNodes
-      fscanf(lfp," %d NumberOfArcs=%d", &t1, &t2)<1){       //Obsolete NumerOfArcs
+      fscanf(lfp," %d NumberOfArcs=%d", &t1, &t2)<1)        //Obsolete NumerOfArcs 
+    {                                                       
       Error("Syntax error in file %s\nKeyword NumNodes: is missing", file_name);
     }
     numOfNodes = t1;
@@ -425,12 +425,14 @@ namespace STK
     if ((nodes = (Node **) calloc(numOfNodes, sizeof(Node *))) == NULL) {
       Error("Insufficient memory");
     }
+
     for (i=0; i < numOfNodes; i++) {
       if ((nodes[i] = (Node *) calloc(1, sizeof(Node))) == NULL) {
         Error("Insufficient memory");
       }
       nodes[i]->mType = NT_UNDEF;
     }
+
     for (i=0; i < numOfNodes; i++) {
       RemoveCommentLines(lfp);
   
@@ -467,12 +469,14 @@ namespace STK
       } else {
         node->mType = NT_TRUE;
       }
+
       if (nodeType != 'M' && nodeType != 'W' && nodeType != 'N' &&
         nodeType != 'S' && nodeType != 'K' && nodeType != 'F') {
         Error("Invalid definition of node %d in file %s.\n"
               "Supported values for node type are: M - model, W - word, N - null, S - subnet, K - keyword, F - filler",
               nodeId, file_name);
       }
+      
       node->mStart = node->mStop = UNDEF_TIME;
       node->mPhoneAccuracy = 1.0;
   //    node->mAux = *totalNumOfNodes;
@@ -535,6 +539,7 @@ namespace STK
           word = (Word *) ep->data;
   
           while (isspace(ch = fgetc(lfp)));
+
           if (ch != '[') {
             ungetc(ch, lfp);
           } else {
@@ -564,6 +569,7 @@ namespace STK
           node->mpPronun = NULL;
         }
       }
+
       if (nodeType != 'S') {
         if (fscanf(lfp, " (%lld %lld)", &start, &stop)==2 && !(labelFormat.TIMES_OFF)) {
           long center_shift = labelFormat.CENTRE_TM ? sampPeriod / 2 : 0;
@@ -571,13 +577,16 @@ namespace STK
           node->mStop  = (stop  + center_shift + labelFormat.right_extent) / sampPeriod;
         }
       }
+
       if (fscanf(lfp, "%d ", &numOfLinks) != 1) {
         Error("Invalid definition of node %d in file %s.\n"
               "Number of links is expected", nodeId, file_name);
       }
+
       if (nodeType == 'S') { // Add links to the final node of the subnetwork
         while (node->mpNext != NULL) node = node->mpNext;
       }
+
       if (numOfLinks) {
         if ((node->mpLinks = (Link *) malloc(numOfLinks * sizeof(Link))) == NULL) {
           Error("Insufficient memory");
@@ -608,6 +617,7 @@ namespace STK
         nodes[linkId]->mNBackLinks++;
       }
     }
+
     for (i = 1; i < numOfNodes-1; i++) {
       if (nodes[i]->mNLinks == 0) {
         if (nodes[numOfNodes-1]->mNLinks == 0) {
@@ -630,13 +640,16 @@ namespace STK
         continue; // Check this node again. Could be the first one
       }
     }
+
     if (nodes[0]->mNBackLinks != 0 || nodes[numOfNodes-1]->mNLinks != 0) {
       Error("Network contain no start node or no final node (%s)", file_name);
     }
+
     if (!(nodes[0]           ->mType & NT_WORD) || nodes[0]           ->mpPronun != NULL ||
       !(nodes[numOfNodes-1]->mType & NT_WORD) || nodes[numOfNodes-1]->mpPronun != NULL) {
       Error("Start node and final node must be Null nodes (%s)", file_name);
     }
+
     for (i = 0; i < numOfNodes-1; i++) {
       nodes[i]->mpNext = nodes[i+1];
     }
@@ -648,6 +661,7 @@ namespace STK
       if (nodes[i]->mpBackLinks == NULL) Error("Insufficient memory");
       nodes[i]->mNBackLinks = 0;
     }
+
     for (i = 0; i < numOfNodes; i++) {
       for (j=0; j < static_cast<size_t>(nodes[i]->mNLinks); j++) {
         Node *forwNode = nodes[i]->mpLinks[j].mpNode;
@@ -656,6 +670,7 @@ namespace STK
         forwNode->mNBackLinks++;
       }
     }
+
     node = nodes[0];
     free(nodes);
   
@@ -678,6 +693,7 @@ namespace STK
     return node;
   }
   
+
   Node *ReadSTKNetwork(
     FILE *lfp,
     struct MyHSearchData *word_hash,
@@ -907,6 +923,7 @@ namespace STK
             }
           }
         }
+
         if (state == ARC_DEF) {
           if (!*chptr || !strcmp(chptr, "END") || !strcmp(chptr, "E")) {
             if (getHTKstr(valptr, &chptr)) {
@@ -1007,6 +1024,7 @@ namespace STK
     lnode = last;
     first = last = NULL;
     if (lnode) lnode->mpNext = NULL;
+
     for (node = lnode; node != NULL; fnode = node, node = node->mpBackNext) {
       if (node->mpBackNext) node->mpBackNext->mpNext = node;
   
@@ -1050,9 +1068,11 @@ namespace STK
                       ? node->mStop - node->mStart : node->mpLinks[0].mpNode->mStart;
       }
     }
+
     if (!first || !last) {
       Error("Network contain no start node or no final node (%s)", file_name);
     }
+
     if (first != fnode) {
       if (first->mpNext)     first->mpNext->mpBackNext = first->mpBackNext;
       if (first->mpBackNext) first->mpBackNext->mpNext = first->mpNext;
@@ -1062,6 +1082,7 @@ namespace STK
       fnode->mpBackNext = first;
       first->mpNext = fnode;
     }
+
     if (last != lnode) {
       if (last->mpNext)     last->mpNext->mpBackNext = last->mpBackNext;
       if (last->mpBackNext) last->mpBackNext->mpNext = last->mpNext;
@@ -1069,6 +1090,7 @@ namespace STK
       lnode->mpNext = last;
       last->mpBackNext = lnode;
     }
+
     for (node = first; node != NULL; node = node->mpNext) {
       if (node->mType == (NT_PHONE | NT_MODEL)) {
         node->mType = NT_PHONE;
@@ -1080,6 +1102,7 @@ namespace STK
         node->mStop  = (node->mStop + labelFormat.right_extent) / sampPeriod;
       }
     }
+
     if (first->mpPronun != NULL) {
       node = (Node *) calloc(1, sizeof(Node));
       if (node == NULL) Error("Insufficient memory");
@@ -1104,6 +1127,7 @@ namespace STK
       first->mpBackLinks[0].mpNode = node;
       first = node;
     }
+
     if (last->mpPronun != NULL) {
       node = (Node *) calloc(1, sizeof(Node));
       if (node == NULL) Error("Insufficient memory");
@@ -1132,7 +1156,8 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  Node *ReadHTKLattice(
+  Node* 
+  ReadHTKLattice(
     FILE *            lfp,
     MyHSearchData *   word_hash,
     MyHSearchData *   phone_hash,
@@ -1144,7 +1169,7 @@ namespace STK
         *first = NULL, *last = NULL,
         *fnode, *lnode = NULL;
     char line[1024];
-    int nnodes  = -1;
+    int n_nodes  = -1;
     int nnread  =  0;
     int node_id =  0;
     int line_no =  0;
@@ -1179,23 +1204,27 @@ namespace STK
         }
         valptr++;
   
-        if (state == LINE_START) {
+        if (state == LINE_START) 
+        {
   
-          if (chptr[0] == 'S') {
+          if (chptr[0] == 'S') 
+          {
             Error("%s not supported (%s:%d)", chptr, file_name, line_no);
           }
+
           if (chptr[0] == 'N') {
-            if (nnodes > -1) {
+            if (n_nodes > -1) {
               Error("Redefinition of number of nodes (%s:%d)",file_name,line_no);
             }
-            nnodes = strtoull(valptr, NULL, 10);
-            nodes  = (Node **) calloc(nnodes, sizeof(Node *));
+            n_nodes = strtoull(valptr, NULL, 10);
+            nodes  = (Node **) calloc(n_nodes, sizeof(Node *));
             if (nodes == NULL) Error("Insufficient memory");
             break;
           }
+
           if (chptr[0] == 'I') {
             state = NODE_DEF;
-            node_id = getNodeNumber(nnodes, valptr, &chptr, file_name, line_no);
+            node_id = getNodeNumber(n_nodes, valptr, &chptr, file_name, line_no);
   
             if (nodes[node_id] != NULL) {
               Error("Redefinition of node %d (%s:%d)",
@@ -1209,6 +1238,7 @@ namespace STK
             } else {
               last->mpNext = nodes[node_id];
             }
+
             last = nodes[node_id];
             nodes[node_id]->mpNext = NULL;
   
@@ -1217,7 +1247,7 @@ namespace STK
             node_time = UNDEF_TIME;
             nnread++;
           } else if (chptr[0] == 'J') {
-            if (nnodes < nnread) {
+            if (n_nodes < nnread) {
               for (node_id = 0; nodes[node_id] != NULL; node_id++);
               Error("Definition of node %d is missing (%s:%d)",
                     node_id, file_name, line_no);
@@ -1260,9 +1290,9 @@ namespace STK
         } else {
           assert(state == ARC_DEF);
           if (chptr[0] == 'S') {
-            arc_start = getNodeNumber(nnodes, valptr, &chptr, file_name,line_no);
+            arc_start = getNodeNumber(n_nodes, valptr, &chptr, file_name,line_no);
           } else if (chptr[0] == 'E') {
-            arc_end   = getNodeNumber(nnodes, valptr, &chptr, file_name,line_no);
+            arc_end   = getNodeNumber(n_nodes, valptr, &chptr, file_name,line_no);
           } else if (chptr[0] == 'l') {
             arc_like  = getFloat(valptr, &chptr, file_name, line_no);
           } else if (chptr[0] == 'd') {
@@ -1276,6 +1306,7 @@ namespace STK
           }
         }
       }
+
       if (state == NODE_DEF) {
         nodes[node_id]->mType       = NT_WORD;
         nodes[node_id]->mNLinks     = 0;
@@ -1314,9 +1345,11 @@ namespace STK
   
             if ((node            = (Node *) calloc(1, sizeof(Node))) == NULL ||
               (node->mpLinks     = (Link *) malloc(sizeof(Link))) == NULL ||
-              (node->mpBackLinks = (Link *) malloc(sizeof(Link))) == NULL) {
+              (node->mpBackLinks = (Link *) malloc(sizeof(Link))) == NULL) 
+            {
               Error("Insufficient memory");
             }
+
             node->mType = NT_PHONE;
             node->mNLinks = node->mNBackLinks = 1;
             node->mpNext   = last->mpNext;
@@ -1466,7 +1499,7 @@ namespace STK
       node->mpBackLinks[0].mpNode = last;
     }
     return first;
-  }
+  }  // ReadHTKLattice
   
   
   
