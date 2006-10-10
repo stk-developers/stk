@@ -769,6 +769,8 @@ namespace STK
     enum {LINE_START, AFTER_J, HEADER_DEF, ARC_DEF, NODE_DEF} state;
     MyHSearchData node_hash = {0};
     struct ReadlineData   rld       = {0};
+    
+    NodeBasic* first_basic;
   
     for (;;) 
     {
@@ -818,7 +820,7 @@ namespace STK
           if (!*chptr || !strcmp(chptr, "I")) {
             if (compactRepresentation)
             {
-               node = &first[getInteger(valptr, &chptr, file_name, line_no)];
+               node = reinterpret_cast<Node *>(&first_basic[getInteger(valptr, &chptr, file_name, line_no)]);
                if (node->mType == NT_UNDEF)
                  node->mType = NT_WORD;
             }
@@ -846,7 +848,7 @@ namespace STK
               if (first != NULL)
                 Error("Redefinition of N= (NODES=) is not allowed in CSTK format (%s:%d)", file_name, line_no);
                 
-              first = reinterpret_cast<Node *>(new NodeBasic[nnodes]);
+              first = reinterpret_cast<Node *>(first_basic = new NodeBasic[nnodes]);
             }
             else if (node_hash.mTabSize == 0 && !my_hcreate_r(nnodes, &node_hash)) 
             {
@@ -1031,7 +1033,7 @@ namespace STK
           if (!*chptr || !strcmp(chptr, "END") || !strcmp(chptr, "E")) {
             if (compactRepresentation)
             {
-               enode = &first[getInteger(valptr, &chptr, file_name, line_no)];
+               enode = reinterpret_cast<Node *>(&first_basic[getInteger(valptr, &chptr, file_name, line_no)]);
                if (enode->mType == NT_UNDEF)
                  enode->mType = NT_WORD;
             }
@@ -1130,9 +1132,28 @@ namespace STK
     
     if (compactRepresentation)
     {
+      if (nnodes == 0)
+        Error("No node defined in the network file (%s)", file_name);
+        
+      for(i = 0; i < nnodes; i++)
+      {
+        if (first_basic[i].mType == NT_UNDEF)
+          Error("Node %d not defined in network file (%s)", i, file_name);
+        
+        for (int j = 0; j < first_basic[i].mNLinks; j++)
+          if (first_basic[i].mpLinks[j].mpNode == first_basic)
+            Error("Node 0 must be the initial network node (%s)", file_name);
+      }
+      
+      if (first_basic[nnodes-1].mNLinks != 0)
+        Error("Node with the highest id (%d) must be the final network node (%s)",
+              nnodes-1, file_name);
     }
     else
     {
+      if (last == NULL)
+        Error("No node defined in the network file (%s)", file_name);
+    
       my_hdestroy_r(&node_hash, 1);
       lnode = last;
       first = last = NULL;

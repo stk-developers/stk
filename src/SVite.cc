@@ -209,7 +209,8 @@ int main(int argc, char *argv[])
   bool                          baum_welch;
   bool                          swap_features;
   bool                          htk_compat;
-  enum TranscriptionFormat {TF_HTK, TF_STK} in_transc_fmt, out_transc_fmt;
+  bool                          compactNetworkRepresentation = false;
+  enum TranscriptionFormat {TF_HTK, TF_STK, TF_CSTK} in_transc_fmt, out_transc_fmt;
   int                           notInDictAction = WORD_NOT_IN_DIC_UNSET;
   
   ExpansionOptions              expOptions  = {0};
@@ -377,7 +378,13 @@ int main(int argc, char *argv[])
   in_transc_fmt = (TranscriptionFormat) 
     GetParamEnum(&cfgHash, SNAME":SOURCETRANSCFMT",
       !network_file && htk_compat ? TF_HTK : TF_STK,
-      "HTK", TF_HTK, "STK", TF_STK, NULL);
+      "HTK", TF_HTK, "STK", TF_STK, "CSTK", TF_CSTK, NULL);
+  
+  if (in_transc_fmt == TF_CSTK)
+  {
+    in_transc_fmt = TF_STK;
+    compactNetworkRepresentation = true;
+  }
 
   out_transc_fmt = (TranscriptionFormat) 
     GetParamEnum(&cfgHash,SNAME":TARGETTRANSCFMT", 
@@ -514,22 +521,23 @@ int main(int argc, char *argv[])
          in_lbl_fmt,
          feature_repo.CurrentHeader().mSamplePeriod, 
          network_file, 
-         NULL);
+         NULL, compactNetworkRepresentation);
     }
     else 
     {
       Error("Too bad. What did you do ?!?");
     }
                                 
-    NetworkExpansionsAndOptimizations(
-        node, 
-        expOptions, 
-        in_net_fmt, 
-        &dictHash,
-        &nonCDphHash, 
-        &phoneHash);
+    if (!compactNetworkRepresentation)
+      NetworkExpansionsAndOptimizations(
+          node, 
+          expOptions, 
+          in_net_fmt, 
+          &dictHash,
+          &nonCDphHash, 
+          &phoneHash);
                                       
-    net.Init(node, &hset, NULL);
+    net.Init(node, &hset, NULL, compactNetworkRepresentation);
   } 
   else 
   {
@@ -601,17 +609,19 @@ int main(int argc, char *argv[])
       else if (in_transc_fmt == TF_STK) 
       {
         node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash, notInDictAction,
-            in_lbl_fmt, feature_repo.CurrentHeader().mSamplePeriod, label_file, in_MLF);
+            in_lbl_fmt, feature_repo.CurrentHeader().mSamplePeriod, label_file,
+            in_MLF);
       } 
       else 
       {
         Error("Too bad. What did you do ?!?");
       }
 
-      NetworkExpansionsAndOptimizations(node, expOptions, in_net_fmt, &dictHash,
-          &nonCDphHash, &phoneHash);
+      if (!compactNetworkRepresentation)
+        NetworkExpansionsAndOptimizations(node, expOptions, in_net_fmt, &dictHash,
+            &nonCDphHash, &phoneHash);
 
-      net.Init(node, &hset, NULL);
+      net.Init(node, &hset, NULL, false);
 
       CloseInputLabelFile(ilfp, in_MLF);
     }

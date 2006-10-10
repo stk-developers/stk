@@ -41,17 +41,27 @@ namespace STK
   //***************************************************************************
   //***************************************************************************
   void 
-  FreeNetwork(Node * pNode) 
+  FreeNetwork(Node * pNode, bool compactRepresentation) 
   {
-    Node *  tnode;
-    
-    while (pNode) 
+    if (!compactRepresentation)
     {
-      tnode = pNode->mpNext;
-      free(pNode->mpLinks);
-      free(pNode->mpBackLinks);
+      Node *  tnode;
+      while (pNode) 
+      {
+        tnode = pNode->mpNext;
+        free(pNode->mpLinks);
+        free(pNode->mpBackLinks);
+        free(pNode);
+        pNode = tnode;
+      }
+    }
+    else
+    {
+      NodeBasic *  tnode;
+      for(tnode =  reinterpret_cast<NodeBasic*>(pNode); tnode->mNLinks != 0; tnode++) 
+        free(tnode->mpLinks);
+      
       free(pNode);
-      pNode = tnode;
     }
   }
   

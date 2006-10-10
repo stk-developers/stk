@@ -125,52 +125,7 @@ namespace STK
     }
     return rwlr;
   }
-  
-  //***************************************************************************
-  //***************************************************************************
-  void 
-  PhoneNodesToModelNodes(Node *  pFirst, ModelSet * pHmms, ModelSet *pHmmsToUpdate)
-  {
-    Node *node;
-  
-    if (pHmmsToUpdate == NULL) 
-      pHmmsToUpdate = pHmms;
-  
-    for (node =  pFirst; node != NULL; node = node->mpNext) 
-    {
-      if (node->mType & NT_PHONE) 
-      {
-        Macro *macro;
-  
-        node->mType &= ~NT_PHONE;
-        node->mType |= NT_MODEL;
-        macro = FindMacro(&pHmms->mHmmHash, node->mpName);
-        if (macro == NULL) {
-          Error("Model %s not defined in %sHMM set", node->mpName,
-                pHmmsToUpdate != pHmms ? "alignment " : "");
-        }
-        node->mpHmm = node->mpHmmToUpdate = (Hmm *) macro->mpData;
-  
-        if (pHmmsToUpdate != pHmms) {
-          macro = FindMacro(&pHmmsToUpdate->mHmmHash, node->mpName);
-          if (macro == NULL) {
-            Error("Model %s not defined in HMM set", node->mpName,
-                  pHmmsToUpdate != pHmms ? "" : "target ");
-          }
-          node->mpHmmToUpdate = (Hmm *) macro->mpData;
-        }
-      }
-    }
-  }
-  
-  //***************************************************************************
-  //***************************************************************************
-  int 
-  cmplnk(const void *a, const void *b)
-  {
-    return ((Link *) a)->mpNode->mAux - ((Link *) b)->mpNode->mAux;
-  }
-  
+    
   //***************************************************************************
   //***************************************************************************
   void 
@@ -368,7 +323,7 @@ namespace STK
       
       if(lnode->mpAnr->mIsActiveNode-- == 0) 
       {
-        lnode->mAux = 0;
+        lnode->mpAnr->mAux = 0;
         MarkWordNodesLeadingFrom(lnode);
       }
     }
@@ -406,14 +361,14 @@ namespace STK
         continue;
       }
   
-      lnode->mAux++;
+      lnode->mpAnr->mAux++;
       
       if (lnode->mpAnr->mIsActiveNode < 0) 
         continue;
   
       assert(lnode->mpAnr->mIsActiveNode == 0);
       
-      lnode->mpAnr->mIsActiveNode    = lnode->mAux;
+      lnode->mpAnr->mIsActiveNode    = lnode->mpAnr->mAux;
       lnode->mpAnr->mpNextActiveNode = pNode->mpAnr->mpNextActiveNode;
       lnode->mpAnr->mpPrevActiveNode = pNode;
       
@@ -1946,23 +1901,7 @@ namespace STK
     Node*   node;
   
     InitLogMath();
-  
-/*    for (node = mpFirst; node != NULL; node = node->mpNext) 
-    {
-      size_t numOfTokens = (node->mType & NT_MODEL) ? node->mpHmm->mNStates : 1;
-  
-      for (i=0; i < numOfTokens; i++) 
-      {
-        node->mpTokens[i].mLike = LOG_0;
-        node->mpTokens[i].mpWlr = NULL;
-#ifdef bordel_staff
-        node->mpTokens[i].mpTWlr = NULL;
-#endif // bordel_staff
-      }
-      node->mIsActive = 0;
-      node->mIsActiveNode = 0;
-    }*/
-  
+ 
     if (mpOutPCache != NULL) 
     {
       for (i = 0; i < mpModelSet->mNStates * OUT_P_CACHES; i++) 
@@ -1988,6 +1927,9 @@ namespace STK
   
     if (mCollectAlphaBeta && InForwardPass()) 
     {
+      if (mCompactRepresentation)
+        Error("Fatal: CSTK format used for forward-backward");
+        
       for (node = mpFirst; node != NULL; node = node->mpNext) 
       {
         if (!(node->mType & NT_MODEL)) 
@@ -2000,6 +1942,9 @@ namespace STK
     // Needed to load last FWBWRs to mpAlphaBetaList
     if (mCollectAlphaBeta && !InForwardPass()) 
     {
+      if (mCompactRepresentation)
+        Error("Fatal: CSTK format used for forward-backward");
+
       for (node = mpFirst; node != NULL; node = node->mpNext) 
       {
         if (!(node->mType & NT_MODEL)) 
@@ -2009,8 +1954,8 @@ namespace STK
       }
     }
     
-    mLatticeNodeHash.mTabSize = 0;
-    mpLatticeLastNode = NULL;
+//    mLatticeNodeHash.mTabSize = 0;
+//    mpLatticeLastNode = NULL;
 
 
 
@@ -2207,15 +2152,16 @@ namespace STK
 
             
             if (node->mpAnr->mpExitToken->mLike + lmLike > mBeamThresh 
-                && (/*links[i].mpNode->mStart == UNDEF_TIME ||*/
+                && (mCompactRepresentation
+                ||((/*links[i].mpNode->mStart == UNDEF_TIME ||*/
                       links[i].mpNode->mStart <= mTime) 
+                
+                && (  links[i].mpNode->mStop  == UNDEF_TIME        
+                ||    links[i].mpNode->mStop  >= mTime)
                       
-                && (  links[i].mpNode->mStop  == UNDEF_TIME        ||
-                      links[i].mpNode->mStop  >= mTime)
-                      
-                && (  mSearchPaths != SP_TRUE_ONLY || 
-                      (node->mType & NT_TRUE)                   || 
-                      !(links[i].mpNode->mType & NT_MODEL))) 
+                && (mSearchPaths != SP_TRUE_ONLY
+                || (node->mType & NT_TRUE)   
+                || !(links[i].mpNode->mType & NT_MODEL)))))
             {
               if (links[i].mpNode->mType & NT_MODEL) 
               {
@@ -2228,7 +2174,7 @@ namespace STK
               }
               assert(links[i].mpNode->mpAnr != NULL);
 #ifdef TRACE_TOKENS
-              printf("Node %d -> Node %d ", node->mpAnr->mAux, links[i].mpNode->mAux);
+              printf("Node %d -> Node %d ", node->mAux, links[i].mpNode->mAux);
 #endif
 
               // Current lattice generation algorithm expect that word link record is created for all tokens leaving
@@ -2330,9 +2276,10 @@ namespace STK
       assert(node->mpAnr);
       hmm = node->mpHmm;
       
-      if (    (/*node->mStart != UNDEF_TIME &&*/node->mStart >= mTime)
+      if (!mCompactRepresentation && (
+          (/*node->mStart != UNDEF_TIME &&*/node->mStart >= mTime)
           ||  (  node->mStop  != UNDEF_TIME &&  node->mStop  <  mTime)
-          ||  mSearchPaths == SP_TRUE_ONLY && !(node->mType & NT_TRUE)) 
+          ||  mSearchPaths == SP_TRUE_ONLY && !(node->mType & NT_TRUE)))
       {
         for (i = 0; i < hmm->mNStates-1; i++) 
         {
@@ -2546,23 +2493,9 @@ namespace STK
     delete node->mpAnr;
     node->mpAnr = NULL;
   
-  //  for (i=0; i < nnodes; i++) {
-  //    node = &mpNodes[i];
-  
-        
-
     while(mpActiveModels != NULL) 
-//    for (node = mpFirst; node != NULL; node = node->mpNext) 
     {
-//      if (!(node->mType & NT_MODEL)) 
-//      {
-//        assert(!node->mpExitToken->IsActive());
-//        continue;
-//      }
-  
-      int numOfTokens = mpActiveModels->mpHmm->mNStates;
-  
-      for (j=0; j < numOfTokens; j++) 
+      for (j=0; j < mpActiveModels->mpHmm->mNStates; j++) 
       {
         KillToken(&mpActiveModels->mpAnr->mpTokens[j]);
       }
@@ -2608,6 +2541,14 @@ namespace STK
 
     
 /*
+  //***************************************************************************
+  //***************************************************************************
+  int 
+  cmplnk(const void *a, const void *b)
+  {
+    return ((Link *) a)->mpNode->mAux - ((Link *) b)->mpNode->mAux;
+  }
+
   //***************************************************************************
   //***************************************************************************
   void
@@ -2736,64 +2677,88 @@ namespace STK
 
   //***************************************************************************
   //***************************************************************************
-  void
+  void 
   Network:: 
-  Init(Node * pFirstNode, ModelSet * pHmms, ModelSet *pHmmsToUpdate) 
+  PhoneNodesToModelNodes(ModelSet * pHmms, ModelSet *pHmmsToUpdate, int& maxStatesInModel)
   {
     Node *node;
-    int maxStatesInModel = 0;
   
-    mpFirst = mpLast = pFirstNode;
-  
-    PhoneNodesToModelNodes(pFirstNode, pHmms, pHmmsToUpdate);
-  
-    //Allocate tokens and count emiting states
+    if (pHmmsToUpdate == NULL) 
+      pHmmsToUpdate = pHmms;
+
     mNumberOfNetStates = 0;
-    
-    for (node = pFirstNode; node != NULL; mpLast = node, node = node->mpNext) 
+    maxStatesInModel   = 0;
+  
+    for (node =  mpFirst; 
+         node != NULL; 
+         mpLast = node, node = mCompactRepresentation 
+                               ? (node->mNLinks ? reinterpret_cast<Node*>(reinterpret_cast<NodeBasic*>(node)+1) : NULL)
+                               : node->mpNext)
     {
-      
-  #ifndef NDEBUG
-      node->mAux2 = 0;
-  #endif
-      int numOfTokens;
-      if (node->mType & NT_MODEL) 
+      if (node->mType & NT_PHONE)  
       {
-        numOfTokens = node->mpHmm->mNStates;
-        node->mpHmmToUpdate->mpMacro->mOccurances++;
-        if (node->mpHmm->mpTransition->mpMatrixO[numOfTokens - 1] > LOG_MIN) {
+        Macro *macro;
+        node->mType &= ~NT_PHONE;
+        node->mType |= NT_MODEL;        
+        macro = FindMacro(&pHmms->mHmmHash, node->mpName);
+    
+        if (macro == NULL) 
+        {
+          Error("Model %s not defined in %sHMM set", node->mpName,
+                pHmmsToUpdate != pHmms ? "alignment " : "");
+        }
+        node->mpHmm =  (Hmm *) macro->mpData;
+        
+        if (!mCompactRepresentation) 
+        {
+          if (pHmmsToUpdate != pHmms) 
+          {
+            macro = FindMacro(&pHmmsToUpdate->mHmmHash, node->mpName);
+            if (macro == NULL) {
+              Error("Model %s not defined in HMM set", node->mpName,
+                    pHmmsToUpdate != pHmms ? "" : "target ");
+            }
+            node->mpHmmToUpdate = (Hmm *) macro->mpData;
+          } 
+          else
+          {
+            node->mpHmmToUpdate = node->mpHmm;
+          }
+          node->mpHmmToUpdate->mpMacro->mOccurances++;
+        }
+        
+        int nstates = node->mpHmm->mNStates;
+        
+        if (node->mpHmm->mpTransition->mpMatrixO[nstates - 1] > LOG_MIN) 
+        {
           node->mType |= NT_TEE;
         }
-      } 
-      else if (node->mType & NT_WORD) 
-      {
-        numOfTokens = 1;
-      } 
-      else 
-      {
-        Error("Fatal: Incorect node type");
-      }
-  
-//      node->mpTokens = (Token *) malloc(numOfTokens * sizeof(Token));
-      
-//      if (node->mpTokens == NULL) 
-//        Error("Insufficient memory");
-  
-//      node->mpExitToken = &node->mpTokens[numOfTokens-1];
 #ifndef NDEBUG
-      node->mEmittingStateId = mNumberOfNetStates;
+        node->mAux2 = 0;
+        node->mEmittingStateId = mNumberOfNetStates;
 #endif      
-      if (node->mType & NT_MODEL) {
-        int nstates = node->mpHmm->mNStates;
-  
-        if (maxStatesInModel < nstates) maxStatesInModel = nstates;
+        if (maxStatesInModel < nstates) 
+          maxStatesInModel = nstates;
+        
         assert(nstates >= 2); // two non-emiting states
         mNumberOfNetStates += nstates;
       }
     }
-  
-//    SortNodes();  
+  }
+
+  //***************************************************************************
+  //***************************************************************************
+  void
+  Network:: 
+  Init(Node * pFirstNode, ModelSet * pHmms, ModelSet *pHmmsToUpdate, bool compactRepresentation) 
+  {
+    int maxStatesInModel;
     
+    mCompactRepresentation = compactRepresentation;
+    mpFirst = pFirstNode;
+  
+    PhoneNodesToModelNodes(pHmms, pHmmsToUpdate, maxStatesInModel);
+  
     mpAuxTokens = new Token[maxStatesInModel-1];
     mpOutPCache = (Cache*) malloc(pHmms->mNStates      * sizeof(Cache) * OUT_P_CACHES);
     mpMixPCache = (Cache*) malloc(pHmms->mNMixtures    * sizeof(Cache) * MIX_P_CACHES);
@@ -2802,12 +2767,6 @@ namespace STK
     {
       Error("Insufficient memory");
     }
-  
-//    for (i = 0; i < maxStatesInModel-1; i++) 
-//    {
-//      mpAuxTokens[i].mLike = LOG_0;
-//      mpAuxTokens[i].mpWlr = NULL;
-//    }
   
     mWPenalty          = 0.0;
     mMPenalty          = 0.0;
@@ -2822,10 +2781,6 @@ namespace STK
       pHmms->mOutPdfKind == KID_DiagC     ? &::DiagCGaussianMixtureDensity :
       pHmms->mOutPdfKind == KID_PDFObsVec ? &::FromObservationAtStateId    : NULL;
     
-    //this->mpOutputProbability =
-    //  pHmms->mOutPdfKind == KID_DiagC     ? &Network::DiagCGaussianMixtureDensity :
-    //  pHmms->mOutPdfKind == KID_PDFObsVec ? &Network::FromObservationAtStateIdX    : NULL;
-  
     PassTokenInNetwork  = &PassTokenMax;
     PassTokenInModel    = &PassTokenMax;
     
@@ -2847,11 +2802,7 @@ namespace STK
   Network::
   Release()
   {
-//    Node* node;
-//    for (node = mpFirst; node != NULL; node = node->mpNext) 
-//      free(node->mpTokens);
-      
-    FreeNetwork(mpFirst);
+    FreeNetwork(mpFirst, mCompactRepresentation);
     
     delete [] mpAuxTokens;
     free(mpOutPCache);

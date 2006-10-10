@@ -244,7 +244,7 @@ namespace STK
     Node*                   mpActiveNodes;
     int                     mActiveTokens;
                             
-    int                     mNumberOfNetStates;
+    int                     mNumberOfNetStates; // Not used for anything important
     Token*                  mpAuxTokens;
     Cache*                  mpOutPCache;
     Cache*                  mpMixPCache;
@@ -268,9 +268,10 @@ namespace STK
     FLOAT                   mPruningThresh;
     SearchPathsType         mSearchPaths;
     bool                    mLatticeGeneration;
+    bool                    mCompactRepresentation;
     
-    MyHSearchData           mLatticeNodeHash;
-    Node *                  mpLatticeLastNode;
+//    MyHSearchData           mLatticeNodeHash;
+//    Node *                  mpLatticeLastNode;
 
                               
     FLOAT   (*OutputProbability) (State *state, FLOAT *observation, Network *network);
@@ -299,7 +300,7 @@ namespace STK
      * @param hmms 
      * @param hmmsToUptade 
      */
-    Init(Node * pFirst, ModelSet * pHmms, ModelSet * pHmmsToUptade);
+    Init(Node * pFirstNode, ModelSet * pHmms, ModelSet *pHmmsToUpdate, bool compactRepresentation = false);
     
     void
     /**
@@ -335,6 +336,10 @@ namespace STK
 
     FLOAT
     BaumWelchReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, int nFrames, FLOAT weight);
+  private:
+    void
+    PhoneNodesToModelNodes(ModelSet * pHmms, ModelSet *pHmmsToUpdate, int& maxStatesInModel);
+ 
   }; // class Network
   //***************************************************************************
   //***************************************************************************
@@ -475,6 +480,7 @@ namespace STK
     
     bool    mIsActiveModel;
     int     mIsActiveNode;
+    int     mAux;
 
     Token * mpExitToken;
     Token * mpTokens;

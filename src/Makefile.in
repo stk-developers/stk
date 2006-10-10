@@ -55,7 +55,7 @@ am_SERest_OBJECTS = SERest.$(OBJEXT)
 SERest_OBJECTS = $(am_SERest_OBJECTS)
 SERest_LDADD = $(LDADD)
 am__DEPENDENCIES_1 =
-am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1)
+am__DEPENDENCIES_2 = ./STKLib/libSTKLib.a $(am__DEPENDENCIES_1)
 SERest_DEPENDENCIES = $(am__DEPENDENCIES_2)
 am_SExpand_OBJECTS = SExpand.$(OBJEXT)
 SExpand_OBJECTS = $(am_SExpand_OBJECTS)
@@ -71,7 +71,7 @@ SLRatio_LDADD = $(LDADD)
 SLRatio_DEPENDENCIES = $(am__DEPENDENCIES_2)
 am_SNet_OBJECTS = SNet.$(OBJEXT)
 SNet_OBJECTS = $(am_SNet_OBJECTS)
-SNet_DEPENDENCIES = $(am__DEPENDENCIES_2)
+SNet_DEPENDENCIES = $(am__DEPENDENCIES_2) ./SNetLib/libSNet.a
 am_SResults_OBJECTS = SResults.$(OBJEXT)
 SResults_OBJECTS = $(am_SResults_OBJECTS)
 SResults_LDADD = $(LDADD)
@@ -211,15 +211,15 @@ SUBDIRS = STKLib SNetLib .
 @WANT_LIBGETOPT_TRUE@LIBGETOPT = -lgetopt
 
 # These are the common libraries needed by all programs
-COMMONLDFLAGS = -L./STKLib -pthread
-COMMONLIBS = -lSTKLib $(LIBGETOPT)
+COMMONLDFLAGS = -pthread
+COMMONLIBS = ./STKLib/libSTKLib.a $(LIBGETOPT)
+AM_LDFLAGS = $(COMMONLDFLAGS) 
+LDADD = $(COMMONLIBS) 
 
 ################################################################################
 INCLUDES = $(ATLASINCLUDEDIR) -I. -I$(top_builddir) -I$(top_srcdir) \
               $(HSEARCH_R_INC_DIR)
 
-AM_LDFLAGS = $(COMMONLDFLAGS) 
-LDADD = $(COMMONLIBS)
 
 # Specifications
 SERest_SOURCES = SERest.cc 
@@ -232,8 +232,8 @@ SRover_SOURCES = SRover.cc
 
 # SNet is kind of special. It needs some files in the SNet source. This will probably change and separate SNetLib will be built
 SNet_SOURCES = SNet.cc 
-SNet_LDFLAGS = $(COMMONLDFLAGS) -L./SNetLib -pthread
-SNet_LDADD = $(COMMONLIBS) -lSNet 
+SNet_LDFLAGS = $(COMMONLDFLAGS) -pthread
+SNet_LDADD = $(COMMONLIBS) ./SNetLib/libSNet.a
 all: all-recursive
 
 .SUFFIXES:

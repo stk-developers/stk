@@ -80,7 +80,6 @@ namespace STK
       Pronun*       mpPronun;
     };
   
-    int           mAux;
     int           mType;
     int           mNLinks;
     Link*         mpLinks;
@@ -94,7 +93,7 @@ namespace STK
     ActiveNodeRecord* mpAnr;
 #   endif
 
-    NodeBasic() : mpPronun(NULL), mType(NT_UNDEF), mNLinks(0), mpLinks(NULL) {}
+    NodeBasic() : mpPronun(NULL), mType(NT_UNDEF), mNLinks(0), mpLinks(NULL), mpAnr(NULL) {}
   }; // class Node
   
 
@@ -110,6 +109,7 @@ namespace STK
     Node*         mpBackNext;
     int           mNBackLinks;
     Link*         mpBackLinks;
+    int           mAux;
 
     //time range when model can be active - apply only for model type
     long long     mStart;
@@ -209,7 +209,7 @@ namespace STK
     const char* label_file,
     const char* out_MNF);
   
-  void FreeNetwork(Node *node);
+  void FreeNetwork(Node *node, bool compactRepresentation = false);
   
   Node*
   ReadSTKNetwork(

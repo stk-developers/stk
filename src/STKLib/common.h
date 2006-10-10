@@ -376,7 +376,7 @@ using namespace STK;
    * 
    * @return 
    */
-  bool close_enough(const float f1, const float f2, int nRounds = 1);
+  bool close_enough(const FLOAT f1, const FLOAT f2, int nRounds);
 
 
 
