@@ -1194,12 +1194,12 @@ namespace STK
     /// The destructor
     ~XformLayer();
     
-    Xform**
     /**
      * @brief Inits (creates) the blocks
      * @param nBlocks number of blocks in the layer
      * @return pointer to the newly created array of pointers to Xforms
      */
+    Xform**
     InitBlocks(size_t nBlocks);
   }; // class XformLayer
   

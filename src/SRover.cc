@@ -10,6 +10,12 @@
  *                                                                         *
  ***************************************************************************/
 
+#define SVN_DATE       "$Date$"
+#define SVN_AUTHOR     "$Author$"
+#define SVN_REVISION   "$Revision$"
+#define SVN_ID         "$Id$"
+
+
 #define MODULE_VERSION "0.5 "__TIME__" "__DATE__
 
 // This alignment is kind of wierd - check it!!!

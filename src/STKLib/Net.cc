@@ -101,6 +101,7 @@ namespace STK
       
       node->mpLinks[0].mpNode = tnode;
       node->mpLinks[0].mLike  = 0.0;
+      node->mpLinks[0].mAcousticLike  = 0.0;
       
       switch (nodeType) 
       {
@@ -117,6 +118,7 @@ namespace STK
       tnode->mStop       = lp->mStop;
       tnode->mpBackLinks[0].mpNode = node;
       tnode->mpBackLinks[0].mLike   = 0.0;
+      tnode->mpBackLinks[0].mAcousticLike   = 0.0;
       node->mpNext = tnode;
       node = tnode;
     }
@@ -124,8 +126,10 @@ namespace STK
     node->mpNext = last;
     node->mpLinks[0].mpNode    = last;
     node->mpLinks[0].mLike    = 0.0;
+    node->mpLinks[0].mAcousticLike    = 0.0;
     last->mpBackLinks[0].mpNode = node;
     last->mpBackLinks[0].mLike = 0.0;
+    last->mpBackLinks[0].mAcousticLike = 0.0;
     last->mpNext = NULL;
     return first;
   }
@@ -239,9 +243,11 @@ namespace STK
             tnode->mNBackLinks              = 1;
             tnode->mpBackLinks[0].mpNode    = pronun_prev;
             tnode->mpBackLinks[0].mLike     = 0.0;
+            tnode->mpBackLinks[0].mAcousticLike     = 0.0;
             pronun_prev->mNLinks            = 1;
             pronun_prev->mpLinks[0].mpNode  = tnode;
             pronun_prev->mpLinks[0].mLike   = 0.0;
+            pronun_prev->mpLinks[0].mAcousticLike   = 0.0;
             pronun_prev->mpNext             = tnode;
           }
           pronun_prev = tnode;
@@ -269,9 +275,11 @@ namespace STK
             tnode->mNBackLinks          = 1;
             tnode->mpBackLinks[0].mpNode   = pronun_prev;
             tnode->mpBackLinks[0].mLike   = 0.0;
+            tnode->mpBackLinks[0].mAcousticLike   = 0.0;
             pronun_prev->mNLinks        = 1;
             pronun_prev->mpLinks[0].mpNode = tnode;
             pronun_prev->mpLinks[0].mLike = 0.0;
+            pronun_prev->mpLinks[0].mAcousticLike = 0.0;
             pronun_prev->mpNext          = tnode;
           }
           pronun_prev = tnode;
@@ -289,12 +297,14 @@ namespace STK
           Node *backnode = node->mpBackLinks[j].mpNode;
           backnode->mpLinks[backnode->mNLinks  ].mpNode = pronun_first;
           backnode->mpLinks[backnode->mNLinks++].mLike = node->mpBackLinks[j].mLike;
+          backnode->mpLinks[backnode->mNLinks++].mAcousticLike = node->mpBackLinks[j].mAcousticLike;
           pronun_first->mpBackLinks[j] = node->mpBackLinks[j];
         }
         for (j=0; j < node->mNLinks; j++) {
           Node *forwnode = node->mpLinks[j].mpNode;
           forwnode->mpBackLinks[forwnode->mNBackLinks  ].mpNode = pronun_prev;
           forwnode->mpBackLinks[forwnode->mNBackLinks++].mLike = node->mpLinks[j].mLike;
+          forwnode->mpBackLinks[forwnode->mNBackLinks++].mAcousticLike = node->mpLinks[j].mAcousticLike;
           pronun_prev->mpLinks[j] = node->mpLinks[j];
         }
         if (prev != NULL) prev->mpNext = pronun_first;
@@ -308,22 +318,39 @@ namespace STK
     }
   }
   
-  
-  Node *DiscardUnwantedInfoInNetwork(Node *pFirstNode, STKNetworkOutputFormat format)
+  //****************************************************************************
+  //****************************************************************************
+  Node* 
+  DiscardUnwantedInfoInNetwork(Node *pFirstNode, STKNetworkOutputFormat format)
   // The function discard the information in network records that is not to be
   // saved to the output. This should allow for more effective network
   // optimization, which will be run after calling this function and before
   // saving network to file.
   {
-    Node *node;
-    int  i;
+    Node* node;
+    int   i;
   
     for (node = pFirstNode; node != NULL; node = node->mpNext)  
     {
-      if (format.mNoLMLikes) {
-        for (i=0; i < node->mNLinks;     i++) node->mpLinks    [i].mLike = 0.0;
-        for (i=0; i < node->mNBackLinks; i++) node->mpBackLinks[i].mLike = 0.0;
+      if (format.mNoLMLikes) 
+      {
+        for (i=0; i < node->mNLinks;     i++) 
+        { 
+          node->mpLinks    [i].mLike = 0.0;
+          node->mpBackLinks[i].mLike = 0.0;
+        }
+
       }
+
+      if (format.mNoAcousticLikes) 
+      {
+        for (i=0; i < node->mNBackLinks; i++) 
+        {
+          node->mpBackLinks[i].mAcousticLike = 0.0;
+          node->mpLinks    [i].mAcousticLike = 0.0;
+        }
+      }
+
       if (format.mNoTimes) {
         node->mStop = node->mStart = UNDEF_TIME;
       }
@@ -351,14 +378,17 @@ namespace STK
     return (char *)((Link *) a)->mpNode - (char *)((Link *) b)->mpNode;
   }
   
+
   //***************************************************************************
   //***************************************************************************
-  static int LatticeLocalOptimization_ForwardPass(Node *pFirstNode, int strictTiming)
+  static int 
+  LatticeLocalOptimization_ForwardPass(Node *pFirstNode, int strictTiming)
   {
     int i, j, k, l, m, rep;
     Node *node, *tnode;
     int node_removed = 0;
     FLOAT tlike;
+
     for (node = pFirstNode; node != NULL; node = node->mpNext) 
     {
 /**/      for (i = 0; i < node->mNLinks; i++) 
@@ -378,7 +408,7 @@ namespace STK
         
         for (l=0; l < tnode->mNBackLinks; l++) 
         {
-          Node *backnode = tnode->mpBackLinks[l].mpNode;
+          Node* backnode = tnode->mpBackLinks[l].mpNode;
           tnode->mpBackLinks[l].mLike -= tlike;
           
           for (k=0; k<backnode->mNLinks && backnode->mpLinks[k].mpNode!=tnode; k++)
@@ -898,8 +928,10 @@ namespace STK
             
             forwlink.mpNode->mpBackLinks[forwlink.mpNode->mNBackLinks  ].mpNode = tnode;
             forwlink.mpNode->mpBackLinks[forwlink.mpNode->mNBackLinks++].mLike  = forwlink.mLike;
+            forwlink.mpNode->mpBackLinks[forwlink.mpNode->mNBackLinks++].mAcousticLike  = forwlink.mAcousticLike;
             backlink.mpNode->mpLinks    [backlink.mpNode->mNLinks      ].mpNode = tnode;
             backlink.mpNode->mpLinks    [backlink.mpNode->mNLinks++    ].mLike  = backlink.mLike;
+            backlink.mpNode->mpLinks    [backlink.mpNode->mNLinks++    ].mAcousticLike  = backlink.mAcousticLike;
             
             prev->mpNext = tnode;
             prev = tnode;
@@ -1052,6 +1084,7 @@ namespace STK
             tnode->mpLinks[tlink-forwmono_start] = *tlink;
             tlink->mpNode->mpBackLinks[tlink->mpNode->mNBackLinks  ].mpNode = tnode;
             tlink->mpNode->mpBackLinks[tlink->mpNode->mNBackLinks++].mLike = tlink->mLike;
+            tlink->mpNode->mpBackLinks[tlink->mpNode->mNBackLinks++].mAcousticLike = tlink->mAcousticLike;
           }
           
           for (tlink = backmono_start; tlink < backmono_end; tlink++) 
@@ -1059,6 +1092,7 @@ namespace STK
             tnode->mpBackLinks[tlink-backmono_start] = *tlink;
             tlink->mpNode->mpLinks[tlink->mpNode->mNLinks  ].mpNode = tnode;
             tlink->mpNode->mpLinks[tlink->mpNode->mNLinks++].mLike = tlink->mLike;
+            tlink->mpNode->mpLinks[tlink->mpNode->mNLinks++].mAcousticLike = tlink->mAcousticLike;
           }
           
           prev->mpNext = tnode;
@@ -1227,6 +1261,7 @@ namespace STK
           
           node->mpBackLinks[j].mpNode = tnode;
           node->mpBackLinks[j].mLike = 0.0;
+          node->mpBackLinks[j].mAcousticLike = 0.0;
   
           tnode->mType       = NT_WORD;
           tnode->mpPronun     = NULL;
@@ -1238,8 +1273,10 @@ namespace STK
   //        tnode->mpExitToken  = NULL;
           tnode->mpLinks[0].mpNode     = node;
           tnode->mpLinks[0].mLike     = 0.0;
+          tnode->mpLinks[0].mAcousticLike     = 0.0;
           tnode->mpBackLinks[0].mpNode = node;
           tnode->mpBackLinks[0].mLike = node->mpLinks[i].mLike;
+          tnode->mpBackLinks[0].mAcousticLike = node->mpLinks[i].mAcousticLike;
           tnode->mpNext = node->mpNext;
           node->mpNext = tnode;
         }
@@ -1557,15 +1594,17 @@ namespace STK
     pclose(fp);
   }
 #endif
+
   
-  
+  //****************************************************************************
+  //****************************************************************************
   void NetworkExpansionsAndOptimizations(
-    Node *node,
-    ExpansionOptions expOptions,
-    STKNetworkOutputFormat out_net_fmt,
-    MyHSearchData *wordHash,
-    MyHSearchData *nonCDphHash,
-    MyHSearchData *triphHash)
+    Node*                   node,
+    ExpansionOptions        expOptions,
+    STKNetworkOutputFormat  out_net_fmt,
+    MyHSearchData *         wordHash,
+    MyHSearchData *         nonCDphHash,
+    MyHSearchData *         triphHash)
   {
 
     if (expOptions.mNoWordExpansion  && !expOptions.mCDPhoneExpansion &&
@@ -1577,6 +1616,7 @@ namespace STK
     }
     
     SelfLinksToNullNodes(node);
+
     if (!expOptions.mNoWordExpansion) {
       if (!expOptions.mNoOptimization) {
         LatticeLocalOptimization(node, expOptions.mStrictTiming, expOptions.mTraceFlag);
@@ -1597,7 +1637,8 @@ namespace STK
     if (!expOptions.mNoOptimization) {
       LatticeLocalOptimization(node, expOptions.mStrictTiming, expOptions.mTraceFlag);
     }
+
     RemoveRedundantNullNodes(node);
-  }
+  } // void NetworkExpansionsAndOptimizations( )
 
 } // namespace STK

@@ -89,6 +89,9 @@ namespace STK
     AT_MCE,
     AT_MMI
   } AccumType;
+
+
+
   
   
   //###########################################################################
@@ -193,10 +196,10 @@ namespace STK
     pActivateWordNodesLeadingFrom(Node* pNode);
     
     void
-    ActivateModel(Node * pNode);
+    ActivateModel(Node* pNode);
 
     void
-    DeactivateModel(Node *pNode);
+    DeactivateModel(Node* pNode);
     
     void
     DeactivateWordNodesLeadingFrom(Node* pNode);
@@ -229,7 +232,7 @@ namespace STK
     FromObservationAtStateId(State* pState, FLOAT* pObs);
 
     void 
-    AddLinkToLattice(Node *from, Node *to, FLOAT lmLike);
+    AddLinkToLattice(Node* from, Node* to, FLOAT lmLike);
 
     
   public:
@@ -273,8 +276,9 @@ namespace STK
     FLOAT   (*OutputProbability) (State *state, FLOAT *observation, Network *network);
     FLOAT   (*mpOutputProbability) (State *state, FLOAT *observation);
     //FLOAT   (*OutputProbability) (State* pState, FLOAT* pObs);
-    int     (*PassTokenInNetwork)(Token *from, Token *to, FLOAT addLogLike);
-    int     (*PassTokenInModel)  (Token *from, Token *to, FLOAT addLogLike);
+
+    int     (*PassTokenInNetwork)(Token* pFrom, Token* pTo, FLOAT addLogLike, FLOAT acousticLike);
+    int     (*PassTokenInModel)  (Token* pFrom, Token* pTo, FLOAT addLogLike, FLOAT acousticLike);
     
     PropagDirectionType     mPropagDir;
     int                     mAlignment;
@@ -335,7 +339,44 @@ namespace STK
   //***************************************************************************
   //***************************************************************************
   
-  
+
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Word link record reference
+   *
+   *  This class provides a way that Token connects to a WLR. Besides the 
+   *  pointer to the WLR, it also holds various probabilities
+   *
+   *  In fact, I would be happy if this class dissappeared or was somehow
+   *  integreted to WordLinkRecord itself.
+   */
+  class WlrReference
+  {
+  public:
+    typedef double           LikelihoodPrec;
+
+
+    WordLinkRecord*          mpWlr;            ///< Associated word link record
+    LikelihoodPrec           mLike;            ///< Total likelihood
+    LikelihoodPrec           mAcousticLike;    ///< Acoustic likelihood
+
+
+    // CONSTRUCTORS
+    // copy constructor
+    WlrReference(const WlrReference& rWlrRef) : mpWlr(rWlrRef.mpWlr), 
+      mLike(rWlrRef.mLike), mAcousticLike(rWlrRef.mAcousticLike) {}
+
+    // create using separate values 
+    WlrReference(WordLinkRecord* pWlr, double  like, double acousticLike) : 
+      mpWlr(pWlr), mLike(like), mAcousticLike(acousticLike) {}
+    
+  }; // class WlrReference
+
+
+  typedef std::list<WlrReference>   AltHypList;
+
+
+
   /** *************************************************************************
    ** *************************************************************************
    *  @brief Token representation
@@ -343,17 +384,22 @@ namespace STK
   class Token 
   {
   public:
-    typedef std::list<WordLinkRecord*> AltHypList;
+    /// Token's likelihood precision type
+    typedef double                  LikelihoodPrec;
 
-    double                  mLike;            ///< Likelihood
-    WordLinkRecord*         mpWlr;            ///< Associated word link record
+
+    LikelihoodPrec          mLike;            ///< Total likelihood
+    LikelihoodPrec          mAcousticLike;    ///< Acoustic likelihood
     FloatInLog              mAccuracy;        ///< Accuracy
-    AltHypList*             mpAltHyps;
-    
+
 #   ifdef bordel_staff
     WordLinkRecord*         mpTWlr;
     FLOAT                   mBestLike;
 #   endif
+
+    WordLinkRecord*         mpWlr;            ///< Associated word link record
+    AltHypList*             mpAltHyps;        ///< Associated alternative hypotheses
+    
   
     /**
      * @brief Returns true if token is active
@@ -370,7 +416,7 @@ namespace STK
     Label*
     pGetLabels();
     
-    Node *
+    Node*
     pGetLattice();
     
     void
@@ -378,8 +424,46 @@ namespace STK
     
     void 
     AddAlternativeHypothesis(WordLinkRecord* pWlr);
+    
+    void 
+    AddAlternativeHypothesis(WordLinkRecord* pWlr, LikelihoodPrec like, 
+        LikelihoodPrec acousticLike);
   };
   
+
+  /** *************************************************************************
+   ** *************************************************************************
+   * @brief 
+   */
+  class WordLinkRecord 
+  {
+  public:
+    typedef double     LikelihoodPrec;
+
+    Node*              mpNode;
+    int                mStateIdx;
+    int                mAux;             
+    LikelihoodPrec     mLike;
+    LikelihoodPrec     mAcousticLike;
+
+    long               mTime;
+    WordLinkRecord*    mpNext;
+    AltHypList*        mpAltHyps;
+    int                mNReferences;
+  #ifdef DEBUG_MSGS
+    WordLinkRecord*    mpTmpNext;
+    bool               mIsFreed;
+  #endif
+  }; // class WordLinkRecord
+  //***************************************************************************
+  //***************************************************************************
+  
+
+  
+  /** *************************************************************************
+   ** *************************************************************************
+   * @brief 
+   */
   class ActiveNodeRecord
   {
   public:
@@ -402,7 +486,8 @@ namespace STK
       mpExitToken = &mpTokens[numOfTokens-1];
     }
     
-    ~ActiveNodeRecord() { delete [] mpTokens; }
+    ~ActiveNodeRecord() 
+    { delete [] mpTokens; }
   };
 
     
@@ -429,27 +514,10 @@ namespace STK
   };
   
   
-  class WordLinkRecord 
-  {
-  public:
-    Node*              mpNode;
-    int                mStateIdx;
-    int                mAux;             
-    FLOAT              mLike;
-    long               mTime;
-    WordLinkRecord*    mpNext;
-    Token::AltHypList* mpAltHyps;
-    int                mNReferences;
-  #ifdef DEBUG_MSGS
-    WordLinkRecord*   mpTmpNext;
-    bool              mIsFreed;
-  #endif
-  };
-  
   
   
   void              
-  KillToken(Token *token);
+  KillToken(Token* token);
   
   void
   FindNBestMixtures(State* pState, FLOAT* pObs, NBestRecord* pNBest, 
@@ -459,11 +527,13 @@ namespace STK
   DiagCGaussianDensity(const Mixture* mix, const FLOAT* pObs, Network* net);
 
   FLOAT             
-  DiagCGaussianMixtureDensity(State *state, FLOAT *obs, Network *network);
+  DiagCGaussianMixtureDensity(State* state, FLOAT* obs, Network* network);
 
   FLOAT             
-  FromObservationAtStateId(State *state, FLOAT *obs, Network *network);
+  FromObservationAtStateId(State* state, FLOAT* obs, Network* network);
 
+
+#ifdef USE_OLD_TOKEN_PASSING
   int               
   PassTokenMaxForLattices(Token *from, Token *to, FLOAT addLogLike);
 
@@ -472,6 +542,17 @@ namespace STK
 
   int               
   PassTokenSum(Token *from, Token *to, FLOAT addLogLike);
+#else
+  int               
+  PassTokenMaxForLattices(Token *from, Token *to, FLOAT addLogLike, FLOAT acousticLike);
+
+  int               
+  PassTokenMax(Token *from, Token *to, FLOAT addLogLike, FLOAT acousticLike);
+
+  int               
+  PassTokenSum(Token *from, Token *to, FLOAT addLogLike, FLOAT acousticLike);
+#endif
+
 
   WordLinkRecord*  
   TimePruning(Network* pNetwork, int frameDelay);
@@ -492,8 +573,8 @@ namespace STK
       const char *  file_name,
       const char *  in_MLF);
   
-  FLOAT 
-  *StateOccupationProbability(
+  FLOAT*
+  StateOccupationProbability(
       Network *     network,
       FLOAT *       observationMx,
       ModelSet *    hmmset,

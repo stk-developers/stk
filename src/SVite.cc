@@ -10,7 +10,13 @@
  *                                                                         *
  ***************************************************************************/
 
-#define MODULE_VERSION "0.4 "__TIME__" "__DATE__
+#define SVN_DATE       "$Date$"
+#define SVN_AUTHOR     "$Author$"
+#define SVN_REVISION   "$Revision$"
+#define SVN_ID         "$Id$"
+
+
+#define MODULE_VERSION "0.4 "__TIME__" "__DATE__" "SVN_ID
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -337,31 +343,31 @@ int main(int argc, char *argv[])
   
   if (*cchrptr) 
   {
-    out_net_fmt.mNoLMLikes    = 1;
-    out_net_fmt.mNoTimes       = 1;
-    out_net_fmt.mNoPronunVars = 1;
-    out_net_fmt.mNoAccLikes   = 1;
+    out_net_fmt.mNoLMLikes        = 1;
+    out_net_fmt.mNoAcousticLikes  = 1;
+    out_net_fmt.mNoTimes          = 1;
+    out_net_fmt.mNoPronunVars     = 1;
   }
   
   while (*cchrptr) 
   {
     switch (*cchrptr++) 
     {
-      case 'R': out_net_fmt.mBase62Labels  = 1; // reticent
-                out_net_fmt.mLinNodeSeqs  = 1;
-                out_net_fmt.mNoDefaults    = 1; break;
-      case 'V': out_net_fmt.mArcDefsWithJ= 1;
-                out_net_fmt.mAllFieldNames= 1; break;
-      case 'J': out_net_fmt.mArcDefsToEnd= 1; break;
-      case 'W': out_net_fmt.mNoWordNodes  = 1; break;
-      case 'M': out_net_fmt.mNoModelNodes = 1; break;
-      case 'X': out_net_fmt.mStripTriphones= 1; break;
-      case 't': out_net_fmt.mNoTimes       = 0; break;
-      case 's': out_net_fmt.mStartTimes    = 1; break;
-      case 'v': out_net_fmt.mNoPronunVars = 0; break;
-      case 'a': out_net_fmt.mNoAccLikes   = 0; break;
-      case 'l': out_net_fmt.mNoLMLikes    = 0; break;
-      case 'p': out_net_fmt.mAproxAccuracy = 1; break;
+      case 'R': out_net_fmt.mBase62Labels             = 1; // reticent
+                out_net_fmt.mLinNodeSeqs              = 1;
+                out_net_fmt.mNoDefaults               = 1; break;
+      case 'V': out_net_fmt.mArcDefsWithJ             = 1;
+                out_net_fmt.mAllFieldNames            = 1; break;
+      case 'J': out_net_fmt.mArcDefsToEnd             = 1; break;
+      case 'W': out_net_fmt.mNoWordNodes              = 1; break;
+      case 'M': out_net_fmt.mNoModelNodes             = 1; break;
+      case 'X': out_net_fmt.mStripTriphones           = 1; break;
+      case 't': out_net_fmt.mNoTimes                  = 0; break;
+      case 's': out_net_fmt.mStartTimes               = 1; break;
+      case 'v': out_net_fmt.mNoPronunVars             = 0; break;
+      case 'a': out_net_fmt.mNoAcousticLikes          = 0; break;
+      case 'l': out_net_fmt.mNoLMLikes                = 0; break;
+      case 'p': out_net_fmt.mAproxAccuracy            = 1; break;
       default:
         Warning("Unknown net formating flag '%c' ignored (JMRVWXalpstv)", 
             *cchrptr);
@@ -683,7 +689,8 @@ int main(int argc, char *argv[])
 
     if (pLattice)
     {
-      NetworkExpansionsAndOptimizations(pLattice, expOptions, out_net_fmt, NULL, NULL, NULL);
+      //NetworkExpansionsAndOptimizations(pLattice, expOptions, out_net_fmt, 
+      //    NULL, NULL, NULL);
     }
 
     strcpy(label_file, feature_repo.CurrentLogical().c_str());
@@ -691,23 +698,23 @@ int main(int argc, char *argv[])
 
     if (pLattice)
     {
-      WriteSTKNetwork(lfp, pLattice, out_net_fmt, feature_repo.CurrentHeader().mSamplePeriod,
-          label_file, out_MLF);
+      WriteSTKNetwork(lfp, pLattice, out_net_fmt, 
+          feature_repo.CurrentHeader().mSamplePeriod, label_file, out_MLF);
           
       FreeNetwork(pLattice);
     } 
     else if (out_transc_fmt == TF_HTK) 
     {
-      WriteLabels(lfp, labels, out_lbl_fmt, feature_repo.CurrentHeader().mSamplePeriod,
-          label_file, out_MLF);
+      WriteLabels(lfp, labels, out_lbl_fmt, 
+          feature_repo.CurrentHeader().mSamplePeriod, label_file, out_MLF);
     } 
     else 
     {
       Node* node = MakeNetworkFromLabels(labels, 
           alignment & (MODEL_ALIGNMENT|STATE_ALIGNMENT) ? NT_MODEL : NT_WORD);
       
-      WriteSTKNetwork(lfp, node, out_net_fmt, feature_repo.CurrentHeader().mSamplePeriod,
-          label_file, out_MLF);
+      WriteSTKNetwork(lfp, node, out_net_fmt, 
+          feature_repo.CurrentHeader().mSamplePeriod, label_file, out_MLF);
 
       FreeNetwork(node);
     }

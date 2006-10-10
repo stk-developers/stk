@@ -1,5 +1,6 @@
 
 #include "Features.h"
+#include <boost/tokenizer.hpp>
 
 namespace STK
 {
@@ -57,6 +58,52 @@ namespace STK
   FeatureRepository::
   AddFileList(const char* pFileName, const char* pFilter)
   {
+    IStkStream            l_stream;
+    std::string           line(pFileName);
+
+    boost::char_separator<char> sep(",");
+    boost::tokenizer<boost::char_separator<char> > file_list(line, sep);
+    boost::tokenizer<boost::char_separator<char> >::iterator  p_file_name;
+    
+    for (p_file_name = file_list.begin(); p_file_name != file_list.end(); ++p_file_name)
+    {
+      // open the file
+      l_stream.open(p_file_name->c_str(), std::ios::in, pFilter);
+      
+      if (l_stream.good())
+      {
+        // read all lines and parse them
+        while (!l_stream.eof())
+        {
+          getline(l_stream, line);
+          Trim(line);
+
+          if (!line.empty())
+            // we can push_back a std::string as new FileListElem object
+            // is created using FileListElem(const std::string&) constructor
+            // and logical and physical names are correctly extracted
+            mInputQueue.push_back(line);
+        }
+        // close the list file
+        l_stream.close();
+      }
+      else
+      {
+        //:TODO:
+        // Warning or error
+        Error("Could not open list file %s", p_file_name->c_str());
+      }
+    }
+  } // AddFileList(const std::string & rFileName)
+
+
+/* DEPRECATED
+  //***************************************************************************
+  //***************************************************************************
+  void
+  FeatureRepository::
+  AddFileList(const char* pFileName, const char* pFilter)
+  {
     IStkStream    l_stream;
     std::string   line;
     std::vector<std::string>   file_list;
@@ -94,7 +141,7 @@ namespace STK
       }
     }
   } // AddFileList(const std::string & rFileName)
-    
+*/
   
   //***************************************************************************
   //***************************************************************************

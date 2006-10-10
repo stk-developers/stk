@@ -115,17 +115,33 @@
 #endif
 
 
-
+// The following declaration assumes that SSE instructions are enabled
+// and that we are using GNU C/C++ compiler, which defines the __attribute__ (...)
+// notation.
+//
+// ENABLE_SSE is defined in <config.h>. Its value depends on options given
+// in the configure phase of builidng the library
+#if ENABLE_SSE && defined(__GNUC__ )
 // vector of four single floats
-// vector of four single doubles
-typedef float v4sf __attribute__((vector_size(16))); 
-typedef double v4sd __attribute__((vector_size(16))); 
+typedef float  v4sf __attribute__((vector_size(16))); 
+// vector of two single doubles
+typedef double v2sd __attribute__((vector_size(16))); 
 
 typedef union 
 {
   v4sf    v;
   float   f[4];
 } f4vector; 
+
+typedef union 
+{
+  v2sd    v;
+  double  f[2];
+} d2vector; 
+#endif // ENABLE_SSE && defined(__GNUC__ )
+
+
+
 
 
 #ifndef M_PI
@@ -155,6 +171,7 @@ typedef union
 #  define EPSILON DBL_EPSILON
 #  define FLOAT_FMT "%lg"
 #  define swapFLOAT swap8
+#  define _ABS  fabs
 #  define _EXP  exp
 #  define _LOG  log
 #  define _SQRT sqrt
@@ -163,6 +180,7 @@ typedef union
 #  define EPSILON FLT_EPSILON
 #  define FLOAT_FMT "%g"
 #  define swapFLOAT swap4
+#  define _ABS  fabsf
 #  define _EXP  expf
 #  define _LOG  logf
 #  define _SQRT sqrtf
@@ -347,6 +365,21 @@ using namespace STK;
   
   void fast_softmax_vec(double *in, double *out, int size);
   void fast_sigmoid_vec(double *in, double *out, int size);
+
+
+  /** 
+   * @brief 
+   * 
+   * @param f1 
+   * @param f2 
+   * @param nRounds 
+   * 
+   * @return 
+   */
+  bool close_enough(const float f1, const float f2, int nRounds = 1);
+
+
+
   
   int my_hcreate_r(size_t nel,
                   MyHSearchData *tab);

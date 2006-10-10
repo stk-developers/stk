@@ -10,7 +10,13 @@
  *                                                                         *
  ***************************************************************************/
 
-#define MODULE_VERSION "0.7 "__TIME__" "__DATE__
+#define SVN_DATE       "$Date$"
+#define SVN_AUTHOR     "$Author$"
+#define SVN_REVISION   "$Revision$"
+#define SVN_ID         "$Id$"
+
+#define MODULE_VERSION "0.7 "__TIME__" "__DATE__" "SVN_ID  
+
 
 #include "STKLib/fileio.h"
 #include "STKLib/common.h"

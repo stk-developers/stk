@@ -10,6 +10,12 @@
  *                                                                         *
  ***************************************************************************/
 
+#define SVN_DATE       "$Date$"
+#define SVN_AUTHOR     "$Author$"
+#define SVN_REVISION   "$Revision$"
+#define SVN_ID         "$Id$"
+
+
 #define MODULE_VERSION "0.1 "__TIME__" "__DATE__
 
 #include "STKLib/labels.h"

@@ -62,6 +62,8 @@ namespace STK
   public:
     Node *        mpNode;
     FLOAT         mLike;
+    FLOAT         mAcousticLike;
+    FLOAT         mLmLike;
   }; // Link
 
   /** *************************************************************************
@@ -89,12 +91,13 @@ namespace STK
     int           mAux2;
 #   endif
 #   ifndef EXPANDNET_ONLY    
-    ActiveNodeRecord * mpAnr;
+    ActiveNodeRecord* mpAnr;
 #   endif
 
     NodeBasic() : mpPronun(NULL), mType(NT_UNDEF), mNLinks(0), mpLinks(NULL) {}
   }; // class Node
   
+
   /** *************************************************************************
    ** *************************************************************************
    *  @brief Network node representation class
@@ -120,6 +123,7 @@ namespace STK
 #   endif        
   }; // class Node
 
+
   /** *************************************************************************
    ** *************************************************************************
    *  @brief STK network specific output format options
@@ -127,23 +131,23 @@ namespace STK
   class STKNetworkOutputFormat 
   {
   public:
-    unsigned mNoLMLikes      : 1 ;
-    unsigned mNoTimes        : 1 ;
-    unsigned mStartTimes     : 1 ;
-    unsigned mNoWordNodes    : 1 ;
-    unsigned mNoModelNodes   : 1 ;
-    unsigned mNoPronunVars   : 1 ;
-    unsigned mNoDefaults     : 1 ;
-    unsigned mAllFieldNames  : 1 ;
-    unsigned mArcDefsToEnd   : 1 ;
-    unsigned mArcDefsWithJ   : 1 ;
-    unsigned mBase62Labels   : 1 ;
-    unsigned mAproxAccuracy  : 1 ;
-  
-    //Have no effect yet
-    unsigned mNoAccLikes     : 1 ;
-    unsigned mStripTriphones : 1 ;
-    unsigned mLinNodeSeqs    : 1 ;
+    unsigned mNoLMLikes              : 1 ;
+    unsigned mNoTimes                : 1 ;
+    unsigned mStartTimes             : 1 ;
+    unsigned mNoWordNodes            : 1 ;
+    unsigned mNoModelNodes           : 1 ;
+    unsigned mNoPronunVars           : 1 ;
+    unsigned mNoDefaults             : 1 ;
+    unsigned mAllFieldNames          : 1 ;
+    unsigned mArcDefsToEnd           : 1 ;
+    unsigned mArcDefsWithJ           : 1 ;
+    unsigned mBase62Labels           : 1 ;
+    unsigned mAproxAccuracy          : 1 ;
+    unsigned mNoAcousticLikes        : 1 ;
+                                     
+    //Have no effect yet             
+    unsigned mStripTriphones         : 1 ;
+    unsigned mLinNodeSeqs            : 1 ;
   };
   
   
@@ -167,76 +171,79 @@ namespace STK
   // GLOBAL FUNCTIONS
   //
   
-  Node *MakeNetworkFromLabels(Label *labels, enum NodeType node_type);
+  Node* MakeNetworkFromLabels(Label *labels, enum NodeType node_type);
   
   void ExpandWordNetworkByDictionary(
-    Node *first,
-    MyHSearchData *dict,
+    Node* first,
+    MyHSearchData* dict,
     int keep_word_nodes,
     int multiple_pronun);
   
   void ExpandMonophoneNetworkToTriphones(
-    Node *first,
-    MyHSearchData *nonCDphones,
-    MyHSearchData *CDphones);
+    Node* first,
+    MyHSearchData* nonCDphones,
+    MyHSearchData* CDphones);
   
   void LatticeLocalOptimization(
-    Node *first,
+    Node* first,
     int strictTiming,
     int trace_flag);
   
-  Node *DiscardUnwantedInfoInNetwork(
-    Node *first,
+  Node* DiscardUnwantedInfoInNetwork(
+    Node* first,
     STKNetworkOutputFormat format);
   
   void WriteSTKNetwork(
-    FILE *flp,
-    Node *node,
+    FILE* flp,
+    Node* node,
     STKNetworkOutputFormat format,
     long sampPeriod,
-    const char *label_file,
-    const char *out_MNF);
+    const char* label_file,
+    const char* out_MNF);
   
   void WriteSTKNetworkInOldFormat(
-    FILE *flp,
-    Node *node,
+    FILE* flp,
+    Node* node,
     LabelFormat labelFormat,
     long sampPeriod,
-    const char *label_file,
-    const char *out_MNF);
+    const char* label_file,
+    const char* out_MNF);
   
   void FreeNetwork(Node *node);
   
-  Node *ReadSTKNetwork(
-    FILE *lfp,
-    MyHSearchData *word_hash,
-    MyHSearchData *phone_hash,
+  Node*
+  ReadSTKNetwork(
+    FILE* lfp,
+    MyHSearchData* word_hash,
+    MyHSearchData* phone_hash,
     int notInDict,
     LabelFormat labelFormat,
     long sampPeriod,
-    const char *file_name,
-    const char *in_MLF,
+    const char* file_name,
+    const char* in_MLF,
     bool compactRepresentation = false);
   
-  Node *ReadSTKNetworkInOldFormat(
-    FILE *lfp,
-    MyHSearchData *word_hash,
-    MyHSearchData *phone_hash,
+  Node*
+  ReadSTKNetworkInOldFormat(
+    FILE* lfp,
+    MyHSearchData* word_hash,
+    MyHSearchData* phone_hash,
     LabelFormat labelFormat,
     long sampPeriod,
-    const char *file_name,
-    const char *in_MLF);
+    const char* file_name,
+    const char* in_MLF);
 
-  Node * find_or_create_node(struct MyHSearchData *node_hash, const char *node_id, Node **last);
+  Node* 
+  find_or_create_node(struct MyHSearchData *node_hash, const char *node_id, Node **last);
 
   
-  Node *ReadHTKLattice(
-    FILE *lfp,
-    MyHSearchData *word_hash,
-    MyHSearchData *phone_hash,
+  Node* ReadHTKLattice(
+    FILE* lfp,
+    MyHSearchData* word_hash,
+    MyHSearchData* phone_hash,
     LabelFormat labelFormat,
     long sampPeriod,
-    const char *file_name);
+    const char* file_name);
   
   void ComputeAproximatePhoneAccuracy(
     Node *first,

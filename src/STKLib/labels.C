@@ -403,8 +403,9 @@ FILE *OpenInputLabelFile(
   return lfp;
 }
 
-Label *ReadLabels(
-  FILE *lfp,
+Label* 
+ReadLabels(
+  FILE* lfp,
   MyHSearchData *label_hash,
   enum UnknownLabelsAction unknownLabels,
   LabelFormat labelFormat,

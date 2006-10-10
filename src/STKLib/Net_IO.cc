@@ -26,6 +26,7 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <sstream>
+#include <math.h>
 
 #define INIT_NODE_HASH_SIZE 1000
 
@@ -115,108 +116,169 @@ namespace STK
     while (i--) fputc(str[i], fp);
     return v;
   }
+
   
   //***************************************************************************
   //***************************************************************************
-  void WriteSTKNetwork(
-    FILE                   *lfp,
-    Node                   *first,
-    STKNetworkOutputFormat format,
-    long                   sampPeriod,
-    const char             *net_file,
-    const char             *out_MNF)
+  void 
+  WriteSTKNetwork(
+    FILE*                   pFp,
+    Node*                   pFirst,
+    STKNetworkOutputFormat  format,
+    long                    sampPeriod,
+    const char*             net_file,
+    const char*             out_MNF)
   {
-    int n, l=0;
-    Node *node;
+    int     n;
+    int     l=0;
+    Node*   node;
   
-    for (n = 0, node = first; node != NULL; node = node->mpNext, n++)  
+    for (n = 0, node = pFirst; node != NULL; node = node->mpNext, n++)  
     {
       node->mAux = n;
       l += node->mNLinks;
     }
     
-    fprintf(lfp,"N=%d L=%d\n", n, l);
-    for (node = first; node != NULL; node = node->mpNext) {
+    fprintf(pFp,"N=%d L=%d\n", n, l);
+    for (node = pFirst; node != NULL; node = node->mpNext)
+    {
       int j;
   
-      if (format.mAllFieldNames) fputs("I=", lfp);
-      if (format.mBase62Labels) fprintBase62(lfp, node->mAux);
-      else                     fprintf(lfp,"%d", node->mAux);
+      if (format.mAllFieldNames) fputs("I=", pFp);
+      if (format.mBase62Labels) fprintBase62(pFp, node->mAux);
+      else                      fprintf(pFp,"%d", node->mAux);
   
       if (!format.mNoTimes && node->mStop != UNDEF_TIME) {
-        fputs(" t=", lfp);
+        fputs(" t=", pFp);
   
         if (node->mStart != UNDEF_TIME && format.mStartTimes) {
-          fprintf(lfp,"%g,", node->mStart * 1.0e-7 * sampPeriod);
+          fprintf(pFp,"%g,", node->mStart * 1.0e-7 * sampPeriod);
         }
-        fprintf(  lfp,"%g",  node->mStop  * 1.0e-7 * sampPeriod);
+        fprintf(  pFp,"%g",  node->mStop  * 1.0e-7 * sampPeriod);
       }
+
       if (!(node->mType & NT_WORD && node->mpPronun == NULL)
-        || !format.mNoDefaults) {
-        putc(' ', lfp);
+        || !format.mNoDefaults) 
+      {
+        putc(' ', pFp);
         putc(node->mType & NT_WORD   ? 'W' :
-            node->mType & NT_SUBNET ? 'S' :
-                                      'M', lfp); // NT_MODEL, NT_PHONE
-        putc('=', lfp);
-        fprintHTKstr(lfp, node->mType & NT_MODEL   ? node->mpHmm->mpMacro->mpName   :
+             node->mType & NT_SUBNET ? 'S' :
+                                       'M', pFp); // NT_MODEL, NT_PHONE
+        putc('=', pFp);
+        fprintHTKstr(pFp, node->mType & NT_MODEL   ? node->mpHmm->mpMacro->mpName   :
                           node->mType & NT_WORD    ? (!node->mpPronun ? "!NULL" :
                                                     node->mpPronun->mpWord->mpName) :
                                                     node->mpName); // NT_PHONE (NT_SUBNET)
       }
+
       if (!format.mNoPronunVars && node->mType & NT_WORD
       && node->mpPronun != NULL && node->mpPronun->mpWord->npronuns > 1
-      && (node->mpPronun->variant_no > 1 || !format.mNoDefaults)) {
-        fprintf(lfp," v=%d", node->mpPronun->variant_no);
+      && (node->mpPronun->variant_no > 1 || !format.mNoDefaults))
+      {
+        fprintf(pFp," v=%d", node->mpPronun->variant_no);
       }
-      if (node->mType & NT_TRUE || node->mType & NT_STICKY) {
-        fputs(" f=", lfp);
-        if (node->mType & NT_TRUE)   putc('T', lfp);
-        if (node->mType & NT_STICKY) putc('K', lfp);
+
+      if (node->mType & NT_TRUE || node->mType & NT_STICKY) 
+      {
+        fputs(" f=", pFp);
+        if (node->mType & NT_TRUE)   putc('T', pFp);
+        if (node->mType & NT_STICKY) putc('K', pFp);
       }
+
       if (node->mType & NT_PHONE && node->mPhoneAccuracy != 1.0) {
-        fprintf(lfp," p="FLOAT_FMT, node->mPhoneAccuracy);
+        fprintf(pFp," p="FLOAT_FMT, node->mPhoneAccuracy);
       }
-      if (!format.mArcDefsToEnd) {
-        if (format.mAllFieldNames) fprintf(lfp," J=%d", node->mNLinks);
+
+      if (!format.mArcDefsToEnd) 
+      {
+        if (format.mAllFieldNames) fprintf(pFp," J=%d", node->mNLinks);
   
-        for (j = 0; j < node->mNLinks; j ++) {
-          putc(' ', lfp);
-          if (format.mAllFieldNames) fputs("E=", lfp);
-          if (format.mBase62Labels) fprintBase62(lfp, node->mpLinks[j].mpNode->mAux);
-          else                     fprintf(lfp,"%d", node->mpLinks[j].mpNode->mAux);
-          if (node->mpLinks[j].mLike != 0.0 && !format.mNoLMLikes) {
-            fprintf(lfp," l="FLOAT_FMT, node->mpLinks[j].mLike);
+        for (j = 0; j < node->mNLinks; j ++) 
+        {
+          putc(' ', pFp);
+          if (format.mAllFieldNames) fputs("E=", pFp);
+          if (format.mBase62Labels) fprintBase62(pFp, node->mpLinks[j].mpNode->mAux);
+          else                     fprintf(pFp,"%d", node->mpLinks[j].mpNode->mAux);
+
+          // compute the language likelihood
+          FLOAT aux_like = node->mpLinks[j].mAcousticLike;
+          FLOAT l_like   = node->mpLinks[j].mLike - aux_like;
+          //double eps(l_like * EPSILON);
+
+          //printf("eps = %f \n", eps);
+
+          //if (_ABS(eps) <= EPSILON) l_like = 0.0;
+          //if (_ABS(eps) <= EPSILON + EPSILON) l_like = 0.0;
+           
+          if ((!close_enough(node->mpLinks[j].mLike, aux_like, 10)) 
+          &&  (!format.mNoLMLikes))
+          {
+            fprintf(pFp," l="FLOAT_FMT, l_like);
+          }
+
+          if ((node->mpLinks[j].mAcousticLike != 0.0) 
+          && !(format.mNoAcousticLikes))
+          {
+            fprintf(pFp," a="FLOAT_FMT, node->mpLinks[j].mAcousticLike);
           }
         }
       }
-      fputs("\n", lfp);
-      if (ferror(lfp)) {
+
+      fputs("\n", pFp);
+
+      if (ferror(pFp)) {
         Error("Cannot write to output network file %s", out_MNF ? out_MNF : net_file);
       }
     }
   
-    if (format.mArcDefsToEnd) {
+    if (format.mArcDefsToEnd) 
+    {
       l = 0;
-      for (node = first; node != NULL; node = node->mpNext) {
+      for (node = pFirst; node != NULL; node = node->mpNext) 
+      {
         int j;
   
-        for (j = 0; j < node->mNLinks; j ++) {
-          if (format.mAllFieldNames) {
-            fprintf(lfp, format.mArcDefsWithJ ? "J=%d S=" : "I=", l++);
+        for (j = 0; j < node->mNLinks; j ++) 
+        {
+          if (format.mAllFieldNames) 
+            fprintf(pFp, format.mArcDefsWithJ ? "J=%d S=" : "I=", l++);
+
+          if (format.mBase62Labels) fprintBase62(pFp, node->mAux);
+          else                     fprintf(pFp,"%d", node->mAux);
+          putc(' ', pFp); // space = ' ';
+          if (format.mAllFieldNames) fputs("E=", pFp);
+
+          if (format.mBase62Labels) fprintBase62(pFp, node->mpLinks[j].mpNode->mAux);
+          else                      fprintf(pFp,"%d", node->mpLinks[j].mpNode->mAux);
+
+          // output language probability
+          FLOAT aux_like = node->mpLinks[j].mAcousticLike;
+          FLOAT l_like = node->mpLinks[j].mLike - aux_like;
+          //double eps(l_like * EPSILON);
+
+          //printf("eps = %f \n", eps);
+
+          //if (_ABS(eps) <= EPSILON) l_like = 0.0;
+          //if (_ABS(eps) <= EPSILON + EPSILON) l_like = 0.0;
+           
+          if ((!close_enough(node->mpLinks[j].mLike, aux_like, 10)) 
+          && (!format.mNoLMLikes))
+          {
+            fprintf(pFp," l="FLOAT_FMT, l_like);
           }
-          if (format.mBase62Labels) fprintBase62(lfp, node->mAux);
-          else                     fprintf(lfp,"%d", node->mAux);
-          putc(' ', lfp); // space = ' ';
-          if (format.mAllFieldNames) fputs("E=", lfp);
-          if (format.mBase62Labels) fprintBase62(lfp, node->mpLinks[j].mpNode->mAux);
-          else                     fprintf(lfp,"%d", node->mpLinks[j].mpNode->mAux);
-          if (node->mpLinks[j].mLike != 0.0 && !format.mNoLMLikes) {
-            fprintf(lfp," l="FLOAT_FMT, node->mpLinks[j].mLike);
+
+          // output acoustic probability
+          if ((node->mpLinks[j].mAcousticLike != 0.0) 
+          && !(format.mNoAcousticLikes))
+          {
+            fprintf(pFp," a="FLOAT_FMT, node->mpLinks[j].mAcousticLike);
           }
-          fputs("\n", lfp);
-          if (ferror(lfp)) {
+
+          fputs("\n", pFp);
+
+          if (ferror(pFp)) 
             Error("Cannot write to output network file %s", out_MNF ? out_MNF : net_file);
-          }
+          
         }
       }
     }
@@ -232,8 +294,8 @@ namespace STK
     const char  *net_file,
     const char  *out_MNF)
   {
-    int i;
-    Node *node;
+    int   i;
+    Node* node;
   
     for (i = 0, node = first; node != NULL; node = node->mpNext, i++)  {
       node->mAux = i;
@@ -677,17 +739,23 @@ namespace STK
     }
     return node;
   }
+  //***************************************************************************
+  //***************************************************************************
   
+
+
+  //***************************************************************************
+  //***************************************************************************
   Node *ReadSTKNetwork(
-    FILE *lfp,
-    struct MyHSearchData *word_hash,
-    struct MyHSearchData *phone_hash,
-    int notInDict,
-    LabelFormat labelFormat,
-    long sampPeriod,
-    const char *file_name,
-    const char *in_MLF,
-    bool compactRepresentation)
+    FILE*                     lfp,
+    struct MyHSearchData *    word_hash,
+    struct MyHSearchData *    phone_hash,
+    int                       notInDict,
+    LabelFormat               labelFormat,
+    long                      sampPeriod,
+    const char *              file_name,
+    const char *              in_MLF,
+    bool                      compactRepresentation)
   {
     Node *node, *enode = NULL,
         *first = NULL, *last = NULL,
@@ -1216,11 +1284,16 @@ namespace STK
       }
     }
     return first;
-  }
+  } // Node *ReadSTKNetwork(...)
+  //***************************************************************************
+  //***************************************************************************
+
+
     
   //***************************************************************************
   //***************************************************************************
-  Node *ReadHTKLattice(
+  Node* 
+  ReadHTKLattice(
     FILE *            lfp,
     MyHSearchData *   word_hash,
     MyHSearchData *   phone_hash,

@@ -9,6 +9,11 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
+
+#define SVN_DATE       "$Date$" #define SVN_AUTHOR     "$Author$"
+#define SVN_REVISION   "$Revision$"
+#define SVN_ID         "$Id$"
+
 #define MODULE_VERSION "0.2 "__TIME__" "__DATE__
 
 #include "STKLib/Net.h"
@@ -191,7 +196,7 @@ int main(int argc, char *argv[]) {
     out_net_fmt.mNoLMLikes    = 1;
     out_net_fmt.mNoTimes       = 1;
     out_net_fmt.mNoPronunVars = 1;
-    out_net_fmt.mNoAccLikes   = 1;
+    out_net_fmt.mNoAcousticLikes   = 1;
   }
   while (*cchrptr) {
     switch (*cchrptr++) {
@@ -207,7 +212,7 @@ int main(int argc, char *argv[]) {
       case 't': out_net_fmt.mNoTimes       = 0; break;
       case 's': out_net_fmt.mStartTimes    = 1; break;
       case 'v': out_net_fmt.mNoPronunVars = 0; break;
-      case 'a': out_net_fmt.mNoAccLikes   = 0; break;
+      case 'a': out_net_fmt.mNoAcousticLikes   = 0; break;
       case 'l': out_net_fmt.mNoLMLikes    = 0; break;
       case 'p': out_net_fmt.mAproxAccuracy = 1; break;
       default:
