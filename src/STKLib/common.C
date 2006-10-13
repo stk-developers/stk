@@ -1802,8 +1802,21 @@ void fast_softmax_vec(double *in, double *out, int size)
     //  printf ("f1 = %e, f2 = %e, f1 - f2 = %g  E*nRounds = %e \n", f1, f2, float(f1 - f2), EPSILON * nRounds);
 
     return ret_val;
-  } // bool close_enough(const float f1, const float f2, int nRounds = 1)
+  } 
+  // close_enough(const FLOAT f1, const FLOAT f2, int nRounds)
+  //****************************************************************************
 
+
+
+  //****************************************************************************
+  //****************************************************************************
+  FLOAT 
+  float_safe_substract(const FLOAT& f1, const FLOAT &f2, int nRounds)
+  {
+    return close_enough(f1, f2, nRounds) ? 0.0 : f1 - f2;
+  }
+  // float_safe_substract(const FLOAT& f1, const FLOAT &f2, int nRounds);
+  //****************************************************************************
 
   
 //}; //namespace STK

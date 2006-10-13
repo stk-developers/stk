@@ -28,14 +28,6 @@
 
 #define IS_ACTIVE(token) ((token).mLike > LOG_MIN)
 
-#ifndef MIX_P_CACHES
-#  define MIX_P_CACHES 1
-#endif
-
-#ifndef OUT_P_CACHES
-#  define OUT_P_CACHES 1
-#endif
-
 
 
 namespace STK
@@ -196,6 +188,9 @@ namespace STK
     pActivateWordNodesLeadingFrom(Node* pNode);
     
     void
+    ActivateNode(Node* pNode);
+
+    void
     ActivateModel(Node* pNode);
 
     void
@@ -210,6 +205,9 @@ namespace STK
     bool
     AllWordSuccessorsAreActive();
     
+    void
+    GenerateToken(Node* pNode);
+  
     void 
     TokenPropagationInit();
     
@@ -267,9 +265,12 @@ namespace STK
     FLOAT                   mOcpScale;
     FLOAT                   mPruningThresh;
     SearchPathsType         mSearchPaths;
+
     bool                    mLatticeGeneration;
     bool                    mCompactRepresentation;
-    
+
+    bool                    mContinuousTokenGeneration;
+    bool                    mKeepExitToken;    
 //    MyHSearchData           mLatticeNodeHash;
 //    Node *                  mpLatticeLastNode;
 
@@ -290,7 +291,18 @@ namespace STK
     ModelSet*               mpModelSet;
     ModelSet*               mpModelSetToUpdate;
     
+
+
     
+    Node*
+    pFirst() const
+    { return mpFirst; }
+
+    Node*
+    pLast() const
+    { return mpLast; }
+
+
     //*************************************************************************
     void 
     /**
@@ -300,7 +312,8 @@ namespace STK
      * @param hmms 
      * @param hmmsToUptade 
      */
-    Init(Node * pFirstNode, ModelSet * pHmms, ModelSet *pHmmsToUpdate, bool compactRepresentation = false);
+    Init(Node * pFirstNode, ModelSet * pHmms, ModelSet *pHmmsToUpdate, 
+        bool compactRepresentation = false);
     
     void
     /**
@@ -319,11 +332,12 @@ namespace STK
     ViterbiDone(Label** pLabels, Node ** pLattice = NULL);
     
     FLOAT 
-    MCEReest(FLOAT* pObsMx, FLOAT * pObsMx2, int nFrames, FLOAT weight, FLOAT sigSlope);
+    MCEReest(FLOAT* pObsMx, FLOAT * pObsMx2, int nFrames, FLOAT weight, 
+        FLOAT sigSlope);
     
     FLOAT 
     MCEReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, 
-            int nFrames, FLOAT weight, FLOAT sigSlope);
+        int nFrames, FLOAT weight, FLOAT sigSlope);
             
     FLOAT 
     ViterbiReest(FLOAT* pObsMx, FLOAT* pObsMx2, int nFrames, FLOAT weight);
@@ -358,12 +372,12 @@ namespace STK
   class WlrReference
   {
   public:
-    typedef double           LikelihoodPrec;
+    typedef double           LikeType;
 
 
     WordLinkRecord*          mpWlr;            ///< Associated word link record
-    LikelihoodPrec           mLike;            ///< Total likelihood
-    LikelihoodPrec           mAcousticLike;    ///< Acoustic likelihood
+    LikeType                 mLike;            ///< Total likelihood
+    LikeType                 mAcousticLike;    ///< Acoustic likelihood
 
 
     // CONSTRUCTORS
@@ -390,11 +404,11 @@ namespace STK
   {
   public:
     /// Token's likelihood precision type
-    typedef double                  LikelihoodPrec;
+    typedef double          LikeType;
 
 
-    LikelihoodPrec          mLike;            ///< Total likelihood
-    LikelihoodPrec          mAcousticLike;    ///< Acoustic likelihood
+    LikeType                mLike;            ///< Total likelihood
+    LikeType                mAcousticLike;    ///< Acoustic likelihood
     FloatInLog              mAccuracy;        ///< Accuracy
 
 #   ifdef bordel_staff
@@ -431,9 +445,11 @@ namespace STK
     AddAlternativeHypothesis(WordLinkRecord* pWlr);
     
     void 
-    AddAlternativeHypothesis(WordLinkRecord* pWlr, LikelihoodPrec like, 
-        LikelihoodPrec acousticLike);
+    AddAlternativeHypothesis(WordLinkRecord* pWlr, LikeType like, 
+        LikeType acousticLike);
   };
+  // class Token 
+  //***************************************************************************
   
 
   /** *************************************************************************
@@ -443,13 +459,13 @@ namespace STK
   class WordLinkRecord 
   {
   public:
-    typedef double     LikelihoodPrec;
+    typedef double     LikeType;
 
     Node*              mpNode;
     int                mStateIdx;
     int                mAux;             
-    LikelihoodPrec     mLike;
-    LikelihoodPrec     mAcousticLike;
+    LikeType           mLike;
+    LikeType           mAcousticLike;
 
     long               mTime;
     WordLinkRecord*    mpNext;
@@ -459,8 +475,8 @@ namespace STK
     WordLinkRecord*    mpTmpNext;
     bool               mIsFreed;
   #endif
-  }; // class WordLinkRecord
-  //***************************************************************************
+  }; 
+  // class WordLinkRecord
   //***************************************************************************
   
 
@@ -485,16 +501,20 @@ namespace STK
     Token * mpExitToken;
     Token * mpTokens;
 
-    ActiveNodeRecord(Node *n) : mpNode(n), mIsActiveModel(false), mIsActiveNode(0)
+
+    ActiveNodeRecord(Node* pNode) : mpNode(pNode), mIsActiveModel(false), mIsActiveNode(0)
     {
       int numOfTokens = mpNode->mType & NT_MODEL ? mpNode->mpHmm->mNStates : 1;
-      mpTokens = new Token[numOfTokens];
-      mpExitToken = &mpTokens[numOfTokens-1];
+      mpTokens        = new Token[numOfTokens];
+      mpExitToken     = &mpTokens[numOfTokens-1];
     }
     
     ~ActiveNodeRecord() 
     { delete [] mpTokens; }
   };
+  // class ActiveNodeRecord
+  //***************************************************************************
+
 
     
   
@@ -541,22 +561,22 @@ namespace STK
 
 #ifdef USE_OLD_TOKEN_PASSING
   int               
-  PassTokenMaxForLattices(Token *from, Token *to, FLOAT addLogLike);
+  PassTokenMaxForLattices(Token* from, Token* to, FLOAT addLogLike);
 
   int               
-  PassTokenMax(Token *from, Token *to, FLOAT addLogLike);
+  PassTokenMax(Token* from, Token* to, FLOAT addLogLike);
 
   int               
-  PassTokenSum(Token *from, Token *to, FLOAT addLogLike);
+  PassTokenSum(Token* from, Token* to, FLOAT addLogLike);
 #else
   int               
-  PassTokenMaxForLattices(Token *from, Token *to, FLOAT addLogLike, FLOAT acousticLike);
+  PassTokenMaxForLattices(Token* from, Token* to, FLOAT addLogLike, FLOAT acousticLike);
 
   int               
-  PassTokenMax(Token *from, Token *to, FLOAT addLogLike, FLOAT acousticLike);
+  PassTokenMax(Token* from, Token* to, FLOAT addLogLike, FLOAT acousticLike);
 
   int               
-  PassTokenSum(Token *from, Token *to, FLOAT addLogLike, FLOAT acousticLike);
+  PassTokenSum(Token* from, Token* to, FLOAT addLogLike, FLOAT acousticLike);
 #endif
 
 
@@ -565,27 +585,27 @@ namespace STK
   
   void 
   LoadRecognitionNetwork(
-      char *        netFileName,
-      ModelSet *    hmms,
-      Network *     net);
+      char*         netFileName,
+      ModelSet*     hmms,
+      Network*      net);
   
   void 
   ReadRecognitionNetwork(
-      FILE *        fp,
-      ModelSet *    hmms,
-      Network *     network,
+      FILE*         fp,
+      ModelSet*     hmms,
+      Network*      network,
       LabelFormat   labelFormat,
       long          sampPeriod,
-      const char *  file_name,
-      const char *  in_MLF);
+      const char*   file_name,
+      const char*   in_MLF);
   
   FLOAT*
   StateOccupationProbability(
-      Network *     network,
-      FLOAT *       observationMx,
-      ModelSet *    hmmset,
+      Network*      network,
+      FLOAT*        observationMx,
+      ModelSet*     hmmset,
       int           nFrames,
-      FLOAT **      outProbOrMahDist,
+      FLOAT**       outProbOrMahDist,
       int           getMahalDist);
     
   /*

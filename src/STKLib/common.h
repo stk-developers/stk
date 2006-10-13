@@ -376,9 +376,11 @@ using namespace STK;
    * 
    * @return 
    */
-  bool close_enough(const FLOAT f1, const FLOAT f2, int nRounds);
-
-
+  bool 
+  close_enough(const FLOAT f1, const FLOAT f2, int nRounds);
+  
+  FLOAT 
+  float_safe_substract(const FLOAT& f1, const FLOAT &f2, int nRounds);
 
   
   int my_hcreate_r(size_t nel,

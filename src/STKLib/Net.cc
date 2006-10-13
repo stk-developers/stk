@@ -110,7 +110,7 @@ namespace STK
       tnode->mpName = NULL;
       
       node->mpLinks[0].mpNode = tnode;
-      node->mpLinks[0].mLike  = 0.0;
+      node->mpLinks[0].mLmLike  = 0.0;
       node->mpLinks[0].mAcousticLike  = 0.0;
       
       switch (nodeType) 
@@ -127,7 +127,7 @@ namespace STK
       tnode->mStart      = lp->mStart;
       tnode->mStop       = lp->mStop;
       tnode->mpBackLinks[0].mpNode = node;
-      tnode->mpBackLinks[0].mLike   = 0.0;
+      tnode->mpBackLinks[0].mLmLike   = 0.0;
       tnode->mpBackLinks[0].mAcousticLike   = 0.0;
       node->mpNext = tnode;
       node = tnode;
@@ -135,10 +135,10 @@ namespace STK
     
     node->mpNext = last;
     node->mpLinks[0].mpNode    = last;
-    node->mpLinks[0].mLike    = 0.0;
+    node->mpLinks[0].mLmLike    = 0.0;
     node->mpLinks[0].mAcousticLike    = 0.0;
     last->mpBackLinks[0].mpNode = node;
-    last->mpBackLinks[0].mLike = 0.0;
+    last->mpBackLinks[0].mLmLike = 0.0;
     last->mpBackLinks[0].mAcousticLike = 0.0;
     last->mpNext = NULL;
     return first;
@@ -252,11 +252,11 @@ namespace STK
             
             tnode->mNBackLinks              = 1;
             tnode->mpBackLinks[0].mpNode    = pronun_prev;
-            tnode->mpBackLinks[0].mLike     = 0.0;
+            tnode->mpBackLinks[0].mLmLike     = 0.0;
             tnode->mpBackLinks[0].mAcousticLike     = 0.0;
             pronun_prev->mNLinks            = 1;
             pronun_prev->mpLinks[0].mpNode  = tnode;
-            pronun_prev->mpLinks[0].mLike   = 0.0;
+            pronun_prev->mpLinks[0].mLmLike   = 0.0;
             pronun_prev->mpLinks[0].mAcousticLike   = 0.0;
             pronun_prev->mpNext             = tnode;
           }
@@ -284,11 +284,11 @@ namespace STK
             }
             tnode->mNBackLinks          = 1;
             tnode->mpBackLinks[0].mpNode   = pronun_prev;
-            tnode->mpBackLinks[0].mLike   = 0.0;
+            tnode->mpBackLinks[0].mLmLike   = 0.0;
             tnode->mpBackLinks[0].mAcousticLike   = 0.0;
             pronun_prev->mNLinks        = 1;
             pronun_prev->mpLinks[0].mpNode = tnode;
-            pronun_prev->mpLinks[0].mLike = 0.0;
+            pronun_prev->mpLinks[0].mLmLike = 0.0;
             pronun_prev->mpLinks[0].mAcousticLike = 0.0;
             pronun_prev->mpNext          = tnode;
           }
@@ -306,14 +306,14 @@ namespace STK
         for (j = 0; j < node->mNBackLinks; j++) {
           Node *backnode = node->mpBackLinks[j].mpNode;
           backnode->mpLinks[backnode->mNLinks  ].mpNode = pronun_first;
-          backnode->mpLinks[backnode->mNLinks++].mLike = node->mpBackLinks[j].mLike;
+          backnode->mpLinks[backnode->mNLinks++].mLmLike = node->mpBackLinks[j].mLmLike;
           backnode->mpLinks[backnode->mNLinks++].mAcousticLike = node->mpBackLinks[j].mAcousticLike;
           pronun_first->mpBackLinks[j] = node->mpBackLinks[j];
         }
         for (j=0; j < node->mNLinks; j++) {
           Node *forwnode = node->mpLinks[j].mpNode;
           forwnode->mpBackLinks[forwnode->mNBackLinks  ].mpNode = pronun_prev;
-          forwnode->mpBackLinks[forwnode->mNBackLinks++].mLike = node->mpLinks[j].mLike;
+          forwnode->mpBackLinks[forwnode->mNBackLinks++].mLmLike = node->mpLinks[j].mLmLike;
           forwnode->mpBackLinks[forwnode->mNBackLinks++].mAcousticLike = node->mpLinks[j].mAcousticLike;
           pronun_prev->mpLinks[j] = node->mpLinks[j];
         }
@@ -346,8 +346,8 @@ namespace STK
       {
         for (i=0; i < node->mNLinks;     i++) 
         { 
-          node->mpLinks    [i].mLike = 0.0;
-          node->mpBackLinks[i].mLike = 0.0;
+          node->mpLinks    [i].mLmLike = 0.0;
+          node->mpBackLinks[i].mLmLike = 0.0;
         }
 
       }
@@ -411,21 +411,21 @@ namespace STK
           continue;
   
         // Weight pushing
-        tlike = tnode->mpBackLinks[0].mLike;
+        tlike = tnode->mpBackLinks[0].mLmLike;
         
         for (l=1; l <  tnode->mNBackLinks; l++) 
-          tlike = HIGHER_OF(tlike, tnode->mpBackLinks[l].mLike);
+          tlike = HIGHER_OF(tlike, tnode->mpBackLinks[l].mLmLike);
         
         for (l=0; l < tnode->mNBackLinks; l++) 
         {
           Node* backnode = tnode->mpBackLinks[l].mpNode;
-          tnode->mpBackLinks[l].mLike -= tlike;
+          tnode->mpBackLinks[l].mLmLike -= tlike;
           
           for (k=0; k<backnode->mNLinks && backnode->mpLinks[k].mpNode!=tnode; k++)
           {}
           
           assert(k < backnode->mNLinks);
-          backnode->mpLinks[k].mLike -= tlike;
+          backnode->mpLinks[k].mLmLike -= tlike;
 #ifndef NDEBUG
           for (k++; k<backnode->mNLinks && backnode->mpLinks[k].mpNode!=tnode; k++)
           {}
@@ -436,13 +436,13 @@ namespace STK
         for (l=0; l < tnode->mNLinks; l++) 
         {
           Node *forwnode = tnode->mpLinks[l].mpNode;
-          tnode->mpLinks[l].mLike += tlike;
+          tnode->mpLinks[l].mLmLike += tlike;
           
           for (k=0; k<forwnode->mNBackLinks && forwnode->mpBackLinks[k].mpNode!=tnode;k++)
           {}
           
           assert(k < forwnode->mNBackLinks);
-          forwnode->mpBackLinks[k].mLike += tlike;
+          forwnode->mpBackLinks[k].mLmLike += tlike;
 #ifndef NDEBUG
           for (k++; k<forwnode->mNBackLinks && forwnode->mpBackLinks[k].mpNode!=tnode;k++)
           {}
@@ -496,7 +496,7 @@ namespace STK
           for (l=0; l < inode->mNBackLinks; l++) 
           {
             if (inode->mpBackLinks[l].mpNode != jnode->mpBackLinks[l].mpNode) break;
-            FLOAT ldiff =  inode->mpBackLinks[l].mLike - jnode->mpBackLinks[l].mLike;
+            FLOAT ldiff =  inode->mpBackLinks[l].mLmLike - jnode->mpBackLinks[l].mLmLike;
             if (ldiff < -SIGNIFICANT_PROB_DIFFERENCE ||
               ldiff >  SIGNIFICANT_PROB_DIFFERENCE) 
             {
@@ -568,7 +568,7 @@ namespace STK
                       (jlk->mpNode->mNBackLinks-m-1) * sizeof(Link));
               jlk->mpNode->mNBackLinks--;
   
-              ill->mLike = HIGHER_OF(ill->mLike, jlk->mLike);
+              ill->mLmLike = HIGHER_OF(ill->mLmLike, jlk->mLmLike);
               jlk->mpNode = NULL; // Mark link to be removed
               rep++; k++, l++;
             } 
@@ -937,10 +937,10 @@ namespace STK
             tnode->mpBackLinks[0] = backlink;
             
             forwlink.mpNode->mpBackLinks[forwlink.mpNode->mNBackLinks  ].mpNode = tnode;
-            forwlink.mpNode->mpBackLinks[forwlink.mpNode->mNBackLinks++].mLike  = forwlink.mLike;
+            forwlink.mpNode->mpBackLinks[forwlink.mpNode->mNBackLinks++].mLmLike  = forwlink.mLmLike;
             forwlink.mpNode->mpBackLinks[forwlink.mpNode->mNBackLinks++].mAcousticLike  = forwlink.mAcousticLike;
             backlink.mpNode->mpLinks    [backlink.mpNode->mNLinks      ].mpNode = tnode;
-            backlink.mpNode->mpLinks    [backlink.mpNode->mNLinks++    ].mLike  = backlink.mLike;
+            backlink.mpNode->mpLinks    [backlink.mpNode->mNLinks++    ].mLmLike  = backlink.mLmLike;
             backlink.mpNode->mpLinks    [backlink.mpNode->mNLinks++    ].mAcousticLike  = backlink.mAcousticLike;
             
             prev->mpNext = tnode;
@@ -1093,7 +1093,7 @@ namespace STK
           {
             tnode->mpLinks[tlink-forwmono_start] = *tlink;
             tlink->mpNode->mpBackLinks[tlink->mpNode->mNBackLinks  ].mpNode = tnode;
-            tlink->mpNode->mpBackLinks[tlink->mpNode->mNBackLinks++].mLike = tlink->mLike;
+            tlink->mpNode->mpBackLinks[tlink->mpNode->mNBackLinks++].mLmLike = tlink->mLmLike;
             tlink->mpNode->mpBackLinks[tlink->mpNode->mNBackLinks++].mAcousticLike = tlink->mAcousticLike;
           }
           
@@ -1101,7 +1101,7 @@ namespace STK
           {
             tnode->mpBackLinks[tlink-backmono_start] = *tlink;
             tlink->mpNode->mpLinks[tlink->mpNode->mNLinks  ].mpNode = tnode;
-            tlink->mpNode->mpLinks[tlink->mpNode->mNLinks++].mLike = tlink->mLike;
+            tlink->mpNode->mpLinks[tlink->mpNode->mNLinks++].mLmLike = tlink->mLmLike;
             tlink->mpNode->mpLinks[tlink->mpNode->mNLinks++].mAcousticLike = tlink->mAcousticLike;
           }
           
@@ -1270,7 +1270,7 @@ namespace STK
           assert(j<node->mNBackLinks);
           
           node->mpBackLinks[j].mpNode = tnode;
-          node->mpBackLinks[j].mLike = 0.0;
+          node->mpBackLinks[j].mLmLike = 0.0;
           node->mpBackLinks[j].mAcousticLike = 0.0;
   
           tnode->mType       = NT_WORD;
@@ -1282,10 +1282,10 @@ namespace STK
   //        tnode->mpTokens     = NULL;
   //        tnode->mpExitToken  = NULL;
           tnode->mpLinks[0].mpNode     = node;
-          tnode->mpLinks[0].mLike     = 0.0;
+          tnode->mpLinks[0].mLmLike     = 0.0;
           tnode->mpLinks[0].mAcousticLike     = 0.0;
           tnode->mpBackLinks[0].mpNode = node;
-          tnode->mpBackLinks[0].mLike = node->mpLinks[i].mLike;
+          tnode->mpBackLinks[0].mLmLike = node->mpLinks[i].mLmLike;
           tnode->mpBackLinks[0].mAcousticLike = node->mpLinks[i].mAcousticLike;
           tnode->mpNext = node->mpNext;
           node->mpNext = tnode;
@@ -1357,12 +1357,12 @@ namespace STK
             for(k = 0; k < orig_nlinks && backnode->mpLinks[k].mpNode != node->mpLinks[i].mpNode; k++);
             if(k < orig_nlinks) {
               // Link which is to be created already exists. Its duplication must be avoided.
-              backnode->mpLinks[k].mLike = HIGHER_OF(backnode->mpLinks[k].mLike, 
-                                                  node->mpLinks[i].mLike + node->mpBackLinks[j].mLike);
+              backnode->mpLinks[k].mLmLike = HIGHER_OF(backnode->mpLinks[k].mLmLike, 
+                                                  node->mpLinks[i].mLmLike + node->mpBackLinks[j].mLmLike);
             } else {
               backnode->mpLinks[backnode->mNLinks  ].mpNode = node->mpLinks[i].mpNode;
-              backnode->mpLinks[backnode->mNLinks++].mLike
-                = node->mpLinks[i].mLike + node->mpBackLinks[j].mLike;
+              backnode->mpLinks[backnode->mNLinks++].mLmLike
+                = node->mpLinks[i].mLmLike + node->mpBackLinks[j].mLmLike;
             }
           }
         }
@@ -1374,12 +1374,12 @@ namespace STK
             for(k = 0; k < orig_nbacklinks && forwnode->mpBackLinks[k].mpNode != node->mpBackLinks[i].mpNode; k++);
             if (k < orig_nbacklinks) {
               // Link which is to be created already exists. Its duplication must be avoided.
-              forwnode->mpBackLinks[k].mLike = HIGHER_OF(forwnode->mpBackLinks[k].mLike, 
-                                                      node->mpBackLinks[i].mLike + node->mpLinks[j].mLike);
+              forwnode->mpBackLinks[k].mLmLike = HIGHER_OF(forwnode->mpBackLinks[k].mLmLike, 
+                                                      node->mpBackLinks[i].mLmLike + node->mpLinks[j].mLmLike);
             } else {
               forwnode->mpBackLinks[forwnode->mNBackLinks  ].mpNode = node->mpBackLinks[i].mpNode;
-              forwnode->mpBackLinks[forwnode->mNBackLinks++].mLike
-                = node->mpBackLinks[i].mLike + node->mpLinks[j].mLike;
+              forwnode->mpBackLinks[forwnode->mNBackLinks++].mLmLike
+                = node->mpBackLinks[i].mLmLike + node->mpLinks[j].mLmLike;
             }
           }
         }
@@ -1578,16 +1578,16 @@ namespace STK
       for (i = 0; i < node->mNLinks; i++) {
         fprintf(fp,"n%d -> n%d [color=blue,weight=1",
                 node->mEmittingStateId,node->mpLinks[i].mpNode->mEmittingStateId);
-        if (node->mpLinks[i].mLike != 0.0) {
-          fprintf(fp,",label=\""FLOAT_FMT"\"", node->mpLinks[i].mLike);
+        if (node->mpLinks[i].mLmLike != 0.0) {
+          fprintf(fp,",label=\""FLOAT_FMT"\"", node->mpLinks[i].mLmLike);
         }
         fprintf(fp,"];\n");
       }
   //    for (i = 0; i < node->mNBackLinks; i++) {
   //      fprintf(fp,"n%d -> n%d [color=red,weight=1",
   //              node->mEmittingStateId,node->mpBackLinks[i].mpNode->mEmittingStateId);
-  //      if (node->mpBackLinks[i].mLike != 0.0) {
-  //        fprintf(fp,",label=\""FLOAT_FMT"\"", node->mpBackLinks[i].mLike);
+  //      if (node->mpBackLinks[i].mLmLike != 0.0) {
+  //        fprintf(fp,",label=\""FLOAT_FMT"\"", node->mpBackLinks[i].mLmLike);
   //      }
   //      fprintf(fp,"];\n");
   //    }

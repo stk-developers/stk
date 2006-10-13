@@ -80,7 +80,7 @@ void usage(char *progname)
 " -w [f]     Recognise from network                          Off\n"
 " -x s       Extension for hmm files                         None\n"
 " -y s       Output transcription file extension             rec\n"
-////"  -z s    generate lattices with extension s              off\n"
+" -z s    generate lattices with extension s              off\n"
 " -A         Print command line arguments                    Off\n"
 " -C cf      Set config file to cf                           Default\n"
 " -D         Display configuration variables                 Off\n"
@@ -185,20 +185,22 @@ int main(int argc, char *argv[])
   const char *                  dictionary;
   char *                        script;
   char *                        mmf;
-  const char *                  label_filter;
-  const char *                  net_filter;
-  const char *                  label_ofilter;
-  const char *                  net_ofilter;
-        char *                  cmn_path;
-        char *                  cmn_file;
-  const char *                  cmn_mask;
-        char *                  cvn_path;
-        char *                  cvn_file;
-  const char *                  cvn_mask;
-  const char *                  cvg_file;
-  const char *                  mmf_dir;
-  const char *                  mmf_mask;
-  const char *                  lat_ext;
+  const char*                   label_filter;
+  const char*                   net_filter;
+  const char*                   label_ofilter;
+  const char*                   net_ofilter;
+        char*                   cmn_path;
+        char*                   cmn_file;
+  const char*                   cmn_mask;
+        char*                   cvn_path;
+        char*                   cvn_file;
+  const char*                   cvn_mask;
+  const char*                   cvg_file;
+  const char*                   mmf_dir;
+  const char*                   mmf_mask;
+              
+  const char*                   lat_ext;
+  bool                          lat_is_incomplete;
 
   int                           trace_flag;
   int                           targetKind;
@@ -318,8 +320,9 @@ int main(int argc, char *argv[])
   
   mmf_dir      = GetParamStr(&cfgHash, SNAME":MMFDIR",          ".");
   mmf_mask     = GetParamStr(&cfgHash, SNAME":MMFMASK",         NULL);
-  lat_ext      = GetParamStr(&cfgHash, SNAME":LATTICEEXT",      NULL);
 
+  lat_ext      = GetParamStr(&cfgHash, SNAME":LATTICEEXT",      NULL);
+  lat_is_incomplete = GetParamBool(&cfgHash,SNAME":INCOMPLETELATTICE",      false);
 
   cchrptr      = GetParamStr(&cfgHash, SNAME":LABELFORMATING",  "");
   while (*cchrptr) 

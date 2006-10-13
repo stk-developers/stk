@@ -40,17 +40,24 @@ namespace STK
     NT_TEE    = 0x10,
     NT_STICKY = 0x20,
     NT_TRUE   = 0x40
-  };
+  }; // NodeType
+
   
+  enum NodeRepresentationType
+  {
+  }; // NodeRepresentationType
+
+
+
   enum NotInDictActionType
   {
     WORD_NOT_IN_DIC_UNSET = 0,
     WORD_NOT_IN_DIC_ERROR = 1,
     WORD_NOT_IN_DIC_WARN  = 2,
     PRON_NOT_IN_DIC_ERROR = 4
-  };
+  } // NotInDictActionType;
     
-  
+
   // Class declarations
   //
   /** *************************************************************************
@@ -61,16 +68,16 @@ namespace STK
   {
   public:
     Node *        mpNode;
-    FLOAT         mLike;
+    //FLOAT         mLike;
     FLOAT         mAcousticLike;
     FLOAT         mLmLike;
   }; // Link
+
 
   /** *************************************************************************
    ** *************************************************************************
    *  @brief Network node representation class
    */   
-  
   class NodeBasic
   {
   public:
@@ -93,15 +100,16 @@ namespace STK
     ActiveNodeRecord* mpAnr;
 #   endif
 
-    NodeBasic() : mpPronun(NULL), mType(NT_UNDEF), mNLinks(0), mpLinks(NULL), mpAnr(NULL) {}
+    NodeBasic() : mpPronun(NULL), mType(NT_UNDEF), mNLinks(0), mpLinks(NULL), 
+      mpAnr(NULL) {}
   }; // class Node
   
+
 
   /** *************************************************************************
    ** *************************************************************************
    *  @brief Network node representation class
    */   
-  
   class Node : public NodeBasic
   {
   public:
@@ -122,6 +130,7 @@ namespace STK
     FWBWR*             mpAlphaBetaListReverse;
 #   endif        
   }; // class Node
+
 
 
   /** *************************************************************************
@@ -171,7 +180,8 @@ namespace STK
   // GLOBAL FUNCTIONS
   //
   
-  Node* MakeNetworkFromLabels(Label *labels, enum NodeType node_type);
+  Node* 
+  MakeNetworkFromLabels(Label* labels, enum NodeType node_type);
   
   void ExpandWordNetworkByDictionary(
     Node* first,

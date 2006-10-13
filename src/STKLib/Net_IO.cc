@@ -202,7 +202,7 @@ namespace STK
 
           // compute the language likelihood
           FLOAT aux_like = node->mpLinks[j].mAcousticLike;
-          FLOAT l_like   = node->mpLinks[j].mLike - aux_like;
+          FLOAT l_like   = node->mpLinks[j].mLmLike;
           //double eps(l_like * EPSILON);
 
           //printf("eps = %f \n", eps);
@@ -210,10 +210,10 @@ namespace STK
           //if (_ABS(eps) <= EPSILON) l_like = 0.0;
           //if (_ABS(eps) <= EPSILON + EPSILON) l_like = 0.0;
            
-          if ((!close_enough(node->mpLinks[j].mLike, aux_like, 10)) 
+          if ((!close_enough(node->mpLinks[j].mLmLike, 0.0, 10)) 
           &&  (!format.mNoLMLikes))
           {
-            fprintf(pFp," l="FLOAT_FMT, l_like);
+            fprintf(pFp," l="FLOAT_FMT, node->mpLinks[j].mLmLike);
           }
 
           if ((node->mpLinks[j].mAcousticLike != 0.0) 
@@ -253,7 +253,7 @@ namespace STK
 
           // output language probability
           FLOAT aux_like = node->mpLinks[j].mAcousticLike;
-          FLOAT l_like = node->mpLinks[j].mLike - aux_like;
+          FLOAT l_like = node->mpLinks[j].mLmLike - aux_like;
           //double eps(l_like * EPSILON);
 
           //printf("eps = %f \n", eps);
@@ -261,10 +261,10 @@ namespace STK
           //if (_ABS(eps) <= EPSILON) l_like = 0.0;
           //if (_ABS(eps) <= EPSILON + EPSILON) l_like = 0.0;
            
-          if ((!close_enough(node->mpLinks[j].mLike, aux_like, 10)) 
+          if ((!close_enough(node->mpLinks[j].mLmLike, 0.0, 10)) 
           && (!format.mNoLMLikes))
           {
-            fprintf(pFp," l="FLOAT_FMT, l_like);
+            fprintf(pFp," l="FLOAT_FMT, node->mpLinks[j].mLmLike);
           }
 
           // output acoustic probability
@@ -350,8 +350,8 @@ namespace STK
       fprintf(lfp,"\t%d", node->mNLinks);
       for (j = 0; j < node->mNLinks; j ++) {
         fprintf(lfp," %d",node->mpLinks[j].mpNode->mAux);
-        if (node->mpLinks[j].mLike != 0.0) {
-          fprintf(lfp," {"FLOAT_FMT"}", node->mpLinks[j].mLike);
+        if (node->mpLinks[j].mLmLike != 0.0) {
+          fprintf(lfp," {"FLOAT_FMT"}", node->mpLinks[j].mLmLike);
         }
       }
       fputs("\n", lfp);
@@ -666,7 +666,7 @@ namespace STK
           linkLike = 0.0;
         }
         node->mpLinks[j].mpNode = nodes[linkId];
-        node->mpLinks[j].mLike = linkLike;
+        node->mpLinks[j].mLmLike = linkLike;
         nodes[linkId]->mNBackLinks++;
       }
     }
@@ -714,7 +714,7 @@ namespace STK
       for (j=0; j < static_cast<size_t>(nodes[i]->mNLinks); j++) {
         Node *forwNode = nodes[i]->mpLinks[j].mpNode;
         forwNode->mpBackLinks[forwNode->mNBackLinks].mpNode = nodes[i];
-        forwNode->mpBackLinks[forwNode->mNBackLinks].mLike = nodes[i]->mpLinks[j].mLike;
+        forwNode->mpBackLinks[forwNode->mNBackLinks].mLmLike = nodes[i]->mpLinks[j].mLmLike;
         forwNode->mNBackLinks++;
       }
     }
@@ -757,15 +757,21 @@ namespace STK
     const char *              in_MLF,
     bool                      compactRepresentation)
   {
-    Node *node, *enode = NULL,
-        *first = NULL, *last = NULL,
-        *fnode = NULL, *lnode;
-    char *line;
-    int line_no   =  0;
-    int nnodes    =  0;
-    char *chptr, *valptr, *phn_marks = NULL;
-    Word *word     = NULL;
-    int  i, pron_var  = 1;
+    Node*            node;
+    Node*            enode = NULL;
+    Node*            first = NULL;
+    Node*            last  = NULL;
+    Node*            fnode = NULL;
+    Node*            lnode;
+    char*            line;
+    int              line_no   =  0;
+    int              nnodes    =  0;
+    char*            chptr;
+    char*            valptr;
+    char*            phn_marks = NULL;
+    Word*            word     = NULL;
+    int              i;
+    int              pron_var  = 1;
     enum {LINE_START, AFTER_J, HEADER_DEF, ARC_DEF, NODE_DEF} state;
     MyHSearchData node_hash = {0};
     struct ReadlineData   rld       = {0};
@@ -791,7 +797,9 @@ namespace STK
   
       state = LINE_START;
       node = NULL;
-      while (*chptr) {
+
+      while (*chptr) 
+      {
         for (valptr=chptr; isalnum(*valptr); valptr++);
   
         if (*valptr == '=') {
@@ -804,11 +812,13 @@ namespace STK
           Error("Invalid character '%c' (%s:%d, char %d)",
                 *valptr, file_name, line_no, valptr-line+1);
         }
+
         if (state == LINE_START && !strcmp(chptr, "J")) {
           getInteger(valptr, &chptr, file_name, line_no);
           state = AFTER_J;
           continue;
         }
+
         if (state == AFTER_J) {
           if (*chptr && strcmp(chptr,"START") && strcmp(chptr,"S")) {
             Error("Term 'J=' must be followed by term 'S=' (%s:%d)", file_name, line_no);
@@ -816,6 +826,7 @@ namespace STK
           state = LINE_START;
           chptr="";
         }
+        
         if (state == LINE_START) {
           if (!*chptr || !strcmp(chptr, "I")) {
             if (compactRepresentation)
@@ -838,6 +849,7 @@ namespace STK
           }
           state = HEADER_DEF;
         }
+
         if (state == HEADER_DEF) { // label definition
           if (!strcmp(chptr, "S") || !strcmp(chptr, "SUBLAT")) {
             Error("%s not supported (%s:%d)", chptr, file_name, line_no);
@@ -861,6 +873,7 @@ namespace STK
           }
           continue;
         }
+
         if (state == NODE_DEF) {
           if ((!strcmp(chptr, "time") || !strcmp(chptr, "t")) 
           && !(labelFormat.TIMES_OFF) && !compactRepresentation) {
@@ -1050,17 +1063,32 @@ namespace STK
             // Links are counted and node->mpLinks is properly realocated 
             // at the end of the node definition above
             node->mpLinks[nl-1].mpNode = enode;
-            node->mpLinks[nl-1].mLike = 0.0;
+            node->mpLinks[nl-1].mLmLike = 0.0;
+            node->mpLinks[nl-1].mAcousticLike = 0.0;
   
             if (!compactRepresentation)
               ++enode->mNBackLinks;  
-          } else if (!strcmp(chptr, "language") || !strcmp(chptr, "l")) {
-            FLOAT mLike = getFloat(valptr, &chptr, file_name, line_no);
+          } 
+          
+          else if (!strcmp(chptr, "language") || !strcmp(chptr, "l")) 
+          {
+            FLOAT lm_like = getFloat(valptr, &chptr, file_name, line_no);
             
-          // Set LM score to link starting in node. This link can possibly
-          // lead to a phone node already inserted (div=) between 'node' and'enode'
-            node->mpLinks[node->mNLinks-1].mLike = mLike;
-          } else if (!strcmp(chptr, "div") || !strcmp(chptr, "d")) {
+            // Set LM score to link starting in node. This link can possibly
+            // lead to a phone node already inserted (div=) between 'node' and'enode'
+            node->mpLinks[node->mNLinks-1].mLmLike = lm_like;
+          } 
+          
+          else if (!strcmp(chptr, "acoustic") || !strcmp(chptr, "a")) 
+          {
+            // Set acoustic score to link starting in node. This link can possibly
+            // lead to a phone node already inserted (div=) between 'node' and'enode'
+            FLOAT acoustic_like = getFloat(valptr, &chptr, file_name, line_no);
+            node->mpLinks[node->mNLinks-1].mAcousticLike = acoustic_like;
+          } 
+
+          else if (!strcmp(chptr, "div") || !strcmp(chptr, "d")) 
+          {
             
             if (compactRepresentation)
               Error("d= or div= is not allowed in CSTK format (%s:%d)", file_name, line_no);
@@ -1069,8 +1097,8 @@ namespace STK
             char  name[1024];
             float time;
             int   n;
-            Node  *last = node;
-            FLOAT mLike  = node->mpLinks[node->mNLinks-1].mLike;
+            Node*  last = node;
+            FLOAT lm_like  = node->mpLinks[node->mNLinks-1].mLmLike;
   
             if (node->mpLinks[node->mNLinks-1].mpNode != enode) {
               Error("Redefinition of  (%s:%d)", chptr, file_name, line_no);
@@ -1114,7 +1142,8 @@ namespace STK
               }
               tnode->mpName = (char *) ep->data;
               last->mpLinks[last->mNLinks-1].mpNode = tnode;
-              last->mpLinks[last->mNLinks-1].mLike = 0.0;
+              last->mpLinks[last->mNLinks-1].mLmLike = 0.0;
+              last->mpLinks[last->mNLinks-1].mAcousticLike = 0.0;
               last = tnode;
             }
             if (strcmp(phn_marks,":")) {
@@ -1122,7 +1151,7 @@ namespace STK
                     file_name, line_no);
             }
             last->mpLinks[last->mNLinks-1].mpNode = enode;
-            last->mpLinks[last->mNLinks-1].mLike = mLike;
+            last->mpLinks[last->mNLinks-1].mLmLike = lm_like;
           } else if (getHTKstr(valptr, &chptr)) { // Skip unknown term
             Error("%s (%s:%d)", chptr, file_name, line_no);
           }
@@ -1193,7 +1222,7 @@ namespace STK
         for (i = 0; i < node->mNLinks; i++) {
           Node *forwnode = node->mpLinks[i].mpNode;
           forwnode->mpBackLinks[forwnode->mNBackLinks].mpNode = node;
-          forwnode->mpBackLinks[forwnode->mNBackLinks++].mLike = node->mpLinks[i].mLike;
+          forwnode->mpBackLinks[forwnode->mNBackLinks++].mLmLike = node->mpLinks[i].mLmLike;
         }
       }
     
@@ -1238,6 +1267,7 @@ namespace STK
         fnode->mpBackNext = first;
         first->mpNext = fnode;
       }
+
       if (last != lnode) {
         if (last->mpNext)     last->mpNext->mpBackNext = last->mpBackNext;
         if (last->mpBackNext) last->mpBackNext->mpNext = last->mpNext;
@@ -1245,6 +1275,7 @@ namespace STK
         lnode->mpNext = last;
         last->mpBackNext = lnode;
       }
+      
       for (node = first; node != NULL; node = node->mpNext) {
         if (node->mType == (NT_PHONE | NT_MODEL)) {
           node->mType = NT_PHONE;
@@ -1256,6 +1287,7 @@ namespace STK
           node->mStop  = (node->mStop + labelFormat.right_extent) / sampPeriod;
         }
       }
+
       if (first->mpPronun != NULL) {
         node = (Node *) calloc(1, sizeof(Node));
         if (node == NULL) Error("Insufficient memory");
@@ -1271,12 +1303,14 @@ namespace STK
         node->mNLinks     = 1;
         node->mpLinks      = (Link*) malloc(sizeof(Link));
         if (node->mpLinks == NULL) Error("Insufficient memory");
-        node->mpLinks[0].mLike = 0.0;
+        node->mpLinks[0].mLmLike = 0.0;
+        node->mpLinks[0].mAcousticLike = 0.0;
         node->mpLinks[0].mpNode = first;
         first->mNBackLinks = 1;
         first->mpBackLinks  = (Link*) malloc(sizeof(Link));
         if (first->mpBackLinks == NULL) Error("Insufficient memory");
-        first->mpBackLinks[0].mLike = 0.0;
+        first->mpBackLinks[0].mLmLike = 0.0;
+        first->mpBackLinks[0].mAcousticLike = 0.0;
         first->mpBackLinks[0].mpNode = node;
         first = node;
       }
@@ -1295,18 +1329,20 @@ namespace STK
         last->mNLinks = 1;
         last->mpLinks  = (Link*) malloc(sizeof(Link));
         if (last->mpLinks == NULL) Error("Insufficient memory");
-        last->mpLinks[0].mLike = 0.0;
+        last->mpLinks[0].mLmLike = 0.0;
+        last->mpLinks[0].mAcousticLike = 0.0;
         last->mpLinks[0].mpNode = node;
         node->mNBackLinks = 1;
         node->mpBackLinks  = (Link*) malloc(sizeof(Link));
         if (node->mpBackLinks == NULL) Error("Insufficient memory");
-        node->mpBackLinks[0].mLike = 0.0;
+        node->mpBackLinks[0].mLmLike = 0.0;
+        node->mpBackLinks[0].mAcousticLike = 0.0;
         node->mpBackLinks[0].mpNode = last;
       }
     }
     return first;
-  } // Node *ReadSTKNetwork(...)
-  //***************************************************************************
+  } 
+  // Node *ReadSTKNetwork(...)
   //***************************************************************************
 
 
@@ -1528,9 +1564,9 @@ namespace STK
             }
             node->mpName = (char *) ep->data;
             last->mpLinks[last->mNLinks-1].mpNode = node;
-            last->mpLinks[last->mNLinks-1].mLike = 0.0;
+            last->mpLinks[last->mNLinks-1].mLmLike = 0.0;
             node->mpBackLinks[0].mpNode = last;
-            node->mpBackLinks[0].mLike = 0.0;
+            node->mpBackLinks[0].mLmLike = 0.0;
             last = node;
           }
           if (strcmp(phn_marks,":")) {
@@ -1545,9 +1581,9 @@ namespace STK
         if (nodes[arc_end]->mpBackLinks == NULL) Error("Insufficient memory");
   
         last->mpLinks[last->mNLinks-1].mpNode = nodes[arc_end];
-        last->mpLinks[last->mNLinks-1].mLike = arc_like;
+        last->mpLinks[last->mNLinks-1].mLmLike = arc_like;
         nodes[arc_end]->mpBackLinks[linkId].mpNode = last;
-        nodes[arc_end]->mpBackLinks[linkId].mLike = arc_like;
+        nodes[arc_end]->mpBackLinks[linkId].mLmLike = arc_like;
   
         if (nodes[arc_start]->mStop != UNDEF_TIME) {
           if (nodes[arc_end]->mStart == UNDEF_TIME) {
@@ -1611,13 +1647,13 @@ namespace STK
       node->mNLinks     = 1;
       node->mpLinks      = (Link*) malloc(sizeof(Link));
       if (node->mpLinks == NULL) Error("Insufficient memory");
-      node->mpLinks[0].mLike = 0.0;
+      node->mpLinks[0].mLmLike = 0.0;
       node->mpLinks[0].mpNode = first;
   
       first->mNBackLinks = 1;
       first->mpBackLinks  = (Link*) malloc(sizeof(Link));
       if (first->mpBackLinks == NULL) Error("Insufficient memory");
-      first->mpBackLinks[0].mLike = 0.0;
+      first->mpBackLinks[0].mLmLike = 0.0;
       first->mpBackLinks[0].mpNode = node;
       first = node;
     }
@@ -1638,13 +1674,13 @@ namespace STK
       last->mNLinks = 1;
       last->mpLinks  = (Link*) malloc(sizeof(Link));
       if (last->mpLinks == NULL) Error("Insufficient memory");
-      last->mpLinks[0].mLike = 0.0;
+      last->mpLinks[0].mLmLike = 0.0;
       last->mpLinks[0].mpNode = node;
   
       node->mNBackLinks = 1;
       node->mpBackLinks  = (Link*) malloc(sizeof(Link));
       if (node->mpBackLinks == NULL) Error("Insufficient memory");
-      node->mpBackLinks[0].mLike = 0.0;
+      node->mpBackLinks[0].mLmLike = 0.0;
       node->mpBackLinks[0].mpNode = last;
     }
     return first;

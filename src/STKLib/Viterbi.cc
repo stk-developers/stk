@@ -292,97 +292,149 @@ namespace STK
   //***************************************************************************
   void 
   Network::
-  MarkWordNodesLeadingFrom(Node * node)
+  MarkWordNodesLeadingFrom(Node* node)
   {
     int       i;
     int       n_links = InForwardPass() ? node->mNLinks : node->mNBackLinks;
-    Link *    links   = InForwardPass() ? node->mpLinks : node->mpBackLinks;
+    Link*     p_links = InForwardPass() ? node->mpLinks : node->mpBackLinks;
   
     for (i = 0; i < n_links; i++) 
     {
-      Node *lnode = links[i].mpNode;
+      Node* p_lnode = p_links[i].mpNode;
       
-      if ((lnode->mType & NT_MODEL && !(lnode->mType & NT_TEE))
-      || (lnode == (InForwardPass() ? mpLast : mpFirst))) 
+      if ((p_lnode->mType & NT_MODEL && !(p_lnode->mType & NT_TEE))
+      ||  (p_lnode == (InForwardPass() ? mpLast : mpFirst))) 
       {
         continue;
       }
       
-      if(lnode->mpAnr == NULL) 
-        lnode->mpAnr = new ActiveNodeRecord(lnode);
+      if (p_lnode->mpAnr == NULL) 
+        p_lnode->mpAnr = new ActiveNodeRecord(p_lnode);
 
         
-      if (lnode->mpAnr->mIsActiveNode > 0) 
+      if (p_lnode->mpAnr->mIsActiveNode > 0) 
         continue;
   
-      if (lnode->mpAnr->mIsActiveModel) 
+      if (p_lnode->mpAnr->mIsActiveModel) 
       {
-        assert(lnode->mType & NT_TEE);
+        assert(p_lnode->mType & NT_TEE);
         continue;
       }
       
-      if(lnode->mpAnr->mIsActiveNode-- == 0) 
+      if (p_lnode->mpAnr->mIsActiveNode-- == 0) 
       {
-        lnode->mpAnr->mAux = 0;
-        MarkWordNodesLeadingFrom(lnode);
+        p_lnode->mpAnr->mAux = 0;
+        MarkWordNodesLeadingFrom(p_lnode);
       }
     }
   }
+  //***************************************************************************
+  
   
   
   //***************************************************************************
   //***************************************************************************
   Node *
   Network::
-  pActivateWordNodesLeadingFrom(Node * pNode)
+  pActivateWordNodesLeadingFrom(Node* pNode)
   {
     int     i;
     int     n_links = InForwardPass() ? pNode->mNLinks : pNode->mNBackLinks;
-    Link *  links   = InForwardPass() ? pNode->mpLinks : pNode->mpBackLinks;
+    Link*   p_links   = InForwardPass() ? pNode->mpLinks : pNode->mpBackLinks;
   
     for (i = 0; i < n_links; i++) 
     {
-      Node * lnode = links[i].mpNode;
+      Node* p_lnode = p_links[i].mpNode;
       
-      if ((lnode->mType & NT_MODEL && !(lnode->mType & NT_TEE))
-      || (lnode == (InForwardPass() ? mpLast : mpFirst))) 
+      if ((p_lnode->mType & NT_MODEL && !(p_lnode->mType & NT_TEE))
+      || (p_lnode == (InForwardPass() ? mpLast : mpFirst))) 
       {
         continue;
       }
       
-      assert(lnode->mpAnr != NULL) ;
+      assert(p_lnode->mpAnr != NULL) ;
       
-      if (lnode->mpAnr->mIsActiveNode++ > 0) 
+      if (p_lnode->mpAnr->mIsActiveNode++ > 0) 
         continue;
   
-      if (lnode->mpAnr->mIsActiveModel) 
+      if (p_lnode->mpAnr->mIsActiveModel) 
       {
-        assert(lnode->mType & NT_TEE);
+        assert(p_lnode->mType & NT_TEE);
         continue;
       }
   
-      lnode->mpAnr->mAux++;
+      p_lnode->mpAnr->mAux++;
       
-      if (lnode->mpAnr->mIsActiveNode < 0) 
+      if (p_lnode->mpAnr->mIsActiveNode < 0) 
         continue;
   
-      assert(lnode->mpAnr->mIsActiveNode == 0);
+      assert(p_lnode->mpAnr->mIsActiveNode == 0);
       
-      lnode->mpAnr->mIsActiveNode    = lnode->mpAnr->mAux;
-      lnode->mpAnr->mpNextActiveNode = pNode->mpAnr->mpNextActiveNode;
-      lnode->mpAnr->mpPrevActiveNode = pNode;
+      p_lnode->mpAnr->mIsActiveNode    = p_lnode->mpAnr->mAux;
+      p_lnode->mpAnr->mpNextActiveNode = pNode->mpAnr->mpNextActiveNode;
+      p_lnode->mpAnr->mpPrevActiveNode = pNode;
       
       if (pNode->mpAnr->mpNextActiveNode) 
-        pNode->mpAnr->mpNextActiveNode->mpAnr->mpPrevActiveNode = lnode;
+        pNode->mpAnr->mpNextActiveNode->mpAnr->mpPrevActiveNode = p_lnode;
         
-      pNode->mpAnr->mpNextActiveNode  = lnode;
-      pNode = pActivateWordNodesLeadingFrom(lnode);
+      pNode->mpAnr->mpNextActiveNode   = p_lnode;
+      pNode = pActivateWordNodesLeadingFrom(p_lnode);
     }
     
     assert(!HasCycle());
     return pNode;
   }
   
+  
+  
+  //***************************************************************************
+  //***************************************************************************
+  /*
+  void
+  Network:: 
+  ActivateNode(Node* pNode)
+  {
+    // create new active node record if necessary
+    if(pNode->mpAnr == NULL)
+    {
+      pNode->mpAnr = new ActiveNodeRecord(pNode);
+    }
+    else
+    {
+      assert(pNode->mpAnr->mIsActiveModel || pNode->mpAnr->mIsActiveNode);
+    }
+  
+    // do nothing if already active
+    if (pNode->mpAnr->mIsActiveNode) 
+    {
+      assert(!(pNode->mType & NT_TEE));
+      return;
+    }
+  
+    // probably not necessary
+    pNode->mpAnr->mIsActiveNode = 1; 
+
+    // add the record to (the begining of) the list of active nodes
+    pNode->mpAnr->mpPrevActiveNode = NULL;
+    pNode->mpAnr->mpNextActiveNode = mpActiveNodes;
+    
+    if (mpActiveNodes != NULL) 
+    {
+      mpActiveNodes->mpAnr->mpPrevActiveNode = pNode;
+    }
+    
+    mpActiveNodes = pNode;
+  
+    assert(!HasCycle());
+    MarkWordNodesLeadingFrom(pNode);
+    pActivateWordNodesLeadingFrom(pNode);
+    assert(AllWordSuccessorsAreActive());
+  }
+  */
+  // ActivateNode(Node* pNode)
+  //***************************************************************************
+  
+
   
   //***************************************************************************
   //***************************************************************************
@@ -435,6 +487,8 @@ namespace STK
     pActivateWordNodesLeadingFrom(pNode);
     assert(AllWordSuccessorsAreActive());
   }
+  // ActivateModel(Node* pNode)
+  //***************************************************************************
   
   
   //***************************************************************************
@@ -451,39 +505,43 @@ namespace STK
   
     for (i = 0; i < n_links; i++) 
     {
-      Node *lnode = links[i].mpNode;
+      Node* p_lnode = links[i].mpNode;
       
-      if ((lnode->mType & NT_MODEL && !(lnode->mType & NT_TEE))
-      ||  (lnode == (InForwardPass() ? mpLast : mpFirst))) 
+      if ((p_lnode->mType & NT_MODEL && !(p_lnode->mType & NT_TEE))
+      ||  (p_lnode->mType & NT_STICKY)
+      ||  (p_lnode == (InForwardPass() ? mpLast : mpFirst))) 
       {
         continue;
       }
             
-      assert(/*!(lnode->mType & NT_TEE) ||*/ lnode->mpAnr != NULL && lnode->mpAnr->mIsActiveNode > 0);
+      assert(/*!(p_lnode->mType & NT_TEE) ||*/ p_lnode->mpAnr != NULL && p_lnode->mpAnr->mIsActiveNode > 0);
       
-      if (--lnode->mpAnr->mIsActiveNode) 
+      if (--p_lnode->mpAnr->mIsActiveNode) 
         continue;
   
-      if (lnode->mType & NT_TEE && lnode->mpAnr->mIsActiveModel) 
+      if (p_lnode->mType & NT_TEE && p_lnode->mpAnr->mIsActiveModel) 
         return;
   
-      DeactivateWordNodesLeadingFrom(lnode);
-      assert(lnode->mpAnr->mpPrevActiveNode);
+      DeactivateWordNodesLeadingFrom(p_lnode);
+      assert(p_lnode->mpAnr->mpPrevActiveNode);
       
-      lnode->mpAnr->mpPrevActiveNode->mpAnr->mpNextActiveNode = lnode->mpAnr->mpNextActiveNode;
-      if (lnode->mpAnr->mpNextActiveNode)
-        lnode->mpAnr->mpNextActiveNode->mpAnr->mpPrevActiveNode = lnode->mpAnr->mpPrevActiveNode;
+      p_lnode->mpAnr->mpPrevActiveNode->mpAnr->mpNextActiveNode = p_lnode->mpAnr->mpNextActiveNode;
+
+      if (p_lnode->mpAnr->mpNextActiveNode)
+        p_lnode->mpAnr->mpNextActiveNode->mpAnr->mpPrevActiveNode = p_lnode->mpAnr->mpPrevActiveNode;
     
-      delete lnode->mpAnr;
-      lnode->mpAnr = NULL;
+      delete p_lnode->mpAnr;
+      p_lnode->mpAnr = NULL;
   
     }
     
     assert(!HasCycle());
     assert(AllWordSuccessorsAreActive());
   }
+  // DeactivateWordNodesLeadingFrom(Node* pNode)
+  //***************************************************************************
   
-  
+
   //***************************************************************************
   //***************************************************************************
   void
@@ -494,11 +552,13 @@ namespace STK
       
     pNode->mpAnr->mIsActiveModel = false;
   
-    if (pNode->mpAnr->mpNextActiveModel != NULL) {
+    if (pNode->mpAnr->mpNextActiveModel != NULL) 
+    {
       pNode->mpAnr->mpNextActiveModel->mpAnr->mpPrevActiveModel = pNode->mpAnr->mpPrevActiveModel;
     }
   
-    if (pNode->mpAnr->mpPrevActiveModel != NULL) {
+    if (pNode->mpAnr->mpPrevActiveModel != NULL) 
+    {
       pNode->mpAnr->mpPrevActiveModel->mpAnr->mpNextActiveModel = pNode->mpAnr->mpNextActiveModel;
     } else {
       assert(mpActiveModels == pNode);
@@ -530,13 +590,14 @@ namespace STK
   
     assert(!HasCycle());
   }
+  //***************************************************************************
   
 
   //***************************************************************************
   //***************************************************************************
   void
-  Token::AddAlternativeHypothesis(WordLinkRecord* pWlr, Token::LikelihoodPrec like, 
-      Token::LikelihoodPrec acousticLike)
+  Token::AddAlternativeHypothesis(WordLinkRecord* pWlr, Token::LikeType like, 
+      Token::LikeType acousticLike)
   { 
     WlrReference  tmp_wlr_ref(pWlr, like, acousticLike);
 
@@ -548,6 +609,9 @@ namespace STK
     mpAltHyps->push_back(tmp_wlr_ref);
     pWlr->mNReferences++;
   }
+  // Token::AddAlternativeHypothesis(...)
+  //***************************************************************************
+
   
   //***************************************************************************
   //***************************************************************************
@@ -564,6 +628,7 @@ namespace STK
     mpAltHyps->push_back(tmp_wlr_ref);
     pWlr->mNReferences++;
   }
+  //***************************************************************************
   
   
 #ifdef USE_OLD_TOKEN_PASSING
@@ -881,6 +946,7 @@ namespace STK
 #endif // USE_OLD_TOKEN_PASSIGN  
 
 
+
   //***************************************************************************
   //***************************************************************************
   void 
@@ -910,9 +976,9 @@ namespace STK
         free(wlr);
 #endif
       }
-      
     }
   }
+
   
   
   //***************************************************************************
@@ -926,8 +992,8 @@ namespace STK
     FreeWordLinkRecords(token->mpWlr);
     token->mpWlr  = NULL;
     token->mpTWlr = NULL;
-
   }
+
   
 
 #define OPTIMIZE_GAUSSIAN_COMPUTATION      
@@ -1894,17 +1960,16 @@ namespace STK
   //***************************************************************************
   //***************************************************************************
   void 
-  Network::
-  TokenPropagationInit()
+  Network::TokenPropagationInit()
   {
     size_t  i;
-    Node*   node;
+    Node*   p_node;
   
     InitLogMath();
  
     if (mpOutPCache != NULL) 
     {
-      for (i = 0; i < mpModelSet->mNStates * OUT_P_CACHES; i++) 
+      for (i = 0; i < mpModelSet->mNStates; i++) 
       {
         mpOutPCache[i].mTime = UNDEF_TIME;
       }
@@ -1912,7 +1977,7 @@ namespace STK
   
     if (mpMixPCache != NULL) 
     {
-      for (i = 0; i < mpModelSet->mNMixtures * MIX_P_CACHES; i++) 
+      for (i = 0; i < mpModelSet->mNMixtures; i++) 
       {
         mpMixPCache[i].mTime = UNDEF_TIME;
       }
@@ -1930,12 +1995,12 @@ namespace STK
       if (mCompactRepresentation)
         Error("Fatal: CSTK format used for forward-backward");
         
-      for (node = mpFirst; node != NULL; node = node->mpNext) 
+      for (p_node = mpFirst; p_node != NULL; p_node = p_node->mpNext) 
       {
-        if (!(node->mType & NT_MODEL)) 
+        if (!(p_node->mType & NT_MODEL)) 
           continue;
           
-        node->mpAlphaBetaList = node->mpAlphaBetaListReverse = NULL;
+        p_node->mpAlphaBetaList = p_node->mpAlphaBetaListReverse = NULL;
       }
     }
     
@@ -1945,12 +2010,12 @@ namespace STK
       if (mCompactRepresentation)
         Error("Fatal: CSTK format used for forward-backward");
 
-      for (node = mpFirst; node != NULL; node = node->mpNext) 
+      for (p_node = mpFirst; p_node != NULL; p_node = p_node->mpNext) 
       {
-        if (!(node->mType & NT_MODEL)) 
+        if (!(p_node->mType & NT_MODEL)) 
           continue;
           
-        BackwardPruning(mTime, node, node->mpHmm->mNStates-1);
+        BackwardPruning(mTime, p_node, p_node->mpHmm->mNStates-1);
       }
     }
     
@@ -1959,46 +2024,94 @@ namespace STK
 
 
 
-    // Last node is not activated and deactivated in usual way; allocate ActiveNodeRecord here
-    node = InForwardPass() ?  mpLast : mpFirst;
-    node->mpAnr = new ActiveNodeRecord(node);
+    // Last p_node is not activated and deactivated in usual way; allocate ActiveNodeRecord here
+    p_node = InForwardPass() ?  mpLast : mpFirst;
+    p_node->mpAnr = new ActiveNodeRecord(p_node);
 
-    // First node is also not activated and deactivated in usual way...
-    node = InForwardPass() ? mpFirst : mpLast;
-    mpActiveNodes = node;
-    node->mpAnr = new ActiveNodeRecord(node);
-    node->mpAnr->mpTokens[0].mLike = 0.0;
-    node->mpAnr->mpTokens[0].mAcousticLike = 0.0;
-    node->mpAnr->mpTokens[0].mAccuracy.logvalue = LOG_0;
-    node->mpAnr->mpTokens[0].mAccuracy.negative = 0;
-//    node->mpAnr->mpTokens[0].mpWlr = NULL; 
+    // First p_node is also not activated and deactivated in usual way...
+    p_node = InForwardPass() ? mpFirst : mpLast;
+    mpActiveNodes = p_node;
+    p_node->mpAnr = new ActiveNodeRecord(p_node);
+    p_node->mpAnr->mpTokens[0].mLike = 0.0;
+    p_node->mpAnr->mpTokens[0].mAcousticLike = 0.0;
+    p_node->mpAnr->mpTokens[0].mAccuracy.logvalue = LOG_0;
+    p_node->mpAnr->mpTokens[0].mAccuracy.negative = 0;
+//    p_node->mpAnr->mpTokens[0].mpWlr = NULL; 
 #ifdef bordel_staff
-//    node->mpTokens[0].mpTWlr = NULL;
-    node->mpAnr->mpTokens[0].mBestLike = 0.0;
+//    p_node->mpTokens[0].mpTWlr = NULL;
+    p_node->mpAnr->mpTokens[0].mBestLike = 0.0;
 #endif
   
-    node->mpAnr->mpPrevActiveNode = node->mpAnr->mpNextActiveNode = NULL;
+    p_node->mpAnr->mpPrevActiveNode = p_node->mpAnr->mpNextActiveNode = NULL;
     
     //Is this needed?
-    node->mpAnr->mIsActiveNode = 1;
+    p_node->mpAnr->mIsActiveNode = 1;
 
-    MarkWordNodesLeadingFrom(node);
-    pActivateWordNodesLeadingFrom(node);
+    MarkWordNodesLeadingFrom(p_node);
+    pActivateWordNodesLeadingFrom(p_node);
     TokenPropagationInNetwork();
-    DeactivateWordNodesLeadingFrom(node);
+    DeactivateWordNodesLeadingFrom(p_node);
     
-//    node->mpAnr->mIsActiveNode = 0;
+//    p_node->mpAnr->mIsActiveNode = 0;
     
-    if (node->mpAnr->mpPrevActiveNode) 
+    if (p_node->mpAnr->mpPrevActiveNode) 
     {
-      node->mpAnr->mpPrevActiveNode->mpAnr->mpNextActiveNode = node->mpAnr->mpNextActiveNode;
+      p_node->mpAnr->mpPrevActiveNode->mpAnr->mpNextActiveNode = p_node->mpAnr->mpNextActiveNode;
     }
-    delete node->mpAnr;
-    node->mpAnr = NULL;    
+    delete p_node->mpAnr;
+    p_node->mpAnr = NULL;    
+  } 
+  // Network::TokenPropagationInit()
+  //***************************************************************************
+  
+
+
+  //***************************************************************************
+  //***************************************************************************
+  /*
+  void
+  Network::
+  GenerateToken(Node* pNode)
+  {
+    // activate the node
+    ActivateNode(pNode);
+    
+    // generate the token
+    pNode->mpAnr->mpTokens[0].mLike = 0.0;
+    pNode->mpAnr->mpTokens[0].mAcousticLike = 0.0;
+    pNode->mpAnr->mpTokens[0].mAccuracy.logvalue = LOG_0;
+    pNode->mpAnr->mpTokens[0].mAccuracy.negative = 0;
+
+#ifdef bordel_staff
+    pNode->mpAnr->mpTokens[0].mBestLike = 0.0;
+#endif
+  
+    // propagate the token further
+    TokenPropagationInNetwork();
+
+    DeactivateNode(pNode);
+    
+    return;
+    DeactivateWordNodesLeadingFrom(pNode);
+    
+    
+    if (pNode->mpAnr->mpPrevActiveNode) 
+    {
+      pNode->mpAnr->mpPrevActiveNode->mpAnr->mpNextActiveNode = pNode->mpAnr->mpNextActiveNode;
+    }
+
+    delete pNode->mpAnr;
+    pNode->mpAnr = NULL;    
   }
+  */
+  // GenerateToken(Node* pNode)
+  //***************************************************************************
 
 
-/*void 
+
+  //***************************************************************************
+  //***************************************************************************
+  /*void 
   Network::
   AddLinkToLattice(Node *from, Node *to, FLOAT lmLike)
   {
@@ -2034,7 +2147,10 @@ namespace STK
     lattice_from->mpLinks[nl-1].mpNode->mNBackLinks++;
     
   }*/
+  // AddLinkToLattice(Node *from, Node *to, FLOAT lmLike)
+  //***************************************************************************
   
+
   
   //***************************************************************************
   //***************************************************************************
@@ -2042,7 +2158,7 @@ namespace STK
   Network::
   TokenPropagationInNetwork()
   {
-    Node*   node;
+    Node*   p_node;
     Link*   links;
     int     i;
     int     n_links;
@@ -2060,30 +2176,33 @@ namespace STK
                   mpBestToken->mLike - mPruningThresh > LOG_MIN
                       ? mpBestToken->mLike - mPruningThresh : LOG_MIN;
   
-    node = InForwardPass() ? mpLast : mpFirst;
-    assert(node->mpAnr != NULL);
-    KillToken(node->mpAnr->mpExitToken);
+    p_node = InForwardPass() ? mpLast : mpFirst;
+
+    if (!mKeepExitToken)
+    {
+      assert(p_node->mpAnr != NULL);
+      KillToken(p_node->mpAnr->mpExitToken);
+    }
   
 //  Node *Xnode = mpActiveNodes;
-/*  for (node = InForwardPass() ? mpFirst : mpLast;
-      node != NULL;
-      node = InForwardPass() ? node->mpNext : node->mpBackNext) { // */
-    for (node = mpActiveNodes; node != NULL; node = node->mpAnr->mpNextActiveNode) 
+/*  for (p_node = InForwardPass() ? mpFirst : mpLast;
+      p_node != NULL;
+      p_node = InForwardPass() ? p_node->mpNext : p_node->mpBackNext)  // */
+    for (p_node = mpActiveNodes; p_node != NULL; p_node = p_node->mpAnr->mpNextActiveNode) 
     {
-      assert(node->mpAnr != NULL);
-
+      assert(p_node->mpAnr != NULL);
 
       // If tee model is entered
-      if ((node->mType & NT_TEE) && node->mpAnr->mpTokens[0].IsActive()) 
+      if ((p_node->mType & NT_TEE) && p_node->mpAnr->mpTokens[0].IsActive()) 
       {
-//      assert(node->mIsActiveNode || (node->mType & NT_TEE && node->mIsActive));
-//      for (Xnode = mpActiveNodes; Xnode && Xnode != node; Xnode = Xnode->mpNextActiveNode);
+//      assert(p_node->mIsActiveNode || (p_node->mType & NT_TEE && p_node->mIsActive));
+//      for (Xnode = mpActiveNodes; Xnode && Xnode != p_node; Xnode = Xnode->mpNextActiveNode);
 //      assert(Xnode);
     
         if (!(mCollectAlphaBeta && !InForwardPass()
-        &&   BackwardPruning(mTime, node, 0))) // backward pruning after forward pass
+        &&   BackwardPruning(mTime, p_node, 0))) // backward pruning after forward pass
         {
-          Hmm*    p_hmm       = node->mpHmm;
+          Hmm*    p_hmm       = p_node->mpHmm;
           FLOAT   trans_prob  = p_hmm->mpTransition->mpMatrixO[p_hmm->mNStates - 1] *
             mTranScale;
 
@@ -2092,66 +2211,64 @@ namespace STK
 #endif
           if (mLatticeGeneration)
           {
-            node->mpAnr->mpTokens[0].AddWordLinkRecord(mpFirst, -1, mTime);
+            p_node->mpAnr->mpTokens[0].AddWordLinkRecord(mpFirst, -1, mTime);
           }
             
-          PassTokenInModel(&node->mpAnr->mpTokens[0], node->mpAnr->mpExitToken,
+          PassTokenInModel(&p_node->mpAnr->mpTokens[0], p_node->mpAnr->mpExitToken,
                                                       trans_prob, trans_prob);
         }
       }
   
-      if (node->mpAnr->mpExitToken->IsActive()) 
+      if (p_node->mpAnr->mpExitToken->IsActive()) 
       {
-//      assert(node->mIsActiveNode || (node->mType & NT_TEE && node->mIsActive));
-//      for (Xnode = mpActiveNodes; Xnode && Xnode != node; Xnode = Xnode->mpNextActiveNode);
+//      assert(p_node->mIsActiveNode || (p_node->mType & NT_TEE && p_node->mIsActive));
+//      for (Xnode = mpActiveNodes; Xnode && Xnode != p_node; Xnode = Xnode->mpNextActiveNode);
 //      assert(Xnode);
-        if (node->mType & NT_MODEL) 
+        if (p_node->mType & NT_MODEL) 
         {
           if (mCollectAlphaBeta) 
           {
             if (InForwardPass()) 
-              WriteAlpha(mTime, node, node->mpHmm->mNStates-1, node->mpAnr->mpExitToken);
+              WriteAlpha(mTime, p_node, p_node->mpHmm->mNStates-1, p_node->mpAnr->mpExitToken);
             else 
-              WriteBeta(mTime, node, 0, node->mpAnr->mpExitToken);
+              WriteBeta(mTime, p_node, 0, p_node->mpAnr->mpExitToken);
           }
-          node->mpAnr->mpExitToken->mLike += mMPenalty;
-          //node->mpAnr->mpExitToken->mAcousticLike += mMPenalty;
+          p_node->mpAnr->mpExitToken->mLike += mMPenalty;
+          //p_node->mpAnr->mpExitToken->mAcousticLike += mMPenalty;
         }
-        else if (node->mType & NT_WORD && node->mpPronun != NULL) 
+        else if (p_node->mType & NT_WORD && p_node->mpPronun != NULL) 
         {
-          node->mpAnr->mpExitToken->mLike += mWPenalty +
-                                             mPronScale * node->mpPronun->prob;
+          p_node->mpAnr->mpExitToken->mLike += mWPenalty +
+                                             mPronScale * p_node->mpPronun->prob;
 
           
-          /*if (node->mpExitToken->mLike < mWordThresh) {
-            node->mpExitToken->mLike = LOG_0;
+          /*if (p_node->mpExitToken->mLike < mWordThresh) {
+            p_node->mpExitToken->mLike = LOG_0;
           }*/
         }
   
-        if (node->mpAnr->mpExitToken->mLike > mBeamThresh) 
+        if (p_node->mpAnr->mpExitToken->mLike > mBeamThresh) 
         {
-          if (node->mType & NT_WORD 
-          && (node->mpPronun != NULL || mLatticeGeneration)
+          if (p_node->mType & NT_WORD 
+          && (p_node->mpPronun != NULL || mLatticeGeneration)
           && mAlignment & WORD_ALIGNMENT) 
           {
-            node->mpAnr->mpExitToken->AddWordLinkRecord(node, -1, mTime);
+            p_node->mpAnr->mpExitToken->AddWordLinkRecord(p_node, -1, mTime);
           } 
-          else if (node->mType & NT_MODEL && mAlignment & MODEL_ALIGNMENT) 
+          else if (p_node->mType & NT_MODEL && mAlignment & MODEL_ALIGNMENT) 
           {
-            node->mpAnr->mpExitToken->AddWordLinkRecord(node, -1, mTime);
+            p_node->mpAnr->mpExitToken->AddWordLinkRecord(p_node, -1, mTime);
           }
   
-          n_links = InForwardPass() ? node->mNLinks : node->mNBackLinks;
-          links  = InForwardPass() ? node->mpLinks  : node->mpBackLinks;
+          n_links = InForwardPass() ? p_node->mNLinks : p_node->mNBackLinks;
+          links  = InForwardPass() ? p_node->mpLinks  : p_node->mpBackLinks;
   
           for (i = 0; i < n_links; i++) 
           {
-            FLOAT lmLike = links[i].mLike * mLmScale;
-            //FLOAT acoustic_like = 0.0;
-            //FLOAT acoustic_like = links[i].mAcousticLike;
-
+            FLOAT acoustic_like = links[i].mAcousticLike * mTranScale;
+            FLOAT lm_like       = (links[i].mLmLike - acoustic_like) * mLmScale;
             
-            if (node->mpAnr->mpExitToken->mLike + lmLike > mBeamThresh 
+            if (p_node->mpAnr->mpExitToken->mLike + lm_like > mBeamThresh 
                 && (mCompactRepresentation
                 ||((/*links[i].mpNode->mStart == UNDEF_TIME ||*/
                       links[i].mpNode->mStart <= mTime) 
@@ -2160,7 +2277,7 @@ namespace STK
                 ||    links[i].mpNode->mStop  >= mTime)
                       
                 && (mSearchPaths != SP_TRUE_ONLY
-                || (node->mType & NT_TRUE)   
+                || (p_node->mType & NT_TRUE)   
                 || !(links[i].mpNode->mType & NT_MODEL)))))
             {
               if (links[i].mpNode->mType & NT_MODEL) 
@@ -2174,25 +2291,25 @@ namespace STK
               }
               assert(links[i].mpNode->mpAnr != NULL);
 #ifdef TRACE_TOKENS
-              printf("Node %d -> Node %d ", node->mAux, links[i].mpNode->mAux);
+              printf("Node %d -> Node %d ", p_node->mAux, links[i].mpNode->mAux);
 #endif
 
               // Current lattice generation algorithm expect that word link record is created for all tokens leaving
               // any network node (including model and !NULL nodes).
 //              if (mLatticeGeneration)
-//                AddLinkToLattice(node, links[i].mpNode, lmLike);
+//                AddLinkToLattice(p_node, links[i].mpNode, lm_like);
               
-              PassTokenInNetwork(node->mpAnr->mpExitToken,
-                  &links[i].mpNode->mpAnr->mpTokens[0], lmLike, 0.0);
+              PassTokenInNetwork(p_node->mpAnr->mpExitToken,
+                  &links[i].mpNode->mpAnr->mpTokens[0], lm_like, acoustic_like);
 
             }
           }
         } 
         else if(mLatticeGeneration)
-          node->mpAnr->mpExitToken->AddWordLinkRecord(node, -1, mTime);
+          p_node->mpAnr->mpExitToken->AddWordLinkRecord(p_node, -1, mTime);
         
-        if (!(node->mType & NT_STICKY)) 
-          KillToken(node->mpAnr->mpExitToken);
+        if (!(p_node->mType & NT_STICKY)) 
+          KillToken(p_node->mpAnr->mpExitToken);
       }  
     }
   
@@ -2201,45 +2318,48 @@ namespace STK
     {
       if (InForwardPass()) 
       {
-        for (node = mpActiveModels; node != NULL; node = node->mpAnr->mpNextActiveModel) 
+        for (p_node = mpActiveModels; p_node != NULL; p_node = p_node->mpAnr->mpNextActiveModel) 
         {
-          assert(node->mpAnr);
-          if (/*!(node->mType & NT_MODEL) ||*/ node->mpAnr->mpTokens[0].mLike < LOG_MIN) 
+          assert(p_node->mpAnr);
+          if (/*!(p_node->mType & NT_MODEL) ||*/ p_node->mpAnr->mpTokens[0].mLike < LOG_MIN) 
             continue;
             
-          WriteAlpha(mTime, node, 0, &node->mpAnr->mpTokens[0]);
+          WriteAlpha(mTime, p_node, 0, &p_node->mpAnr->mpTokens[0]);
         }
       } 
       else 
       {
-        for (node = mpActiveModels; node != NULL; node = node->mpAnr->mpNextActiveModel) 
+        for (p_node = mpActiveModels; p_node != NULL; p_node = p_node->mpAnr->mpNextActiveModel) 
         {
-          assert(node->mpAnr);
-          if (/*!(node->mType & NT_MODEL) ||*/ node->mpAnr->mpTokens[0].mLike < LOG_MIN
-            || BackwardPruning(mTime, node, node->mpHmm->mNStates-1)) 
+          assert(p_node->mpAnr);
+          if (/*!(p_node->mType & NT_MODEL) ||*/ p_node->mpAnr->mpTokens[0].mLike < LOG_MIN
+            || BackwardPruning(mTime, p_node, p_node->mpHmm->mNStates-1)) 
             continue;
             
-          WriteBeta(mTime, node, node->mpHmm->mNStates-1, &node->mpAnr->mpTokens[0]);          
+          WriteBeta(mTime, p_node, p_node->mpHmm->mNStates-1, &p_node->mpAnr->mpTokens[0]);          
         }
       }
     }
     
     if (mLatticeGeneration)
     {
-      for (node = mpActiveModels; node != NULL; node = node->mpAnr->mpNextActiveModel)
-        if (node->mpAnr->mpTokens[0].IsActive())
-          node->mpAnr->mpTokens[0].AddWordLinkRecord(mpFirst, -1, mTime);
+      for (p_node = mpActiveModels; p_node != NULL; p_node = p_node->mpAnr->mpNextActiveModel)
+        if (p_node->mpAnr->mpTokens[0].IsActive())
+          p_node->mpAnr->mpTokens[0].AddWordLinkRecord(mpFirst, -1, mTime);
 
       if(mpLast->mpAnr != NULL && mpLast->mpAnr->mpExitToken->IsActive())
         mpLast->mpAnr->mpExitToken->AddWordLinkRecord(mpLast, -1, mTime);
     }
   
     //  Go through newly activeted models and costruct list of active nodes
-    //  for (node=mpActiveModels; node&&!node->mIsActive; node=node->mpNextActiveModel) {
-    //    ActivateNode(net, node);
+    //  for (p_node=mpActiveModels; p_node&&!p_node->mIsActive; p_node=p_node->mpNextActiveModel) {
+    //    ActivateNode(net, p_node);
     //  }
     assert(!HasCycle());
   }
+  // TokenPropagationInNetwork()
+  //***************************************************************************
+
   
   
   //***************************************************************************
@@ -2248,103 +2368,104 @@ namespace STK
   Network::
   TokenPropagationInModels(FLOAT* pObservation)
   {
-    Node*   node;
-    Node*   pNextActive;
-    Hmm*    hmm;
+    Node*   p_node;
+    Node*   p_next_active;
+    Hmm*    p_hmm;
     size_t  winingToken = 0;
     size_t  i;
     size_t  j;
     int     from;
     int     to;
-  //  int estate_id;
+    //  int estate_id;
     int     state_idx;
-  //  FLOAT threshOutProb = LOG_0;
+    //  FLOAT threshOutProb = LOG_0;
   
     mpBestToken = NULL;
-  /*  if (mpThreshState) {
+    /*  if (mpThreshState) {
       threshOutProb = OutputProbability(mpThreshState, pObservation, net);
     } */
   
-    for (node = mpActiveModels; node != NULL; node = pNextActive) 
+    for (p_node = mpActiveModels; p_node != NULL; p_node = p_next_active) 
     {
-      // Store pointer to mpNextActiveModel here, because node->mpAnr can be dealocated in this block
-      pNextActive = node->mpAnr->mpNextActiveModel;
+      // Store pointer to mpNextActiveModel here, because p_node->mpAnr can be dealocated in this block
+      p_next_active = p_node->mpAnr->mpNextActiveModel;
       
-  //  for (node = mpFirst; node != NULL; node = node->mpNext) {
-  //    if (!(node->mType & NT_MODEL)) continue;
+      //  for (p_node = mpFirst; p_node != NULL; p_node = p_node->mpNext) 
+      //    if (!(p_node->mType & NT_MODEL)) continue;
   
-      assert(node->mpAnr);
-      hmm = node->mpHmm;
+      assert(p_node->mpAnr);
+      p_hmm = p_node->mpHmm;
       
       if (!mCompactRepresentation && (
-          (/*node->mStart != UNDEF_TIME &&*/node->mStart >= mTime)
-          ||  (  node->mStop  != UNDEF_TIME &&  node->mStop  <  mTime)
-          ||  mSearchPaths == SP_TRUE_ONLY && !(node->mType & NT_TRUE)))
+          (/*p_node->mStart != UNDEF_TIME &&*/p_node->mStart >= mTime)
+          ||  (  p_node->mStop  != UNDEF_TIME &&  p_node->mStop  <  mTime)
+          ||  mSearchPaths == SP_TRUE_ONLY && !(p_node->mType & NT_TRUE)))
       {
-        for (i = 0; i < hmm->mNStates-1; i++) 
+        for (i = 0; i < p_hmm->mNStates-1; i++) 
         {
-          KillToken(&node->mpAnr->mpTokens[i]);
+          KillToken(&p_node->mpAnr->mpTokens[i]);
         }
         
-        DeactivateModel(node);
+        DeactivateModel(p_node);
         continue;
       }
   
-      if (mAccumType == AT_MPE && InForwardPass() && node->mpAnr->mpTokens[0].IsActive()) 
+      if (mAccumType == AT_MPE && InForwardPass() && p_node->mpAnr->mpTokens[0].IsActive()) 
       {
         FloatInLog fil_lmpa =
-          {node->mpAnr->mpTokens[0].mLike + log(fabs(node->mPhoneAccuracy)),
-           node->mPhoneAccuracy < 0};
+          {p_node->mpAnr->mpTokens[0].mLike + log(fabs(p_node->mPhoneAccuracy)),
+           p_node->mPhoneAccuracy < 0};
   
-        node->mpAnr->mpTokens[0].mAccuracy = FIL_Add(node->mpAnr->mpTokens[0].mAccuracy, fil_lmpa);
+        p_node->mpAnr->mpTokens[0].mAccuracy = FIL_Add(p_node->mpAnr->mpTokens[0].mAccuracy, fil_lmpa);
       }
   
-      for (i = 0; i < hmm->mNStates-1; i++) 
+      // make a copy of active tokens into mpAuxTokens
+      for (i = 0; i < p_hmm->mNStates-1; i++) 
       {
         assert(!mpAuxTokens[i].IsActive());
-        if (node->mpAnr->mpTokens[i].IsActive()) 
+        if (p_node->mpAnr->mpTokens[i].IsActive()) 
         {
-          mpAuxTokens[i] = node->mpAnr->mpTokens[i];
+          mpAuxTokens[i] = p_node->mpAnr->mpTokens[i];
           assert(mpAuxTokens[i].mpAltHyps == NULL);
-          node->mpAnr->mpTokens[i].mLike = LOG_0;
-          node->mpAnr->mpTokens[i].mAcousticLike = LOG_0;
-          node->mpAnr->mpTokens[i].mpWlr  = NULL;
+          p_node->mpAnr->mpTokens[i].mLike = LOG_0;
+          p_node->mpAnr->mpTokens[i].mAcousticLike = LOG_0;
+          p_node->mpAnr->mpTokens[i].mpWlr  = NULL;
         }
       }
   
-      int keepModelActive = false;
+      bool keep_model_active = false;
   
-      assert(!node->mpAnr->mpTokens[hmm->mNStates-1].IsActive());
+      assert(!p_node->mpAnr->mpTokens[p_hmm->mNStates-1].IsActive());
   
-      for (j = 1; j < hmm->mNStates-1; j++) 
+      for (j = 1; j < p_hmm->mNStates-1; j++) 
       {
-        state_idx = (InForwardPass() ? j : hmm->mNStates-1 - j);
+        state_idx = (InForwardPass() ? j : p_hmm->mNStates-1 - j);
   
         if (mCollectAlphaBeta 
         &&  !InForwardPass() 
-        &&  BackwardPruning(mTime, node, state_idx)) 
+        &&  BackwardPruning(mTime, p_node, state_idx)) 
         {
           continue; // backward pruning after forward pass
         }
   
-        for (i = 0; i < hmm->mNStates-1; i++) 
+        for (i = 0; i < p_hmm->mNStates-1; i++) 
         {
-          from = InForwardPass() ? i : hmm->mNStates-1 - j;
-          to   = InForwardPass() ? j : hmm->mNStates-1 - i;
+          from = InForwardPass() ? i : p_hmm->mNStates-1 - j;
+          to   = InForwardPass() ? j : p_hmm->mNStates-1 - i;
   
-          assert(!mpAuxTokens[i].IsActive() || node->mpAnr->mIsActiveModel);
+          assert(!mpAuxTokens[i].IsActive() || p_node->mpAnr->mIsActiveModel);
   
-          if (hmm->mpTransition->mpMatrixO[from * hmm->mNStates + to] > LOG_MIN 
+          if (p_hmm->mpTransition->mpMatrixO[from * p_hmm->mNStates + to] > LOG_MIN 
           &&  mpAuxTokens[i].IsActive()) 
           {
             FLOAT trans_prob = 
-              hmm->mpTransition->mpMatrixO[from * hmm->mNStates + to] * mTranScale;
+              p_hmm->mpTransition->mpMatrixO[from * p_hmm->mNStates + to] * mTranScale;
   
 #ifdef TRACE_TOKENS
-            printf("Model %d State %d -> State %d ",  node->mAux, (int) i, (int) j);
+            printf("Model %d State %d -> State %d ",  p_node->mAux, (int) i, (int) j);
 #endif
 
-            if (PassTokenInModel(&mpAuxTokens[i], &node->mpAnr->mpTokens[j], 
+            if (PassTokenInModel(&mpAuxTokens[i], &p_node->mpAnr->mpTokens[j], 
                   trans_prob, trans_prob)) 
             {
               winingToken = i;
@@ -2352,12 +2473,11 @@ namespace STK
           }
         }
   
-        // if (IS_ACTIVE(node->mpTokens[j])) 
-        if (node->mpAnr->mpTokens[j].mLike > mBeamThresh) 
+        // if (IS_ACTIVE(p_node->mpTokens[j])) 
+        if (p_node->mpAnr->mpTokens[j].mLike > mBeamThresh) 
         {
-          FLOAT outProb = OutputProbability(hmm->mpState[state_idx-1],
+          FLOAT outProb = OutputProbability(p_hmm->mpState[state_idx-1],
                                             pObservation, this);
-          //FLOAT outProb = OutputProbability(hmm->mpState[state_idx-1], pObservation);
           
           outProb *= mOutpScale;
   
@@ -2366,83 +2486,83 @@ namespace STK
           }*/
   
           if (mCollectAlphaBeta && !InForwardPass())
-            WriteBeta(mTime, node, state_idx, &node->mpAnr->mpTokens[j]);
+            WriteBeta(mTime, p_node, state_idx, &p_node->mpAnr->mpTokens[j]);
           
-          if (mAccumType == AT_MFE && node->mType & NT_TRUE) 
+          if (mAccumType == AT_MFE && p_node->mType & NT_TRUE) 
           {
-            FloatInLog fil_like = {node->mpAnr->mpTokens[j].mLike, 0};
-            node->mpAnr->mpTokens[j].mAccuracy = FIL_Add(node->mpAnr->mpTokens[j].mAccuracy, fil_like);
+            FloatInLog fil_like = {p_node->mpAnr->mpTokens[j].mLike, 0};
+            p_node->mpAnr->mpTokens[j].mAccuracy = FIL_Add(p_node->mpAnr->mpTokens[j].mAccuracy, fil_like);
           }
   
-          node->mpAnr->mpTokens[j].mAccuracy.logvalue += outProb;
-          node->mpAnr->mpTokens[j].mLike              += outProb;
-          node->mpAnr->mpTokens[j].mAcousticLike      += outProb;
+          p_node->mpAnr->mpTokens[j].mAccuracy.logvalue += outProb;
+          p_node->mpAnr->mpTokens[j].mLike              += outProb;
+          p_node->mpAnr->mpTokens[j].mAcousticLike      += outProb;
   
           if (mCollectAlphaBeta && InForwardPass()) 
-            WriteAlpha(mTime, node, state_idx, &node->mpAnr->mpTokens[j]);
+            WriteAlpha(mTime, p_node, state_idx, &p_node->mpAnr->mpTokens[j]);
   
           if (mAlignment & STATE_ALIGNMENT && winingToken > 0 &&
             (winingToken != j || mAlignment & FRAME_ALIGNMENT)) 
           {
-            node->mpAnr->mpTokens[j].AddWordLinkRecord(
-                node,
-                (InForwardPass() ? winingToken : hmm->mNStates-1 - winingToken)-1,
+            p_node->mpAnr->mpTokens[j].AddWordLinkRecord(
+                p_node,
+                (InForwardPass() ? winingToken : p_hmm->mNStates-1 - winingToken)-1,
                 mTime-1);            
           }
   
           mActiveTokens++;
-          keepModelActive = true;
-          assert(node->mpAnr->mIsActiveModel);
+          keep_model_active = true;
+          assert(p_node->mpAnr->mIsActiveModel);
         } 
         else 
         {
-          assert(node->mpAnr->mIsActiveModel || !node->mpAnr->mpTokens[j].IsActive());
-          KillToken(&node->mpAnr->mpTokens[j]);
+          assert(p_node->mpAnr->mIsActiveModel || !p_node->mpAnr->mpTokens[j].IsActive());
+          KillToken(&p_node->mpAnr->mpTokens[j]);
         }
       }
   
-      for (i = 0; i < hmm->mNStates-1; i++) 
+      for (i = 0; i < p_hmm->mNStates-1; i++) 
       {
         KillToken(&mpAuxTokens[i]);
       }
   
-      if (!keepModelActive) 
-        DeactivateModel(node);
+      if (!keep_model_active) 
+        DeactivateModel(p_node);
   
-      state_idx = (InForwardPass() ? hmm->mNStates - 1 : 0);
-//      assert(!node->mpAnr->mpTokens[hmm->mNStates - 1].IsActive());
+      state_idx = (InForwardPass() ? p_hmm->mNStates - 1 : 0);
+//      assert(!p_node->mpAnr->mpTokens[p_hmm->mNStates - 1].IsActive());
   
-      if (!keepModelActive ||
+      if (!keep_model_active ||
         (mCollectAlphaBeta && !InForwardPass() &&
-          BackwardPruning(mTime-1, node, state_idx))) 
+          BackwardPruning(mTime-1, p_node, state_idx))) 
       {
         // backward pruning after forward pass
         continue;
-        //KillToken(&node->mpTokens[hmm->mNStates - 1]);
+        //KillToken(&p_node->mpTokens[p_hmm->mNStates - 1]);
       }
   
-      for (i = 1; i < hmm->mNStates-1; i++) 
+      for (i = 1; i < p_hmm->mNStates-1; i++) 
       {
         from = InForwardPass() ? i : 0;
-        to   = InForwardPass() ? hmm->mNStates-1 : hmm->mNStates-1 - i;
+        to   = InForwardPass() ? p_hmm->mNStates-1 : p_hmm->mNStates-1 - i;
   
-        if (node->mpAnr->mpTokens[i].IsActive()) 
+        if (p_node->mpAnr->mpTokens[i].IsActive()) 
         {
-          if (!mpBestToken || mpBestToken->mLike < node->mpAnr->mpTokens[i].mLike) 
+          if (!mpBestToken || mpBestToken->mLike < p_node->mpAnr->mpTokens[i].mLike) 
           {
-            mpBestToken = &node->mpAnr->mpTokens[i];
-            mpBestNode  = node;
+            mpBestToken = &p_node->mpAnr->mpTokens[i];
+            mpBestNode  = p_node;
           }
   
-          if (hmm->mpTransition->mpMatrixO[from * hmm->mNStates + to] > LOG_MIN) 
+          if (p_hmm->mpTransition->mpMatrixO[from * p_hmm->mNStates + to] > LOG_MIN) 
           {
-            FLOAT trans_prob = hmm->mpTransition->mpMatrixO[from * hmm->mNStates + to] *
+            FLOAT trans_prob = p_hmm->mpTransition->mpMatrixO[from * p_hmm->mNStates + to] *
               mTranScale;
 #ifdef TRACE_TOKENS
-            printf("Model %d State %d -> Exit State ",  node->mAux, (int) i);
+            printf("Model %d State %d -> Exit State ",  p_node->mAux, (int) i);
 #endif
-            if (PassTokenInModel(&node->mpAnr->mpTokens[i],
-                                 &node->mpAnr->mpTokens[hmm->mNStates - 1],
+            if (PassTokenInModel(&p_node->mpAnr->mpTokens[i],
+                                 &p_node->mpAnr->mpTokens[p_hmm->mNStates - 1],
                                  trans_prob, trans_prob)) 
             {
               winingToken = i;
@@ -2451,32 +2571,35 @@ namespace STK
         }
       }
   
-      if (node->mpAnr->mpTokens[hmm->mNStates - 1].IsActive()) 
+      if (p_node->mpAnr->mpTokens[p_hmm->mNStates - 1].IsActive()) 
       {
         if (mAccumType == AT_MPE && !InForwardPass()) 
         {
           FloatInLog fil_lmpa =
-            {node->mpAnr->mpTokens[hmm->mNStates - 1].mLike + log(fabs(node->mPhoneAccuracy)),
-             node->mPhoneAccuracy < 0};
+            {p_node->mpAnr->mpTokens[p_hmm->mNStates - 1].mLike + log(fabs(p_node->mPhoneAccuracy)),
+             p_node->mPhoneAccuracy < 0};
   
-          node->mpAnr->mpTokens[hmm->mNStates - 1].mAccuracy =
-            FIL_Add(node->mpAnr->mpTokens[hmm->mNStates - 1].mAccuracy, fil_lmpa);
+          p_node->mpAnr->mpTokens[p_hmm->mNStates - 1].mAccuracy =
+            FIL_Add(p_node->mpAnr->mpTokens[p_hmm->mNStates - 1].mAccuracy, fil_lmpa);
         }
   
-    //    ActivateNode(net, node);
+    //    ActivateNode(net, p_node);
         if (mAlignment & STATE_ALIGNMENT) 
         {
-          node->mpAnr->mpTokens[hmm->mNStates - 1].AddWordLinkRecord(
-              node,
-              (InForwardPass() ? winingToken : hmm->mNStates-1 - winingToken-1)-1,
+          p_node->mpAnr->mpTokens[p_hmm->mNStates - 1].AddWordLinkRecord(
+              p_node,
+              (InForwardPass() ? winingToken : p_hmm->mNStates-1 - winingToken-1)-1,
               mTime);
         }
       }
     }
     assert(!HasCycle());
   }
+  // TokenPropagationInModels(FLOAT* pObservation)
+  //***************************************************************************
   
   
+
   //***************************************************************************
   //***************************************************************************
   void 
@@ -2485,7 +2608,7 @@ namespace STK
   // {{{
   {
     int     j;
-    Node *  node = InForwardPass() ? mpLast : mpFirst;
+    Node*   node = InForwardPass() ? mpLast : mpFirst;
   
     // Last node is not activated and deactivated in usual way; deallocate ActiveNodeRecord here
     assert(node->mpAnr != NULL);    
@@ -2499,6 +2622,7 @@ namespace STK
       {
         KillToken(&mpActiveModels->mpAnr->mpTokens[j]);
       }
+      
       DeactivateModel(mpActiveModels);
     }
     
@@ -2506,6 +2630,8 @@ namespace STK
 //      my_hdestroy_r(&mLatticeNodeHash, 1);
 //
   } // TokenPropagationDone() }}}                 
+  //***************************************************************************
+
     
 
   //***************************************************************************
@@ -2750,7 +2876,8 @@ namespace STK
   //***************************************************************************
   void
   Network:: 
-  Init(Node * pFirstNode, ModelSet * pHmms, ModelSet *pHmmsToUpdate, bool compactRepresentation) 
+  Init(Node* pFirstNode, ModelSet* pHmms, ModelSet* pHmmsToUpdate, 
+      bool compactRepresentation) 
   {
     int maxStatesInModel;
     
@@ -2760,8 +2887,8 @@ namespace STK
     PhoneNodesToModelNodes(pHmms, pHmmsToUpdate, maxStatesInModel);
   
     mpAuxTokens = new Token[maxStatesInModel-1];
-    mpOutPCache = (Cache*) malloc(pHmms->mNStates      * sizeof(Cache) * OUT_P_CACHES);
-    mpMixPCache = (Cache*) malloc(pHmms->mNMixtures    * sizeof(Cache) * MIX_P_CACHES);
+    mpOutPCache = (Cache*) malloc(pHmms->mNStates      * sizeof(Cache));
+    mpMixPCache = (Cache*) malloc(pHmms->mNMixtures    * sizeof(Cache));
     
     if (mpOutPCache == NULL || mpMixPCache == NULL) 
     {
@@ -2793,6 +2920,8 @@ namespace STK
     mCollectAlphaBeta   = 0;
     mAccumType          = AT_ML;            
     mSearchPaths        = SP_ALL;
+
+    mKeepExitToken      = false;
   }
   
   
@@ -2911,13 +3040,13 @@ namespace STK
     FWBWRet     ret;
     ModelSet*   hmms = mpModelSet;
   
-    p_out_p_cache = (Cache*) malloc(nFrames * hmms->mNStates * sizeof(Cache) * OUT_P_CACHES);
+    p_out_p_cache = (Cache*) malloc(nFrames * hmms->mNStates * sizeof(Cache));
   
     if (p_out_p_cache == NULL) {
       Error("Insufficient memory");
     }
   
-    for (i = 0; i < static_cast<int>(nFrames * hmms->mNStates * OUT_P_CACHES); i++) {
+    for (i = 0; i < static_cast<int>(nFrames * hmms->mNStates); i++) {
       p_out_p_cache[i].mTime  = UNDEF_TIME;
       p_out_p_cache[i].mValue = LOG_0;
     }
@@ -2989,7 +3118,7 @@ namespace STK
     TokenPropagationInit();
   
     for (i = nFrames-1; i >= 0; i--) {
-      mpOutPCache = p_out_p_cache + hmms->mNStates * (mTime-1) * OUT_P_CACHES;
+      mpOutPCache = p_out_p_cache + hmms->mNStates * (mTime-1);
   
 //  We do not need any features, in backward prop. All output probab. are cached.
 //  UpdateStacks(mpModelSet, obsMx + hmms->mInputVectorSize * i,     |
@@ -3048,7 +3177,7 @@ namespace STK
     FWBWRet     ret;
     ModelSet*   hmms = mpModelSet;
     
-    p_out_p_cache = (Cache*) malloc(nFrames * hmms->mNStates * sizeof(Cache) * OUT_P_CACHES);
+    p_out_p_cache = (Cache*) malloc(nFrames * hmms->mNStates * sizeof(Cache));
   
     if (p_out_p_cache == NULL) 
     {
@@ -3056,7 +3185,7 @@ namespace STK
     }
   
     // clear the cache
-    for (i = 0; i < static_cast<int>(nFrames * hmms->mNStates * OUT_P_CACHES); i++) 
+    for (i = 0; i < static_cast<int>(nFrames * hmms->mNStates); i++) 
     {
       p_out_p_cache[i].mTime  = UNDEF_TIME;
       p_out_p_cache[i].mValue = LOG_0;
@@ -3092,7 +3221,7 @@ namespace STK
          i++) 
     {
       mTime++;
-      mpOutPCache = p_out_p_cache + hmms->mNStates * (mTime-1) * OUT_P_CACHES;
+      mpOutPCache = p_out_p_cache + hmms->mNStates * (mTime-1);
   
       mpModelSet->UpdateStacks(rFeatureMatrix[i], mTime, mPropagDir);
   
@@ -3130,7 +3259,7 @@ namespace STK
   
     for (i = nFrames-1; i >= 0; i--) 
     {
-      mpOutPCache = p_out_p_cache + hmms->mNStates * (mTime-1) * OUT_P_CACHES;
+      mpOutPCache = p_out_p_cache + hmms->mNStates * (mTime-1);
   
       //  We do not need any features, in backward prop. All output probab. are 
       //  cached.
@@ -3285,10 +3414,10 @@ namespace STK
     // mpMixPCache might be used to cache likelihoods of mixtures of target
     // models. Reallocate the cache to fit mixtures of both models and reset it.
     k = HIGHER_OF(p_hmms_upd->mNMixtures, p_hmms_alig->mNMixtures);
-    mpMixPCache = (Cache*) realloc(mpMixPCache, k * sizeof(Cache) * MIX_P_CACHES);
+    mpMixPCache = (Cache*) realloc(mpMixPCache, k * sizeof(Cache));
     if (mpMixPCache == NULL) Error("Insufficient memory");
   
-    for (i = 0; i < k * MIX_P_CACHES; i++)
+    for (i = 0; i < k; i++)
     {
       mpMixPCache[i].mTime = UNDEF_TIME;
     }
@@ -3380,10 +3509,10 @@ namespace STK
     // mpMixPCache might be used to cache likelihoods of mixtures of target
     // models. Reallocate the cache to fit mixtures of both models and reset it.
     k = HIGHER_OF(p_hmms_upd->mNMixtures, p_hmms_alig->mNMixtures);
-    mpMixPCache = (Cache *) realloc(mpMixPCache, k * sizeof(Cache) * MIX_P_CACHES);
+    mpMixPCache = (Cache *) realloc(mpMixPCache, k * sizeof(Cache));
     if (mpMixPCache == NULL) Error("Insufficient memory");
   
-    for (i = 0; i < k * MIX_P_CACHES; i++) mpMixPCache[i].mTime = UNDEF_TIME;
+    for (i = 0; i < k; i++) mpMixPCache[i].mTime = UNDEF_TIME;
   
   // Update accumulators
     for (mTime = 0; mTime < nFrames; mTime++) {//for every frame
@@ -3588,10 +3717,10 @@ namespace STK
     // mpMixPCache might be used to cache likelihoods of mixtures of target
     // models. Reallocate the cache to fit mixtures of both models and reset it.
     k = HIGHER_OF(p_hmms_upd->mNMixtures, p_hmms_alig->mNMixtures);
-    mpMixPCache = (Cache*) realloc(mpMixPCache, k * sizeof(Cache) * MIX_P_CACHES);
+    mpMixPCache = (Cache*) realloc(mpMixPCache, k * sizeof(Cache));
     if (mpMixPCache == NULL) Error("Insufficient memory");
   
-    for (i = 0; i < k * MIX_P_CACHES; i++)
+    for (i = 0; i < k; i++)
     {
       mpMixPCache[i].mTime = UNDEF_TIME;
     }
@@ -3687,10 +3816,10 @@ namespace STK
     // mpMixPCache might be used to cache likelihoods of mixtures of target
     // models. Reallocate the cache to fit mixtures of both models and reset it.
     k = HIGHER_OF(p_hmms_upd->mNMixtures, p_hmms_alig->mNMixtures);
-    mpMixPCache = (Cache *) realloc(mpMixPCache, k * sizeof(Cache) * MIX_P_CACHES);
+    mpMixPCache = (Cache *) realloc(mpMixPCache, k * sizeof(Cache));
     if (mpMixPCache == NULL) Error("Insufficient memory");
   
-    for (i = 0; i < k * MIX_P_CACHES; i++) mpMixPCache[i].mTime = UNDEF_TIME;
+    for (i = 0; i < k; i++) mpMixPCache[i].mTime = UNDEF_TIME;
   
   // Update accumulators
     for (mTime = 0; mTime < nFrames; mTime++) 
@@ -3852,14 +3981,14 @@ namespace STK
     // mpMixPCache might be used to cache likelihoods of mixtures of target
     // models. Reallocate the cache to fit mixtures of both models and reset it.
     k = HIGHER_OF(p_hmms_upd->mNMixtures, p_hmms_alig->mNMixtures);
-    mpMixPCache = (Cache *) realloc(mpMixPCache, k * sizeof(Cache) * MIX_P_CACHES);
+    mpMixPCache = (Cache *) realloc(mpMixPCache, k * sizeof(Cache));
     
     if (mpMixPCache == NULL)
     { 
       Error("Insufficient memory");
     }
     
-    for (i = 0; i < k * MIX_P_CACHES; i++)
+    for (i = 0; i < k; i++)
     { 
       mpMixPCache[i].mTime = UNDEF_TIME;
     }
@@ -4059,14 +4188,14 @@ namespace STK
     // mpMixPCache might be used to cache likelihoods of mixtures of target
     // models. Reallocate the cache to fit mixtures of both models and reset it.
     k = HIGHER_OF(p_hmms_upd->mNMixtures, p_hmms_alig->mNMixtures);
-    mpMixPCache = (Cache *) realloc(mpMixPCache, k * sizeof(Cache) * MIX_P_CACHES);
+    mpMixPCache = (Cache *) realloc(mpMixPCache, k * sizeof(Cache));
     
     if (mpMixPCache == NULL)
     { 
       Error("Insufficient memory");
     }
     
-    for (i = 0; i < k * MIX_P_CACHES; i++)
+    for (i = 0; i < k; i++)
     { 
       mpMixPCache[i].mTime = UNDEF_TIME;
     }
@@ -4223,12 +4352,12 @@ namespace STK
     ModelSet *              p_hmms_upd =    mpModelSetToUpdate;
   
     p_out_p_cache = 
-      (Cache *) malloc(nFrames * p_hmms_alig->mNStates * sizeof(Cache) * OUT_P_CACHES);
+      (Cache *) malloc(nFrames * p_hmms_alig->mNStates * sizeof(Cache));
       
     if (p_out_p_cache == NULL) 
       Error("Insufficient memory");
   
-    for (t = 0; t < static_cast<int>(nFrames * p_hmms_alig->mNStates * OUT_P_CACHES); t++) 
+    for (t = 0; t < static_cast<int>(nFrames * p_hmms_alig->mNStates); t++) 
     {
       p_out_p_cache[t].mTime  = UNDEF_TIME;
       p_out_p_cache[t].mValue = LOG_0;
@@ -4246,7 +4375,7 @@ namespace STK
     for (t = 0; t < nFrames; t++) 
     {
       if (t >= p_hmms_alig->mTotalDelay)
-        mpOutPCache = p_out_p_cache + p_hmms_alig->mNStates*(t-p_hmms_alig->mTotalDelay) * OUT_P_CACHES;
+        mpOutPCache = p_out_p_cache + p_hmms_alig->mNStates*(t-p_hmms_alig->mTotalDelay);
       
       ViterbiStep(pObsMx + p_hmms_alig->mInputVectorSize * t);
     }
@@ -4355,12 +4484,12 @@ namespace STK
     ModelSet *              p_hmms_upd =    mpModelSetToUpdate;
   
     p_out_p_cache = 
-      (Cache *) malloc(nFrames * p_hmms_alig->mNStates * sizeof(Cache) * OUT_P_CACHES);
+      (Cache *) malloc(nFrames * p_hmms_alig->mNStates * sizeof(Cache));
       
     if (p_out_p_cache == NULL) 
       Error("Insufficient memory");
   
-    for (t = 0; t < static_cast<int>(nFrames * p_hmms_alig->mNStates * OUT_P_CACHES); t++) 
+    for (t = 0; t < static_cast<int>(nFrames * p_hmms_alig->mNStates); t++) 
     {
       p_out_p_cache[t].mTime  = UNDEF_TIME;
       p_out_p_cache[t].mValue = LOG_0;
@@ -4378,7 +4507,7 @@ namespace STK
     for (t = 0; t < nFrames; t++) 
     {
       if (t >= p_hmms_alig->mTotalDelay)
-        mpOutPCache = p_out_p_cache + p_hmms_alig->mNStates*(t-p_hmms_alig->mTotalDelay) * OUT_P_CACHES;
+        mpOutPCache = p_out_p_cache + p_hmms_alig->mNStates*(t-p_hmms_alig->mTotalDelay);
       
       ViterbiStep(rObsMx[t]);
     }
@@ -4515,6 +4644,7 @@ namespace STK
     wlr->mIsFreed = false;
 # endif
   }
+  //***************************************************************************
 
   
   //***************************************************************************
@@ -4584,8 +4714,11 @@ namespace STK
       }
     }
   }
+  // MakeLatticeNodesForWordLinkRecords(WordLinkRecord* pWlr, Node*& rpFirst)
+  //***************************************************************************
 
   
+
   //***************************************************************************
   //***************************************************************************
   static void 
@@ -4601,22 +4734,24 @@ namespace STK
     if(pWlr->mpNext != NULL)
     {
       int j = 0;
-      WordLinkRecord* p = pWlr->mpNext;
+      WordLinkRecord*           p                   = pWlr->mpNext;
+      WordLinkRecord::LikeType  aux_total_like      = pWlr->mLike - p->mLike;
+      WordLinkRecord::LikeType  aux_acoustic_like   = pWlr->mAcousticLike - p->mAcousticLike;
 
+      p->mpNode->mpLinks[p->mNReferences - p->mAux].mpNode          = pWlr->mpNode;
+      p->mpNode->mpLinks[p->mNReferences - p->mAux].mLmLike         = float_safe_substract(aux_total_like, aux_acoustic_like, 3);
+      p->mpNode->mpLinks[p->mNReferences - p->mAux].mAcousticLike   = aux_acoustic_like;
 
-      p->mpNode->mpLinks[p->mNReferences - p->mAux].mpNode = pWlr->mpNode;
-      p->mpNode->mpLinks[p->mNReferences - p->mAux].mLike  = pWlr->mLike - p->mLike;
-      p->mpNode->mpLinks[p->mNReferences - p->mAux].mAcousticLike  = pWlr->mAcousticLike - p->mAcousticLike;
-      pWlr->mpNode->mpBackLinks[j].mpNode = p->mpNode;
-      pWlr->mpNode->mpBackLinks[j].mLike  = pWlr->mLike - p->mLike;
-      pWlr->mpNode->mpBackLinks[j].mAcousticLike  = pWlr->mAcousticLike - p->mAcousticLike;
+      pWlr->mpNode->mpBackLinks[j].mpNode                           = p->mpNode;
+      pWlr->mpNode->mpBackLinks[j].mLmLike                          = float_safe_substract(aux_total_like, aux_acoustic_like, 3);
+      pWlr->mpNode->mpBackLinks[j].mAcousticLike                    = aux_acoustic_like;
 
-      printf("1 i->mLike         = %f   p->mLike         = %f   diff = %e\n",  pWlr->mLike, p->mLike, static_cast<float>(pWlr->mLike - p->mLike)); 
-      printf("1 i->mAcousticLike = %f   p->mAcousticLike = %f   diff = %e\n",  pWlr->mAcousticLike, p->mAcousticLike, static_cast<float>(pWlr->mAcousticLike - p->mAcousticLike)); 
-      printf("1 i->mLike - i->mAcousticLike = %e\n",  static_cast<float>(pWlr->mLike - pWlr->mAcousticLike)); 
-      printf("1 p->mLike - p->mAcousticLike = %e\n",  static_cast<float>(p->mLike - p->mAcousticLike)); 
-      
+      //printf("1 i->mLike         = %f   p->mLike         = %f   diff = %e\n",  pWlr->mLike, p->mLike, static_cast<float>(pWlr->mLike - p->mLike)); 
+      //printf("1 i->mAcousticLike = %f   p->mAcousticLike = %f   diff = %e\n",  pWlr->mAcousticLike, p->mAcousticLike, static_cast<float>(pWlr->mAcousticLike - p->mAcousticLike)); 
+      //printf("1 i->mLike - i->mAcousticLike = %e\n",  static_cast<float>(pWlr->mLike - pWlr->mAcousticLike)); 
+      //printf("1 p->mLike - p->mAcousticLike = %e\n",  static_cast<float>(p->mLike - p->mAcousticLike)); 
 
+      // recursively do the rest of the WLR's
       EstablishLinksBetweenLatticeNodes(pWlr->mpNext);
         
       if(pWlr->mpAltHyps != NULL)
@@ -4625,30 +4760,31 @@ namespace STK
         
         for(j = 1, i = pWlr->mpAltHyps->begin(); i != pWlr->mpAltHyps->end(); j++, i++)
         {
-          WordLinkRecord* p = i->mpWlr;
+          WordLinkRecord*           p                   = i->mpWlr;
+          WordLinkRecord::LikeType  aux_total_like      = i->mLike - p->mLike;
+          WordLinkRecord::LikeType  aux_acoustic_like   = i->mAcousticLike - p->mAcousticLike;
           
-          // OK, THE FOLLOWING IS NOT TRUE, BUT I DON't WANT TO TYPE IT AGAIN... :-)
-          // The following computations involve double to float conversion (unless 
-          // DOUBLEPRECISION is defined to 1 or --enable-double-precision parameter
-          // is given to configure)
+          p->mpNode->mpLinks[p->mNReferences - p->mAux].mpNode          = pWlr->mpNode;
+          p->mpNode->mpLinks[p->mNReferences - p->mAux].mLmLike         = float_safe_substract(aux_total_like, aux_acoustic_like, 3);
+          p->mpNode->mpLinks[p->mNReferences - p->mAux].mAcousticLike   = aux_acoustic_like;
 
-          p->mpNode->mpLinks[p->mNReferences - p->mAux].mpNode = pWlr->mpNode;
-          p->mpNode->mpLinks[p->mNReferences - p->mAux].mLike  =  i->mLike - p->mLike;
-          p->mpNode->mpLinks[p->mNReferences - p->mAux].mAcousticLike  =  i->mAcousticLike - p->mAcousticLike;
-          pWlr->mpNode->mpBackLinks[j].mpNode = p->mpNode;
-          pWlr->mpNode->mpBackLinks[j].mLike  = i->mLike - p->mLike;
-          pWlr->mpNode->mpBackLinks[j].mAcousticLike  =  i->mAcousticLike - p->mAcousticLike;
+          pWlr->mpNode->mpBackLinks[j].mpNode                           = p->mpNode;
+          pWlr->mpNode->mpBackLinks[j].mLmLike                          = float_safe_substract(aux_total_like, aux_acoustic_like, 3);
+          pWlr->mpNode->mpBackLinks[j].mAcousticLike                    = aux_acoustic_like;
 
-          printf("n i->mLike         = %f   p->mLike         = %f   diff = %e\n",  i->mLike, p->mLike, static_cast<float>(i->mLike - p->mLike)); 
-          printf("n i->mAcousticLike = %f   p->mAcousticLike = %f   diff = %e\n",  i->mAcousticLike, p->mAcousticLike, static_cast<float>(i->mAcousticLike - p->mAcousticLike)); 
-          printf("n i->mLike - i->mAcousticLike = %e\n",  static_cast<float>(i->mLike - i->mAcousticLike)); 
-          printf("n p->mLike - p->mAcousticLike = %e\n",  static_cast<float>(p->mLike - p->mAcousticLike)); 
+          //printf("n i->mLike         = %f   p->mLike         = %f   diff = %e\n",  i->mLike, p->mLike, static_cast<float>(i->mLike - p->mLike)); 
+          //printf("n i->mAcousticLike = %f   p->mAcousticLike = %f   diff = %e\n",  i->mAcousticLike, p->mAcousticLike, static_cast<float>(i->mAcousticLike - p->mAcousticLike)); 
+          //printf("n i->mLike - i->mAcousticLike = %e\n",  static_cast<float>(i->mLike - i->mAcousticLike)); 
+          //printf("n p->mLike - p->mAcousticLike = %e\n",  static_cast<float>(p->mLike - p->mAcousticLike)); 
         
+          // recursively do the rest of the WLR's
           EstablishLinksBetweenLatticeNodes(i->mpWlr);
         }
       }
     }
   }
+  // EstablishLinksBetweenLatticeNodes(WordLinkRecord* pWlr)
+  //***************************************************************************
   
 
   //***************************************************************************
