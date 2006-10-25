@@ -45,7 +45,8 @@ struct _LRTrace {
   long long candidateEndTime;
 };
 
-LRTrace *MakeLRTraceTable(Network *net, int *nWords, Node*& filler_end)
+LRTrace*
+MakeLRTraceTable(Decoder* pDecoder, int* nWords, Node*& filler_end)
 {
   LRTrace *lrt;
   Node *node;
@@ -53,29 +54,34 @@ LRTrace *MakeLRTraceTable(Network *net, int *nWords, Node*& filler_end)
 
   *nWords = 0;
 
-  for (node=net->mpFirst; node != NULL; node = node->mpNext) {
+  for (node=pDecoder->rNetwork().pFirst(); node != NULL; node = node->mpNext) {
     if (node->mType == (NT_WORD | NT_STICKY) && node->mpPronun == NULL) break;
   }
+
   if (node == NULL) {
     Error("Network contains no null node with flag=F (reference model end)");
   }
   filler_end = node;
 
-  for (node=net->mpFirst; node != NULL; node = node->mpNext) {
+  for (node=pDecoder->rNetwork().pFirst(); node != NULL; node = node->mpNext) {
     if (node->mType == (NT_WORD | NT_STICKY) && node->mpPronun != NULL) ++*nWords;
   }
+
   if (*nWords == 0) {
     Error("Network contains no word nodes with flag=K, (keyword model end)");
   }
+
   if ((lrt = (LRTrace *) malloc(*nWords * sizeof(LRTrace))) == NULL) {
     Error("Insufficient memory");
   }
-  for (i = 0, node=net->mpFirst; node != NULL; node = node->mpNext) {
+
+  for (i = 0, node=pDecoder->rNetwork().pFirst(); node != NULL; node = node->mpNext) {
     if (node->mType == (NT_WORD | NT_STICKY) && node->mpPronun != NULL) {
       lrt[i].mpWordEnd = node;
       i++;
     }
   }
+
   return lrt;
 }
 
@@ -213,7 +219,7 @@ char *optionStr =
 int main(int argc, char *argv[]) {
   HtkHeader header;
   ModelSet hset;
-  Network net;
+  Decoder net;
   FILE*           sfp;
   FILE*           lfp = NULL;
   FILE*           ilfp = NULL;

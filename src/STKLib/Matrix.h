@@ -297,7 +297,6 @@ namespace STK
     
     protected:
       
-      //@{
       /// these atributes store the real matrix size as it is stored in memory
       /// including memalignment
       size_t    mMRows;       ///< Number of rows

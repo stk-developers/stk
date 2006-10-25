@@ -64,7 +64,10 @@ namespace STK
       free(pNode);
     }
   }
-  
+
+
+
+
   //***************************************************************************
   //***************************************************************************
   Node *
@@ -77,8 +80,8 @@ namespace STK
   
     if ((first             = (Node *) calloc(1, sizeof(Node))) == NULL ||
         (last              = (Node *) calloc(1, sizeof(Node))) == NULL ||
-        (first->mpLinks    = (Link *) malloc(sizeof(Link))) == NULL    ||
-        (last->mpBackLinks = (Link *) malloc(sizeof(Link))) == NULL) 
+        (first->mpLinks    = (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>))) == NULL    ||
+        (last->mpBackLinks = (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>))) == NULL) 
     {
       Error("Insufficient memory");
     }
@@ -101,8 +104,8 @@ namespace STK
       Node *  tnode;
   
       if ((tnode              = (Node *) calloc(1, sizeof(Node))) == NULL ||
-          (tnode->mpLinks     = (Link *) malloc(sizeof(Link))) == NULL    ||
-          (tnode->mpBackLinks = (Link *) malloc(sizeof(Link))) == NULL) 
+          (tnode->mpLinks     = (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>))) == NULL    ||
+          (tnode->mpBackLinks = (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>))) == NULL) 
       {
         Error("Insufficient memory");
       }
@@ -196,9 +199,9 @@ namespace STK
                                       // from which backlink exists
         bakcnode->mpLinks[j] = bakcnode->mpLinks[bakcnode->mNLinks-1];
   
-        bakcnode->mpLinks = (Link *)
+        bakcnode->mpLinks = (Link<LINK_BASIC> *)
           realloc(bakcnode->mpLinks,
-                (bakcnode->mNLinks - 1 + word->npronuns) * sizeof(Link));
+                (bakcnode->mNLinks - 1 + word->npronuns) * sizeof(Link<LINK_BASIC>));
         if (bakcnode->mpLinks == NULL) Error("Insufficient memory");
         bakcnode->mNLinks--;// += word->npronuns-1;
       }
@@ -213,9 +216,9 @@ namespace STK
         // Otherwise link to 'node' is missing from which backlink exists
         forwnode->mpBackLinks[j] = forwnode->mpBackLinks[forwnode->mNBackLinks-1];
   
-        forwnode->mpBackLinks = (Link *)
+        forwnode->mpBackLinks = (Link<LINK_BASIC> *)
           realloc(forwnode->mpBackLinks,
-                (forwnode->mNBackLinks - 1 + word->npronuns) * sizeof(Link));
+                (forwnode->mNBackLinks - 1 + word->npronuns) * sizeof(Link<LINK_BASIC>));
         if (forwnode->mpBackLinks == NULL) Error("Insufficient memory");
         forwnode->mNBackLinks--;
       }
@@ -244,8 +247,8 @@ namespace STK
           } 
           else 
           {
-            if ((pronun_prev->mpLinks = (Link *) malloc(sizeof(Link))) == NULL ||
-                (tnode->mpBackLinks   = (Link *) malloc(sizeof(Link))) == NULL) 
+            if ((pronun_prev->mpLinks = (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>))) == NULL ||
+                (tnode->mpBackLinks   = (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>))) == NULL) 
             {
               Error("Insufficient memory");
             }
@@ -278,8 +281,8 @@ namespace STK
           if (j == 0) {
             pronun_first = tnode;
           } else {
-            if ((pronun_prev->mpLinks = (Link *) malloc(sizeof(Link))) == NULL ||
-              (tnode->mpBackLinks   = (Link *) malloc(sizeof(Link))) == NULL) {
+            if ((pronun_prev->mpLinks = (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>))) == NULL ||
+              (tnode->mpBackLinks   = (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>))) == NULL) {
               Error("Insufficient memory");
             }
             tnode->mNBackLinks          = 1;
@@ -295,26 +298,31 @@ namespace STK
           pronun_prev = tnode;
         }
         if ((pronun_prev->mpLinks =
-              (Link *) malloc(sizeof(Link) * node->mNLinks))==NULL ||
+              (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>) * node->mNLinks))==NULL ||
           (pronun_first->mpBackLinks =
-              (Link *) malloc(sizeof(Link) * node->mNBackLinks)) == NULL) {
+              (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>) * node->mNBackLinks)) == NULL) {
           Error("Insufficient memory");
         }
         pronun_prev->mNLinks      = node->mNLinks;
         pronun_first->mNBackLinks = node->mNBackLinks;
   
-        for (j = 0; j < node->mNBackLinks; j++) {
+        for (j = 0; j < node->mNBackLinks; j++) 
+        {
           Node *backnode = node->mpBackLinks[j].mpNode;
-          backnode->mpLinks[backnode->mNLinks  ].mpNode = pronun_first;
-          backnode->mpLinks[backnode->mNLinks++].mLmLike = node->mpBackLinks[j].mLmLike;
-          backnode->mpLinks[backnode->mNLinks++].mAcousticLike = node->mpBackLinks[j].mAcousticLike;
+          backnode->mpLinks[backnode->mNLinks].mpNode = pronun_first;
+          backnode->mpLinks[backnode->mNLinks].mLmLike = node->mpBackLinks[j].mLmLike;
+          backnode->mpLinks[backnode->mNLinks].mAcousticLike = node->mpBackLinks[j].mAcousticLike;
+          backnode->mNLinks++;
           pronun_first->mpBackLinks[j] = node->mpBackLinks[j];
         }
-        for (j=0; j < node->mNLinks; j++) {
+
+        for (j=0; j < node->mNLinks; j++) 
+        {
           Node *forwnode = node->mpLinks[j].mpNode;
-          forwnode->mpBackLinks[forwnode->mNBackLinks  ].mpNode = pronun_prev;
-          forwnode->mpBackLinks[forwnode->mNBackLinks++].mLmLike = node->mpLinks[j].mLmLike;
-          forwnode->mpBackLinks[forwnode->mNBackLinks++].mAcousticLike = node->mpLinks[j].mAcousticLike;
+          forwnode->mpBackLinks[forwnode->mNBackLinks].mpNode = pronun_prev;
+          forwnode->mpBackLinks[forwnode->mNBackLinks].mLmLike = node->mpLinks[j].mLmLike;
+          forwnode->mpBackLinks[forwnode->mNBackLinks].mAcousticLike = node->mpLinks[j].mAcousticLike;
+          forwnode->mNBackLinks++;
           pronun_prev->mpLinks[j] = node->mpLinks[j];
         }
         if (prev != NULL) prev->mpNext = pronun_first;
@@ -327,6 +335,7 @@ namespace STK
       node = prev;
     }
   }
+
   
   //****************************************************************************
   //****************************************************************************
@@ -345,20 +354,19 @@ namespace STK
       if (format.mNoLMLikes) 
       {
         for (i=0; i < node->mNLinks;     i++) 
-        { 
           node->mpLinks    [i].mLmLike = 0.0;
+        
+        for (i=0; i < node->mNBackLinks; i++) 
           node->mpBackLinks[i].mLmLike = 0.0;
-        }
-
       }
 
       if (format.mNoAcousticLikes) 
       {
-        for (i=0; i < node->mNBackLinks; i++) 
-        {
-          node->mpBackLinks[i].mAcousticLike = 0.0;
+        for (i=0; i < node->mNLinks;     i++) 
           node->mpLinks    [i].mAcousticLike = 0.0;
-        }
+
+        for (i=0; i < node->mNBackLinks; i++) 
+          node->mpBackLinks[i].mAcousticLike = 0.0;
       }
 
       if (format.mNoTimes) {
@@ -379,20 +387,11 @@ namespace STK
   }
 
   
-  //***************************************************************************
-  //***************************************************************************
-  static int lnkcmp(const void *a, const void *b)
-  {
-  //  return ((Link *) a)->mpNode - ((Link *) b)->mpNode;
-  //  Did not work with gcc, probably bug in gcc pointer arithmetic
-    return (char *)((Link *) a)->mpNode - (char *)((Link *) b)->mpNode;
-  }
-  
 
   //***************************************************************************
   //***************************************************************************
   static int 
-  LatticeLocalOptimization_ForwardPass(Node *pFirstNode, int strictTiming)
+  LatticeLocalOptimization_ForwardPass(Node* pFirstNode, int strictTiming)
   {
     int i, j, k, l, m, rep;
     Node *node, *tnode;
@@ -508,7 +507,7 @@ namespace STK
             continue;
   
   /*        if (memcmp(inode->mpBackLinks, jnode->mpBackLinks,
-                    inode->mNBackLinks * sizeof(Link))) {
+                    inode->mNBackLinks * sizeof(Link<LINK_BASIC>))) {
             continue;
           }*/
             // inode and jnode are the same nodes with the same predeccessors
@@ -528,7 +527,7 @@ namespace STK
             assert(k < backnode->mNLinks);
             // Otherwise link to 'node' is missing from which backlink exists
             memmove(backnode->mpLinks+k, backnode->mpLinks+k+1,
-                    (backnode->mNLinks-k-1) * sizeof(Link));
+                    (backnode->mNLinks-k-1) * sizeof(Link<LINK_BASIC>));
             backnode->mNLinks--;
           }
   
@@ -538,8 +537,8 @@ namespace STK
           rep = l = k = 0;
           while (k < jnode->mNLinks) 
           {
-            Link *ill = inode->mpLinks+l;
-            Link *jlk = jnode->mpLinks+k;
+            Link<LINK_BASIC> *ill = inode->mpLinks+l;
+            Link<LINK_BASIC> *jlk = jnode->mpLinks+k;
             if (l == inode->mNLinks || ill->mpNode > jlk->mpNode)
             {
               // k-th link of jnode will be included among inode's links.
@@ -551,13 +550,13 @@ namespace STK
               assert(m < jlk->mpNode->mNBackLinks);
               jlk->mpNode->mpBackLinks[m].mpNode = inode;
               qsort(jlk->mpNode->mpBackLinks, jlk->mpNode->mNBackLinks,
-                    sizeof(Link), lnkcmp);
+                    sizeof(Link<LINK_BASIC>), lnkcmp);
               k++;
             } 
             else  if (ill->mpNode == jlk->mpNode) 
             {
               // l-th link of inode and k-th link of jnode points to
-              // the same node. Link from jnode is redundant.
+              // the same node. Link<LINK_BASIC> from jnode is redundant.
               // Remove backlinks to jnode form jnode's succesors
               for (m = 0; m < jlk->mpNode->mNBackLinks
                         && jlk->mpNode->mpBackLinks[m].mpNode != jnode; m++);
@@ -565,7 +564,7 @@ namespace STK
               
               assert(m < jlk->mpNode->mNBackLinks);
               memmove(jlk->mpNode->mpBackLinks+m, jlk->mpNode->mpBackLinks+m+1,
-                      (jlk->mpNode->mNBackLinks-m-1) * sizeof(Link));
+                      (jlk->mpNode->mNBackLinks-m-1) * sizeof(Link<LINK_BASIC>));
               jlk->mpNode->mNBackLinks--;
   
               ill->mLmLike = HIGHER_OF(ill->mLmLike, jlk->mLmLike);
@@ -580,8 +579,8 @@ namespace STK
           
           l = inode->mNLinks;
           inode->mNLinks += jnode->mNLinks-rep;
-          inode->mpLinks = (Link *) realloc(inode->mpLinks,
-                                          inode->mNLinks * sizeof(Link));
+          inode->mpLinks = (Link<LINK_BASIC> *) realloc(inode->mpLinks,
+                                          inode->mNLinks * sizeof(Link<LINK_BASIC>));
           
           if (inode->mpLinks == NULL) 
             Error("Insufficient memory");
@@ -592,7 +591,7 @@ namespace STK
               inode->mpLinks[l++] = jnode->mpLinks[k];
           }
           
-          qsort(inode->mpLinks, inode->mNLinks, sizeof(Link), lnkcmp);
+          qsort(inode->mpLinks, inode->mNLinks, sizeof(Link<LINK_BASIC>), lnkcmp);
   
           inode->mStart = inode->mStart == UNDEF_TIME || jnode->mStart == UNDEF_TIME
                         ? UNDEF_TIME : LOWER_OF(inode->mStart, jnode->mStart);
@@ -643,7 +642,7 @@ namespace STK
     
     for (node = pFirstNode; node != NULL; node = node->mpBackNext) 
     {
-      Link *  links       = node->mpLinks;
+      Link<LINK_BASIC> *  links       = node->mpLinks;
       int     nlinks      = node->mNLinks;
       node->mpLinks       = node->mpBackLinks;
       node->mNLinks       = node->mNBackLinks;
@@ -695,8 +694,8 @@ namespace STK
     {
       node->mAux = 0;
       node->mpBackNext = node->mpNext;
-      qsort(node->mpLinks, node->mNLinks, sizeof(Link), lnkcmp);
-      qsort(node->mpBackLinks, node->mNBackLinks, sizeof(Link), lnkcmp);
+      qsort(node->mpLinks, node->mNLinks, sizeof(Link<LINK_BASIC>), lnkcmp);
+      qsort(node->mpBackLinks, node->mNBackLinks, sizeof(Link<LINK_BASIC>), lnkcmp);
     }
   
   
@@ -877,8 +876,8 @@ namespace STK
           backnode->mpLinks[k] = backnode->mpLinks[backnode->mNLinks-1];
   
           backnode->mpLinks = 
-            (Link *) realloc((backnode->mpLinks), 
-                             (backnode->mNLinks-1+node->mNLinks)*sizeof(Link));
+            (Link<LINK_BASIC> *) realloc((backnode->mpLinks), 
+                             (backnode->mNLinks-1+node->mNLinks)*sizeof(Link<LINK_BASIC>));
           
           if (backnode->mpLinks == NULL) 
             Error("Insufficient memory");
@@ -900,8 +899,8 @@ namespace STK
           forwnode->mpBackLinks[k] = forwnode->mpBackLinks[forwnode->mNBackLinks-1];
   
           forwnode->mpBackLinks = 
-            (Link *) realloc((forwnode->mpBackLinks),
-                             (forwnode->mNBackLinks-1+node->mNBackLinks)*sizeof(Link));
+            (Link<LINK_BASIC> *) realloc((forwnode->mpBackLinks),
+                             (forwnode->mNBackLinks-1+node->mNBackLinks)*sizeof(Link<LINK_BASIC>));
                              
           if (forwnode->mpBackLinks == NULL) 
             Error("Insufficient memory");
@@ -916,8 +915,8 @@ namespace STK
           for (j=0; j < node->mNBackLinks; j++) 
           {
             Node *  tnode;
-            Link    forwlink = node->mpLinks[i];
-            Link    backlink = node->mpBackLinks[j];
+            Link<LINK_BASIC>    forwlink = node->mpLinks[i];
+            Link<LINK_BASIC>    backlink = node->mpBackLinks[j];
   
             if ((tnode = (Node *) calloc(1, sizeof(Node))) == NULL)
               Error("Insufficient memory");
@@ -925,8 +924,8 @@ namespace STK
             tnode->mpName = NULL;
             *tnode = *node;
   
-            if ((tnode->mpLinks     = (Link *) malloc(sizeof(Link))) == NULL ||
-              (tnode->mpBackLinks = (Link *) malloc(sizeof(Link))) == NULL) 
+            if ((tnode->mpLinks     = (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>))) == NULL ||
+              (tnode->mpBackLinks = (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>))) == NULL) 
             {
               Error("Insufficient memory");
             }
@@ -936,12 +935,15 @@ namespace STK
             tnode->mpLinks[0]     = forwlink;
             tnode->mpBackLinks[0] = backlink;
             
-            forwlink.mpNode->mpBackLinks[forwlink.mpNode->mNBackLinks  ].mpNode = tnode;
-            forwlink.mpNode->mpBackLinks[forwlink.mpNode->mNBackLinks++].mLmLike  = forwlink.mLmLike;
-            forwlink.mpNode->mpBackLinks[forwlink.mpNode->mNBackLinks++].mAcousticLike  = forwlink.mAcousticLike;
-            backlink.mpNode->mpLinks    [backlink.mpNode->mNLinks      ].mpNode = tnode;
-            backlink.mpNode->mpLinks    [backlink.mpNode->mNLinks++    ].mLmLike  = backlink.mLmLike;
-            backlink.mpNode->mpLinks    [backlink.mpNode->mNLinks++    ].mAcousticLike  = backlink.mAcousticLike;
+            forwlink.mpNode->mpBackLinks[forwlink.mpNode->mNBackLinks].mpNode = tnode;
+            forwlink.mpNode->mpBackLinks[forwlink.mpNode->mNBackLinks].mLmLike  = forwlink.mLmLike;
+            forwlink.mpNode->mpBackLinks[forwlink.mpNode->mNBackLinks].mAcousticLike  = forwlink.mAcousticLike;
+            forwlink.mpNode->mNBackLinks++;
+
+            backlink.mpNode->mpLinks    [backlink.mpNode->mNLinks    ].mpNode = tnode;
+            backlink.mpNode->mpLinks    [backlink.mpNode->mNLinks    ].mLmLike  = backlink.mLmLike;
+            backlink.mpNode->mpLinks    [backlink.mpNode->mNLinks    ].mAcousticLike  = backlink.mAcousticLike;
+            backlink.mpNode->mNLinks++;
             
             prev->mpNext = tnode;
             prev = tnode;
@@ -1016,11 +1018,11 @@ namespace STK
         assert(k < backnode->mNLinks);
         // Otherwise link to 'node' is missing from which backlink exists
         memmove(backnode->mpLinks+k, backnode->mpLinks+k+1,
-                (backnode->mNLinks-k-1) * sizeof(Link));
+                (backnode->mNLinks-k-1) * sizeof(Link<LINK_BASIC>));
   
-        backnode->mpLinks = (Link *)
+        backnode->mpLinks = (Link<LINK_BASIC> *)
           realloc(backnode->mpLinks,
-                (backnode->mNLinks-1+nforwmononodes)*sizeof(Link));
+                (backnode->mNLinks-1+nforwmononodes)*sizeof(Link<LINK_BASIC>));
         if (backnode->mpLinks == NULL) Error("Insufficient memory");
         backnode->mNLinks--;
       }
@@ -1034,11 +1036,11 @@ namespace STK
         assert(k < forwnode->mNBackLinks);
         // Otherwise link to 'node' is missing from which backlink exists
         memmove(forwnode->mpBackLinks+k, forwnode->mpBackLinks+k+1,
-                (forwnode->mNBackLinks-k-1) * sizeof(Link));
+                (forwnode->mNBackLinks-k-1) * sizeof(Link<LINK_BASIC>));
   
-        forwnode->mpBackLinks = (Link *)
+        forwnode->mpBackLinks = (Link<LINK_BASIC> *)
           realloc(forwnode->mpBackLinks,
-                (forwnode->mNBackLinks-1+nbackmononodes)*sizeof(Link));
+                (forwnode->mNBackLinks-1+nbackmononodes)*sizeof(Link<LINK_BASIC>));
         if (forwnode->mpBackLinks == NULL) Error("Insufficient memory");
         forwnode->mNBackLinks--;
       }
@@ -1048,7 +1050,7 @@ namespace STK
       // linked nodes belonging to one monophone group and vice versa each
       // linked node is conected through one new node with all backlinked nodes
       // belonging to one monophone group
-      Link *forwmono_start, *forwmono_end = node->mpLinks;
+      Link<LINK_BASIC> *forwmono_start, *forwmono_end = node->mpLinks;
       for (i=0; i < nforwmononodes; i++) 
       {
         for (forwmono_start = forwmono_end;
@@ -1060,7 +1062,7 @@ namespace STK
         assert((i <  nforwmononodes-1 && forwmono_end <  node->mpLinks+node->mNLinks) ||
               (i == nforwmononodes-1 && forwmono_end == node->mpLinks+node->mNLinks));
   
-        Link *tlink, *backmono_start, *backmono_end = node->mpBackLinks;
+        Link<LINK_BASIC> *tlink, *backmono_start, *backmono_end = node->mpBackLinks;
         
         for (j=0; j < nbackmononodes; j++) 
         {
@@ -1082,9 +1084,9 @@ namespace STK
           tnode->mNBackLinks   = backmono_end-backmono_start;
   
           if ((tnode->mpLinks =
-              (Link *) malloc(tnode->mNLinks * sizeof(Link))) == NULL ||
+              (Link<LINK_BASIC> *) malloc(tnode->mNLinks * sizeof(Link<LINK_BASIC>))) == NULL ||
             (tnode->mpBackLinks =
-              (Link *) malloc(tnode->mNBackLinks * sizeof(Link))) == NULL) 
+              (Link<LINK_BASIC> *) malloc(tnode->mNBackLinks * sizeof(Link<LINK_BASIC>))) == NULL) 
           {
             Error("Insufficient memory");
           }
@@ -1092,17 +1094,19 @@ namespace STK
           for (tlink = forwmono_start; tlink < forwmono_end; tlink++) 
           {
             tnode->mpLinks[tlink-forwmono_start] = *tlink;
-            tlink->mpNode->mpBackLinks[tlink->mpNode->mNBackLinks  ].mpNode = tnode;
-            tlink->mpNode->mpBackLinks[tlink->mpNode->mNBackLinks++].mLmLike = tlink->mLmLike;
-            tlink->mpNode->mpBackLinks[tlink->mpNode->mNBackLinks++].mAcousticLike = tlink->mAcousticLike;
+            tlink->mpNode->mpBackLinks[tlink->mpNode->mNBackLinks].mpNode = tnode;
+            tlink->mpNode->mpBackLinks[tlink->mpNode->mNBackLinks].mLmLike = tlink->mLmLike;
+            tlink->mpNode->mpBackLinks[tlink->mpNode->mNBackLinks].mAcousticLike = tlink->mAcousticLike;
+            tlink->mpNode->mNBackLinks++;
           }
           
           for (tlink = backmono_start; tlink < backmono_end; tlink++) 
           {
             tnode->mpBackLinks[tlink-backmono_start] = *tlink;
-            tlink->mpNode->mpLinks[tlink->mpNode->mNLinks  ].mpNode = tnode;
-            tlink->mpNode->mpLinks[tlink->mpNode->mNLinks++].mLmLike = tlink->mLmLike;
-            tlink->mpNode->mpLinks[tlink->mpNode->mNLinks++].mAcousticLike = tlink->mAcousticLike;
+            tlink->mpNode->mpLinks[tlink->mpNode->mNLinks].mpNode = tnode;
+            tlink->mpNode->mpLinks[tlink->mpNode->mNLinks].mLmLike = tlink->mLmLike;
+            tlink->mpNode->mpLinks[tlink->mpNode->mNLinks].mAcousticLike = tlink->mAcousticLike;
+            tlink->mpNode->mNLinks++;
           }
           
           prev->mpNext = tnode;
@@ -1255,8 +1259,8 @@ namespace STK
         if (node->mpLinks[i].mpNode == node) 
         {
           if ((tnode           = (Node *) calloc(1, sizeof(Node))) == NULL ||
-              (tnode->mpLinks     = (Link *) malloc(sizeof(Link))) == NULL ||
-              (tnode->mpBackLinks = (Link *) malloc(sizeof(Link))) == NULL) 
+              (tnode->mpLinks     = (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>))) == NULL ||
+              (tnode->mpBackLinks = (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>))) == NULL) 
           {
             Error("Insufficient memory");
           }
@@ -1293,6 +1297,7 @@ namespace STK
       }
     }
   }
+
   
   //***************************************************************************
   //***************************************************************************
@@ -1320,16 +1325,20 @@ namespace STK
   
       // Remove links to current node form backlinked nodes and realloc
       // link arrays of backlinked nodes to hold node->mNLinks more backlinks
-        for (i = 0; i < node->mNBackLinks; i++) {
+        for (i = 0; i < node->mNBackLinks; i++) 
+        {
           Node *bakcnode = node->mpBackLinks[i].mpNode;
-          for (j=0; j<bakcnode->mNLinks && bakcnode->mpLinks[j].mpNode!=node; j++);
+
+          for (j=0; j<bakcnode->mNLinks && bakcnode->mpLinks[j].mpNode!=node; j++)
+          {}
+
           assert(j < bakcnode->mNLinks); // Otherwise link to 'node' is missing
                                         // from which backlink exists
           bakcnode->mpLinks[j] = bakcnode->mpLinks[bakcnode->mNLinks-1];
   
-          bakcnode->mpLinks = (Link *)
+          bakcnode->mpLinks = (Link<LINK_BASIC> *)
             realloc(bakcnode->mpLinks,
-                  (bakcnode->mNLinks - 1 + node->mNLinks) * sizeof(Link));
+                  (bakcnode->mNLinks - 1 + node->mNLinks) * sizeof(Link<LINK_BASIC>));
           if (bakcnode->mpLinks == NULL) Error("Insufficient memory");
           bakcnode->mNLinks--;// += word->npronuns-1;
         }
@@ -1343,9 +1352,9 @@ namespace STK
           // Otherwise link to 'node' is missing from which backlink exists
           forwnode->mpBackLinks[j] = forwnode->mpBackLinks[forwnode->mNBackLinks-1];
   
-          forwnode->mpBackLinks = (Link *)
+          forwnode->mpBackLinks = (Link<LINK_BASIC> *)
             realloc(forwnode->mpBackLinks,
-                  (forwnode->mNBackLinks - 1 + node->mNBackLinks) * sizeof(Link));
+                  (forwnode->mNBackLinks - 1 + node->mNBackLinks) * sizeof(Link<LINK_BASIC>));
           if (forwnode->mpBackLinks == NULL) Error("Insufficient memory");
           forwnode->mNBackLinks--;
         }
@@ -1356,7 +1365,7 @@ namespace STK
           for (i=0; i < node->mNLinks; i++) {
             for(k = 0; k < orig_nlinks && backnode->mpLinks[k].mpNode != node->mpLinks[i].mpNode; k++);
             if(k < orig_nlinks) {
-              // Link which is to be created already exists. Its duplication must be avoided.
+              // Link<LINK_BASIC> which is to be created already exists. Its duplication must be avoided.
               backnode->mpLinks[k].mLmLike = HIGHER_OF(backnode->mpLinks[k].mLmLike, 
                                                   node->mpLinks[i].mLmLike + node->mpBackLinks[j].mLmLike);
             } else {
@@ -1373,7 +1382,7 @@ namespace STK
           for (i=0; i < node->mNBackLinks; i++) {
             for(k = 0; k < orig_nbacklinks && forwnode->mpBackLinks[k].mpNode != node->mpBackLinks[i].mpNode; k++);
             if (k < orig_nbacklinks) {
-              // Link which is to be created already exists. Its duplication must be avoided.
+              // Link<LINK_BASIC> which is to be created already exists. Its duplication must be avoided.
               forwnode->mpBackLinks[k].mLmLike = HIGHER_OF(forwnode->mpBackLinks[k].mLmLike, 
                                                       node->mpBackLinks[i].mLmLike + node->mpLinks[j].mLmLike);
             } else {

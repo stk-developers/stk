@@ -316,7 +316,7 @@ int main(int argc, char *argv[]) {
       assert(in_transc_fmt != TF_ERR);
     }
     for (;;) { //in cases of MLF or MNF, we must process all records
-      Node *node = NULL;
+      Node* p_node = NULL;
 
       if (in_transc_fmt == TF_MLF
       || in_transc_fmt == TF_MNF
@@ -331,34 +331,50 @@ int main(int argc, char *argv[]) {
         labels = ReadLabels(in_MLF_fp, dictionary ? &dictHash : &phoneHash,
                                        dictionary ? UL_ERROR : UL_INSERT, in_lbl_fmt,
                                        /*sampleRate*/ 1, label_file, in_MLF_fn, NULL);
-        node = MakeNetworkFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
+        p_node = MakeNetworkFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
         ReleaseLabels(labels);
       } else if (in_transc_fmt == TF_STK || in_transc_fmt == TF_MNF) {
-        node = ReadSTKNetwork(in_MLF_fp, &dictHash, &phoneHash, notInDictAction,
+        p_node = ReadSTKNetwork(in_MLF_fp, &dictHash, &phoneHash, notInDictAction,
                               in_lbl_fmt, /*sampleRate*/ 1, label_file, in_MLF_fn);
       } else if (in_transc_fmt == TF_NOF || in_transc_fmt == TF_MOF) {
-        node = ReadSTKNetworkInOldFormat(
+        p_node = ReadSTKNetworkInOldFormat(
                  in_MLF_fp, &dictHash, &phoneHash, in_lbl_fmt,
                  /*sampleRate*/ 1, label_file, in_MLF_fn);
       }
       CloseInputLabelFile(in_MLF_fp, in_MLF_fn);
-      NetworkExpansionsAndOptimizations(node, expOptions, out_net_fmt, &dictHash,
+
+      /*
+        FILE* tmp_fp = fopen("temp.net", "w");
+
+        RegularNetwork tmp_net;
+        tmp_net.SetFirst(p_node);
+        WriteSTKNetwork(tmp_fp, tmp_net, out_net_fmt, 1, label_file, out_MLF_fn);
+        fclose(tmp_fp);
+      */
+
+      NetworkExpansionsAndOptimizations(p_node, expOptions, out_net_fmt, &dictHash,
                                         &nonCDphHash, &triphHash);
 
       if (out_net_fmt.mAproxAccuracy)
-        ComputeAproximatePhoneAccuracy(node, 0);
+        ComputeAproximatePhoneAccuracy(p_node, 0);
 
       out_MLF_fp = OpenOutputLabelFile(label_file, out_lbl_dir, out_lbl_ext,
                                       out_MLF_fp, out_MLF_fn);
 
-      if (out_transc_fmt == TF_NOF) {
-        WriteSTKNetworkInOldFormat(out_MLF_fp, node, out_lbl_fmt, 1,
+      if (out_transc_fmt == TF_NOF) 
+      {
+        WriteSTKNetworkInOldFormat(out_MLF_fp, p_node, out_lbl_fmt, 1,
                                  label_file, out_MLF_fn);
-      } else {
-        WriteSTKNetwork(out_MLF_fp, node, out_net_fmt, 1, label_file, out_MLF_fn);
+      } 
+      else 
+      {
+        RegularNetwork tmp_net;
+        tmp_net.SetFirst(p_node);
+        WriteSTKNetwork(out_MLF_fp, tmp_net, out_net_fmt, 1, label_file, out_MLF_fn);
       }
+
       CloseOutputLabelFile(out_MLF_fp, out_MLF_fn);
-      FreeNetwork(node);
+      FreeNetwork(p_node);
 
       if (in_transc_fmt == TF_HTK
       || in_transc_fmt == TF_STK

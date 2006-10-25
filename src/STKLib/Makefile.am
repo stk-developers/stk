@@ -31,6 +31,7 @@ EXTRA_libSTKLib_a_SOURCES  = $(IMAGESC_SRC)
 libSTKLib_a_DEPENDENCIES = $(HSEARCH_R_OBJ)
 libSTKLib_a_SOURCES = BasicVector.cc BasicVector.h BasicVector.tcc Error.cc \
     Error.h Features.cc Features.h Matrix.cc Matrix.h Matrix.tcc Models.cc \
-    Models.h Models_IO.cc Net.cc Net.h Net_IO.cc Viterbi.cc Viterbi.h ZNorm.cc \
-    ZNorm.h common.C common.h dict.C dict.h fileio.h filmatch.C filmatch.h \
-    fileio.C getopt.C getopt.h labels.C labels.h stkstream.h stkstream.tcc
+    Models.h Models_IO.cc Net.h Net.cc Net.tcc Net_IO.cc Net_IO.tcc Viterbi.cc \
+		Viterbi.h ZNorm.cc ZNorm.h common.C common.h dict.C dict.h fileio.h \
+		filmatch.C filmatch.h fileio.C getopt.C getopt.h labels.C labels.h \
+		stkstream.h stkstream.tcc

@@ -118,7 +118,7 @@ int main(int argc, char* argv[])
   ModelSet            hset;
   ModelSet*           hset_alig  = NULL;
   ModelSet*           hset_prior = NULL;
-  Network             net;
+  Decoder             net;
   FILE*               sfp;
   FILE*               ilfp = NULL;
 #ifndef USE_NEW_MATRIX      
@@ -559,7 +559,7 @@ int main(int argc, char* argv[])
 
   if (network_file) 
   { // Unsupervised training
-    Node *node = NULL;
+    Node* p_node = NULL;
     IStkStream    input_stream;    
     
     input_stream.open(network_file, ios::in, transc_filter ? transc_filter : "");
@@ -574,25 +574,23 @@ int main(int argc, char* argv[])
     
     if (in_transc_fmt == TF_HTK) 
     {
-          labels = ReadLabels(
-              ilfp, 
-              dictionary ? &dictHash : &phoneHash,
-              dictionary ? UL_ERROR : UL_INSERT, 
-              in_lbl_fmt,
-              header.mSamplePeriod, 
-              network_file, 
-              NULL, 
-              NULL);
-              
-          node = MakeNetworkFromLabels(
-                   labels, 
-                   dictionary ? NT_WORD : NT_PHONE);
-              
-          ReleaseLabels(labels);
+      labels = ReadLabels(
+          ilfp, 
+          dictionary ? &dictHash : &phoneHash,
+          dictionary ? UL_ERROR : UL_INSERT, 
+          in_lbl_fmt,
+          header.mSamplePeriod, 
+          network_file, 
+          NULL, 
+          NULL);
+          
+      p_node = MakeNetworkFromLabels( labels, dictionary ? NT_WORD : NT_PHONE);
+          
+      ReleaseLabels(labels);
     }
     else if (in_transc_fmt == TF_STK) 
     {
-      node = ReadSTKNetwork(
+      p_node = ReadSTKNetwork(
          ilfp, 
          &dictHash,
          &phoneHash, 
@@ -608,7 +606,7 @@ int main(int argc, char* argv[])
     }
                                 
     NetworkExpansionsAndOptimizations(
-        node, 
+        p_node, 
         expOptions, 
         in_net_fmt, 
         &dictHash,
@@ -616,7 +614,7 @@ int main(int argc, char* argv[])
         &phoneHash);
                                       
     net.Init(
-        node, 
+        p_node, 
         hset_alig, 
         &hset);
     
@@ -886,7 +884,7 @@ int main(int argc, char* argv[])
       
       if (!network_file) 
       {
-        Node *node = NULL;
+        Node* p_node = NULL;
         strcpy(label_file, file_name->logical);
         
         ilfp = OpenInputLabelFile(
@@ -908,7 +906,7 @@ int main(int argc, char* argv[])
               src_mlf, 
               NULL);
               
-          node = MakeNetworkFromLabels(
+          p_node = MakeNetworkFromLabels(
               labels, 
               dictionary ? NT_WORD : NT_PHONE);
               
@@ -916,7 +914,7 @@ int main(int argc, char* argv[])
         } 
         else if (in_transc_fmt == TF_STK) 
         {
-          node = ReadSTKNetwork(
+          p_node = ReadSTKNetwork(
               ilfp, 
               &dictHash, 
               &phoneHash, 
@@ -931,9 +929,10 @@ int main(int argc, char* argv[])
           Error("Too bad. What did you do ?!?");
         }
 
-        NetworkExpansionsAndOptimizations(node, expOptions, in_net_fmt, &dictHash,
-                                          &nonCDphHash, &phoneHash);
-        net.Init(node, hset_alig, &hset);
+        NetworkExpansionsAndOptimizations(p_node, expOptions, in_net_fmt, 
+            &dictHash, &nonCDphHash, &phoneHash);
+
+        net.Init(p_node, hset_alig, &hset);
         CloseInputLabelFile(ilfp, src_mlf);
       }
       

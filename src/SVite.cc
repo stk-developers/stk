@@ -133,7 +133,7 @@ char *optionStr =
 int main(int argc, char *argv[]) 
 {
   ModelSet                      hset;
-  Network                       net;
+  Decoder                       decoder;
   FILE *                        lfp = NULL;
   FILE *                        ilfp = NULL;
   
@@ -145,6 +145,7 @@ int main(int argc, char *argv[])
   int                           fcnt = 0;
   Label *                       labels;
   Node *                        pLattice;
+  RegularNetwork                lattice;
   char                          line[1024];
   char                          label_file[1024];
   const char *                  cchrptr;
@@ -479,6 +480,8 @@ int main(int argc, char *argv[])
     out_lbl_fmt.WORDS_OFF = 1;
   }
   
+  Network<Node,Link<LINK_BASIC>,NETWORK_COMPACT> mynet;
+
   if (network_file) 
   { // Unsupervised training
     Node *node = NULL;
@@ -540,7 +543,7 @@ int main(int argc, char *argv[])
           &nonCDphHash, 
           &phoneHash);
                                       
-    net.Init(node, &hset, NULL, compactNetworkRepresentation);
+    decoder.Init(node, &hset, NULL, compactNetworkRepresentation);
   } 
   else 
   {
@@ -592,6 +595,7 @@ int main(int argc, char *argv[])
     if (!network_file) 
     {
       Node* node = NULL;
+      
 
       strcpy(label_file, feature_repo.CurrentLogical().c_str());
 
@@ -624,61 +628,61 @@ int main(int argc, char *argv[])
         NetworkExpansionsAndOptimizations(node, expOptions, in_net_fmt, &dictHash,
             &nonCDphHash, &phoneHash);
 
-      net.Init(node, &hset, NULL, false);
+      decoder.Init(node, &hset, NULL, false);
 
       CloseInputLabelFile(ilfp, in_MLF);
     }
 
-    net.mWPenalty     = word_penalty;
-    net.mMPenalty     = model_penalty;
-    net.mLmScale      = grammar_scale;
-    net.mPronScale    = pronun_scale;
-    net.mTranScale    = transp_scale;
-    net.mOutpScale    = outprb_scale;
-    net.mOcpScale     = occprb_scale;
-    net.mAlignment     = alignment;
-    net.mPruningThresh = state_pruning > 0.0 ? state_pruning : -LOG_0;
-    net.mLatticeGeneration = (lat_ext != NULL);
+    decoder.mWPenalty     = word_penalty;
+    decoder.mMPenalty     = model_penalty;
+    decoder.mLmScale      = grammar_scale;
+    decoder.mPronScale    = pronun_scale;
+    decoder.mTranScale    = transp_scale;
+    decoder.mOutpScale    = outprb_scale;
+    decoder.mOcpScale     = occprb_scale;
+    decoder.mAlignment     = alignment;
+    decoder.mPruningThresh = state_pruning > 0.0 ? state_pruning : -LOG_0;
+    decoder.mLatticeGeneration = (lat_ext != NULL);
 
-    if(net.mLatticeGeneration)
+    if(decoder.mLatticeGeneration)
     {
-      net.mAlignment = WORD_ALIGNMENT | MODEL_ALIGNMENT;
+      decoder.mAlignment = WORD_ALIGNMENT | MODEL_ALIGNMENT;
     }
     else
     {
-      if (alignment & STATE_ALIGNMENT && out_lbl_fmt.MODEL_OFF) net.mAlignment &= ~MODEL_ALIGNMENT;
-      if (alignment & MODEL_ALIGNMENT && out_lbl_fmt.WORDS_OFF) net.mAlignment &= ~WORD_ALIGNMENT;
-      if (alignment & STATE_ALIGNMENT && out_lbl_fmt.FRAME_SCR) net.mAlignment |=  FRAME_ALIGNMENT;
+      if (alignment & STATE_ALIGNMENT && out_lbl_fmt.MODEL_OFF) decoder.mAlignment &= ~MODEL_ALIGNMENT;
+      if (alignment & MODEL_ALIGNMENT && out_lbl_fmt.WORDS_OFF) decoder.mAlignment &= ~WORD_ALIGNMENT;
+      if (alignment & STATE_ALIGNMENT && out_lbl_fmt.FRAME_SCR) decoder.mAlignment |=  FRAME_ALIGNMENT;
     }
 
     for (;;) 
     {
-      net.ViterbiInit();
-      net.PassTokenInNetwork = net.mLatticeGeneration ? &PassTokenMaxForLattices :
+      decoder.ViterbiInit();
+      decoder.PassTokenInNetwork = decoder.mLatticeGeneration ? &PassTokenMaxForLattices :
                                baum_welch             ? &PassTokenSum : &PassTokenMax;
                                
-      net.PassTokenInModel   = baum_welch ? &PassTokenSum : &PassTokenMax;
+      decoder.PassTokenInModel   = baum_welch ? &PassTokenSum : &PassTokenMax;
 
       for (i = 0; i < feature_matrix.Rows(); i++) 
       {
-        net.ViterbiStep(feature_matrix[i]);
+        decoder.ViterbiStep(feature_matrix[i]);
       }
       
-      like = net.ViterbiDone(&labels, &pLattice);
+      like = decoder.ViterbiDone(&labels, &lattice);
 
       if (labels) 
         break;
 
-      if (net.mPruningThresh <= LOG_MIN 
+      if (decoder.mPruningThresh <= LOG_MIN 
       || (stprn_step <= 0.0) 
-      || ((net.mPruningThresh += stprn_step) > stprn_limit)) 
+      || ((decoder.mPruningThresh += stprn_step) > stprn_limit)) 
       {
         Warning("No tokens survived");
         break;
       }
 
       Warning("No tokens survived, trying pruning threshold: %.2f", 
-          net.mPruningThresh);
+          decoder.mPruningThresh);
     }
 
     if (trace_flag & 1 && labels) 
@@ -689,7 +693,7 @@ int main(int argc, char *argv[])
       for (label = labels; 
           label->mpNextLevel != NULL;
           label = label->mpNextLevel)
-      {}
+      { /* do nothing */ }
 
       for (; label != NULL; label = label->mpNext) 
       {
@@ -700,7 +704,7 @@ int main(int argc, char *argv[])
       TraceLog(" ==  [%d frames] %f", n_frames, like / n_frames);
     }
 
-    if (pLattice)
+    if (!lattice.IsEmpty())
     {
       //NetworkExpansionsAndOptimizations(pLattice, expOptions, out_net_fmt, 
       //    NULL, NULL, NULL);
@@ -709,12 +713,15 @@ int main(int argc, char *argv[])
     strcpy(label_file, feature_repo.CurrentLogical().c_str());
     lfp = OpenOutputLabelFile(label_file, out_lbl_dir, out_lbl_ext, lfp, out_MLF);
 
-    if (pLattice)
+    // write the output ........................................................
+    //
+    if (!lattice.IsEmpty())
     {
-      WriteSTKNetwork(lfp, pLattice, out_net_fmt, 
+      WriteSTKNetwork(lfp, lattice, out_net_fmt, 
           feature_repo.CurrentHeader().mSamplePeriod, label_file, out_MLF);
           
-      FreeNetwork(pLattice);
+      // we are not needing the lattice anymore, so free it from memory
+      lattice.Release();
     } 
     else if (out_transc_fmt == TF_HTK) 
     {
@@ -723,13 +730,11 @@ int main(int argc, char *argv[])
     } 
     else 
     {
-      Node* node = MakeNetworkFromLabels(labels, 
+      RegularNetwork tmp_net(labels, 
           alignment & (MODEL_ALIGNMENT|STATE_ALIGNMENT) ? NT_MODEL : NT_WORD);
       
-      WriteSTKNetwork(lfp, node, out_net_fmt, 
+      WriteSTKNetwork(lfp, tmp_net, out_net_fmt, 
           feature_repo.CurrentHeader().mSamplePeriod, label_file, out_MLF);
-
-      FreeNetwork(node);
     }
 
     CloseOutputLabelFile(lfp, out_MLF);
@@ -737,7 +742,7 @@ int main(int argc, char *argv[])
 
     if (!network_file) 
     {
-      net.Release();
+      decoder.Release();
     }
   } // while (!feature_repo.EndOfList())
 
@@ -745,7 +750,7 @@ int main(int argc, char *argv[])
   // clean up ..................................................................
   if (network_file) 
   {
-    net.Release();
+    decoder.Release();
   }
   
   hset.Release();

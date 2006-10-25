@@ -40,7 +40,7 @@ namespace STK
   //###########################################################################
   class Cache;
   class WordLinkRecord;
-  class Network;
+  class Decoder;
   class ActiveNodeRecord;
   class Token;
   
@@ -112,9 +112,9 @@ namespace STK
   
   /** *************************************************************************
    ** *************************************************************************
-   *  @brief Network representation
+   *  @brief Decoder representation
    */
-  class Network 
+  class Decoder 
   {
   private:
     /**
@@ -165,10 +165,10 @@ namespace STK
      * @return @c FWBWRet structure containing total likelihood and average
      *         accuracy
      */
-    Network::FWBWRet
+    Decoder::FWBWRet
     ForwardBackward(FLOAT* pObsMx, int nFrames);
     
-    Network::FWBWRet
+    Decoder::FWBWRet
     ForwardBackward(const Matrix<FLOAT>& rFeatureMatrix, size_t nFrames);
     
     
@@ -234,10 +234,103 @@ namespace STK
 
     
   public:
-    //Subnet part
-    Node*                   mpFirst;
-    Node*                   mpLast;
-  
+    typedef Network<STK::Node, STK::Link<LINK_BASIC>, NETWORK_REGULAR>  NetworkType;
+
+    // the constructor .........................................................
+    Decoder()
+    { mpNetwork = new NetworkType(); }
+
+    // the destructor ..........................................................
+    ~Decoder()
+    { delete mpNetwork; }
+
+    
+    // init and release operators ..............................................
+    /**
+     * @brief Initializes the network
+     * @param net 
+     * @param first 
+     * @param hmms 
+     * @param hmmsToUptade 
+     */
+    void 
+    Init(Node* pFirstNode, ModelSet* pHmms, ModelSet* pHmmsToUpdate, 
+        bool compactRepresentation = false);
+    
+    /**
+     * @brief Releases memory occupied by the network resources
+     */
+    void 
+    Release();
+
+
+    // accessors ...............................................................
+    NetworkType&
+    rNetwork()
+    { return *mpNetwork; }
+    
+
+    Node*
+    pFirst() 
+    { return mpNetwork->pFirst(); }
+
+    Node*
+    pLast()
+    { return mpNetwork->pLast(); }
+
+
+    
+    const NetworkType&
+    Net() const
+    { return *mpNetwork; }
+
+
+    FLOAT   
+    (*OutputProbability) (State *state, FLOAT *observation, Decoder *network);
+
+    int     
+    (*PassTokenInNetwork)(Token* pFrom, Token* pTo, FLOAT addLogLike, FLOAT acousticLike);
+
+    int     
+    (*PassTokenInModel)  (Token* pFrom, Token* pTo, FLOAT addLogLike, FLOAT acousticLike);
+    
+    // decoding functions ......................................................
+    void              
+    ViterbiInit();  
+    
+    void              
+    ViterbiStep(FLOAT* pObservation);
+    
+    FLOAT             
+    ViterbiDone(Label** pLabels, NetworkType* pNetwork = NULL);
+    
+    //FLOAT             
+    //ViterbiDone(Label** pLabels, Node ** pLattice = NULL);
+    
+    FLOAT 
+    MCEReest(FLOAT* pObsMx, FLOAT * pObsMx2, int nFrames, FLOAT weight, 
+        FLOAT sigSlope);
+    
+    FLOAT 
+    MCEReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, 
+        int nFrames, FLOAT weight, FLOAT sigSlope);
+            
+    FLOAT 
+    ViterbiReest(FLOAT* pObsMx, FLOAT* pObsMx2, int nFrames, FLOAT weight);
+    
+    FLOAT
+    ViterbiReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, int nFrames, FLOAT weight);
+    
+    FLOAT
+    BaumWelchReest(FLOAT* pObsMx, FLOAT* pObsMx2, int nFrames, FLOAT weight);
+
+    FLOAT
+    BaumWelchReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, int nFrames, FLOAT weight);
+
+
+    // public atributes ........................................................
+    NetworkType*            mpNetwork;
+     
     Node*                   mpActiveModels;
     Node*                   mpActiveNodes;
     int                     mActiveTokens;
@@ -271,90 +364,26 @@ namespace STK
 
     bool                    mContinuousTokenGeneration;
     bool                    mKeepExitToken;    
-//    MyHSearchData           mLatticeNodeHash;
-//    Node *                  mpLatticeLastNode;
+    //    MyHSearchData           mLatticeNodeHash;
+    //    Node *                  mpLatticeLastNode;
 
                               
-    FLOAT   (*OutputProbability) (State *state, FLOAT *observation, Network *network);
-    FLOAT   (*mpOutputProbability) (State *state, FLOAT *observation);
-    //FLOAT   (*OutputProbability) (State* pState, FLOAT* pObs);
-
-    int     (*PassTokenInNetwork)(Token* pFrom, Token* pTo, FLOAT addLogLike, FLOAT acousticLike);
-    int     (*PassTokenInModel)  (Token* pFrom, Token* pTo, FLOAT addLogLike, FLOAT acousticLike);
-    
     PropagDirectionType     mPropagDir;
     int                     mAlignment;
     int                     mCollectAlphaBeta;
     
-  //  int                     mmi_den_pass;
+    //  int                     mmi_den_pass;
     AccumType               mAccumType;
     ModelSet*               mpModelSet;
     ModelSet*               mpModelSetToUpdate;
     
 
 
-    
-    Node*
-    pFirst() const
-    { return mpFirst; }
-
-    Node*
-    pLast() const
-    { return mpLast; }
-
-
-    //*************************************************************************
-    void 
-    /**
-     * @brief Initializes the network
-     * @param net 
-     * @param first 
-     * @param hmms 
-     * @param hmmsToUptade 
-     */
-    Init(Node * pFirstNode, ModelSet * pHmms, ModelSet *pHmmsToUpdate, 
-        bool compactRepresentation = false);
-    
-    void
-    /**
-     * @brief Releases memory occupied by the network resources
-     */
-    Release();
-  
-    
-    void              
-    ViterbiInit();  
-    
-    void              
-    ViterbiStep(FLOAT* pObservation);
-    
-    FLOAT             
-    ViterbiDone(Label** pLabels, Node ** pLattice = NULL);
-    
-    FLOAT 
-    MCEReest(FLOAT* pObsMx, FLOAT * pObsMx2, int nFrames, FLOAT weight, 
-        FLOAT sigSlope);
-    
-    FLOAT 
-    MCEReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, 
-        int nFrames, FLOAT weight, FLOAT sigSlope);
-            
-    FLOAT 
-    ViterbiReest(FLOAT* pObsMx, FLOAT* pObsMx2, int nFrames, FLOAT weight);
-    
-    FLOAT
-    ViterbiReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, int nFrames, FLOAT weight);
-    
-    FLOAT
-    BaumWelchReest(FLOAT* pObsMx, FLOAT* pObsMx2, int nFrames, FLOAT weight);
-
-    FLOAT
-    BaumWelchReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, int nFrames, FLOAT weight);
   private:
     void
     PhoneNodesToModelNodes(ModelSet * pHmms, ModelSet *pHmmsToUpdate, int& maxStatesInModel);
  
-  }; // class Network
+  }; // class Decoder
   //***************************************************************************
   //***************************************************************************
   
@@ -550,13 +579,13 @@ namespace STK
       size_t nBest, int time);
 
   FLOAT             
-  DiagCGaussianDensity(const Mixture* mix, const FLOAT* pObs, Network* net);
+  DiagCGaussianDensity(const Mixture* mix, const FLOAT* pObs, Decoder* net);
 
   FLOAT             
-  DiagCGaussianMixtureDensity(State* state, FLOAT* obs, Network* network);
+  DiagCGaussianMixtureDensity(State* state, FLOAT* obs, Decoder* network);
 
   FLOAT             
-  FromObservationAtStateId(State* state, FLOAT* obs, Network* network);
+  FromObservationAtStateId(State* state, FLOAT* obs, Decoder* network);
 
 
 #ifdef USE_OLD_TOKEN_PASSING
@@ -581,19 +610,19 @@ namespace STK
 
 
   WordLinkRecord*  
-  TimePruning(Network* pNetwork, int frameDelay);
+  TimePruning(Decoder* pNetwork, int frameDelay);
   
   void 
   LoadRecognitionNetwork(
       char*         netFileName,
       ModelSet*     hmms,
-      Network*      net);
+      Decoder*      net);
   
   void 
   ReadRecognitionNetwork(
       FILE*         fp,
       ModelSet*     hmms,
-      Network*      network,
+      Decoder*      network,
       LabelFormat   labelFormat,
       long          sampPeriod,
       const char*   file_name,
@@ -601,7 +630,7 @@ namespace STK
   
   FLOAT*
   StateOccupationProbability(
-      Network*      network,
+      Decoder*      network,
       FLOAT*        observationMx,
       ModelSet*     hmmset,
       int           nFrames,
@@ -610,7 +639,7 @@ namespace STK
     
   /*
   FLOAT MCEReest(
-    Network *     net,
+    Decoder *     net,
     FLOAT *       obsMx,
     FLOAT *       obsMx2,
     int           nFrames,
@@ -618,14 +647,14 @@ namespace STK
     FLOAT         sigSlope);
   
   FLOAT BaumWelchReest(
-    Network *     net,
+    Decoder *     net,
     FLOAT *       obsMx,
     FLOAT *       obsMx2,
     int           nFrames,
     FLOAT         weight);
   
   FLOAT ViterbiReest(
-    Network *     net,
+    Decoder *     net,
     FLOAT *       observationMx,
     FLOAT *       observationMx2,
     int           nFrames,
