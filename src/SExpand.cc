@@ -98,7 +98,8 @@ char *optionStr =
 " -X r   SOURCETRANSCEXT";
 
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) 
+{
   FILE *sfp = NULL;
   ENTRY e, *ep;
   int  i;
@@ -191,6 +192,8 @@ int main(int argc, char *argv[]) {
   script =(char*)GetParamStr(&cfgHash, SNAME":SCRIPT",          NULL);
   expOptions.mTraceFlag = trace_flag;
 
+  bool print_all_options = GetParamBool(&cfgHash,SNAME":PRINTALLOPTIONS", false);
+
   cchrptr      = GetParamStr(&cfgHash, SNAME":NETFORMATING",  "");
   if (*cchrptr) {
     out_net_fmt.mNoLMLikes    = 1;
@@ -235,6 +238,11 @@ int main(int argc, char *argv[]) {
   
   if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", false)) {
     CheckCommandLineParamUse(&cfgHash);
+  }
+
+  if (print_all_options) 
+  {
+    print_registered_parameters();
   }
   
   if (NULL != script)
@@ -316,7 +324,7 @@ int main(int argc, char *argv[]) {
       assert(in_transc_fmt != TF_ERR);
     }
     for (;;) { //in cases of MLF or MNF, we must process all records
-      Node* p_node = NULL;
+      Node<NODE_REGULAR, LINK_REGULAR>* p_node = NULL;
 
       if (in_transc_fmt == TF_MLF
       || in_transc_fmt == TF_MNF

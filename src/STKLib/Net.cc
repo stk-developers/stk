@@ -40,12 +40,13 @@ namespace STK
 {
   //***************************************************************************
   //***************************************************************************
+
   void 
-  FreeNetwork(Node * pNode, bool compactRepresentation) 
+  FreeNetwork(Node<NODE_REGULAR, LINK_REGULAR> * pNode, bool compactRepresentation) 
   {
     if (!compactRepresentation)
     {
-      Node *  tnode;
+      Node<NODE_REGULAR, LINK_REGULAR> *  tnode;
       while (pNode) 
       {
         tnode = pNode->mpNext;
@@ -57,8 +58,8 @@ namespace STK
     }
     else
     {
-      NodeBasic *  tnode;
-      for(tnode =  reinterpret_cast<NodeBasic*>(pNode); tnode->mNLinks != 0; tnode++) 
+      NodeBasic<NODE_REGULAR, LINK_REGULAR> *  tnode;
+      for(tnode =  reinterpret_cast<NodeBasic<NODE_REGULAR, LINK_REGULAR>*>(pNode); tnode->mNLinks != 0; tnode++) 
         free(tnode->mpLinks);
       
       free(pNode);
@@ -70,18 +71,18 @@ namespace STK
 
   //***************************************************************************
   //***************************************************************************
-  Node *
-  MakeNetworkFromLabels(Label * pLabels, NodeType nodeType)
+  Node<NODE_REGULAR, LINK_REGULAR> *
+  MakeNetworkFromLabels(Label * pLabels, NodeKind nodeKind)
   {
     Label * lp;
-    Node  * first;
-    Node  * last = NULL;
-    Node  * node;
+    Node<NODE_REGULAR, LINK_REGULAR>  * first;
+    Node<NODE_REGULAR, LINK_REGULAR>  * last = NULL;
+    Node<NODE_REGULAR, LINK_REGULAR>  * node;
   
-    if ((first             = (Node *) calloc(1, sizeof(Node))) == NULL ||
-        (last              = (Node *) calloc(1, sizeof(Node))) == NULL ||
-        (first->mpLinks    = (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>))) == NULL    ||
-        (last->mpBackLinks = (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>))) == NULL) 
+    if ((first             = (Node<NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NODE_REGULAR, LINK_REGULAR>))) == NULL ||
+        (last              = (Node<NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NODE_REGULAR, LINK_REGULAR>))) == NULL ||
+        (first->mpLinks    = (Link<NODE_REGULAR, LINK_REGULAR> *) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>))) == NULL    ||
+        (last->mpBackLinks = (Link<NODE_REGULAR, LINK_REGULAR> *) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>))) == NULL) 
     {
       Error("Insufficient memory");
     }
@@ -92,8 +93,12 @@ namespace STK
     first->mNLinks      = last->mNBackLinks = 1;
     first->mNBackLinks  = last->mNLinks     = 0;
     first->mpBackLinks  = last->mpLinks     = NULL;
-    first->mStart       = last->mStart      = UNDEF_TIME;
-    first->mStop        = last->mStop       = UNDEF_TIME;
+    first->SetStart(UNDEF_TIME);
+    first->SetStop(UNDEF_TIME);
+    
+    last->SetStart(UNDEF_TIME);
+    last->SetStop(UNDEF_TIME);
+
   //  first->mpTokens        = last->mpTokens        = NULL;
   //  first->mpExitToken     = last->mpExitToken     = NULL;
   
@@ -101,22 +106,22 @@ namespace STK
     
     for (lp = pLabels; lp != NULL; lp = lp->mpNext) 
     {
-      Node *  tnode;
+      Node<NODE_REGULAR, LINK_REGULAR> *  tnode;
   
-      if ((tnode              = (Node *) calloc(1, sizeof(Node))) == NULL ||
-          (tnode->mpLinks     = (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>))) == NULL    ||
-          (tnode->mpBackLinks = (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>))) == NULL) 
+      if ((tnode              = (Node<NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NODE_REGULAR, LINK_REGULAR>))) == NULL ||
+          (tnode->mpLinks     = (Link<NODE_REGULAR, LINK_REGULAR> *) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>))) == NULL    ||
+          (tnode->mpBackLinks = (Link<NODE_REGULAR, LINK_REGULAR> *) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>))) == NULL) 
       {
         Error("Insufficient memory");
       }
       
       tnode->mpName = NULL;
       
-      node->mpLinks[0].mpNode = tnode;
-      node->mpLinks[0].mLmLike  = 0.0;
-      node->mpLinks[0].mAcousticLike  = 0.0;
+      node->mpLinks[0].SetNode(tnode);
+      node->mpLinks[0].SetLmLike(0.0);
+      node->mpLinks[0].SetAcousticLike(0.0);
       
-      switch (nodeType) 
+      switch (nodeKind) 
       {
         case NT_WORD:  tnode->mpPronun = ((Word *) lp->mpData)->pronuns[0]; break;
         case NT_MODEL: tnode->mpHmm    =   (Hmm *) lp->mpData;              break;
@@ -124,38 +129,38 @@ namespace STK
         default:       Error("Fatal: Invalid node type");
       }
       
-      tnode->mType       = nodeType;
+      tnode->mType       = nodeKind;
       tnode->mNLinks     = 1;
       tnode->mNBackLinks = 1;
-      tnode->mStart      = lp->mStart;
-      tnode->mStop       = lp->mStop;
-      tnode->mpBackLinks[0].mpNode = node;
-      tnode->mpBackLinks[0].mLmLike   = 0.0;
-      tnode->mpBackLinks[0].mAcousticLike   = 0.0;
+      tnode->SetStart(lp->mStart);
+      tnode->SetStop(lp->mStop);
+      tnode->mpBackLinks[0].SetNode(node);
+      tnode->mpBackLinks[0].SetLmLike(0.0);
+      tnode->mpBackLinks[0].SetAcousticLike(0.0);
       node->mpNext = tnode;
       node = tnode;
     }
     
     node->mpNext = last;
-    node->mpLinks[0].mpNode    = last;
-    node->mpLinks[0].mLmLike    = 0.0;
-    node->mpLinks[0].mAcousticLike    = 0.0;
-    last->mpBackLinks[0].mpNode = node;
-    last->mpBackLinks[0].mLmLike = 0.0;
-    last->mpBackLinks[0].mAcousticLike = 0.0;
+    node->mpLinks[0].SetNode(last);
+    node->mpLinks[0].SetLmLike(0.0);
+    node->mpLinks[0].SetAcousticLike(0.0);
+    last->mpBackLinks[0].SetNode(node);
+    last->mpBackLinks[0].SetLmLike(0.0);
+    last->mpBackLinks[0].SetAcousticLike(0.0);
     last->mpNext = NULL;
     return first;
   }
   
   
   void ExpandWordNetworkByDictionary(
-    Node *        pFirstNode,
+    Node<NODE_REGULAR, LINK_REGULAR> *        pFirstNode,
     MyHSearchData *dict,
     int keep_word_nodes,
     int multiple_pronun)
   {
-    Node* node; 
-    Node* prev = NULL;
+    Node<NODE_REGULAR, LINK_REGULAR>* node; 
+    Node<NODE_REGULAR, LINK_REGULAR>* prev = NULL;
     int   i;
     int   j;
   
@@ -190,18 +195,18 @@ namespace STK
       // link arrays of backlinked nodes to hold word->npronuns more backlinks
       for (i = 0; i < node->mNBackLinks; i++) 
       {
-        Node *bakcnode = node->mpBackLinks[i].mpNode;
+        Node<NODE_REGULAR, LINK_REGULAR>* bakcnode = node->mpBackLinks[i].pNode();
 
-        for (j=0; j<bakcnode->mNLinks && bakcnode->mpLinks[j].mpNode!=node; j++)
+        for (j=0; j<bakcnode->mNLinks && bakcnode->mpLinks[j].pNode() != node; j++)
         {}
 
         assert(j < bakcnode->mNLinks); // Otherwise link to 'node' is missing
                                       // from which backlink exists
         bakcnode->mpLinks[j] = bakcnode->mpLinks[bakcnode->mNLinks-1];
   
-        bakcnode->mpLinks = (Link<LINK_BASIC> *)
+        bakcnode->mpLinks = (Link<NODE_REGULAR, LINK_REGULAR> *)
           realloc(bakcnode->mpLinks,
-                (bakcnode->mNLinks - 1 + word->npronuns) * sizeof(Link<LINK_BASIC>));
+                (bakcnode->mNLinks - 1 + word->npronuns) * sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
         if (bakcnode->mpLinks == NULL) Error("Insufficient memory");
         bakcnode->mNLinks--;// += word->npronuns-1;
       }
@@ -210,15 +215,15 @@ namespace STK
       // backlink arrays of linked nodes to hold word->npronuns more backlinks
       for (i=0; i < node->mNLinks; i++) 
       {
-        Node *forwnode = node->mpLinks[i].mpNode;
-        for (j=0;j<forwnode->mNBackLinks&&forwnode->mpBackLinks[j].mpNode!=node;j++);
+        Node<NODE_REGULAR, LINK_REGULAR>* forwnode = node->mpLinks[i].pNode();
+        for (j=0;j<forwnode->mNBackLinks&&forwnode->mpBackLinks[j].pNode()!=node;j++);
         assert(j < forwnode->mNBackLinks);
         // Otherwise link to 'node' is missing from which backlink exists
         forwnode->mpBackLinks[j] = forwnode->mpBackLinks[forwnode->mNBackLinks-1];
   
-        forwnode->mpBackLinks = (Link<LINK_BASIC> *)
+        forwnode->mpBackLinks = (Link<NODE_REGULAR, LINK_REGULAR> *)
           realloc(forwnode->mpBackLinks,
-                (forwnode->mNBackLinks - 1 + word->npronuns) * sizeof(Link<LINK_BASIC>));
+                (forwnode->mNBackLinks - 1 + word->npronuns) * sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
         if (forwnode->mpBackLinks == NULL) Error("Insufficient memory");
         forwnode->mNBackLinks--;
       }
@@ -226,19 +231,19 @@ namespace STK
       for (i = 0; i < word->npronuns; i++) 
       {
         Pronun *pronun = word->pronuns[i];
-        Node *pronun_first = NULL, *pronun_prev = NULL, *tnode;
+        Node<NODE_REGULAR, LINK_REGULAR> *pronun_first = NULL, *pronun_prev = NULL, *tnode;
   
         for (j = 0; j < pronun->nmodels; j++) 
         {
-          tnode = (Node *) calloc(1, sizeof(Node));
+          tnode = (Node<NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NODE_REGULAR, LINK_REGULAR>));
           
           if (tnode == NULL) 
             Error("Insufficient memory");
   
           tnode->mType       = NT_PHONE | (node->mType & NT_TRUE);
           tnode->mpName      = pronun->model[j].mpName;
-          tnode->mStart      = node->mStart;
-          tnode->mStop       = node->mStop;
+          tnode->SetStart(node->Start());
+          tnode->SetStop (node->Stop());
           tnode->mPhoneAccuracy = 1.0;
   
           if (j == 0) 
@@ -247,20 +252,20 @@ namespace STK
           } 
           else 
           {
-            if ((pronun_prev->mpLinks = (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>))) == NULL ||
-                (tnode->mpBackLinks   = (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>))) == NULL) 
+            if ((pronun_prev->mpLinks = (Link<NODE_REGULAR, LINK_REGULAR> *) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>))) == NULL ||
+                (tnode->mpBackLinks   = (Link<NODE_REGULAR, LINK_REGULAR> *) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>))) == NULL) 
             {
               Error("Insufficient memory");
             }
             
             tnode->mNBackLinks              = 1;
-            tnode->mpBackLinks[0].mpNode    = pronun_prev;
-            tnode->mpBackLinks[0].mLmLike     = 0.0;
-            tnode->mpBackLinks[0].mAcousticLike     = 0.0;
+            tnode->mpBackLinks[0].SetNode(pronun_prev);
+            tnode->mpBackLinks[0].SetLmLike(0.0);
+            tnode->mpBackLinks[0].SetAcousticLike(0.0);
             pronun_prev->mNLinks            = 1;
-            pronun_prev->mpLinks[0].mpNode  = tnode;
-            pronun_prev->mpLinks[0].mLmLike   = 0.0;
-            pronun_prev->mpLinks[0].mAcousticLike   = 0.0;
+            pronun_prev->mpLinks[0].SetNode(tnode);
+            pronun_prev->mpLinks[0].SetLmLike(0.0);
+            pronun_prev->mpLinks[0].SetAcousticLike(0.0);
             pronun_prev->mpNext             = tnode;
           }
           pronun_prev = tnode;
@@ -268,39 +273,45 @@ namespace STK
         
         if (keep_word_nodes || j == 0) 
         {
-          tnode = (Node *) calloc(1, sizeof(Node));
+          tnode = (Node<NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NODE_REGULAR, LINK_REGULAR>));
           
           if (tnode == NULL) Error("Insufficient memory");
   
           tnode->mpName   = NULL;
           tnode->mType    = NT_WORD | (node->mType & NT_TRUE);
           tnode->mpPronun = keep_word_nodes ? word->pronuns[i] : NULL;
-          tnode->mStart   = node->mStart;
-          tnode->mStop    = node->mStop;
+          tnode->SetStart(node->Start());
+          tnode->SetStop (node->Stop());
   
-          if (j == 0) {
+          if (j == 0) 
+          {
             pronun_first = tnode;
-          } else {
-            if ((pronun_prev->mpLinks = (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>))) == NULL ||
-              (tnode->mpBackLinks   = (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>))) == NULL) {
+          } 
+          else 
+          {
+            if ((pronun_prev->mpLinks = (Link<NODE_REGULAR, LINK_REGULAR> *) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>))) == NULL ||
+              (tnode->mpBackLinks   = (Link<NODE_REGULAR, LINK_REGULAR> *) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>))) == NULL) {
               Error("Insufficient memory");
             }
+
             tnode->mNBackLinks          = 1;
-            tnode->mpBackLinks[0].mpNode   = pronun_prev;
-            tnode->mpBackLinks[0].mLmLike   = 0.0;
-            tnode->mpBackLinks[0].mAcousticLike   = 0.0;
+            tnode->mpBackLinks[0].SetNode(pronun_prev);
+            tnode->mpBackLinks[0].SetLmLike(0.0);
+            tnode->mpBackLinks[0].SetAcousticLike(0.0);
+            
             pronun_prev->mNLinks        = 1;
-            pronun_prev->mpLinks[0].mpNode = tnode;
-            pronun_prev->mpLinks[0].mLmLike = 0.0;
-            pronun_prev->mpLinks[0].mAcousticLike = 0.0;
-            pronun_prev->mpNext          = tnode;
+            pronun_prev->mpLinks[0].SetNode(tnode);
+            pronun_prev->mpLinks[0].SetLmLike(0.0);
+            pronun_prev->mpLinks[0].SetAcousticLike(0.0);
+
+            pronun_prev->mpNext         = tnode;
           }
           pronun_prev = tnode;
         }
         if ((pronun_prev->mpLinks =
-              (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>) * node->mNLinks))==NULL ||
+              (Link<NODE_REGULAR, LINK_REGULAR> *) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>) * node->mNLinks))==NULL ||
           (pronun_first->mpBackLinks =
-              (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>) * node->mNBackLinks)) == NULL) {
+              (Link<NODE_REGULAR, LINK_REGULAR> *) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>) * node->mNBackLinks)) == NULL) {
           Error("Insufficient memory");
         }
         pronun_prev->mNLinks      = node->mNLinks;
@@ -308,20 +319,20 @@ namespace STK
   
         for (j = 0; j < node->mNBackLinks; j++) 
         {
-          Node *backnode = node->mpBackLinks[j].mpNode;
-          backnode->mpLinks[backnode->mNLinks].mpNode = pronun_first;
-          backnode->mpLinks[backnode->mNLinks].mLmLike = node->mpBackLinks[j].mLmLike;
-          backnode->mpLinks[backnode->mNLinks].mAcousticLike = node->mpBackLinks[j].mAcousticLike;
+          Node<NODE_REGULAR, LINK_REGULAR>* backnode = node->mpBackLinks[j].pNode();
+          backnode->mpLinks[backnode->mNLinks].SetNode(pronun_first);
+          backnode->mpLinks[backnode->mNLinks].SetLmLike(node->mpBackLinks[j].LmLike());
+          backnode->mpLinks[backnode->mNLinks].SetAcousticLike(node->mpBackLinks[j].AcousticLike());
           backnode->mNLinks++;
           pronun_first->mpBackLinks[j] = node->mpBackLinks[j];
         }
 
         for (j=0; j < node->mNLinks; j++) 
         {
-          Node *forwnode = node->mpLinks[j].mpNode;
-          forwnode->mpBackLinks[forwnode->mNBackLinks].mpNode = pronun_prev;
-          forwnode->mpBackLinks[forwnode->mNBackLinks].mLmLike = node->mpLinks[j].mLmLike;
-          forwnode->mpBackLinks[forwnode->mNBackLinks].mAcousticLike = node->mpLinks[j].mAcousticLike;
+          Node<NODE_REGULAR, LINK_REGULAR>* forwnode = node->mpLinks[j].pNode();
+          forwnode->mpBackLinks[forwnode->mNBackLinks].SetNode(pronun_prev);
+          forwnode->mpBackLinks[forwnode->mNBackLinks].SetLmLike(node->mpLinks[j].LmLike());
+          forwnode->mpBackLinks[forwnode->mNBackLinks].SetAcousticLike(node->mpLinks[j].AcousticLike());
           forwnode->mNBackLinks++;
           pronun_prev->mpLinks[j] = node->mpLinks[j];
         }
@@ -339,14 +350,14 @@ namespace STK
   
   //****************************************************************************
   //****************************************************************************
-  Node* 
-  DiscardUnwantedInfoInNetwork(Node *pFirstNode, STKNetworkOutputFormat format)
+  Node<NODE_REGULAR, LINK_REGULAR>* 
+  DiscardUnwantedInfoInNetwork(Node<NODE_REGULAR, LINK_REGULAR> *pFirstNode, STKNetworkOutputFormat format)
   // The function discard the information in network records that is not to be
   // saved to the output. This should allow for more effective network
   // optimization, which will be run after calling this function and before
   // saving network to file.
   {
-    Node* node;
+    Node<NODE_REGULAR, LINK_REGULAR>* node;
     int   i;
   
     for (node = pFirstNode; node != NULL; node = node->mpNext)  
@@ -354,23 +365,24 @@ namespace STK
       if (format.mNoLMLikes) 
       {
         for (i=0; i < node->mNLinks;     i++) 
-          node->mpLinks    [i].mLmLike = 0.0;
+          node->mpLinks    [i].SetLmLike(0.0);
         
         for (i=0; i < node->mNBackLinks; i++) 
-          node->mpBackLinks[i].mLmLike = 0.0;
+          node->mpBackLinks[i].SetLmLike(0.0);
       }
 
       if (format.mNoAcousticLikes) 
       {
         for (i=0; i < node->mNLinks;     i++) 
-          node->mpLinks    [i].mAcousticLike = 0.0;
+          node->mpLinks    [i].SetAcousticLike(0.0);
 
         for (i=0; i < node->mNBackLinks; i++) 
-          node->mpBackLinks[i].mAcousticLike = 0.0;
+          node->mpBackLinks[i].SetAcousticLike(0.0);
       }
 
       if (format.mNoTimes) {
-        node->mStop = node->mStart = UNDEF_TIME;
+        node->SetStart(UNDEF_TIME);
+        node->SetStop(UNDEF_TIME);
       }
       if (format.mNoWordNodes && node->mType & NT_WORD) {
         node->mpPronun = NULL;
@@ -391,10 +403,10 @@ namespace STK
   //***************************************************************************
   //***************************************************************************
   static int 
-  LatticeLocalOptimization_ForwardPass(Node* pFirstNode, int strictTiming)
+  LatticeLocalOptimization_ForwardPass(Node<NODE_REGULAR, LINK_REGULAR>* pFirstNode, int strictTiming)
   {
     int i, j, k, l, m, rep;
-    Node *node, *tnode;
+    Node<NODE_REGULAR, LINK_REGULAR> *node, *tnode;
     int node_removed = 0;
     FLOAT tlike;
 
@@ -404,29 +416,29 @@ namespace STK
       {
       //for (tnode = inode; tnode != NULL; tnode = (tnode == inode ? jnode : NULL)) {
       
-        tnode = node->mpLinks[i].mpNode;
+        tnode = node->mpLinks[i].pNode();
         
         if (tnode->mNLinks == 0) 
           continue;
   
         // Weight pushing
-        tlike = tnode->mpBackLinks[0].mLmLike;
+        tlike = tnode->mpBackLinks[0].LmLike();
         
         for (l=1; l <  tnode->mNBackLinks; l++) 
-          tlike = HIGHER_OF(tlike, tnode->mpBackLinks[l].mLmLike);
+          tlike = HIGHER_OF(tlike, tnode->mpBackLinks[l].LmLike());
         
         for (l=0; l < tnode->mNBackLinks; l++) 
         {
-          Node* backnode = tnode->mpBackLinks[l].mpNode;
-          tnode->mpBackLinks[l].mLmLike -= tlike;
+          Node<NODE_REGULAR, LINK_REGULAR>* backnode = tnode->mpBackLinks[l].pNode();
+          tnode->mpBackLinks[l].AddLmLike(-tlike);
           
-          for (k=0; k<backnode->mNLinks && backnode->mpLinks[k].mpNode!=tnode; k++)
+          for (k=0; k<backnode->mNLinks && backnode->mpLinks[k].pNode()!=tnode; k++)
           {}
           
           assert(k < backnode->mNLinks);
-          backnode->mpLinks[k].mLmLike -= tlike;
+          backnode->mpLinks[k].AddLmLike(-tlike);
 #ifndef NDEBUG
-          for (k++; k<backnode->mNLinks && backnode->mpLinks[k].mpNode!=tnode; k++)
+          for (k++; k<backnode->mNLinks && backnode->mpLinks[k].pNode()!=tnode; k++)
           {}
 #endif
           assert(k == backnode->mNLinks);
@@ -434,16 +446,16 @@ namespace STK
         
         for (l=0; l < tnode->mNLinks; l++) 
         {
-          Node *forwnode = tnode->mpLinks[l].mpNode;
-          tnode->mpLinks[l].mLmLike += tlike;
+          Node<NODE_REGULAR, LINK_REGULAR>* forwnode = tnode->mpLinks[l].pNode();
+          tnode->mpLinks[l].AddLmLike(tlike);
           
-          for (k=0; k<forwnode->mNBackLinks && forwnode->mpBackLinks[k].mpNode!=tnode;k++)
+          for (k=0; k<forwnode->mNBackLinks && forwnode->mpBackLinks[k].pNode()!=tnode;k++)
           {}
           
           assert(k < forwnode->mNBackLinks);
-          forwnode->mpBackLinks[k].mLmLike += tlike;
+          forwnode->mpBackLinks[k].AddLmLike(tlike);
 #ifndef NDEBUG
-          for (k++; k<forwnode->mNBackLinks && forwnode->mpBackLinks[k].mpNode!=tnode;k++)
+          for (k++; k<forwnode->mNBackLinks && forwnode->mpBackLinks[k].pNode()!=tnode;k++)
           {}
 #endif
           assert(k == forwnode->mNBackLinks);
@@ -458,8 +470,8 @@ namespace STK
       {
         for (j = i+1; j < node->mNLinks; j++) 
         {
-          Node *inode = node->mpLinks[i].mpNode;
-          Node *jnode = node->mpLinks[j].mpNode;
+          Node<NODE_REGULAR, LINK_REGULAR> *inode = node->mpLinks[i].pNode();
+          Node<NODE_REGULAR, LINK_REGULAR> *jnode = node->mpLinks[j].pNode();
 
           // Final node may be never merged.
           if (inode->mNLinks == 0 || jnode->mNLinks == 0) 
@@ -484,8 +496,8 @@ namespace STK
             continue;
           }
           
-          if (strictTiming && (inode->mStart != jnode->mStart
-                          ||  inode->mStop  != jnode->mStop)) 
+          if (strictTiming && (inode->Start() != jnode->Start()
+                          ||  inode->Stop()  != jnode->Stop())) 
           {
             continue;
           }
@@ -494,8 +506,8 @@ namespace STK
 //differ more than by SIGNIFICANT_PROB_DIFFERENCE
           for (l=0; l < inode->mNBackLinks; l++) 
           {
-            if (inode->mpBackLinks[l].mpNode != jnode->mpBackLinks[l].mpNode) break;
-            FLOAT ldiff =  inode->mpBackLinks[l].mLmLike - jnode->mpBackLinks[l].mLmLike;
+            if (inode->mpBackLinks[l].pNode() != jnode->mpBackLinks[l].pNode()) break;
+            FLOAT ldiff =  inode->mpBackLinks[l].LmLike() - jnode->mpBackLinks[l].LmLike();
             if (ldiff < -SIGNIFICANT_PROB_DIFFERENCE ||
               ldiff >  SIGNIFICANT_PROB_DIFFERENCE) 
             {
@@ -507,7 +519,7 @@ namespace STK
             continue;
   
   /*        if (memcmp(inode->mpBackLinks, jnode->mpBackLinks,
-                    inode->mNBackLinks * sizeof(Link<LINK_BASIC>))) {
+                    inode->mNBackLinks * sizeof(Link<NODE_REGULAR, LINK_REGULAR>))) {
             continue;
           }*/
             // inode and jnode are the same nodes with the same predeccessors
@@ -522,12 +534,12 @@ namespace STK
             // Remove links to jnode form predeccessors
           for (l=0; l < jnode->mNBackLinks; l++) 
           {
-            Node *backnode = jnode->mpBackLinks[l].mpNode;
-            for (k=0; k<backnode->mNLinks && backnode->mpLinks[k].mpNode!=jnode; k++);
+            Node<NODE_REGULAR, LINK_REGULAR> *backnode = jnode->mpBackLinks[l].pNode();
+            for (k=0; k<backnode->mNLinks && backnode->mpLinks[k].pNode()!=jnode; k++);
             assert(k < backnode->mNLinks);
             // Otherwise link to 'node' is missing from which backlink exists
             memmove(backnode->mpLinks+k, backnode->mpLinks+k+1,
-                    (backnode->mNLinks-k-1) * sizeof(Link<LINK_BASIC>));
+                    (backnode->mNLinks-k-1) * sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
             backnode->mNLinks--;
           }
   
@@ -537,38 +549,38 @@ namespace STK
           rep = l = k = 0;
           while (k < jnode->mNLinks) 
           {
-            Link<LINK_BASIC> *ill = inode->mpLinks+l;
-            Link<LINK_BASIC> *jlk = jnode->mpLinks+k;
-            if (l == inode->mNLinks || ill->mpNode > jlk->mpNode)
+            Link<NODE_REGULAR, LINK_REGULAR> *ill = inode->mpLinks+l;
+            Link<NODE_REGULAR, LINK_REGULAR> *jlk = jnode->mpLinks+k;
+            if (l == inode->mNLinks || ill->pNode() > jlk->pNode())
             {
               // k-th link of jnode will be included among inode's links.
               // Redirect corresponding baclink to inode
-              for (m = 0; m < jlk->mpNode->mNBackLinks
-                          && jlk->mpNode->mpBackLinks[m].mpNode != jnode; m++)
+              for (m = 0; m < jlk->pNode()->mNBackLinks
+                          && jlk->pNode()->mpBackLinks[m].pNode() != jnode; m++)
               {}
               
-              assert(m < jlk->mpNode->mNBackLinks);
-              jlk->mpNode->mpBackLinks[m].mpNode = inode;
-              qsort(jlk->mpNode->mpBackLinks, jlk->mpNode->mNBackLinks,
-                    sizeof(Link<LINK_BASIC>), lnkcmp);
+              assert(m < jlk->pNode()->mNBackLinks);
+              jlk->pNode()->mpBackLinks[m].SetNode(node);
+              qsort(jlk->pNode()->mpBackLinks, jlk->pNode()->mNBackLinks,
+                    sizeof(Link<NODE_REGULAR, LINK_REGULAR>), lnkcmp);
               k++;
             } 
-            else  if (ill->mpNode == jlk->mpNode) 
+            else  if (ill->pNode() == jlk->pNode()) 
             {
               // l-th link of inode and k-th link of jnode points to
-              // the same node. Link<LINK_BASIC> from jnode is redundant.
+              // the same node. Link<NODE_REGULAR, LINK_REGULAR> from jnode is redundant.
               // Remove backlinks to jnode form jnode's succesors
-              for (m = 0; m < jlk->mpNode->mNBackLinks
-                        && jlk->mpNode->mpBackLinks[m].mpNode != jnode; m++);
+              for (m = 0; m < jlk->pNode()->mNBackLinks
+                        && jlk->pNode()->mpBackLinks[m].pNode() != jnode; m++);
               {}
               
-              assert(m < jlk->mpNode->mNBackLinks);
-              memmove(jlk->mpNode->mpBackLinks+m, jlk->mpNode->mpBackLinks+m+1,
-                      (jlk->mpNode->mNBackLinks-m-1) * sizeof(Link<LINK_BASIC>));
-              jlk->mpNode->mNBackLinks--;
+              assert(m < jlk->pNode()->mNBackLinks);
+              memmove(jlk->pNode()->mpBackLinks+m, jlk->pNode()->mpBackLinks+m+1,
+                      (jlk->pNode()->mNBackLinks-m-1) * sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
+              jlk->pNode()->mNBackLinks--;
   
-              ill->mLmLike = HIGHER_OF(ill->mLmLike, jlk->mLmLike);
-              jlk->mpNode = NULL; // Mark link to be removed
+              ill->SetLmLike(HIGHER_OF(ill->LmLike(), jlk->LmLike()));
+              jlk->SetNode(NULL); // Mark link to be removed
               rep++; k++, l++;
             } 
             else 
@@ -579,25 +591,27 @@ namespace STK
           
           l = inode->mNLinks;
           inode->mNLinks += jnode->mNLinks-rep;
-          inode->mpLinks = (Link<LINK_BASIC> *) realloc(inode->mpLinks,
-                                          inode->mNLinks * sizeof(Link<LINK_BASIC>));
+          inode->mpLinks = (Link<NODE_REGULAR, LINK_REGULAR> *) realloc(inode->mpLinks,
+                                          inode->mNLinks * sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
           
           if (inode->mpLinks == NULL) 
             Error("Insufficient memory");
   
           for (k = 0; k < jnode->mNLinks; k++) 
           {
-            if (jnode->mpLinks[k].mpNode != NULL) 
+            if (jnode->mpLinks[k].pNode() != NULL) 
               inode->mpLinks[l++] = jnode->mpLinks[k];
           }
           
-          qsort(inode->mpLinks, inode->mNLinks, sizeof(Link<LINK_BASIC>), lnkcmp);
+          qsort(inode->mpLinks, inode->mNLinks, sizeof(Link<NODE_REGULAR, LINK_REGULAR>), lnkcmp);
   
-          inode->mStart = inode->mStart == UNDEF_TIME || jnode->mStart == UNDEF_TIME
-                        ? UNDEF_TIME : LOWER_OF(inode->mStart, jnode->mStart);
+          inode->SetStart(inode->Start() == UNDEF_TIME || jnode->Start() == UNDEF_TIME
+                          ? UNDEF_TIME 
+                          : LOWER_OF(inode->Start(), jnode->Start()));
   
-          inode->mStop  = inode->mStop == UNDEF_TIME || jnode->mStop == UNDEF_TIME
-                        ? UNDEF_TIME : HIGHER_OF(inode->mStop, jnode->mStop);
+          inode->SetStop (inode->Stop() == UNDEF_TIME || jnode->Stop() == UNDEF_TIME
+                          ? UNDEF_TIME 
+                          : HIGHER_OF(inode->Stop(), jnode->Stop()));
   
           if (inode->mAux > jnode->mAux) 
           {
@@ -634,21 +648,21 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  Node*
-  ReverseNetwork(Node *pFirstNode)
+  Node<NODE_REGULAR, LINK_REGULAR>*
+  ReverseNetwork(Node<NODE_REGULAR, LINK_REGULAR> *pFirstNode)
   {
-    Node*  node;
-    Node*  last = NULL;
+    Node<NODE_REGULAR, LINK_REGULAR>*  node;
+    Node<NODE_REGULAR, LINK_REGULAR>*  last = NULL;
     
     for (node = pFirstNode; node != NULL; node = node->mpBackNext) 
     {
-      Link<LINK_BASIC> *  links       = node->mpLinks;
+      Link<NODE_REGULAR, LINK_REGULAR> *  links       = node->mpLinks;
       int     nlinks      = node->mNLinks;
       node->mpLinks       = node->mpBackLinks;
       node->mNLinks       = node->mNBackLinks;
       node->mpBackLinks   = links;
       node->mNBackLinks   = nlinks;
-      Node *  next        = node->mpNext;
+      Node<NODE_REGULAR, LINK_REGULAR> *  next        = node->mpNext;
       node->mpNext        = node->mpBackNext;
       node->mpBackNext    = next;
       node->mAux          = -node->mAux;
@@ -659,10 +673,10 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  static int LatticeLocalOptimization_BackwardPass(Node *pFirstNode, int strictTiming)
+  static int LatticeLocalOptimization_BackwardPass(Node<NODE_REGULAR, LINK_REGULAR> *pFirstNode, int strictTiming)
   {
     int node_removed;
-    Node *last = ReverseNetwork(pFirstNode);
+    Node<NODE_REGULAR, LINK_REGULAR> *last = ReverseNetwork(pFirstNode);
     node_removed = LatticeLocalOptimization_ForwardPass(last, strictTiming);
   //  if (!node_removed) dnet(last, 0);
     ReverseNetwork(last);
@@ -675,15 +689,15 @@ namespace STK
   //***************************************************************************
   int nbacklinkscmp(const void *a, const void *b) 
   {
-    return (*(Node **) a)->mNBackLinks - (*(Node **) b)->mNBackLinks;
+    return (*(Node<NODE_REGULAR, LINK_REGULAR> **) a)->mNBackLinks - (*(Node<NODE_REGULAR, LINK_REGULAR> **) b)->mNBackLinks;
   }
   
   //***************************************************************************
   //***************************************************************************
-  void LatticeLocalOptimization(Node *pFirstNode, int strictTiming, int trace_flag)
+  void LatticeLocalOptimization(Node<NODE_REGULAR, LINK_REGULAR> *pFirstNode, int strictTiming, int trace_flag)
   {
-    Node *    node;
-    Node *    lastnode;
+    Node<NODE_REGULAR, LINK_REGULAR> *    node;
+    Node<NODE_REGULAR, LINK_REGULAR> *    lastnode;
     int       i;
     int       j;
     int       unreachable = 0;
@@ -694,8 +708,8 @@ namespace STK
     {
       node->mAux = 0;
       node->mpBackNext = node->mpNext;
-      qsort(node->mpLinks, node->mNLinks, sizeof(Link<LINK_BASIC>), lnkcmp);
-      qsort(node->mpBackLinks, node->mNBackLinks, sizeof(Link<LINK_BASIC>), lnkcmp);
+      qsort(node->mpLinks, node->mNLinks, sizeof(Link<NODE_REGULAR, LINK_REGULAR>), lnkcmp);
+      qsort(node->mpBackLinks, node->mNBackLinks, sizeof(Link<NODE_REGULAR, LINK_REGULAR>), lnkcmp);
     }
   
   
@@ -706,11 +720,11 @@ namespace STK
     {
       for (i=0; i < node->mNLinks; i++) 
       {
-        Node *lnknode = node->mpLinks[i].mpNode;
+        Node<NODE_REGULAR, LINK_REGULAR>* lnknode = node->mpLinks[i].pNode();
         
         if (lnknode->mAux == 0) 
         {
-          for (j=0; j<lnknode->mNBackLinks && lnknode->mpBackLinks[j].mpNode->mAux==1; j++)
+          for (j=0; j<lnknode->mNBackLinks && lnknode->mpBackLinks[j].pNode()->mAux==1; j++)
           {}
           
           if (j == lnknode->mNBackLinks) 
@@ -739,7 +753,7 @@ namespace STK
       {
         for (i=0; i < node->mNLinks; i++) 
         {
-          Node *lnknode = node->mpLinks[i].mpNode;
+          Node<NODE_REGULAR, LINK_REGULAR>* lnknode = node->mpLinks[i].pNode();
           if (lnknode->mAux == 0) 
           {
             lastnode->mpNext = lnknode;
@@ -769,7 +783,7 @@ namespace STK
     {
       while (node->mpBackNext && node->mpBackNext->mAux == 0) 
       {
-        Node *tnode = node->mpBackNext;
+        Node<NODE_REGULAR, LINK_REGULAR>* tnode = node->mpBackNext;
         node->mpBackNext = node->mpBackNext->mpBackNext;
         unreachable++;
         free(tnode->mpLinks);
@@ -822,11 +836,11 @@ namespace STK
   //***************************************************************************
   //***************************************************************************
   void ExpandMonophoneNetworkToTriphones(
-    Node *  pFirstNode,
+    Node<NODE_REGULAR, LINK_REGULAR> *  pFirstNode,
     MyHSearchData *nonCDphones,
     MyHSearchData *CDphones)
   {
-    Node *  node;
+    Node<NODE_REGULAR, LINK_REGULAR> *  node;
     int     did_we_clone;
     int     i;
     int     j;
@@ -838,7 +852,7 @@ namespace STK
     {
       ENTRY     e    = {0}; //{0} is just to make compiler happy
       ENTRY *   ep;
-      Node *    prev = NULL;
+      Node<NODE_REGULAR, LINK_REGULAR> *    prev = NULL;
       
       did_we_clone = 0;
       
@@ -855,7 +869,7 @@ namespace STK
           e.key = node->mpName;
           my_hsearch_r(e, FIND, &ep, nonCDphones);
           if (ep == NULL || !reinterpret_cast<size_t>(ep->data))
-            continue; // Node is not a Tee model
+            continue; // Node<NODE_REGULAR, LINK_REGULAR> is not a Tee model
         }
         
         did_we_clone = 1;
@@ -865,9 +879,9 @@ namespace STK
         // link arrays of back-linked nodes to hold node->mNLinks more links
         for (j=0; j < node->mNBackLinks; j++) 
         {
-          Node *backnode = node->mpBackLinks[j].mpNode;
+          Node<NODE_REGULAR, LINK_REGULAR> *backnode = node->mpBackLinks[j].pNode();
           
-          for (k=0; k<backnode->mNLinks && backnode->mpLinks[k].mpNode!=node; k++)
+          for (k=0; k<backnode->mNLinks && backnode->mpLinks[k].pNode()!=node; k++)
           {}
           
           assert(k < backnode->mNLinks);
@@ -876,8 +890,8 @@ namespace STK
           backnode->mpLinks[k] = backnode->mpLinks[backnode->mNLinks-1];
   
           backnode->mpLinks = 
-            (Link<LINK_BASIC> *) realloc((backnode->mpLinks), 
-                             (backnode->mNLinks-1+node->mNLinks)*sizeof(Link<LINK_BASIC>));
+            (Link<NODE_REGULAR, LINK_REGULAR> *) realloc((backnode->mpLinks), 
+                             (backnode->mNLinks-1+node->mNLinks)*sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
           
           if (backnode->mpLinks == NULL) 
             Error("Insufficient memory");
@@ -889,9 +903,9 @@ namespace STK
         // backlink arrays of linked nodes to hold node->mNBackLinks more backlinks
         for (j=0; j < node->mNLinks; j++) 
         {
-          Node *forwnode = node->mpLinks[j].mpNode;
+          Node<NODE_REGULAR, LINK_REGULAR>* forwnode = node->mpLinks[j].pNode();
           
-          for (k=0;k<forwnode->mNBackLinks&&forwnode->mpBackLinks[k].mpNode!=node;k++)
+          for (k=0;k<forwnode->mNBackLinks&&forwnode->mpBackLinks[k].pNode()!=node;k++)
           {}
           
           assert(k < forwnode->mNBackLinks);
@@ -899,8 +913,8 @@ namespace STK
           forwnode->mpBackLinks[k] = forwnode->mpBackLinks[forwnode->mNBackLinks-1];
   
           forwnode->mpBackLinks = 
-            (Link<LINK_BASIC> *) realloc((forwnode->mpBackLinks),
-                             (forwnode->mNBackLinks-1+node->mNBackLinks)*sizeof(Link<LINK_BASIC>));
+            (Link<NODE_REGULAR, LINK_REGULAR> *) realloc((forwnode->mpBackLinks),
+                             (forwnode->mNBackLinks-1+node->mNBackLinks)*sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
                              
           if (forwnode->mpBackLinks == NULL) 
             Error("Insufficient memory");
@@ -914,18 +928,18 @@ namespace STK
         {
           for (j=0; j < node->mNBackLinks; j++) 
           {
-            Node *  tnode;
-            Link<LINK_BASIC>    forwlink = node->mpLinks[i];
-            Link<LINK_BASIC>    backlink = node->mpBackLinks[j];
+            Node<NODE_REGULAR, LINK_REGULAR> *  tnode;
+            Link<NODE_REGULAR, LINK_REGULAR>    forwlink = node->mpLinks[i];
+            Link<NODE_REGULAR, LINK_REGULAR>    backlink = node->mpBackLinks[j];
   
-            if ((tnode = (Node *) calloc(1, sizeof(Node))) == NULL)
+            if ((tnode = (Node<NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NODE_REGULAR, LINK_REGULAR>))) == NULL)
               Error("Insufficient memory");
             
             tnode->mpName = NULL;
             *tnode = *node;
   
-            if ((tnode->mpLinks     = (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>))) == NULL ||
-              (tnode->mpBackLinks = (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>))) == NULL) 
+            if ((tnode->mpLinks     = (Link<NODE_REGULAR, LINK_REGULAR> *) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>))) == NULL ||
+              (tnode->mpBackLinks = (Link<NODE_REGULAR, LINK_REGULAR> *) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>))) == NULL) 
             {
               Error("Insufficient memory");
             }
@@ -935,15 +949,15 @@ namespace STK
             tnode->mpLinks[0]     = forwlink;
             tnode->mpBackLinks[0] = backlink;
             
-            forwlink.mpNode->mpBackLinks[forwlink.mpNode->mNBackLinks].mpNode = tnode;
-            forwlink.mpNode->mpBackLinks[forwlink.mpNode->mNBackLinks].mLmLike  = forwlink.mLmLike;
-            forwlink.mpNode->mpBackLinks[forwlink.mpNode->mNBackLinks].mAcousticLike  = forwlink.mAcousticLike;
-            forwlink.mpNode->mNBackLinks++;
+            forwlink.pNode()->mpBackLinks[forwlink.pNode()->mNBackLinks].SetNode(tnode);
+            forwlink.pNode()->mpBackLinks[forwlink.pNode()->mNBackLinks].SetLmLike(forwlink.LmLike());
+            forwlink.pNode()->mpBackLinks[forwlink.pNode()->mNBackLinks].SetAcousticLike(forwlink.AcousticLike());
+            forwlink.pNode()->mNBackLinks++;
 
-            backlink.mpNode->mpLinks    [backlink.mpNode->mNLinks    ].mpNode = tnode;
-            backlink.mpNode->mpLinks    [backlink.mpNode->mNLinks    ].mLmLike  = backlink.mLmLike;
-            backlink.mpNode->mpLinks    [backlink.mpNode->mNLinks    ].mAcousticLike  = backlink.mAcousticLike;
-            backlink.mpNode->mNLinks++;
+            backlink.pNode()->mpLinks    [backlink.pNode()->mNLinks    ].SetNode(tnode);
+            backlink.pNode()->mpLinks    [backlink.pNode()->mNLinks    ].SetLmLike(backlink.LmLike());
+            backlink.pNode()->mpLinks    [backlink.pNode()->mNLinks    ].SetAcousticLike(backlink.AcousticLike());
+            backlink.pNode()->mNLinks++;
             
             prev->mpNext = tnode;
             prev = tnode;
@@ -967,7 +981,7 @@ namespace STK
       node->mAux = id++;
   
     // Expand monophone nodes to triphone nodes
-    Node *prev = NULL;
+    Node<NODE_REGULAR, LINK_REGULAR> *prev = NULL;
     for (node = pFirstNode; node != NULL; prev = node, node = node->mpNext) 
     {
       ENTRY e = {0}; //{0} is just to make compiler happy
@@ -982,7 +996,7 @@ namespace STK
       assert(node->mType & NT_PHONE);
       e.key = node->mpName;
       my_hsearch_r(e, FIND, &ep, nonCDphones);
-      if (ep != NULL && reinterpret_cast<size_t>(ep->data)) continue; // Node is a Tee model
+      if (ep != NULL && reinterpret_cast<size_t>(ep->data)) continue; // Node<NODE_REGULAR, LINK_REGULAR> is a Tee model
   
       assert(prev != NULL); //Otherwise first node is not Null node
   
@@ -991,9 +1005,9 @@ namespace STK
       nbackmononodes = 0;
       for (j=0; j < node->mNBackLinks; j++) 
       {
-        if (node->mpBackLinks[j].mpNode->mAux != id) 
+        if (node->mpBackLinks[j].pNode()->mAux != id) 
         {
-          id = node->mpBackLinks[j].mpNode->mAux;
+          id = node->mpBackLinks[j].pNode()->mAux;
           nbackmononodes++;
         }
       }
@@ -1002,9 +1016,9 @@ namespace STK
       nforwmononodes = 0;
       for (j=0; j < node->mNLinks; j++) 
       {
-        if (node->mpLinks[j].mpNode->mAux != id) 
+        if (node->mpLinks[j].pNode()->mAux != id) 
         {
-          id = node->mpLinks[j].mpNode->mAux;
+          id = node->mpLinks[j].pNode()->mAux;
           nforwmononodes++;
         }
       }
@@ -1013,16 +1027,16 @@ namespace STK
       // link arrays of backlinked nodes to hold nforwmononodes more links
       for (j=0; j < node->mNBackLinks; j++) 
       {
-        Node *backnode = node->mpBackLinks[j].mpNode;
-        for (k=0; k<backnode->mNLinks && backnode->mpLinks[k].mpNode!=node; k++);
+        Node<NODE_REGULAR, LINK_REGULAR>* backnode = node->mpBackLinks[j].pNode();
+        for (k=0; k<backnode->mNLinks && backnode->mpLinks[k].pNode()!=node; k++);
         assert(k < backnode->mNLinks);
         // Otherwise link to 'node' is missing from which backlink exists
         memmove(backnode->mpLinks+k, backnode->mpLinks+k+1,
-                (backnode->mNLinks-k-1) * sizeof(Link<LINK_BASIC>));
+                (backnode->mNLinks-k-1) * sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
   
-        backnode->mpLinks = (Link<LINK_BASIC> *)
+        backnode->mpLinks = (Link<NODE_REGULAR, LINK_REGULAR> *)
           realloc(backnode->mpLinks,
-                (backnode->mNLinks-1+nforwmononodes)*sizeof(Link<LINK_BASIC>));
+                (backnode->mNLinks-1+nforwmononodes)*sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
         if (backnode->mpLinks == NULL) Error("Insufficient memory");
         backnode->mNLinks--;
       }
@@ -1031,16 +1045,16 @@ namespace STK
       // backlink arrays of linked nodes to hold nbackmononodes more backlinks
       for (j=0; j < node->mNLinks; j++) 
       {
-        Node *forwnode = node->mpLinks[j].mpNode;
-        for (k=0;k<forwnode->mNBackLinks&&forwnode->mpBackLinks[k].mpNode!=node;k++);
+        Node<NODE_REGULAR, LINK_REGULAR>* forwnode = node->mpLinks[j].pNode();
+        for (k=0;k<forwnode->mNBackLinks&&forwnode->mpBackLinks[k].pNode()!=node;k++);
         assert(k < forwnode->mNBackLinks);
         // Otherwise link to 'node' is missing from which backlink exists
         memmove(forwnode->mpBackLinks+k, forwnode->mpBackLinks+k+1,
-                (forwnode->mNBackLinks-k-1) * sizeof(Link<LINK_BASIC>));
+                (forwnode->mNBackLinks-k-1) * sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
   
-        forwnode->mpBackLinks = (Link<LINK_BASIC> *)
+        forwnode->mpBackLinks = (Link<NODE_REGULAR, LINK_REGULAR> *)
           realloc(forwnode->mpBackLinks,
-                (forwnode->mNBackLinks-1+nbackmononodes)*sizeof(Link<LINK_BASIC>));
+                (forwnode->mNBackLinks-1+nbackmononodes)*sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
         if (forwnode->mpBackLinks == NULL) Error("Insufficient memory");
         forwnode->mNBackLinks--;
       }
@@ -1050,33 +1064,33 @@ namespace STK
       // linked nodes belonging to one monophone group and vice versa each
       // linked node is conected through one new node with all backlinked nodes
       // belonging to one monophone group
-      Link<LINK_BASIC> *forwmono_start, *forwmono_end = node->mpLinks;
+      Link<NODE_REGULAR, LINK_REGULAR> *forwmono_start, *forwmono_end = node->mpLinks;
       for (i=0; i < nforwmononodes; i++) 
       {
         for (forwmono_start = forwmono_end;
             forwmono_end < node->mpLinks+node->mNLinks &&
-            forwmono_start->mpNode->mAux == forwmono_end->mpNode->mAux;
+            forwmono_start->pNode()->mAux == forwmono_end->pNode()->mAux;
             forwmono_end++)
         {}
   
         assert((i <  nforwmononodes-1 && forwmono_end <  node->mpLinks+node->mNLinks) ||
               (i == nforwmononodes-1 && forwmono_end == node->mpLinks+node->mNLinks));
   
-        Link<LINK_BASIC> *tlink, *backmono_start, *backmono_end = node->mpBackLinks;
+        Link<NODE_REGULAR, LINK_REGULAR> *tlink, *backmono_start, *backmono_end = node->mpBackLinks;
         
         for (j=0; j < nbackmononodes; j++) 
         {
           for (backmono_start = backmono_end;
             backmono_end < node->mpBackLinks+node->mNBackLinks &&
-            backmono_start->mpNode->mAux == backmono_end->mpNode->mAux;
+            backmono_start->pNode()->mAux == backmono_end->pNode()->mAux;
             backmono_end++)
           {}
   
           assert((j <  nbackmononodes-1 && backmono_end <  node->mpBackLinks+node->mNBackLinks) ||
                  (j == nbackmononodes-1 && backmono_end == node->mpBackLinks+node->mNBackLinks));
   
-          Node * tnode;
-          if ((tnode = (Node *) calloc(1, sizeof(Node))) == NULL)
+          Node<NODE_REGULAR, LINK_REGULAR> * tnode;
+          if ((tnode = (Node<NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NODE_REGULAR, LINK_REGULAR>))) == NULL)
             Error("Insufficient memory");
           
           *tnode = *node;
@@ -1084,9 +1098,9 @@ namespace STK
           tnode->mNBackLinks   = backmono_end-backmono_start;
   
           if ((tnode->mpLinks =
-              (Link<LINK_BASIC> *) malloc(tnode->mNLinks * sizeof(Link<LINK_BASIC>))) == NULL ||
+              (Link<NODE_REGULAR, LINK_REGULAR> *) malloc(tnode->mNLinks * sizeof(Link<NODE_REGULAR, LINK_REGULAR>))) == NULL ||
             (tnode->mpBackLinks =
-              (Link<LINK_BASIC> *) malloc(tnode->mNBackLinks * sizeof(Link<LINK_BASIC>))) == NULL) 
+              (Link<NODE_REGULAR, LINK_REGULAR> *) malloc(tnode->mNBackLinks * sizeof(Link<NODE_REGULAR, LINK_REGULAR>))) == NULL) 
           {
             Error("Insufficient memory");
           }
@@ -1094,19 +1108,19 @@ namespace STK
           for (tlink = forwmono_start; tlink < forwmono_end; tlink++) 
           {
             tnode->mpLinks[tlink-forwmono_start] = *tlink;
-            tlink->mpNode->mpBackLinks[tlink->mpNode->mNBackLinks].mpNode = tnode;
-            tlink->mpNode->mpBackLinks[tlink->mpNode->mNBackLinks].mLmLike = tlink->mLmLike;
-            tlink->mpNode->mpBackLinks[tlink->mpNode->mNBackLinks].mAcousticLike = tlink->mAcousticLike;
-            tlink->mpNode->mNBackLinks++;
+            tlink->pNode()->mpBackLinks[tlink->pNode()->mNBackLinks].SetNode(tnode);
+            tlink->pNode()->mpBackLinks[tlink->pNode()->mNBackLinks].SetLmLike(tlink->LmLike());
+            tlink->pNode()->mpBackLinks[tlink->pNode()->mNBackLinks].SetAcousticLike(tlink->AcousticLike());
+            tlink->pNode()->mNBackLinks++;
           }
           
           for (tlink = backmono_start; tlink < backmono_end; tlink++) 
           {
             tnode->mpBackLinks[tlink-backmono_start] = *tlink;
-            tlink->mpNode->mpLinks[tlink->mpNode->mNLinks].mpNode = tnode;
-            tlink->mpNode->mpLinks[tlink->mpNode->mNLinks].mLmLike = tlink->mLmLike;
-            tlink->mpNode->mpLinks[tlink->mpNode->mNLinks].mAcousticLike = tlink->mAcousticLike;
-            tlink->mpNode->mNLinks++;
+            tlink->pNode()->mpLinks[tlink->pNode()->mNLinks].SetNode(tnode);
+            tlink->pNode()->mpLinks[tlink->pNode()->mNLinks].SetLmLike(tlink->LmLike());
+            tlink->pNode()->mpLinks[tlink->pNode()->mNLinks].SetAcousticLike(tlink->AcousticLike());
+            tlink->pNode()->mNLinks++;
           }
           
           prev->mpNext = tnode;
@@ -1125,8 +1139,8 @@ namespace STK
     {
       ENTRY     e       = {0}; //{0} is just to make compiler happy
       ENTRY*    ep      = NULL;
-      Node*     lc      = NULL;
-      Node*     rc      = NULL;
+      Node<NODE_REGULAR, LINK_REGULAR>*     lc      = NULL;
+      Node<NODE_REGULAR, LINK_REGULAR>*     rc      = NULL;
       char*     lcname  = NULL;
       char*     rcname  = NULL;
       char*     triname = NULL;
@@ -1154,7 +1168,7 @@ namespace STK
       {
         for (lc = node;;) 
         {
-          lc = lc->mNBackLinks ? lc->mpBackLinks[0].mpNode : NULL;
+          lc = lc->mNBackLinks ? lc->mpBackLinks[0].pNode() : NULL;
           
           if (lc == NULL)               break;
           if (!(lc->mType & NT_PHONE))  continue;
@@ -1167,7 +1181,7 @@ namespace STK
         
         for (rc = node;;) 
         {
-          rc = rc->mNLinks ? rc->mpLinks[0].mpNode : NULL;
+          rc = rc->mNLinks ? rc->mpLinks[0].pNode() : NULL;
           
           if (rc == NULL)               break;
           if (!(rc->mType & NT_PHONE))  continue;
@@ -1245,52 +1259,52 @@ namespace STK
   //***************************************************************************
   // Insert null node to self links. Self links are not supported
   // in network manipulation functions  
-  void SelfLinksToNullNodes(Node * pFirstNode)
+  void SelfLinksToNullNodes(Node<NODE_REGULAR, LINK_REGULAR> * pFirstNode)
   {
     int   i;
     int   j;
-    Node* node;
-    Node* tnode;
+    Node<NODE_REGULAR, LINK_REGULAR>* node;
+    Node<NODE_REGULAR, LINK_REGULAR>* tnode;
   
     for (node = pFirstNode; node != NULL; node = node->mpNext) 
     {
       for (i=0; i < node->mNLinks; i++) 
       {
-        if (node->mpLinks[i].mpNode == node) 
+        if (node->mpLinks[i].pNode() == node) 
         {
-          if ((tnode           = (Node *) calloc(1, sizeof(Node))) == NULL ||
-              (tnode->mpLinks     = (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>))) == NULL ||
-              (tnode->mpBackLinks = (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>))) == NULL) 
+          if ((tnode           = (Node<NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NODE_REGULAR, LINK_REGULAR>))) == NULL ||
+              (tnode->mpLinks     = (Link<NODE_REGULAR, LINK_REGULAR> *) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>))) == NULL ||
+              (tnode->mpBackLinks = (Link<NODE_REGULAR, LINK_REGULAR> *) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>))) == NULL) 
           {
             Error("Insufficient memory");
           }
   
           tnode->mpName = NULL;
-          node->mpLinks[i].mpNode = tnode;
+          node->mpLinks[i].SetNode(tnode);
           
-          for (j=0; j<node->mNBackLinks && node->mpBackLinks[j].mpNode!=node; j++)
+          for (j=0; j<node->mNBackLinks && node->mpBackLinks[j].pNode()!=node; j++)
           {}
           
           assert(j<node->mNBackLinks);
           
-          node->mpBackLinks[j].mpNode = tnode;
-          node->mpBackLinks[j].mLmLike = 0.0;
-          node->mpBackLinks[j].mAcousticLike = 0.0;
+          node->mpBackLinks[j].SetNode(tnode);
+          node->mpBackLinks[j].SetLmLike(0.0);
+          node->mpBackLinks[j].SetAcousticLike(0.0);
   
           tnode->mType       = NT_WORD;
           tnode->mpPronun     = NULL;
           tnode->mNLinks     = 1;
           tnode->mNBackLinks = 1;
-          tnode->mStart      = UNDEF_TIME;
-          tnode->mStop       = UNDEF_TIME;
+          tnode->SetStart(UNDEF_TIME);
+          tnode->SetStop (UNDEF_TIME);
   //        tnode->mpTokens     = NULL;
   //        tnode->mpExitToken  = NULL;
-          tnode->mpLinks[0].mpNode     = node;
-          tnode->mpLinks[0].mLmLike     = 0.0;
-          tnode->mpLinks[0].mAcousticLike     = 0.0;
-          tnode->mpBackLinks[0].mpNode = node;
-          tnode->mpBackLinks[0].mLmLike = node->mpLinks[i].mLmLike;
-          tnode->mpBackLinks[0].mAcousticLike = node->mpLinks[i].mAcousticLike;
+          tnode->mpLinks[0].SetNode(node);
+          tnode->mpLinks[0].SetLmLike(0.0);
+          tnode->mpLinks[0].SetAcousticLike(0.0);
+          tnode->mpBackLinks[0].SetNode(node);
+          tnode->mpBackLinks[0].SetLmLike(node->mpLinks[i].LmLike());
+          tnode->mpBackLinks[0].SetAcousticLike(node->mpLinks[i].AcousticLike());
           tnode->mpNext = node->mpNext;
           node->mpNext = tnode;
         }
@@ -1302,10 +1316,10 @@ namespace STK
   //***************************************************************************
   //***************************************************************************
   // Remove null nones having less than three predecessors or less than three successors
-  int RemoveRedundantNullNodes(Node *pFirstNode)
+  int RemoveRedundantNullNodes(Node<NODE_REGULAR, LINK_REGULAR> *pFirstNode)
   {
-    Node *    node;
-    Node *    tnode;
+    Node<NODE_REGULAR, LINK_REGULAR> *    node;
+    Node<NODE_REGULAR, LINK_REGULAR> *    tnode;
     int       i;
     int       j;
     int       k;
@@ -1327,18 +1341,18 @@ namespace STK
       // link arrays of backlinked nodes to hold node->mNLinks more backlinks
         for (i = 0; i < node->mNBackLinks; i++) 
         {
-          Node *bakcnode = node->mpBackLinks[i].mpNode;
+          Node<NODE_REGULAR, LINK_REGULAR>* bakcnode = node->mpBackLinks[i].pNode();
 
-          for (j=0; j<bakcnode->mNLinks && bakcnode->mpLinks[j].mpNode!=node; j++)
+          for (j=0; j<bakcnode->mNLinks && bakcnode->mpLinks[j].pNode()!=node; j++)
           {}
 
           assert(j < bakcnode->mNLinks); // Otherwise link to 'node' is missing
                                         // from which backlink exists
           bakcnode->mpLinks[j] = bakcnode->mpLinks[bakcnode->mNLinks-1];
   
-          bakcnode->mpLinks = (Link<LINK_BASIC> *)
+          bakcnode->mpLinks = (Link<NODE_REGULAR, LINK_REGULAR> *)
             realloc(bakcnode->mpLinks,
-                  (bakcnode->mNLinks - 1 + node->mNLinks) * sizeof(Link<LINK_BASIC>));
+                  (bakcnode->mNLinks - 1 + node->mNLinks) * sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
           if (bakcnode->mpLinks == NULL) Error("Insufficient memory");
           bakcnode->mNLinks--;// += word->npronuns-1;
         }
@@ -1346,49 +1360,49 @@ namespace STK
         // Remove backlinks to current node form linked nodes and realloc
         // backlink arrays of linked nodes to hold word->npronuns more backlinks
         for (i=0; i < node->mNLinks; i++) {
-          Node *forwnode = node->mpLinks[i].mpNode;
-          for (j=0;j<forwnode->mNBackLinks&&forwnode->mpBackLinks[j].mpNode!=node;j++);
+          Node<NODE_REGULAR, LINK_REGULAR> *forwnode = node->mpLinks[i].pNode();
+          for (j=0;j<forwnode->mNBackLinks&&forwnode->mpBackLinks[j].pNode()!=node;j++);
           assert(j < forwnode->mNBackLinks);
           // Otherwise link to 'node' is missing from which backlink exists
           forwnode->mpBackLinks[j] = forwnode->mpBackLinks[forwnode->mNBackLinks-1];
   
-          forwnode->mpBackLinks = (Link<LINK_BASIC> *)
+          forwnode->mpBackLinks = (Link<NODE_REGULAR, LINK_REGULAR> *)
             realloc(forwnode->mpBackLinks,
-                  (forwnode->mNBackLinks - 1 + node->mNBackLinks) * sizeof(Link<LINK_BASIC>));
+                  (forwnode->mNBackLinks - 1 + node->mNBackLinks) * sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
           if (forwnode->mpBackLinks == NULL) Error("Insufficient memory");
           forwnode->mNBackLinks--;
         }
         for (j = 0; j < node->mNBackLinks; j++) {
-          Node *backnode = node->mpBackLinks[j].mpNode;
+          Node<NODE_REGULAR, LINK_REGULAR> *backnode = node->mpBackLinks[j].pNode();
           int orig_nlinks = backnode->mNLinks;
   
           for (i=0; i < node->mNLinks; i++) {
-            for(k = 0; k < orig_nlinks && backnode->mpLinks[k].mpNode != node->mpLinks[i].mpNode; k++);
+            for(k = 0; k < orig_nlinks && backnode->mpLinks[k].pNode() != node->mpLinks[i].pNode(); k++);
             if(k < orig_nlinks) {
-              // Link<LINK_BASIC> which is to be created already exists. Its duplication must be avoided.
-              backnode->mpLinks[k].mLmLike = HIGHER_OF(backnode->mpLinks[k].mLmLike, 
-                                                  node->mpLinks[i].mLmLike + node->mpBackLinks[j].mLmLike);
+              // Link<NODE_REGULAR, LINK_REGULAR> which is to be created already exists. Its duplication must be avoided.
+              backnode->mpLinks[k].SetLmLike(HIGHER_OF(backnode->mpLinks[k].LmLike(), 
+                                             node->mpLinks[i].LmLike() + node->mpBackLinks[j].LmLike()));
             } else {
-              backnode->mpLinks[backnode->mNLinks  ].mpNode = node->mpLinks[i].mpNode;
-              backnode->mpLinks[backnode->mNLinks++].mLmLike
-                = node->mpLinks[i].mLmLike + node->mpBackLinks[j].mLmLike;
+              backnode->mpLinks[backnode->mNLinks  ].SetNode(node->mpLinks[i].pNode());
+              backnode->mpLinks[backnode->mNLinks++].SetLmLike(
+                  node->mpLinks[i].LmLike() + node->mpBackLinks[j].LmLike());
             }
           }
         }
         for (j = 0; j < node->mNLinks; j++) {
-          Node *forwnode = node->mpLinks[j].mpNode;
+          Node<NODE_REGULAR, LINK_REGULAR> *forwnode = node->mpLinks[j].pNode();
           int orig_nbacklinks = forwnode->mNBackLinks;
   
           for (i=0; i < node->mNBackLinks; i++) {
-            for(k = 0; k < orig_nbacklinks && forwnode->mpBackLinks[k].mpNode != node->mpBackLinks[i].mpNode; k++);
+            for(k = 0; k < orig_nbacklinks && forwnode->mpBackLinks[k].pNode() != node->mpBackLinks[i].pNode(); k++);
             if (k < orig_nbacklinks) {
-              // Link<LINK_BASIC> which is to be created already exists. Its duplication must be avoided.
-              forwnode->mpBackLinks[k].mLmLike = HIGHER_OF(forwnode->mpBackLinks[k].mLmLike, 
-                                                      node->mpBackLinks[i].mLmLike + node->mpLinks[j].mLmLike);
+              // Link<NODE_REGULAR, LINK_REGULAR> which is to be created already exists. Its duplication must be avoided.
+              forwnode->mpBackLinks[k].SetLmLike(HIGHER_OF(forwnode->mpBackLinks[k].LmLike(), 
+                                                      node->mpBackLinks[i].LmLike() + node->mpLinks[j].LmLike()));
             } else {
-              forwnode->mpBackLinks[forwnode->mNBackLinks  ].mpNode = node->mpBackLinks[i].mpNode;
-              forwnode->mpBackLinks[forwnode->mNBackLinks++].mLmLike
-                = node->mpBackLinks[i].mLmLike + node->mpLinks[j].mLmLike;
+              forwnode->mpBackLinks[forwnode->mNBackLinks  ].SetNode(node->mpBackLinks[i].pNode());
+              forwnode->mpBackLinks[forwnode->mNBackLinks++].SetLmLike(
+                  node->mpBackLinks[i].LmLike() + node->mpLinks[j].LmLike());
             }
           }
         }
@@ -1406,7 +1420,7 @@ namespace STK
   
   struct CorrPhnRec 
   {
-    Node      *   mpNode;
+    Node<NODE_REGULAR, LINK_REGULAR>      *   mpNode;
     long long     maxStopTimeTillNow;
     int           mId;
   };
@@ -1415,14 +1429,14 @@ namespace STK
   //***************************************************************************
   static int cmp_starts(const void *a, const void *b)
   {
-    long long diff = ((struct CorrPhnRec *) a)->mpNode->mStart
-                  - ((struct CorrPhnRec *) b)->mpNode->mStart;
+    long long diff = ((struct CorrPhnRec *) a)->mpNode->Start()
+                  - ((struct CorrPhnRec *) b)->mpNode->Start();
   
     if (diff != 0)
       return diff;
   
-    return ((struct CorrPhnRec *) a)->mpNode->mStop
-        - ((struct CorrPhnRec *) b)->mpNode->mStop;
+    return ((struct CorrPhnRec *) a)->mpNode->Stop()
+        - ((struct CorrPhnRec *) b)->mpNode->Stop();
   }
   
   //***************************************************************************
@@ -1431,9 +1445,9 @@ namespace STK
   {
     struct CorrPhnRec *corr_phn = (struct CorrPhnRec *) elem;
   
-    if (((Node *) key)->mStart < corr_phn->maxStopTimeTillNow) {
+    if (((Node<NODE_REGULAR, LINK_REGULAR> *) key)->Start() < corr_phn->maxStopTimeTillNow) {
       if (corr_phn->mId == 0 || // first fiead in the array
-        ((Node *) key)->mStart >= (corr_phn-1)->maxStopTimeTillNow)
+        ((Node<NODE_REGULAR, LINK_REGULAR> *) key)->Start() >= (corr_phn-1)->maxStopTimeTillNow)
           return  0;
       else return -1;
     } else return  1;
@@ -1465,9 +1479,9 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  void ComputeAproximatePhoneAccuracy(Node *pFirstNode, int type)
+  void ComputeAproximatePhoneAccuracy(Node<NODE_REGULAR, LINK_REGULAR> *pFirstNode, int type)
   {
-    Node *node;
+    Node<NODE_REGULAR, LINK_REGULAR> *node;
     struct CorrPhnRec *corr_phn, *overlaped;
     int ncorr_phns = 0, i = 0;
     long long maxStopTime;
@@ -1488,16 +1502,16 @@ namespace STK
   
     qsort(corr_phn, ncorr_phns, sizeof(struct CorrPhnRec), cmp_starts);
   
-    maxStopTime = corr_phn[0].mpNode->mStop;
+    maxStopTime = corr_phn[0].mpNode->Stop();
     for (i = 0; i < ncorr_phns; i++) {
       corr_phn[i].mId = i;
-      maxStopTime = HIGHER_OF(maxStopTime, corr_phn[i].mpNode->mStop);
+      maxStopTime = HIGHER_OF(maxStopTime, corr_phn[i].mpNode->Stop());
       corr_phn[i].maxStopTimeTillNow = maxStopTime;
     }
     for (node = pFirstNode; node != NULL; node = node->mpNext) {
       if (!(node->mType & NT_PHONE)) continue;
   
-      if (node->mStop  <= node->mStart ||
+      if (node->Stop()  <= node->Start() ||
         !strcmp(node->mpName, "sil") ||
         !strcmp(node->mpName, "sp")) {
         //!!! List of ignored phonemes should be provided by some switch !!!
@@ -1510,16 +1524,16 @@ namespace STK
   
         if (overlaped) {
           for (; overlaped < corr_phn + ncorr_phns &&
-                overlaped->mpNode->mStart < node->mStop; overlaped++) {
-            if (overlaped->mpNode->mStop  <= overlaped->mpNode->mStart ||
-              overlaped->mpNode->mStop  <= node->mStart) continue;
+                overlaped->mpNode->Start() < node->Stop(); overlaped++) {
+            if (overlaped->mpNode->Stop()  <= overlaped->mpNode->Start() ||
+              overlaped->mpNode->Stop()  <= node->Start()) continue;
   
             node->mPhoneAccuracy =
               HIGHER_OF(node->mPhoneAccuracy,
                         (SamePhoneme(overlaped->mpNode->mpName, node->mpName) + 1.0) *
-                        (LOWER_OF(overlaped->mpNode->mStop, node->mStop) -
-                         HIGHER_OF(overlaped->mpNode->mStart, node->mStart)) /
-                        (overlaped->mpNode->mStop - overlaped->mpNode->mStart) - 1.0);
+                        (LOWER_OF(overlaped->mpNode->Stop(), node->Stop()) -
+                         HIGHER_OF(overlaped->mpNode->Start(), node->Start())) /
+                        (overlaped->mpNode->Stop() - overlaped->mpNode->Start()) - 1.0);
   
             if (node->mPhoneAccuracy >= 1.0) break;
           }
@@ -1531,11 +1545,11 @@ namespace STK
 
 #ifndef NDEBUG
   // Debug function showing network using AT&T dot utility
-  void dnet(Node *net, int nAuxNodePtrs, ...)
+  void dnet(Node<NODE_REGULAR, LINK_REGULAR> *net, int nAuxNodePtrs, ...)
   {
     static int dnetcnt=1;
     va_list ap;
-    Node *node;
+    Node<NODE_REGULAR, LINK_REGULAR> *node;
     int i = 1;
   
     FILE *fp = popen("cat | (tf=`mktemp /tmp/netps.XXXXXX`;"
@@ -1586,15 +1600,15 @@ namespace STK
     for (node = net; node != NULL; node = node->mpNext) {
       for (i = 0; i < node->mNLinks; i++) {
         fprintf(fp,"n%d -> n%d [color=blue,weight=1",
-                node->mEmittingStateId,node->mpLinks[i].mpNode->mEmittingStateId);
-        if (node->mpLinks[i].mLmLike != 0.0) {
-          fprintf(fp,",label=\""FLOAT_FMT"\"", node->mpLinks[i].mLmLike);
+                node->mEmittingStateId,node->mpLinks[i].pNode()->mEmittingStateId);
+        if (node->mpLinks[i].LmLike() != 0.0) {
+          fprintf(fp,",label=\""FLOAT_FMT"\"", node->mpLinks[i].LmLike());
         }
         fprintf(fp,"];\n");
       }
   //    for (i = 0; i < node->mNBackLinks; i++) {
   //      fprintf(fp,"n%d -> n%d [color=red,weight=1",
-  //              node->mEmittingStateId,node->mpBackLinks[i].mpNode->mEmittingStateId);
+  //              node->mEmittingStateId,node->mpBackLinks[i].pNode()->mEmittingStateId);
   //      if (node->mpBackLinks[i].mLmLike != 0.0) {
   //        fprintf(fp,",label=\""FLOAT_FMT"\"", node->mpBackLinks[i].mLmLike);
   //      }
@@ -1602,8 +1616,9 @@ namespace STK
   //    }
     }
     va_start(ap, nAuxNodePtrs);
+    typedef  Node<NODE_REGULAR, LINK_REGULAR>  my_node;
     for (i = 0; i < nAuxNodePtrs; i++) {
-      Node *ptr = va_arg(ap, Node *);
+      my_node* ptr = va_arg(ap, my_node* );
       fprintf(fp, "AuxPtr%d [shape=plaintext];\nAuxPtr%d -> n%d\n",
               i, i, ptr->mEmittingStateId);
     }
@@ -1618,7 +1633,7 @@ namespace STK
   //****************************************************************************
   //****************************************************************************
   void NetworkExpansionsAndOptimizations(
-    Node*                   node,
+    Node<NODE_REGULAR, LINK_REGULAR>*                   node,
     ExpansionOptions        expOptions,
     STKNetworkOutputFormat  out_net_fmt,
     MyHSearchData *         wordHash,

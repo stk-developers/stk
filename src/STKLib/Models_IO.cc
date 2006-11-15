@@ -3100,6 +3100,141 @@ namespace STK
   //****************************************************************************  
   void
   ModelSet::
+  ReadAccums(const FileListElem& rFile, long* totFrames, FLOAT* totLogLike, 
+      int mmiDenominatorAccums)
+  {
+    IStkStream                in;
+    FILE*                     fp;
+    char                      macro_name[128];
+    MyHSearchData*            hash;
+    unsigned int              i;
+    int                       t = 0;
+    int                       c;
+    int                       skip_accum = 0;
+    INT_32                    occurances;
+    ReadAccumUserData         ud;
+    Macro*                    macro;
+    int                       mtm = MTM_PRESCAN | 
+                                    MTM_STATE |
+                                    MTM_MIXTURE |
+                                    MTM_MEAN |   
+                                    MTM_VARIANCE | 
+                                    MTM_TRANSITION;
+  
+    macro_name[sizeof(macro_name)-1] = '\0';
+  
+    // open the file
+    in.open(rFile.Physical().c_str(), ios::binary);
+    if (!in.good())
+    {
+      Error("Cannot open input accumulator file: '%s'", rFile.Physical().c_str());
+    }
+    
+    fp = in.file();
+    
+    INT_32 i32;
+    if (fread(&i32,       sizeof(i32),  1, fp) != 1 ||
+        fread(totLogLike, sizeof(FLOAT), 1, fp) != 1) 
+    {
+      Error("Invalid accumulator file: '%s'", rFile.Physical().c_str());
+    }
+
+    *totFrames = i32;
+    
+//    *totFrames  *= weight; // Not sure whether we should report weighted quantities or not
+//    *totLogLike *= weight;
+  
+    ud.mpFileName   = rFile.Physical().c_str();
+    ud.mpFp         = fp;
+    ud.mpModelSet   = this;
+    ud.mWeight      = rFile.Weight();;
+    ud.mMmi         = mmiDenominatorAccums;
+  
+    for (;;) 
+    {
+      if (skip_accum) 
+      { // Skip to the begining of the next macro accumulator
+        for (;;) 
+        {
+          while ((c = getc(fp)) != '~' && c != EOF)
+            ;
+          
+          if (c == EOF) 
+            break;
+            
+          if (strchr("hsmuvt", t = c = getc(fp)) &&
+            (c = getc(fp)) == ' ' && (c = getc(fp)) == '"')
+          {  
+            break;
+          }
+          
+          ungetc(c, fp);
+        }
+        
+        if (c == EOF) 
+          break;
+      } 
+      else 
+      {
+        if ((c = getc(fp)) == EOF) break;
+        
+        if (c != '~'      || !strchr("hsmuvt", t = getc(fp)) ||
+          getc(fp) != ' ' || getc(fp) != '"') 
+        {
+          Error("Incomatible accumulator file: '%s'", rFile.Physical().c_str());
+        }
+      }
+  
+      for (i=0; (c = getc(fp))!=EOF && c!='"' && i<sizeof(macro_name)-1; i++) 
+      {
+        macro_name[i] = c;
+      }
+      macro_name[i] = '\0';
+  
+      hash = t == 'h' ? &mHmmHash :
+             t == 's' ? &mStateHash :
+             t == 'm' ? &mMixtureHash :
+             t == 'u' ? &mMeanHash :
+             t == 'v' ? &mVarianceHash :
+             t == 't' ? &mTransitionHash : NULL;
+  
+      assert(hash);
+      if ((macro = FindMacro(hash, macro_name)) == NULL) 
+      {
+        skip_accum = 1;
+        continue;
+      }
+  
+      skip_accum = 0;
+      if (fread(&occurances, sizeof(occurances), 1, fp) != 1) 
+      {
+        Error("Invalid accumulator file: '%s'", rFile.Physical().c_str());
+      }
+      
+      if (!mmiDenominatorAccums) macro->mOccurances += occurances;
+      switch (t) 
+      {
+        case 'h': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
+        case 's': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
+        case 'm': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
+        case 'u': ReadAccum(mt_mean, NULL, macro->mpData, &ud);                break;
+        case 'v': ReadAccum(mt_variance, NULL, macro->mpData, &ud);            break;
+        case 't': ReadAccum(mt_transition, NULL, macro->mpData, &ud);          break;
+        default:  assert(0);
+      }
+    }
+    
+    in.close();
+    //delete [] ud.mpFileName;
+    //free(ud.mpFileName);    
+  }; // ReadAccums(...)
+
+
+
+  //****************************************************************************  
+  //****************************************************************************  
+  void
+  ModelSet::
   ReadAccums(const char * pFileName, 
              float        weight,
              long *       totFrames, 

@@ -145,6 +145,17 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
+  void
+  FeatureRepository::
+  MoveNext()
+  {
+    assert (mInputQueueIterator != mInputQueue.end());
+    mInputQueueIterator++;
+  } // ReadFullMatrix(Matrix<FLOAT>& rMatrix)
+
+
+  //***************************************************************************
+  //***************************************************************************
   bool
   FeatureRepository::
   ReadFullMatrix(Matrix<FLOAT>& rMatrix)
@@ -152,34 +163,23 @@ namespace STK
     // clear the matrix
     rMatrix.Destroy();
 
-    // move to the next record
-    if (mInputQueueIterator != mInputQueue.end())
+    // extract index file name
+    if (!mCurrentIndexFileDir.empty())
     {
-      // mark current position and move to the next record for next reading
-      mInputQueueCurrentIterator = mInputQueueIterator;
-      mInputQueueIterator++;
-
-      // extract index file name
-      if (!mCurrentIndexFileDir.empty())
-      {
-        char tmp_name[mCurrentIndexFileDir.length() + 
-          mCurrentIndexFileExt.length() + 
-          mInputQueueCurrentIterator->Physical().length()]; 
-        
-        MakeFileName(tmp_name, mInputQueueCurrentIterator->Physical().c_str(), 
-            mCurrentIndexFileDir.c_str(), mCurrentIndexFileExt.c_str());
-        
-        mCurrentIndexFileName = tmp_name;
-      }
-      else
-        mCurrentIndexFileName = "";
-
-      // read the matrix and return the result
-      //return ReadHTKFeatures(mInputQueueCurrentIterator->Physical(), rMatrix);
-      return ReadHTKFeatures(*mInputQueueCurrentIterator, rMatrix);
+      char tmp_name[mCurrentIndexFileDir.length() + 
+        mCurrentIndexFileExt.length() + 
+        mInputQueueIterator->Physical().length()]; 
+      
+      MakeFileName(tmp_name, mInputQueueIterator->Physical().c_str(), 
+          mCurrentIndexFileDir.c_str(), mCurrentIndexFileExt.c_str());
+      
+      mCurrentIndexFileName = tmp_name;
     }
+    else
+      mCurrentIndexFileName = "";
 
-    return false;
+    // read the matrix and return the result
+    return ReadHTKFeatures(*mInputQueueIterator, rMatrix);
   } // ReadFullMatrix(Matrix<FLOAT>& rMatrix)
 
 

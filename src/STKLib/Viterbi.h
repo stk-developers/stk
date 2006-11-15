@@ -116,6 +116,9 @@ namespace STK
    */
   class Decoder 
   {
+  public:
+    typedef RegularNetwork  NetworkType;
+
   private:
     /**
      * @brief Forward-Backward method return type
@@ -151,7 +154,7 @@ namespace STK
      * @param obs2 
      */
     void 
-    ReestState(Node *    pNode,
+    ReestState(NetworkType::NodeType  *    pNode,
                int       stateIndex, 
                FLOAT     logPriorProb, 
                FLOAT     updateDir,
@@ -184,29 +187,29 @@ namespace STK
     const bool
     InForwardPass() const {return mPropagDir == FORWARD;}
     
-    Node*
-    pActivateWordNodesLeadingFrom(Node* pNode);
+    NetworkType::NodeType*
+    pActivateWordNodesLeadingFrom(NetworkType::NodeType* pNode);
     
     void
-    ActivateNode(Node* pNode);
+    ActivateNode(NetworkType::NodeType* pNode);
 
     void
-    ActivateModel(Node* pNode);
+    ActivateModel(NetworkType::NodeType* pNode);
 
     void
-    DeactivateModel(Node* pNode);
+    DeactivateModel(NetworkType::NodeType* pNode);
     
     void
-    DeactivateWordNodesLeadingFrom(Node* pNode);
+    DeactivateWordNodesLeadingFrom(NetworkType::NodeType* pNode);
     
     void 
-    MarkWordNodesLeadingFrom(Node* node);
+    MarkWordNodesLeadingFrom(NetworkType::NodeType* node);
     
     bool
     AllWordSuccessorsAreActive();
     
     void
-    GenerateToken(Node* pNode);
+    GenerateToken(NetworkType::NodeType* pNode);
   
     void 
     TokenPropagationInit();
@@ -230,11 +233,22 @@ namespace STK
     FromObservationAtStateId(State* pState, FLOAT* pObs);
 
     void 
-    AddLinkToLattice(Node* from, Node* to, FLOAT lmLike);
+    AddLinkToLattice(NetworkType::NodeType* from, NetworkType::NodeType* to, 
+        FLOAT lmLike);
 
+    int  
+    BackwardPruning(int time, NetworkType::NodeType* pNode, int state);
     
+    void 
+    WriteAlpha(int time, NetworkType::NodeType* pNode, int state, Token *token);
+    
+    void 
+    WriteBeta(int time, NetworkType::NodeType* pNode, int state, Token *token);
+
+    WordLinkRecord*
+    TimePruning(int frame_delay);
+
   public:
-    typedef Network<STK::Node, STK::Link<LINK_BASIC>, NETWORK_REGULAR>  NetworkType;
 
     // the constructor .........................................................
     Decoder()
@@ -254,14 +268,25 @@ namespace STK
      * @param hmmsToUptade 
      */
     void 
-    Init(Node* pFirstNode, ModelSet* pHmms, ModelSet* pHmmsToUpdate, 
+    Init(ModelSet* pHmms, ModelSet* pHmmsToUpdate, 
         bool compactRepresentation = false);
+    
+    /**
+     * @brief Initializes the network
+     * @param net 
+     * @param first 
+     * @param hmms 
+     * @param hmmsToUptade 
+     */
+    void 
+    Init(NetworkType::NodeType* pFirstNode, ModelSet* pHmms, 
+        ModelSet* pHmmsToUpdate, bool compactRepresentation = false);
     
     /**
      * @brief Releases memory occupied by the network resources
      */
     void 
-    Release();
+    Clear();
 
 
     // accessors ...............................................................
@@ -270,11 +295,11 @@ namespace STK
     { return *mpNetwork; }
     
 
-    Node*
+    NetworkType::NodeType*
     pFirst() 
     { return mpNetwork->pFirst(); }
 
-    Node*
+    NetworkType::NodeType*
     pLast()
     { return mpNetwork->pLast(); }
 
@@ -329,60 +354,67 @@ namespace STK
 
 
     // public atributes ........................................................
-    NetworkType*            mpNetwork;
+    NetworkType*                mpNetwork;
      
-    Node*                   mpActiveModels;
-    Node*                   mpActiveNodes;
-    int                     mActiveTokens;
+    NetworkType::NodeType*     mpActiveModels;
+    NetworkType::NodeType*     mpActiveNodes;
+    int                         mActiveTokens;
                             
-    int                     mNumberOfNetStates; // Not used for anything important
-    Token*                  mpAuxTokens;
-    Cache*                  mpOutPCache;
-    Cache*                  mpMixPCache;
+    int                         mNumberOfNetStates; // Not used for anything important
+    Token*                      mpAuxTokens;
+    Cache*                      mpOutPCache;
+    Cache*                      mpMixPCache;
   
-    long                    mTime;
-    Token*                  mpBestToken;
-    Node*                   mpBestNode;
+    long                        mTime;
+    Token*                      mpBestToken;
+    NetworkType::NodeType*     mpBestNode;
     
     // Passing parameters
-    State*                  mpThreshState;
-    FLOAT                   mBeamThresh;
-    FLOAT                   mWordThresh;
-                            
-    FLOAT                   mWPenalty;  
-    FLOAT                   mMPenalty;
-    FLOAT                   mPronScale;
-    FLOAT                   mLmScale;
-    FLOAT                   mTranScale;
-    FLOAT                   mOutpScale;
-    FLOAT                   mOcpScale;
-    FLOAT                   mPruningThresh;
-    SearchPathsType         mSearchPaths;
+    State*                      mpThreshState;
+    FLOAT                       mBeamThresh;
+    FLOAT                       mWordThresh;
+                                
+    FLOAT                       mWPenalty;  
+    FLOAT                       mMPenalty;
+    FLOAT                       mPronScale;
+    FLOAT                       mLmScale;
+    FLOAT                       mTranScale;
+    FLOAT                       mOutpScale;
+    FLOAT                       mOcpScale;
+    FLOAT                       mPruningThresh;
+    SearchPathsType             mSearchPaths;
 
-    bool                    mLatticeGeneration;
-    bool                    mCompactRepresentation;
+    bool                        mLatticeGeneration;
+    bool                        mCompactRepresentation;
 
-    bool                    mContinuousTokenGeneration;
-    bool                    mKeepExitToken;    
-    //    MyHSearchData           mLatticeNodeHash;
-    //    Node *                  mpLatticeLastNode;
+    bool                        mContinuousTokenGeneration;
+    bool                        mKeepExitToken;    
+    //    MyHSearchData               mLatticeNodeHash;
+    //    Node *                      mpLatticeLastNode;
 
-                              
-    PropagDirectionType     mPropagDir;
-    int                     mAlignment;
-    int                     mCollectAlphaBeta;
+                                  
+    PropagDirectionType         mPropagDir;
+    int                         mAlignment;
+    int                         mCollectAlphaBeta;
     
-    //  int                     mmi_den_pass;
-    AccumType               mAccumType;
-    ModelSet*               mpModelSet;
-    ModelSet*               mpModelSetToUpdate;
-    
-
+    //  int                         mmi_den_pass;
+    AccumType                   mAccumType;
+    ModelSet*                   mpModelSet;
+    ModelSet*                   mpModelSetToUpdate;
 
   private:
-    void
-    PhoneNodesToModelNodes(ModelSet * pHmms, ModelSet *pHmmsToUpdate, int& maxStatesInModel);
- 
+    /** 
+     * @brief Maps network phone nodes to hmm models in physical memory
+     * 
+     * @param pHmms self descriptive
+     * @param pHmmsToUpdate self descriptive
+     * @param maxStatesInModel self descriptive
+     * 
+     * @return Pointer to the last node in the mNetwork node set
+     */
+    NetworkType::NodeType* 
+    PhoneNodesToModelNodes(ModelSet * pHmms, ModelSet *pHmmsToUpdate, 
+        int& maxStatesInModel);
   }; // class Decoder
   //***************************************************************************
   //***************************************************************************
@@ -433,8 +465,8 @@ namespace STK
   {
   public:
     /// Token's likelihood precision type
-    typedef double          LikeType;
-
+    typedef double                            LikeType;
+    typedef Node<NODE_REGULAR, LINK_REGULAR>  NodeType;
 
     LikeType                mLike;            ///< Total likelihood
     LikeType                mAcousticLike;    ///< Acoustic likelihood
@@ -464,11 +496,11 @@ namespace STK
     Label*
     pGetLabels();
     
-    Node*
+    Node<NODE_REGULAR, LINK_REGULAR>*
     pGetLattice();
     
     void
-    AddWordLinkRecord(Node* pNode, int stateIdx, int time);
+    AddWordLinkRecord(Node<NODE_REGULAR, LINK_REGULAR>* pNode, int stateIdx, int time);
     
     void 
     AddAlternativeHypothesis(WordLinkRecord* pWlr);
@@ -490,7 +522,7 @@ namespace STK
   public:
     typedef double     LikeType;
 
-    Node*              mpNode;
+    Node<NODE_REGULAR, LINK_REGULAR>*              mpNode;
     int                mStateIdx;
     int                mAux;             
     LikeType           mLike;
@@ -504,6 +536,10 @@ namespace STK
     WordLinkRecord*    mpTmpNext;
     bool               mIsFreed;
   #endif
+
+    Node<NODE_REGULAR, LINK_REGULAR>*
+    pNode() const
+    { return mpNode; }
   }; 
   // class WordLinkRecord
   //***************************************************************************
@@ -517,11 +553,11 @@ namespace STK
   class ActiveNodeRecord
   {
   public:
-    Node *  mpNode;
-    Node *  mpNextActiveModel;
-    Node *  mpPrevActiveModel;
-    Node *  mpNextActiveNode;
-    Node *  mpPrevActiveNode;
+    Node<NODE_REGULAR, LINK_REGULAR> *  mpNode;
+    Node<NODE_REGULAR, LINK_REGULAR> *  mpNextActiveModel;
+    Node<NODE_REGULAR, LINK_REGULAR> *  mpPrevActiveModel;
+    Node<NODE_REGULAR, LINK_REGULAR> *  mpNextActiveNode;
+    Node<NODE_REGULAR, LINK_REGULAR> *  mpPrevActiveNode;
     
     bool    mIsActiveModel;
     int     mIsActiveNode;
@@ -531,7 +567,7 @@ namespace STK
     Token * mpTokens;
 
 
-    ActiveNodeRecord(Node* pNode) : mpNode(pNode), mIsActiveModel(false), mIsActiveNode(0)
+    ActiveNodeRecord(Node<NODE_REGULAR, LINK_REGULAR>* pNode) : mpNode(pNode), mIsActiveModel(false), mIsActiveNode(0)
     {
       int numOfTokens = mpNode->mType & NT_MODEL ? mpNode->mpHmm->mNStates : 1;
       mpTokens        = new Token[numOfTokens];

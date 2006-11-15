@@ -183,6 +183,8 @@ int main(int argc, char *argv[])
   mmf_dir        = GetParamStr(&cfg_hash, SNAME":MMFDIR",          ".");
   mmf_mask       = GetParamStr(&cfg_hash, SNAME":MMFMASK",         NULL);
 
+  bool print_all_options = GetParamBool(&cfg_hash,SNAME":PRINTALLOPTIONS", false);
+
   if (GetParamBool(&cfg_hash, SNAME":PRINTCONFIG", false))
     PrintConfig(&cfg_hash);
   
@@ -192,6 +194,11 @@ int main(int argc, char *argv[])
   if (!GetParamBool(&cfg_hash,SNAME":ACCEPTUNUSEDPARAM", false))
     CheckCommandLineParamUse(&cfg_hash);
 
+  if (print_all_options) 
+  {
+    print_registered_parameters();
+  }
+  
   if (NULL != script)
   {
     for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) 

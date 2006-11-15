@@ -24,9 +24,9 @@
 
 #include <stdexcept>
 #include <iostream>
-
 #include <string>
 #include <vector>
+#include <sstream>
 
 static union
 {
@@ -936,6 +936,44 @@ void fast_softmax_vec(double *in, double *out, int size)
     putchar('\n');
   }
   
+  
+  // holds the registered parameters
+  std::vector<ParameterRecord>    gRegisteredParameters;
+
+  //***************************************************************************
+  //***************************************************************************
+  // registers a parameter in a global variable for easy printing
+  void
+  register_parameter(const char* pName, const char* pType, const char* pHelp=NULL)
+  {
+    ParameterRecord new_rec;
+
+    new_rec.mName = (NULL != pName) ? pName : "";
+    new_rec.mType = (NULL != pType) ? pType : "";
+    new_rec.mHelp = (NULL != pHelp) ? pHelp : "";
+
+    gRegisteredParameters.push_back(new_rec);
+  }
+
+
+  //***************************************************************************
+  //***************************************************************************
+  // prints all registered parameters to stdout
+  void
+  print_registered_parameters()
+  {
+    std::vector<ParameterRecord>::iterator it;
+
+    for (it  = gRegisteredParameters.begin(); 
+         it != gRegisteredParameters.end();
+         it++)
+    {
+      std::cout << it->mName << " " << it->mType << " " << it->mHelp 
+        << std::endl;
+    }
+  }
+
+
   //***************************************************************************
   //***************************************************************************
   ENTRY* GetParam(MyHSearchData *pConfigHash, const char *pParamName)
@@ -960,6 +998,8 @@ void fast_softmax_vec(double *in, double *out, int size)
     const char *    pParamName,
     const char *    default_value)
   {
+    register_parameter(pParamName, "string");
+
     ENTRY *ep = GetParam(pConfigHash, pParamName);
     return ep != NULL ? 2 + (char *) ep->data : default_value;
   }
@@ -980,7 +1020,8 @@ void fast_softmax_vec(double *in, double *out, int size)
     }
     return str;
   }
-  
+
+
   //***************************************************************************
   //***************************************************************************
   long 
@@ -990,6 +1031,9 @@ void fast_softmax_vec(double *in, double *out, int size)
     long default_value)
   {
     char *chrptr;
+
+    register_parameter(pParamName, "int");
+
     ENTRY *ep = GetParam(pConfigHash, pParamName);
     if (ep == NULL) return default_value;
   
@@ -1010,6 +1054,9 @@ void fast_softmax_vec(double *in, double *out, int size)
     FLOAT             default_value)
   {
     char *chrptr;
+    
+    register_parameter(pParamName, "float");
+
     ENTRY *ep = GetParam(pConfigHash, pParamName);
     if (ep == NULL) return default_value;
   
@@ -1029,6 +1076,8 @@ void fast_softmax_vec(double *in, double *out, int size)
     const char *    pParamName,
     bool            default_value)
   {
+    register_parameter(pParamName, "bool");
+
     ENTRY *ep = GetParam(pConfigHash, pParamName);
     if (ep == NULL) return default_value;
   
@@ -1050,7 +1099,11 @@ void fast_softmax_vec(double *in, double *out, int size)
     int             default_value, 
     ...)  
   {
+
+    register_parameter(pParamName, "enum");
+
     ENTRY *ep = GetParam(pConfigHash, pParamName);
+
     if (ep == NULL) return default_value;
   
     const char *val = 2 + (char *) ep->data;
@@ -1066,6 +1119,7 @@ void fast_softmax_vec(double *in, double *out, int size)
       if (!strcmp(val, s)) break;
     }
     va_end(ap);
+
     if (s) return i;
   
     //To report error, create string listing all possible values
@@ -1078,6 +1132,7 @@ void fast_softmax_vec(double *in, double *out, int size)
       if (i < cnt - 2) strcat(s, ", ");
       else if (i == cnt - 2) strcat(s, " or ");
     }
+
     va_end(ap);
     Error("%s expected for %s but found '%s'", s, OptOrParStr(ep),val);
     return 0;
@@ -1415,12 +1470,23 @@ void fast_softmax_vec(double *in, double *out, int size)
     std::string::size_type  pos;
     
     mLogical = rFileName;
+    mWeight  = 1.0;
     
     // some slash-backslash replacement hack
     for (size_t i = 0; i < mLogical.size(); i++)
       if (mLogical[i] == '\\') 
         mLogical[i] = '/';
         
+    // read sentence weight definition if any ( physical_file.fea[s,e]{weight} )
+    if ((pos = mLogical.find('{')) != std::string::npos)
+    {
+      std::string       tmp_weight(mLogical.begin() + pos + 1, mLogical.end());
+      std::stringstream tmp_ss(tmp_weight);
+
+      tmp_ss >> mWeight;
+      mLogical.erase(pos);
+    }
+
     // look for "=" symbol and if found, split it
     if ((pos = mLogical.find('=')) != std::string::npos)
     {

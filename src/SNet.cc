@@ -271,6 +271,8 @@ int main(int argc, char *argv[])
 //                              !network_file && htk_compat ? TF_HTK : TF_STK,
 //                              "HTK", TF_HTK, "STK", TF_STK, NULL);
 
+  bool print_all_options = GetParamBool(&cfgHash,SNAME":PRINTALLOPTIONS", false);
+
 
   if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", false)) {
     PrintConfig(&cfgHash);
@@ -280,6 +282,11 @@ int main(int argc, char *argv[])
     CheckCommandLineParamUse(&cfgHash);
   }
 
+  if (print_all_options) 
+  {
+    print_registered_parameters();
+  }
+  
   if (NULL != script)
   {
     for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) {

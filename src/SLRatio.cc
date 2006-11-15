@@ -38,7 +38,7 @@ using namespace STK;
 
 typedef struct _LRTrace LRTrace;
 struct _LRTrace {
-  Node *mpWordEnd;
+  Node<NODE_REGULAR, LINK_REGULAR> *mpWordEnd;
   FLOAT lastLR;
   FLOAT candidateLR;
   long long candidateStartTime;
@@ -46,10 +46,10 @@ struct _LRTrace {
 };
 
 LRTrace*
-MakeLRTraceTable(Decoder* pDecoder, int* nWords, Node*& filler_end)
+MakeLRTraceTable(Decoder* pDecoder, int* nWords, Decoder::NetworkType::NodeType*& filler_end)
 {
   LRTrace *lrt;
-  Node *node;
+  Decoder::NetworkType::NodeType* node;
   int i;
 
   *nWords = 0;
@@ -299,7 +299,7 @@ int main(int argc, char *argv[]) {
 
   int nWords, j;
   LRTrace *lrt = NULL;
-  Node *filler_end;
+  Decoder::NetworkType::NodeType* filler_end;
 
   if (argc == 1) usage(argv[0]);
 
@@ -391,16 +391,26 @@ int main(int argc, char *argv[]) {
         Warning("Unknown label formating flag '%c' ignored (NCST)", *cchrptr);
     }
   }
+
+  bool print_all_options = GetParamBool(&cfgHash,SNAME":PRINTALLOPTIONS", false);
+  
   if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", false)) {
     PrintConfig(&cfgHash);
   }
+
   if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", false)) {
     puts("Version: "MODULE_VERSION"\n");
   }
+
   if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", false)) {
     CheckCommandLineParamUse(&cfgHash);
   }
 
+  if (print_all_options) 
+  {
+    print_registered_parameters();
+  }
+  
   if (NULL != script)
   {
     for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) 
@@ -442,7 +452,7 @@ int main(int argc, char *argv[]) {
     ilfp = fopen(network_file, "rt");
     if (ilfp  == NULL) Error("Cannot open network file: %s", network_file);
 
-    Node *node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash,
+    Decoder::NetworkType::NodeType* node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash,
                                 notInDictAction, in_lbl_fmt,
                                 header.mSamplePeriod, network_file, NULL);
     NetworkExpansionsAndOptimizations(node, expOptions, in_net_fmt, &dictHash,
@@ -480,7 +490,7 @@ int main(int argc, char *argv[]) {
             header.mSampleSize/sizeof(float), file_name->mpPhysical, hset.mInputVectorSize);
     }
     if (!network_file) {
-      Node *node = NULL;
+      Decoder::NetworkType::NodeType* node = NULL;
       strcpy(label_file, file_name->logical);
       ilfp = OpenInputLabelFile(label_file, in_lbl_dir,
                               in_lbl_ext ? in_lbl_ext : "net",
@@ -560,7 +570,7 @@ int main(int argc, char *argv[]) {
       {
         long long  wordStartTime;
         float      lhRatio;
-        Node *     word_end = lrt[j].mpWordEnd;
+        Decoder::NetworkType::NodeType*    word_end = lrt[j].mpWordEnd;
 
         if (word_end  ->mpAnr == NULL || !word_end  ->mpAnr->mpExitToken->IsActive() || 
             filler_end->mpAnr == NULL || !filler_end->mpAnr->mpExitToken->IsActive()) 
@@ -621,17 +631,16 @@ int main(int argc, char *argv[]) {
       TraceLog("[%d frames]", header.mNSamples - hset.mTotalDelay);
     }
     if (!network_file) {
-      net.Release();
+      net.Clear();
       free(lrt);
     }
   }
   
   if (network_file) {
-    net.Release();
+    net.Clear();
     free(lrt);
   }
   
-  //ReleaseHMMSet(&hset);
   hset.Release();
   
   my_hdestroy_r(&phoneHash,   1);

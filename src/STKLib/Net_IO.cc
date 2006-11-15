@@ -43,15 +43,15 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  Node*
-  find_or_create_node(struct MyHSearchData *node_hash, const char *node_id, Node **last)
+  Node<NODE_REGULAR, LINK_REGULAR>*
+  find_or_create_node(struct MyHSearchData *node_hash, const char *node_id, Node<NODE_REGULAR, LINK_REGULAR> **last)
   // Auxiliary function used by ReadHTKLattice_new. (Optionally initialize
   // uninitialized node_hash) Search for node record at key node_id. If found,
   // pointer to this record is returned, otherwise new node record is allocated
   // with type set to NT_UNDEF and entered to has at key node_id and pointer
   // to this new record is returned.
   {
-    Node*   p_node;
+    Node<NODE_REGULAR, LINK_REGULAR>*   p_node;
     ENTRY   e = {0}; //{0} is just to make compiler happy
     ENTRY*  ep;
   
@@ -62,9 +62,9 @@ namespace STK
     my_hsearch_r(e, FIND, &ep, node_hash);
   
     if (ep != NULL) 
-      return (Node *) ep->data;  
+      return (Node<NODE_REGULAR, LINK_REGULAR> *) ep->data;  
   
-    p_node = (Node *) calloc(1, sizeof(Node));
+    p_node = (Node<NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NODE_REGULAR, LINK_REGULAR>));
     
     if (p_node == NULL) 
       Error("Insufficient memory");
@@ -74,8 +74,8 @@ namespace STK
     p_node->mNBackLinks = 0;
     p_node->mpBackLinks = NULL;
     p_node->mType       = NT_WORD;
-    p_node->mStart      = UNDEF_TIME;
-    p_node->mStop       = UNDEF_TIME;
+    p_node->SetStart(UNDEF_TIME);
+    p_node->SetStop(UNDEF_TIME);
     p_node->mpPronun    = NULL;
     p_node->mpBackNext  = *last;
     p_node->mPhoneAccuracy = 1.0;
@@ -127,7 +127,7 @@ namespace STK
   void 
   WriteSTKNetwork(
     FILE*                   pFp,
-    Node*                   pFirst,
+    Node<NODE_REGULAR, LINK_REGULAR>*                   pFirst,
     STKNetworkOutputFormat  format,
     long                    sampPeriod,
     const char*             net_file,
@@ -135,7 +135,7 @@ namespace STK
   {
     int     n;
     int     l=0;
-    Node*   node;
+    Node<NODE_REGULAR, LINK_REGULAR>*   node;
   
     for (n = 0, node = pFirst; node != NULL; node = node->mpNext, n++)  
     {
@@ -152,13 +152,13 @@ namespace STK
       if (format.mBase62Labels) fprintBase62(pFp, node->mAux);
       else                      fprintf(pFp,"%d", node->mAux);
   
-      if (!format.mNoTimes && node->mStop != UNDEF_TIME) {
+      if (!format.mNoTimes && node->Stop() != UNDEF_TIME) {
         fputs(" t=", pFp);
   
-        if (node->mStart != UNDEF_TIME && format.mStartTimes) {
-          fprintf(pFp,"%g,", node->mStart * 1.0e-7 * sampPeriod);
+        if (node->Start() != UNDEF_TIME && format.mStartTimes) {
+          fprintf(pFp,"%g,", node->Start() * 1.0e-7 * sampPeriod);
         }
-        fprintf(  pFp,"%g",  node->mStop  * 1.0e-7 * sampPeriod);
+        fprintf(  pFp,"%g",  node->Stop()  * 1.0e-7 * sampPeriod);
       }
 
       if (!(node->mType & NT_WORD && node->mpPronun == NULL)
@@ -293,14 +293,14 @@ namespace STK
   //***************************************************************************
   void WriteSTKNetworkInOldFormat(
     FILE        *lfp,
-    Node       *first,
+    Node<NODE_REGULAR, LINK_REGULAR>       *first,
     LabelFormat labelFormat,
     long        sampPeriod,
     const char  *net_file,
     const char  *out_MNF)
   {
     int   i;
-    Node* node;
+    Node<NODE_REGULAR, LINK_REGULAR>* node;
   
     for (i = 0, node = first; node != NULL; node = node->mpNext, i++)  {
       node->mAux = i;
@@ -344,19 +344,19 @@ namespace STK
         fprintf(lfp," {"FLOAT_FMT"}", node->mPhoneAccuracy);
       }
       if (!(labelFormat.TIMES_OFF) &&
-        node->mStart != UNDEF_TIME && node->mStop != UNDEF_TIME) {
+        node->Start() != UNDEF_TIME && node->Stop() != UNDEF_TIME) {
         int ctm = labelFormat.CENTRE_TM;
         fprintf   (lfp," (");
-        fprintf_ll(lfp, sampPeriod * (2 * node->mStart + ctm) / 2 - labelFormat.left_extent);
+        fprintf_ll(lfp, sampPeriod * (2 * node->Start() + ctm) / 2 - labelFormat.left_extent);
         fprintf   (lfp," ");
-        fprintf_ll(lfp, sampPeriod * (2 * node->mStop - ctm)  / 2 + labelFormat.right_extent);
+        fprintf_ll(lfp, sampPeriod * (2 * node->Stop() - ctm)  / 2 + labelFormat.right_extent);
         fprintf   (lfp,")");
       }
       fprintf(lfp,"\t%d", node->mNLinks);
       for (j = 0; j < node->mNLinks; j ++) {
-        fprintf(lfp," %d",node->mpLinks[j].mpNode->mAux);
-        if (node->mpLinks[j].mLmLike != 0.0) {
-          fprintf(lfp," {"FLOAT_FMT"}", node->mpLinks[j].mLmLike);
+        fprintf(lfp," %d",node->mpLinks[j].pNode()->mAux);
+        if (node->mpLinks[j].LmLike() != 0.0) {
+          fprintf(lfp," {"FLOAT_FMT"}", node->mpLinks[j].LmLike());
         }
       }
       fputs("\n", lfp);
@@ -377,7 +377,7 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  static int 
+  int 
   getInteger(char *str, char **endPtr, const char *file_name, int line_no)
   {
     long l = strtoul(str, endPtr, 10);
@@ -392,7 +392,7 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  static float 
+  float 
   getFloat(char *str, char **endPtr, const char *file_name, int line_no)
   {
     double d = strtod(str, endPtr);
@@ -443,7 +443,7 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  Node *ReadSTKNetworkInOldFormat(
+  Node<NODE_REGULAR, LINK_REGULAR> *ReadSTKNetworkInOldFormat(
     FILE*                     lfp,
     struct MyHSearchData*     word_hash,
     struct MyHSearchData*     phone_hash,
@@ -467,8 +467,8 @@ namespace STK
     char      wordOrModelName[1024] = {'\0'};
     double    linkLike;
     double    pronunProb;
-    Node*     node;
-    Node**    nodes;
+    Node<NODE_REGULAR, LINK_REGULAR>*     node;
+    Node<NODE_REGULAR, LINK_REGULAR>**    nodes;
   
     std::stringstream ss; 
     
@@ -491,11 +491,11 @@ namespace STK
     }
     numOfNodes = t1;
     
-    if ((nodes = (Node **) calloc(numOfNodes, sizeof(Node *))) == NULL) {
+    if ((nodes = (Node<NODE_REGULAR, LINK_REGULAR> **) calloc(numOfNodes, sizeof(Node<NODE_REGULAR, LINK_REGULAR> *))) == NULL) {
       Error("Insufficient memory");
     }
     for (i=0; i < numOfNodes; i++) {
-      if ((nodes[i] = (Node *) calloc(1, sizeof(Node))) == NULL) {
+      if ((nodes[i] = (Node<NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NODE_REGULAR, LINK_REGULAR>))) == NULL) {
         Error("Insufficient memory");
       }
       nodes[i]->mType = NT_UNDEF;
@@ -542,14 +542,15 @@ namespace STK
               "Supported values for node type are: M - model, W - word, N - null, S - subnet, K - keyword, F - filler",
               nodeId, file_name);
       }
-      node->mStart = node->mStop = UNDEF_TIME;
+      node->SetStart(UNDEF_TIME); 
+      node->SetStop (UNDEF_TIME);
       node->mPhoneAccuracy = 1.0;
   //    node->mAux = *totalNumOfNodes;
   //    ++*totalNumOfNodes;
   
       if (nodeType == 'S') {
         FILE *snfp;
-        Node *subnetFirst;
+        Node<NODE_REGULAR, LINK_REGULAR> *subnetFirst;
   
   //      --*totalNumOfNodes; // Subnet node doesn't count
   
@@ -636,8 +637,8 @@ namespace STK
       if (nodeType != 'S') {
         if (fscanf(lfp, " (%lld %lld)", &start, &stop)==2 && !(labelFormat.TIMES_OFF)) {
           long center_shift = labelFormat.CENTRE_TM ? sampPeriod / 2 : 0;
-          node->mStart = (start - center_shift - labelFormat.left_extent)  / sampPeriod;
-          node->mStop  = (stop  + center_shift + labelFormat.right_extent) / sampPeriod;
+          node->SetStart((start - center_shift - labelFormat.left_extent)  / sampPeriod);
+          node->SetStop((stop  + center_shift + labelFormat.right_extent) / sampPeriod);
         }
       }
       if (fscanf(lfp, "%d ", &numOfLinks) != 1) {
@@ -648,7 +649,7 @@ namespace STK
         while (node->mpNext != NULL) node = node->mpNext;
       }
       if (numOfLinks) {
-        if ((node->mpLinks = (Link<LINK_BASIC> *) malloc(numOfLinks * sizeof(Link<LINK_BASIC>))) == NULL) {
+        if ((node->mpLinks = (Link<NODE_REGULAR, LINK_REGULAR> *) malloc(numOfLinks * sizeof(Link<NODE_REGULAR, LINK_REGULAR>))) == NULL) {
           Error("Insufficient memory");
         }
       } else {
@@ -663,7 +664,7 @@ namespace STK
       for (j=0; j < static_cast<size_t>(numOfLinks); j++) {
         if (fscanf(lfp, "%d ", &linkId) != 1) {
           Error("Invalid definition of node %d in file %s.\n"
-                "Link<LINK_BASIC> Id is expected in link list", nodeId, file_name);
+                "Link<NODE_REGULAR, LINK_REGULAR> Id is expected in link list", nodeId, file_name);
         }
         if (static_cast<size_t>(linkId) >= numOfNodes) {
           Error("Invalid definition of node %d in file %s.\n"
@@ -672,8 +673,8 @@ namespace STK
         if (fscanf(lfp, "{%lf} ", &linkLike) != 1) {
           linkLike = 0.0;
         }
-        node->mpLinks[j].mpNode = nodes[linkId];
-        node->mpLinks[j].mLmLike = linkLike;
+        node->mpLinks[j].SetNode(nodes[linkId]);
+        node->mpLinks[j].SetLmLike(linkLike);
         nodes[linkId]->mNBackLinks++;
       }
     }
@@ -713,15 +714,16 @@ namespace STK
     // create back links
     for (i = 0; i < numOfNodes; i++) {
       if (!nodes[i]->mpBackLinks) // Could be allready alocated for subnetwork
-        nodes[i]->mpBackLinks = (Link<LINK_BASIC> *) malloc(nodes[i]->mNBackLinks * sizeof(Link<LINK_BASIC>));
+        nodes[i]->mpBackLinks = (Link<NODE_REGULAR, LINK_REGULAR> *) malloc(nodes[i]->mNBackLinks * sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
       if (nodes[i]->mpBackLinks == NULL) Error("Insufficient memory");
       nodes[i]->mNBackLinks = 0;
     }
     for (i = 0; i < numOfNodes; i++) {
       for (j=0; j < static_cast<size_t>(nodes[i]->mNLinks); j++) {
-        Node *forwNode = nodes[i]->mpLinks[j].mpNode;
-        forwNode->mpBackLinks[forwNode->mNBackLinks].mpNode = nodes[i];
-        forwNode->mpBackLinks[forwNode->mNBackLinks].mLmLike = nodes[i]->mpLinks[j].mLmLike;
+        Node<NODE_REGULAR, LINK_REGULAR> *forwNode = nodes[i]->mpLinks[j].pNode();
+
+        forwNode->mpBackLinks[forwNode->mNBackLinks].SetNode(nodes[i]);
+        forwNode->mpBackLinks[forwNode->mNBackLinks].SetLmLike(nodes[i]->mpLinks[j].LmLike());
         forwNode->mNBackLinks++;
       }
     }
@@ -753,7 +755,7 @@ namespace STK
 
   //***************************************************************************
   //***************************************************************************
-  Node*
+  Node<NODE_REGULAR, LINK_REGULAR>*
   ReadSTKNetwork(
     FILE*                     lfp,
     struct MyHSearchData *    word_hash,
@@ -765,12 +767,12 @@ namespace STK
     const char *              in_MLF,
     bool                      compactRepresentation)
   {
-    Node*            node;
-    Node*            enode = NULL;
-    Node*            first = NULL;
-    Node*            last  = NULL;
-    Node*            fnode = NULL;
-    Node*            lnode;
+    Node<NODE_REGULAR, LINK_REGULAR>*            node;
+    Node<NODE_REGULAR, LINK_REGULAR>*            enode = NULL;
+    Node<NODE_REGULAR, LINK_REGULAR>*            first = NULL;
+    Node<NODE_REGULAR, LINK_REGULAR>*            last  = NULL;
+    Node<NODE_REGULAR, LINK_REGULAR>*            fnode = NULL;
+    Node<NODE_REGULAR, LINK_REGULAR>*            lnode;
     char*            line;
     int              line_no   =  0;
     int              nnodes    =  0;
@@ -784,7 +786,7 @@ namespace STK
     MyHSearchData node_hash = {0};
     struct ReadlineData   rld       = {0};
     
-    NodeBasic* first_basic;
+    NodeBasic<NODE_REGULAR, LINK_REGULAR>* first_basic;
   
     for (;;) 
     {
@@ -839,7 +841,7 @@ namespace STK
           if (!*chptr || !strcmp(chptr, "I")) {
             if (compactRepresentation)
             {
-               node = reinterpret_cast<Node *>(&first_basic[getInteger(valptr, &chptr, file_name, line_no)]);
+               node = reinterpret_cast<Node<NODE_REGULAR, LINK_REGULAR> *>(&first_basic[getInteger(valptr, &chptr, file_name, line_no)]);
                if (node->mType == NT_UNDEF)
                  node->mType = NT_WORD;
             }
@@ -868,7 +870,7 @@ namespace STK
               if (first != NULL)
                 Error("Redefinition of N= (NODES=) is not allowed in CSTK format (%s:%d)", file_name, line_no);
                 
-              first = reinterpret_cast<Node *>(first_basic = new NodeBasic[nnodes]);
+              first = reinterpret_cast<Node<NODE_REGULAR, LINK_REGULAR> *>(first_basic = new NodeBasic<NODE_REGULAR, LINK_REGULAR>[nnodes]);
             }
             else if (node_hash.mTabSize == 0 && !my_hcreate_r(nnodes, &node_hash)) 
             {
@@ -893,24 +895,32 @@ namespace STK
             if (*colonptr == ',') {
               if (colonptr != valptr) {
                 *colonptr = ' ';
-                node->mStart = 100 * (long long) (0.5 + 1e5 *
-                              getFloat(valptr, &chptr, file_name, line_no));
+                node->SetStart(100 * (long long) (0.5 + 1e5 *
+                              getFloat(valptr, &chptr, file_name, line_no)));
               }
               valptr = colonptr+1;
             }
-            node->mStop = 100 * (long long) (0.5 + 1e5 *
-                        getFloat(valptr, &chptr, file_name, line_no));
-          } else if (!strcmp(chptr, "var") || !strcmp(chptr, "v")) {
+            node->SetStop(100 * (long long) (0.5 + 1e5 *
+                        getFloat(valptr, &chptr, file_name, line_no)));
+          } 
+          else if (!strcmp(chptr, "var") || !strcmp(chptr, "v")) 
+          {
             pron_var = getInteger(valptr, &chptr, file_name, line_no);
             if (pron_var < 1) {
               Error("Invalid pronunciation variant (%s:%d)", file_name, line_no);
             }
-          } else if (!strcmp(chptr, "p") && !compactRepresentation) {
+          } 
+          else if (!strcmp(chptr, "p") && !compactRepresentation) 
+          {
             node->mPhoneAccuracy = getFloat(valptr, &chptr, file_name, line_no);
-          } else if (!strcmp(chptr, "flag") || !strcmp(chptr, "f")) {
-            if (getHTKstr(valptr, &chptr)) {
+          } 
+          else if (!strcmp(chptr, "flag") || !strcmp(chptr, "f")) 
+          {
+            if (getHTKstr(valptr, &chptr)) 
+            {
               Error("%s (%s:%d)", chptr, file_name, line_no);
             }
+            
             for (; *valptr; valptr++) {
               switch (toupper(*valptr)) {
                 case 'K':
@@ -1048,14 +1058,14 @@ namespace STK
                 while(isspace(*pCh)) pCh++;
               }
               
-              node->mpLinks = (Link<LINK_BASIC> *) 
-                realloc(node->mpLinks, (node->mNLinks + nl) * sizeof(Link<LINK_BASIC>));
+              node->mpLinks = (Link<NODE_REGULAR, LINK_REGULAR> *) 
+                realloc(node->mpLinks, (node->mNLinks + nl) * sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
 
               // initialize the new links
               for (size_t new_i = node->mNLinks; new_i < node->mNLinks + nl; new_i++)
               {
-                node->mpLinks[new_i].mLmLike = 0.0;
-                node->mpLinks[new_i].mAcousticLike = 0.0;
+                node->mpLinks[new_i].SetLmLike(0.0);
+                node->mpLinks[new_i].SetAcousticLike(0.0);
               }
 
               if (node->mpLinks == NULL) Error("Insufficient memory");              
@@ -1070,7 +1080,7 @@ namespace STK
           {
             if (compactRepresentation)
             {
-               enode = reinterpret_cast<Node *>(&first_basic[getInteger(valptr, 
+               enode = reinterpret_cast<Node<NODE_REGULAR, LINK_REGULAR> *>(&first_basic[getInteger(valptr, 
                      &chptr, file_name, line_no)]);
                if (enode->mType == NT_UNDEF)
                  enode->mType = NT_WORD;
@@ -1087,9 +1097,9 @@ namespace STK
             
             // Links are counted and node->mpLinks is properly realocated 
             // at the end of the node definition above
-            node->mpLinks[nl-1].mpNode = enode;
-            node->mpLinks[nl-1].mLmLike = 0.0;
-            node->mpLinks[nl-1].mAcousticLike = 0.0;
+            node->mpLinks[nl-1].SetNode(enode);
+            node->mpLinks[nl-1].SetLmLike(0.0);
+            node->mpLinks[nl-1].SetAcousticLike(0.0);
   
             if (!compactRepresentation)
               ++enode->mNBackLinks;  
@@ -1101,7 +1111,7 @@ namespace STK
             
             // Set LM score to link starting in node. This link can possibly
             // lead to a phone node already inserted (div=) between 'node' and'enode'
-            node->mpLinks[node->mNLinks-1].mLmLike = lm_like;
+            node->mpLinks[node->mNLinks-1].SetLmLike(lm_like);
           } 
           
           else if (!strcmp(chptr, "acoustic") || !strcmp(chptr, "a")) 
@@ -1109,7 +1119,7 @@ namespace STK
             // Set acoustic score to link starting in node. This link can possibly
             // lead to a phone node already inserted (div=) between 'node' and'enode'
             FLOAT acoustic_like = getFloat(valptr, &chptr, file_name, line_no);
-            node->mpLinks[node->mNLinks-1].mAcousticLike = acoustic_like;
+            node->mpLinks[node->mNLinks-1].SetAcousticLike(acoustic_like);
           } 
 
           else if (!strcmp(chptr, "div") || !strcmp(chptr, "d")) 
@@ -1122,10 +1132,10 @@ namespace STK
             char  name[1024];
             float time;
             int   n;
-            Node*  last = node;
-            FLOAT lm_like  = node->mpLinks[node->mNLinks-1].mLmLike;
+            Node<NODE_REGULAR, LINK_REGULAR>*  last = node;
+            FLOAT lm_like  = node->mpLinks[node->mNLinks-1].LmLike();
   
-            if (node->mpLinks[node->mNLinks-1].mpNode != enode) {
+            if (node->mpLinks[node->mNLinks-1].pNode() != enode) {
               Error("Redefinition of  (%s:%d)", chptr, file_name, line_no);
             }
 
@@ -1137,19 +1147,19 @@ namespace STK
 
             while (sscanf(phn_marks, ":%[^,:]%n,%f%n", name, &n, &time, &n) > 0) 
             {
-              Node *tnode;
+              Node<NODE_REGULAR, LINK_REGULAR> *tnode;
               phn_marks+=n;
   
-              if ((tnode          = (Node *) calloc(1, sizeof(Node))) == NULL
-              || (tnode->mpLinks  = (Link<LINK_BASIC> *) malloc(
-                                        sizeof(Link<LINK_BASIC>))) == NULL) 
+              if ((tnode          = (Node<NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NODE_REGULAR, LINK_REGULAR>))) == NULL
+              || (tnode->mpLinks  = (Link<NODE_REGULAR, LINK_REGULAR> *) malloc(
+                                        sizeof(Link<NODE_REGULAR, LINK_REGULAR>))) == NULL) 
               {
                 Error("Insufficient memory");
               }
   
               // initialize the new links
-              tnode->mpLinks->mLmLike = 0.0;
-              tnode->mpLinks->mAcousticLike = 0.0;
+              tnode->mpLinks->SetLmLike(0.0);
+              tnode->mpLinks->SetAcousticLike(0.0);
 
               //Use special type to mark nodes inserted by d=..., they will need
               //special treatment. Later, they will become ordinary NT_PHONE nodes
@@ -1160,11 +1170,11 @@ namespace STK
               tnode->mPhoneAccuracy = 1.0;
               
               //Store phone durations now. Will be replaced by absolute times below.
-              tnode->mStart  = time != -FLT_MAX 
-                ?  100 * (long long) (0.5 + 1e5 * time) 
-                : UNDEF_TIME;
+              tnode->SetStart(time != -FLT_MAX 
+                              ?  100 * (long long) (0.5 + 1e5 * time) 
+                              : UNDEF_TIME);
 
-              tnode->mStop   = UNDEF_TIME;
+              tnode->SetStop (UNDEF_TIME);
 
               e.key  = name;
               e.data = NULL;
@@ -1180,9 +1190,9 @@ namespace STK
                 ep->data = e.data;
               }
               tnode->mpName = (char *) ep->data;
-              last->mpLinks[last->mNLinks-1].mpNode = tnode;
-              last->mpLinks[last->mNLinks-1].mLmLike = 0.0;
-              last->mpLinks[last->mNLinks-1].mAcousticLike = 0.0;
+              last->mpLinks[last->mNLinks-1].SetNode(tnode);
+              last->mpLinks[last->mNLinks-1].SetLmLike(0.0);
+              last->mpLinks[last->mNLinks-1].SetAcousticLike(0.0);
               last = tnode;
             }
 
@@ -1191,8 +1201,8 @@ namespace STK
                     file_name, line_no);
             }
 
-            last->mpLinks[last->mNLinks-1].mpNode = enode;
-            last->mpLinks[last->mNLinks-1].mLmLike = lm_like;
+            last->mpLinks[last->mNLinks-1].SetNode(enode);
+            last->mpLinks[last->mNLinks-1].SetLmLike(lm_like);
           } 
           
           else if (getHTKstr(valptr, &chptr)) 
@@ -1214,7 +1224,7 @@ namespace STK
           Error("Node %d not defined in network file (%s)", i, file_name);
         
         for (int j = 0; j < first_basic[i].mNLinks; j++)
-          if (first_basic[i].mpLinks[j].mpNode == first_basic)
+          if (first_basic[i].mpLinks[j].pNode() == first_basic)
             Error("Node 0 must be the initial network node (%s)", file_name);
       }
       
@@ -1237,14 +1247,14 @@ namespace STK
       for (node = lnode; node != NULL; node = node->mpBackNext)
       {
         // pre-allocate space for back-links
-        node->mpBackLinks = (Link<LINK_BASIC> *) 
-          malloc(node->mNBackLinks * sizeof(Link<LINK_BASIC>));
+        node->mpBackLinks = (Link<NODE_REGULAR, LINK_REGULAR> *) 
+          malloc(node->mNBackLinks * sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
 
           // initialize the new links
           for (size_t new_i = 0; new_i < node->mNBackLinks; new_i++)
           {
-            node->mpBackLinks[new_i].mLmLike = 0.0;
-            node->mpBackLinks[new_i].mAcousticLike = 0.0;
+            node->mpBackLinks[new_i].SetLmLike(0.0);
+            node->mpBackLinks[new_i].SetAcousticLike(0.0);
           }
 
         if (node->mpBackLinks == NULL) 
@@ -1279,10 +1289,10 @@ namespace STK
         int i;
         for (i = 0; i < node->mNLinks; i++) 
         {
-          Node* p_forwnode = node->mpLinks[i].mpNode;
+          Node<NODE_REGULAR, LINK_REGULAR>* p_forwnode = node->mpLinks[i].pNode();
           // 
-          p_forwnode->mpBackLinks[p_forwnode->mNBackLinks].mpNode  = node;
-          p_forwnode->mpBackLinks[p_forwnode->mNBackLinks].mLmLike = node->mpLinks[i].mLmLike;
+          p_forwnode->mpBackLinks[p_forwnode->mNBackLinks].SetNode(node);
+          p_forwnode->mpBackLinks[p_forwnode->mNBackLinks].SetLmLike(node->mpLinks[i].LmLike());
           p_forwnode->mNBackLinks++;
         }
       }
@@ -1290,37 +1300,43 @@ namespace STK
       for (node = lnode; node != NULL; fnode = node, node = node->mpBackNext) 
       {
         //If only stop time is specified, set start time to lowest predecessor stop time
-        if (node->mStart == UNDEF_TIME && node->mStop != UNDEF_TIME) {
+        if (node->Start() == UNDEF_TIME && node->Stop() != UNDEF_TIME) {
           int i;
           for (i = 0; i < node->mNBackLinks; i++) 
           {
-            Node* p_backnode = node->mpBackLinks[i].mpNode;
+            Node<NODE_REGULAR, LINK_REGULAR>* p_backnode = node->mpBackLinks[i].pNode();
             // skip nodes inserted by d=...
             while (p_backnode->mType == (NT_PHONE | NT_MODEL)) 
             {
               assert(p_backnode->mNBackLinks == 1);
-              p_backnode = p_backnode->mpBackLinks[0].mpNode;
+              p_backnode = p_backnode->mpBackLinks[0].pNode();
             }
 
-            if (p_backnode->mStop != UNDEF_TIME) {
-              node->mStart = node->mStart == UNDEF_TIME
-                            ?          p_backnode->mStop
-                            : LOWER_OF(p_backnode->mStop, node->mStart);
+            if (p_backnode->Stop() != UNDEF_TIME) {
+              node->SetStart(node->Start() == UNDEF_TIME
+                             ? p_backnode->Stop()
+                             : LOWER_OF(p_backnode->Stop(), node->Start()));
             }
           }
-          if (node->mStart == UNDEF_TIME) node->mStart = 0;
+          if (node->Start() == UNDEF_TIME) 
+            node->SetStart(0);
         }
 
-        //For model nodes defined by d=... (NT_PHONE | NT_MODEL), node->mStart contains
+        //For model nodes defined by d=... (NT_PHONE | NT_MODEL), node->Start() contains
         //only phone durations. Absolute times must be computed derived starting from
         //the end time of the node to which arc with d=... definition points.
-        if (node->mType == (NT_PHONE | NT_MODEL)) {
+        if (node->mType == (NT_PHONE | NT_MODEL)) 
+        {
           assert(node->mNLinks == 1);
-          node->mStop = node->mpLinks[0].mpNode->mType == (NT_PHONE | NT_MODEL)
-                      && node->mStart != UNDEF_TIME
-                      ? node->mpLinks[0].mpNode->mStart : node->mpLinks[0].mpNode->mStop;
-          node->mStart = node->mStart != UNDEF_TIME && node->mStop != UNDEF_TIME
-                        ? node->mStop - node->mStart : node->mpLinks[0].mpNode->mStart;
+
+          node->SetStop (node->mpLinks[0].pNode()->mType == (NT_PHONE | NT_MODEL)
+                           && node->Start() != UNDEF_TIME
+                         ? node->mpLinks[0].pNode()->Start() 
+                         : node->mpLinks[0].pNode()->Stop());
+
+          node->SetStart(node->Start() != UNDEF_TIME && node->Stop() != UNDEF_TIME
+                         ? node->Stop() - node->Start() 
+                         : node->mpLinks[0].pNode()->Start());
         }
       }
       
@@ -1346,64 +1362,64 @@ namespace STK
         if (node->mType == (NT_PHONE | NT_MODEL)) {
           node->mType = NT_PHONE;
         }
-        if (node->mStart != UNDEF_TIME) {
-          node->mStart = (node->mStart - labelFormat.left_extent) / sampPeriod;
+        if (node->Start() != UNDEF_TIME) {
+          node->SetStart((node->Start() - labelFormat.left_extent) / sampPeriod);
         }
-        if (node->mStop  != UNDEF_TIME) {
-          node->mStop  = (node->mStop + labelFormat.right_extent) / sampPeriod;
+        if (node->Stop()  != UNDEF_TIME) {
+          node->SetStop((node->Stop() + labelFormat.right_extent) / sampPeriod);
         }
       }
 
       if (first->mpPronun != NULL) {
-        node = (Node *) calloc(1, sizeof(Node));
+        node = (Node<NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NODE_REGULAR, LINK_REGULAR>));
         if (node == NULL) Error("Insufficient memory");
         node->mpNext       = first;
         node->mpBackNext   = NULL;
         first->mpBackNext  = node;
         node->mType       = NT_WORD;
         node->mpPronun     = NULL;
-        node->mStart      = UNDEF_TIME;
-        node->mStop       = UNDEF_TIME;
+        node->SetStart(UNDEF_TIME);
+        node->SetStop(UNDEF_TIME);
         node->mNBackLinks = 0;
         node->mpBackLinks  = NULL;
         node->mNLinks     = 1;
-        node->mpLinks      = (Link<LINK_BASIC>*) malloc(sizeof(Link<LINK_BASIC>));
+        node->mpLinks      = (Link<NODE_REGULAR, LINK_REGULAR>*) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
         if (node->mpLinks == NULL) Error("Insufficient memory");
-        node->mpLinks[0].mLmLike = 0.0;
-        node->mpLinks[0].mAcousticLike = 0.0;
-        node->mpLinks[0].mpNode = first;
+        node->mpLinks[0].SetLmLike(0.0);
+        node->mpLinks[0].SetAcousticLike(0.0);
+        node->mpLinks[0].SetNode(first);
         first->mNBackLinks = 1;
-        first->mpBackLinks  = (Link<LINK_BASIC>*) malloc(sizeof(Link<LINK_BASIC>));
+        first->mpBackLinks  = (Link<NODE_REGULAR, LINK_REGULAR>*) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
         if (first->mpBackLinks == NULL) Error("Insufficient memory");
-        first->mpBackLinks[0].mLmLike = 0.0;
-        first->mpBackLinks[0].mAcousticLike = 0.0;
-        first->mpBackLinks[0].mpNode = node;
+        first->mpBackLinks[0].SetLmLike(0.0);
+        first->mpBackLinks[0].SetAcousticLike(0.0);
+        first->mpBackLinks[0].SetNode(node);
         first = node;
       }
       if (last->mpPronun != NULL) {
-        node = (Node *) calloc(1, sizeof(Node));
+        node = (Node<NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NODE_REGULAR, LINK_REGULAR>));
         if (node == NULL) Error("Insufficient memory");
         last->mpNext      = node;
         node->mpNext      = NULL;
         node->mpBackNext  = last;
         node->mType      = NT_WORD;
         node->mpPronun    = NULL;
-        node->mStart     = UNDEF_TIME;
-        node->mStop      = UNDEF_TIME;
+        node->SetStart(UNDEF_TIME);
+        node->SetStop(UNDEF_TIME);
         node->mNLinks    = 0;
         node->mpLinks     = NULL;
         last->mNLinks = 1;
-        last->mpLinks  = (Link<LINK_BASIC>*) malloc(sizeof(Link<LINK_BASIC>));
+        last->mpLinks  = (Link<NODE_REGULAR, LINK_REGULAR>*) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
         if (last->mpLinks == NULL) Error("Insufficient memory");
-        last->mpLinks[0].mLmLike = 0.0;
-        last->mpLinks[0].mAcousticLike = 0.0;
-        last->mpLinks[0].mpNode = node;
+        last->mpLinks[0].SetLmLike(0.0);
+        last->mpLinks[0].SetAcousticLike(0.0);
+        last->mpLinks[0].SetNode(node);
         node->mNBackLinks = 1;
-        node->mpBackLinks  = (Link<LINK_BASIC>*) malloc(sizeof(Link<LINK_BASIC>));
+        node->mpBackLinks  = (Link<NODE_REGULAR, LINK_REGULAR>*) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
         if (node->mpBackLinks == NULL) Error("Insufficient memory");
-        node->mpBackLinks[0].mLmLike = 0.0;
-        node->mpBackLinks[0].mAcousticLike = 0.0;
-        node->mpBackLinks[0].mpNode = last;
+        node->mpBackLinks[0].SetLmLike(0.0);
+        node->mpBackLinks[0].SetAcousticLike(0.0);
+        node->mpBackLinks[0].SetNode(last);
       }
     }
 
@@ -1416,7 +1432,7 @@ namespace STK
     
   //***************************************************************************
   //***************************************************************************
-  Node* 
+  Node<NODE_REGULAR, LINK_REGULAR>* 
   ReadHTKLattice(
     FILE *            lfp,
     MyHSearchData *   word_hash,
@@ -1425,7 +1441,7 @@ namespace STK
     long              sampPeriod,
     const char *      file_name)
   {
-    Node **nodes = NULL, *node,
+    Node<NODE_REGULAR, LINK_REGULAR> **nodes = NULL, *node,
         *first = NULL, *last = NULL,
         *fnode, *lnode = NULL;
     char line[1024];
@@ -1474,7 +1490,7 @@ namespace STK
               Error("Redefinition of number of nodes (%s:%d)",file_name,line_no);
             }
             nnodes = strtoull(valptr, NULL, 10);
-            nodes  = (Node **) calloc(nnodes, sizeof(Node *));
+            nodes  = (Node<NODE_REGULAR, LINK_REGULAR> **) calloc(nnodes, sizeof(Node<NODE_REGULAR, LINK_REGULAR> *));
             if (nodes == NULL) Error("Insufficient memory");
             break;
           }
@@ -1486,7 +1502,7 @@ namespace STK
               Error("Redefinition of node %d (%s:%d)",
               node_id, file_name, line_no);
             }
-            nodes[node_id] = (Node *) calloc(1, sizeof(Node));
+            nodes[node_id] = (Node<NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NODE_REGULAR, LINK_REGULAR>));
             if (nodes[node_id] == NULL) Error("Insufficient memory");
   
             if (last == NULL) {
@@ -1573,8 +1589,8 @@ namespace STK
         }
         nodes[node_id]->mpPronun     = node_word ? node_word->pronuns[node_var]
                                               : NULL;
-        nodes[node_id]->mStart     = UNDEF_TIME;
-        nodes[node_id]->mStop      = node_time + labelFormat.right_extent;
+        nodes[node_id]->SetStart(UNDEF_TIME);
+        nodes[node_id]->SetStop(node_time + labelFormat.right_extent);
       } else if (state == ARC_DEF) {
         if (arc_start == -1 || arc_end == -1) {
           Error("Start node or end node not defined (%s:%d)", file_name, line_no);
@@ -1582,7 +1598,7 @@ namespace STK
   
         int linkId = nodes[arc_start]->mNLinks++;
         nodes[arc_start]->mpLinks =
-          (Link<LINK_BASIC> *) realloc(nodes[arc_start]->mpLinks, (linkId+1) * sizeof(Link<LINK_BASIC>));
+          (Link<NODE_REGULAR, LINK_REGULAR> *) realloc(nodes[arc_start]->mpLinks, (linkId+1) * sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
   
         if (nodes[arc_start]->mpLinks == NULL) Error("Insufficient memory");
   
@@ -1597,9 +1613,9 @@ namespace STK
           while (sscanf(phn_marks, ":%[^,],%f%n", name, &time, &n) > 1) {
             phn_marks+=n;
   
-            if ((node            = (Node *) calloc(1, sizeof(Node))) == NULL ||
-              (node->mpLinks     = (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>))) == NULL ||
-              (node->mpBackLinks = (Link<LINK_BASIC> *) malloc(sizeof(Link<LINK_BASIC>))) == NULL) {
+            if ((node            = (Node<NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NODE_REGULAR, LINK_REGULAR>))) == NULL ||
+              (node->mpLinks     = (Link<NODE_REGULAR, LINK_REGULAR> *) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>))) == NULL ||
+              (node->mpBackLinks = (Link<NODE_REGULAR, LINK_REGULAR> *) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>))) == NULL) {
               Error("Insufficient memory");
             }
             node->mType = NT_PHONE;
@@ -1609,13 +1625,14 @@ namespace STK
             node->mPhoneAccuracy = 1.0;
   
             if (!(labelFormat.TIMES_OFF)) {
-              node->mStart = last->mStop - labelFormat.left_extent - labelFormat.right_extent;
-              node->mStop  = last->mStop + 100 * (long long) (0.5 + 1e5 * time)
-                                      + labelFormat.right_extent;
+              node->SetStart(last->Stop() - labelFormat.left_extent - labelFormat.right_extent);
+              node->SetStop( last->Stop() + 100 * (long long) (0.5 + 1e5 * time)
+                                      + labelFormat.right_extent);
             } else {
-              node->mStart  = UNDEF_TIME;
-              node->mStop   = UNDEF_TIME;
+              node->SetStart(UNDEF_TIME);
+              node->SetStop(UNDEF_TIME);
             }
+
             e.key  = name;
             e.data = NULL;
             my_hsearch_r(e, FIND, &ep, phone_hash);
@@ -1630,10 +1647,10 @@ namespace STK
               ep->data = e.data;
             }
             node->mpName = (char *) ep->data;
-            last->mpLinks[last->mNLinks-1].mpNode = node;
-            last->mpLinks[last->mNLinks-1].mLmLike = 0.0;
-            node->mpBackLinks[0].mpNode = last;
-            node->mpBackLinks[0].mLmLike = 0.0;
+            last->mpLinks[last->mNLinks-1].SetNode(node);
+            last->mpLinks[last->mNLinks-1].SetLmLike(0.0);
+            node->mpBackLinks[0].SetNode(last);
+            node->mpBackLinks[0].SetLmLike(0.0);
             last = node;
           }
           if (strcmp(phn_marks,":")) {
@@ -1643,23 +1660,27 @@ namespace STK
         }
         linkId = nodes[arc_end]->mNBackLinks++;
         nodes[arc_end]->mpBackLinks =
-          (Link<LINK_BASIC> *) realloc(nodes[arc_end]->mpBackLinks, (linkId+1) * sizeof(Link<LINK_BASIC>));
+          (Link<NODE_REGULAR, LINK_REGULAR> *) realloc(nodes[arc_end]->mpBackLinks, (linkId+1) * sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
   
         if (nodes[arc_end]->mpBackLinks == NULL) Error("Insufficient memory");
   
-        last->mpLinks[last->mNLinks-1].mpNode = nodes[arc_end];
-        last->mpLinks[last->mNLinks-1].mLmLike = arc_like;
-        nodes[arc_end]->mpBackLinks[linkId].mpNode = last;
-        nodes[arc_end]->mpBackLinks[linkId].mLmLike = arc_like;
+        last->mpLinks[last->mNLinks-1].SetNode(nodes[arc_end]);
+        last->mpLinks[last->mNLinks-1].SetLmLike(arc_like);
+        nodes[arc_end]->mpBackLinks[linkId].SetNode(last);
+        nodes[arc_end]->mpBackLinks[linkId].SetLmLike(arc_like);
   
-        if (nodes[arc_start]->mStop != UNDEF_TIME) {
-          if (nodes[arc_end]->mStart == UNDEF_TIME) {
-            nodes[arc_end]->mStart = nodes[arc_start]->mStop - labelFormat.left_extent
-                                                          - labelFormat.right_extent;
-          } else {
-            nodes[arc_end]->mStart = LOWER_OF(nodes[arc_end]->mStart,
-                                            nodes[arc_start]->mStop - labelFormat.left_extent
-                                                                    - labelFormat.right_extent);
+        if (nodes[arc_start]->Stop() != UNDEF_TIME) 
+        {
+          if (nodes[arc_end]->Start() == UNDEF_TIME) 
+          {
+            nodes[arc_end]->SetStart( nodes[arc_start]->Stop() 
+                - labelFormat.left_extent - labelFormat.right_extent);
+          } 
+          else 
+          {
+            nodes[arc_end]->SetStart( LOWER_OF(nodes[arc_end]->Start(), 
+                  nodes[arc_start]->Stop() - labelFormat.left_extent 
+                  - labelFormat.right_extent));
           }
         }
       }
@@ -1700,32 +1721,32 @@ namespace STK
       last->mpBackNext = lnode;
     }
     if (first->mpPronun != NULL) {
-      node = (Node *) calloc(1, sizeof(Node));
+      node = (Node<NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NODE_REGULAR, LINK_REGULAR>));
       if (node == NULL) Error("Insufficient memory");
       node->mpNext       = first;
       node->mpBackNext   = NULL;
       first->mpBackNext  = node;
       node->mType       = NT_WORD;
       node->mpPronun     = NULL;
-      node->mStart      = UNDEF_TIME;
-      node->mStop       = UNDEF_TIME;
+      node->SetStart(UNDEF_TIME);
+      node->SetStop(UNDEF_TIME);
       node->mNBackLinks = 0;
       node->mpBackLinks  = NULL;
       node->mNLinks     = 1;
-      node->mpLinks      = (Link<LINK_BASIC>*) malloc(sizeof(Link<LINK_BASIC>));
+      node->mpLinks      = (Link<NODE_REGULAR, LINK_REGULAR>*) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
       if (node->mpLinks == NULL) Error("Insufficient memory");
-      node->mpLinks[0].mLmLike = 0.0;
-      node->mpLinks[0].mpNode = first;
+      node->mpLinks[0].SetLmLike(0.0);
+      node->mpLinks[0].SetNode(first);
   
       first->mNBackLinks = 1;
-      first->mpBackLinks  = (Link<LINK_BASIC>*) malloc(sizeof(Link<LINK_BASIC>));
+      first->mpBackLinks  = (Link<NODE_REGULAR, LINK_REGULAR>*) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
       if (first->mpBackLinks == NULL) Error("Insufficient memory");
-      first->mpBackLinks[0].mLmLike = 0.0;
-      first->mpBackLinks[0].mpNode = node;
+      first->mpBackLinks[0].SetLmLike(0.0);
+      first->mpBackLinks[0].SetNode(node);
       first = node;
     }
     if (last->mpPronun != NULL) {
-      node = (Node *) calloc(1, sizeof(Node));
+      node = (Node<NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NODE_REGULAR, LINK_REGULAR>));
       if (node == NULL) Error("Insufficient memory");
       last->mpNext      = node;
       node->mpNext      = NULL;
@@ -1733,22 +1754,22 @@ namespace STK
   
       node->mType      = NT_WORD;
       node->mpPronun    = NULL;
-      node->mStart     = UNDEF_TIME;
-      node->mStop      = UNDEF_TIME;
+      node->SetStart(UNDEF_TIME);
+      node->SetStop(UNDEF_TIME);
       node->mNLinks    = 0;
       node->mpLinks     = NULL;
   
       last->mNLinks = 1;
-      last->mpLinks  = (Link<LINK_BASIC>*) malloc(sizeof(Link<LINK_BASIC>));
+      last->mpLinks  = (Link<NODE_REGULAR, LINK_REGULAR>*) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
       if (last->mpLinks == NULL) Error("Insufficient memory");
-      last->mpLinks[0].mLmLike = 0.0;
-      last->mpLinks[0].mpNode = node;
+      last->mpLinks[0].SetLmLike(0.0);
+      last->mpLinks[0].SetNode(node);
   
       node->mNBackLinks = 1;
-      node->mpBackLinks  = (Link<LINK_BASIC>*) malloc(sizeof(Link<LINK_BASIC>));
+      node->mpBackLinks  = (Link<NODE_REGULAR, LINK_REGULAR>*) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
       if (node->mpBackLinks == NULL) Error("Insufficient memory");
-      node->mpBackLinks[0].mLmLike = 0.0;
-      node->mpBackLinks[0].mpNode = last;
+      node->mpBackLinks[0].SetLmLike(0.0);
+      node->mpBackLinks[0].SetNode(last);
     }
     return first;
   }

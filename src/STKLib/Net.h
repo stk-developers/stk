@@ -20,10 +20,6 @@
 
 namespace STK
 {
-  // Class list (overview)
-  //
-  class Node;
-
 
   class FWBWR;
   class ActiveNodeRecord;
@@ -31,7 +27,7 @@ namespace STK
   
   // Enums
   //
-  enum NodeType 
+  enum NodeKind 
   {
     NT_UNDEF  = 0x00,
     NT_WORD   = 0x01,
@@ -46,7 +42,8 @@ namespace STK
   
   enum NodeRepresentationType
   {
-    NODE_WITH_STATIC                = 0
+    NODE_REGULAR              = 0,
+    NODE_COMPACT              = 1
   }; // NodeRepresentationType
 
 
@@ -59,8 +56,8 @@ namespace STK
 
   enum LinkRepresentationType
   {
-    LINK_BASIC                = 0,
-    LINK_WITH_ACOUSTIC_LIKE   = 1
+    LINK_REGULAR              = 0,
+    LINK_COMPACT              = 1
   }; // LinkRepresentationType
 
 
@@ -69,8 +66,8 @@ namespace STK
    */
   enum NetworkStorageType
   {
-    NETWORK_REGULAR               = 0,
-    NETWORK_COMPACT               = 1
+    NETWORK_REGULAR           = 0,
+    NETWORK_COMPACT           = 1
   }; // enum NetworkType
 
 
@@ -83,20 +80,33 @@ namespace STK
   }; // NotInDictActionType;
     
 
-  template<LinkRepresentationType _LR>
+
+  //############################################################################
+  //############################################################################
+  // Class list (overview)
+
+  template<NodeRepresentationType _NR, LinkRepresentationType _LR>
     class Link;
 
-  template<
-    typename            _NodeType, 
-    typename            _LinkType,
-    NetworkStorageType  _NetworkType >
+  template<NodeRepresentationType _NR, LinkRepresentationType _LR>
+    class NodeBasic;
+
+  template<NodeRepresentationType _NR, LinkRepresentationType _LR>
+    class Node;
+
+
+  template< NodeRepresentationType    _NodeType, 
+            LinkRepresentationType    _LinkType,
+            NetworkStorageType        _NetworkType,
+            template<class> class     _StorageType > 
     class Network;
 
-  typedef Network<STK::Node, STK::Link<LINK_BASIC>, NETWORK_REGULAR> RegularNetwork;
 
-
-  // Class declarations
-  //
+  //############################################################################
+  //############################################################################
+  // CLASS DECLARATIONS
+  //############################################################################
+  //############################################################################
 
 
   /** **************************************************************************
@@ -148,22 +158,45 @@ namespace STK
   //****************************************************************************
   
 
-
   /** **************************************************************************
    ** **************************************************************************
    *  @brief Network link representation class
    */
-  template<LinkRepresentationType _LR>
-    class Link 
+  template<NodeRepresentationType _NR>
+    class Link<_NR, LINK_REGULAR> 
     {
     public:
-      typedef FLOAT LikeType;
+      typedef FLOAT                     LikeType;
+      typedef Node<_NR, LINK_REGULAR>   NodeType;
+
+      // Constructors and destructor ...........................................
+      Link() 
+      : mAcousticLike(0.0), mLmLike(0.0)
+      { }
+
+      Link(NodeType* pNode)
+      : mpNode(pNode), mAcousticLike(0.0), mLmLike(0.0)
+      { }
+
+      ~Link()
+      { }
+
+      /** 
+       * @brief Initializes the link probabilities
+       */
+      void
+      Init()
+      { mLmLike = mAcousticLike = 0.0; }
 
 
-      Node *        mpNode;
-      LikeType      mAcousticLike;
-      LikeType      mLmLike;
+      // Accessors ............................................................
+      NodeType*
+      pNode() const
+      { return mpNode; }
 
+      void
+      SetNode(NodeType* pNode)
+      { mpNode = pNode; }
 
       /** 
        * @brief Returns link's acoustic likelihood
@@ -172,6 +205,100 @@ namespace STK
       AcousticLike() const
       { return mAcousticLike; }
 
+      /** 
+       * @brief Returns link's LM likelihood
+       */
+      const LikeType&
+      LmLike() const
+      { return mLmLike; }
+
+      /** 
+       * @brief Sets link's acoustic likelihood
+       */
+      void
+      SetAcousticLike(const LikeType& like)
+      { mAcousticLike = like; }
+      
+
+      /** 
+       * @brief Returns link's LM likelihood
+       */
+      void
+      SetLmLike(const LikeType& like) 
+      { mLmLike = like; }
+
+      /** 
+       * @brief Sets link's acoustic likelihood
+       */
+      void
+      AddAcousticLike(const LikeType& like)
+      { mAcousticLike += like; }
+      
+
+      /** 
+       * @brief Returns link's LM likelihood
+       */
+      void
+      AddLmLike(const LikeType& like) 
+      { mLmLike += like; }
+
+
+
+    private:
+      NodeType *    mpNode;
+      LikeType      mAcousticLike;
+      LikeType      mLmLike;
+    }; 
+  // Link
+  //****************************************************************************
+
+  /** **************************************************************************
+   ** **************************************************************************
+   *  @brief Network link representation class
+   */
+  template<NodeRepresentationType _NR>
+    class Link<_NR, LINK_COMPACT> 
+    {
+    public:
+      typedef FLOAT                     LikeType;
+      typedef Node<_NR, LINK_COMPACT>   NodeType;
+
+      // Constructors and destructor ...........................................
+      Link() 
+      : mLmLike(0.0)
+      { }
+
+      Link(NodeType* pNode)
+      : mpNode(pNode), mLmLike(0.0)
+      { }
+
+      ~Link()
+      { }
+
+      /** 
+       * @brief Initializes the link probabilities
+       */
+      void
+      Init()
+      { mLmLike = 0.0; }
+
+
+      // Accessors ............................................................
+      NodeType*
+      pNode() const
+      { return mpNode; }
+
+      void
+      SetNode(NodeType* pNode)
+      { mpNode = pNode; }
+
+
+      /** 
+       * @brief Returns link's acoustic likelihood
+       */
+      const LikeType&
+      AcousticLike() const
+      { return 0.0; }
 
       /** 
        * @brief Returns link's LM likelihood
@@ -180,40 +307,81 @@ namespace STK
       LmLike() const
       { return mLmLike; }
 
+      /** 
+       * @brief Sets the link's acoustic likelihood
+       *
+       * This function really does'nt do anything as compact node does not 
+       * contain any acoustic info. The method is implemented for compatibility
+       * reasons only!
+       */
+      void
+      SetAcousticLike(const LikeType& like)
+      { }
+
+      /** 
+       * @brief Sets link's LM likelihood
+       */
+      void
+      SetLmLike(const LikeType& like) 
+      { mLmLike = like; }
+
+      /** 
+       * @brief Adds like to the link's acoustic likelihood
+       *
+       * This function really does'nt do anything as compact node does not 
+       * contain any acoustic info. The method is implemented for compatibility
+       * reasons only!
+       */
+      void
+      AddAcousticLike(const LikeType& like)
+      { }
+
+      /** 
+       * @brief Adds like to the link's LM likelihood
+       */
+      void
+      AddLmLike(const LikeType& like) 
+      { mLmLike += like; }
+
+
+    private:
+      NodeType *    mpNode;
+      LikeType      mLmLike;
     }; 
   // Link
   //****************************************************************************
-
 
   /** *************************************************************************
    ** *************************************************************************
    *  @brief Network node representation class
    */   
-  class NodeBasic
-  {
-  public:
-    union {
-      char*         mpName;
-      Hmm*          mpHmm;
-      Pronun*       mpPronun;
-    };
-  
-    int                 mType;
-    int                 mNLinks;
-    Link<LINK_BASIC>*   mpLinks;
+  template<NodeRepresentationType _NR, LinkRepresentationType _LR>
+    class NodeBasic
+    {
+    public:
+      union 
+      {
+        char*         mpName;
+        Hmm*          mpHmm;
+        Pronun*       mpPronun;
+      };
     
+      int                 mType;
+      int                 mNLinks;
+      Link<NODE_REGULAR, LINK_REGULAR>*   mpLinks;
+      
 #   ifndef NDEBUG
-    //id of first emiting state - apply only for model type
-    int           mEmittingStateId;
-    int           mAux2;
+      //id of first emiting state - apply only for model type
+      int           mEmittingStateId;
+      int           mAux2;
 #   endif
 #   ifndef EXPANDNET_ONLY    
-    ActiveNodeRecord* mpAnr;
+      ActiveNodeRecord* mpAnr;
 #   endif
 
-    NodeBasic() : mpPronun(NULL), mType(NT_UNDEF), mNLinks(0), mpLinks(NULL), 
-      mpAnr(NULL) {}
-  }; 
+      NodeBasic() : mpPronun(NULL), mType(NT_UNDEF), mNLinks(0), mpLinks(NULL), 
+        mpAnr(NULL) {}
+    }; 
   // class BasicNode
   //****************************************************************************
   
@@ -223,26 +391,130 @@ namespace STK
    ** *************************************************************************
    *  @brief Network node representation class
    */   
-  class Node : public NodeBasic
-  {
-  public:
-    Node*         mpNext;
-    Node*         mpBackNext;
-    int           mNBackLinks;
-    Link<LINK_BASIC>*         mpBackLinks;
-    int           mAux;
+  template<NodeRepresentationType _NR, LinkRepresentationType _LR>
+    class Node : public NodeBasic<_NR, _LR>
+    {
+    public:
+      typedef       long long  TimingType;
 
-    //time range when model can be active - apply only for model type
-    long long     mStart;
-    long long     mStop;
-    FLOAT         mPhoneAccuracy;
-  
+      Node*         mpNext;
+      Node*         mpBackNext;
+      int           mNBackLinks;
+      Link<_NR, _LR>*         mpBackLinks;
+      int           mAux;
+
+      //time range when model can be active - apply only for model type
+      FLOAT         mPhoneAccuracy;
+
+      void
+      SetStart(const TimingType& start)
+      { mStart = start; }
+
+      void
+      SetStop(const TimingType& stop)
+      { mStop = stop; }
+
+      const TimingType&
+      Start() const
+      { return mStart; }
+
+      const TimingType&
+      Stop() const
+      { return mStop; }
+
+    
 #   ifndef EXPANDNET_ONLY
-    Hmm*               mpHmmToUpdate;
-    FWBWR*             mpAlphaBetaList;
-    FWBWR*             mpAlphaBetaListReverse;
+      Hmm*               mpHmmToUpdate;
+      FWBWR*             mpAlphaBetaList;
+      FWBWR*             mpAlphaBetaListReverse;
 #   endif        
-  }; 
+    private:
+      TimingType     mStart;
+      TimingType     mStop;
+      
+    }; 
+  // class Node
+  //****************************************************************************
+
+
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Network node representation class
+   */   
+  template<LinkRepresentationType _LR>
+    class Node<NODE_REGULAR, _LR> : public NodeBasic<NODE_REGULAR, _LR>
+    {
+    public:
+      typedef       long long  TimingType;
+
+      Node*         mpNext;
+      Node*         mpBackNext;
+      int           mNBackLinks;
+      Link<NODE_REGULAR, _LR>*         mpBackLinks;
+      int           mAux;
+
+
+      void
+      Init()
+      { mStart = mStop = UNDEF_TIME; }
+
+      //time range when model can be active - apply only for model type
+      void
+      SetStart(const TimingType& start)
+      { mStart = start; }
+
+      void
+      SetStop(const TimingType& stop)
+      { mStop = stop; }
+
+      const TimingType&
+      Start() const
+      { return mStart; }
+
+      const TimingType&
+      Stop() const
+      { return mStop; }
+
+      FLOAT         mPhoneAccuracy;
+    
+#   ifndef EXPANDNET_ONLY
+      Hmm*               mpHmmToUpdate;
+      FWBWR*             mpAlphaBetaList;
+      FWBWR*             mpAlphaBetaListReverse;
+#   endif        
+    private:
+      TimingType     mStart;
+      TimingType     mStop;
+      
+    }; 
+  // class Node
+  //****************************************************************************
+
+
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Network node representation class
+   */   
+  template<LinkRepresentationType _LR>
+    class Node<NODE_COMPACT, _LR> : public NodeBasic<NODE_COMPACT, _LR>
+    {
+      typedef       long long  TimingType;
+      
+      //time range when model can be active - apply only for model type
+      const TimingType&
+      Start() const
+      { return 0; }
+
+      const TimingType&
+      Stop() const
+      { return 0; }
+
+#   ifndef EXPANDNET_ONLY
+      Hmm*               mpHmmToUpdate;
+      FWBWR*             mpAlphaBetaList;
+      FWBWR*             mpAlphaBetaListReverse;
+#   endif        
+    }; 
   // class Node
   //****************************************************************************
 
@@ -340,7 +612,9 @@ namespace STK
       typedef std::bidirectional_iterator_tag  iterator_category;
       typedef _NodeType                        value_type;
       typedef value_type &                     reference;
+      typedef const reference                  const_reference;
       typedef value_type *                     pointer;
+      typedef const pointer                    const_pointer;
       typedef ptrdiff_t                        difference_type;
 
     public:
@@ -442,11 +716,13 @@ namespace STK
       typedef NodeIterator<_NodeType, NETWORK_COMPACT>        _Self;
       typedef _NodeType                                       _Node;
 
-      typedef std::bidirectional_iterator_tag  iterator_category;
-      typedef _NodeType                        value_type;
-      typedef value_type &                     reference;
-      typedef value_type *                     pointer;
-      typedef ptrdiff_t                        difference_type;
+      typedef std::bidirectional_iterator_tag   iterator_category;
+      typedef _NodeType                         value_type;
+      typedef value_type &                      reference;
+      typedef const reference                   const_reference;
+      typedef value_type *                      pointer;
+      typedef const pointer                     const_pointer;
+      typedef ptrdiff_t                         difference_type;
 
     public:
       /// default constructor
@@ -536,6 +812,176 @@ namespace STK
 
 
 
+  /** 
+   * @brief Represents a node storage for Network class
+   *
+   * It uses ListIterator class as its iterator, which assumes that the _Content
+   * has mpNext and mpBackNext fields.
+   *
+   * TODO: Probably make it more general and leave the mpNext and mpBackNext 
+   * fields for some parrent class...
+   */
+  template<typename _Content>
+    class ListStorage
+    {
+    public:
+      typedef NodeIterator<_Content, NETWORK_REGULAR>           iterator;
+      typedef const iterator                                    const_iterator;
+      typedef _Content                                          value_type;
+      typedef typename iterator::pointer                        pointer;
+      typedef typename iterator::const_pointer                  const_pointer;
+      typedef typename iterator::reference                      reference;
+      typedef typename iterator::const_reference                const_reference;
+
+
+      ListStorage()
+      : mpFirst(NULL), mpLast(NULL)
+      { }
+
+      ListStorage(pointer pInit)
+      : mpFirst(pInit), mpLast(NULL)
+      { }
+
+      iterator 
+      begin()
+      { return mpFirst; }
+
+      iterator
+      end()
+      { return iterator(NULL); }
+
+      // element access
+      /**
+       *  Returns a read/write reference to the data at the first
+       *  element of the %list.
+       */
+      reference
+      front()
+      { return *begin(); }
+
+      /**
+       *  Returns a read-only (constant) reference to the data at the first
+       *  element of the %list.
+       */
+      const_reference
+      front() const
+      { return *begin(); }
+
+      /**
+       *  Returns a read/write reference to the data at the last element
+       *  of the %list.
+       */
+      reference
+      back()
+      { 
+        return *mpLast;
+      }
+
+      /**
+       *  Returns a read-only (constant) reference to the data at the last
+       *  element of the %list.
+       */
+      const_reference
+      back() const
+      { 
+        return *mpLast;
+      }
+
+
+      bool
+      empty() const
+      { return NULL == mpFirst; }
+
+
+    protected:
+      _Content*     mpFirst;   ///< self descriptive
+      _Content*     mpLast;    ///< self descriptive
+        
+    };
+  // StorageList : public Storage<_Content>
+  //****************************************************************************
+
+
+  template<typename _Content>
+    class ArrayStorage
+    {
+      typedef NodeIterator<_Content, NETWORK_COMPACT>           iterator;
+      typedef const iterator                                    const_iterator;
+      typedef _Content                                          value_type;
+      typedef typename iterator::pointer                        pointer;
+      typedef typename iterator::const_pointer                  const_pointer;
+      typedef typename iterator::reference                      reference;
+      typedef typename iterator::const_reference                const_reference;
+
+      ArrayStorage()
+      : mpFirst(NULL), mNElements(0), mpLast(NULL)
+      { }
+
+      ArrayStorage(pointer pInit)
+      : mpFirst(pInit), mpLast(NULL)
+      { }
+
+      iterator 
+      begin()
+      { return mpFirst; }
+
+      iterator
+      end()
+      { return iterator(NULL); }
+
+      // element access
+      /**
+       *  Returns a read/write reference to the data at the first
+       *  element of the %list.
+       */
+      reference
+      front()
+      { return *begin(); }
+
+      /**
+       *  Returns a read-only (constant) reference to the data at the first
+       *  element of the %list.
+       */
+      const_reference
+      front() const
+      { return *begin(); }
+
+      /**
+       *  Returns a read/write reference to the data at the last element
+       *  of the %list.
+       */
+      reference
+      back()
+      { 
+        return *mpLast;
+      }
+
+      /**
+       *  Returns a read-only (constant) reference to the data at the last
+       *  element of the %list.
+       */
+      const_reference
+      back() const
+      { 
+        return *mpLast;
+      }
+
+
+      bool
+      empty() const
+      { return !mNElements; }
+
+    protected:
+      _Content*     mpFirst;   ///< self descriptive
+      size_t        mNElements;
+      _Content*     mpLast;    ///< self descriptive
+        
+    };
+  // StorageList : public Storage<_Content>
+  //****************************************************************************
+
+
+
   /** **************************************************************************
    ** **************************************************************************
    * @brief Network encapsulation class
@@ -543,97 +989,110 @@ namespace STK
    * The Network class provides basic operations on graph structure. It 
    * encapsulates basic access to the network structure.
    */
-  template <class _NodeType, class _LinkType, NetworkStorageType _NetworkType>
-    class Network
+  template <NodeRepresentationType _NodeType, LinkRepresentationType _LinkType, 
+           NetworkStorageType _NetworkType, template<class> class _StorageType>
+    class Network : public _StorageType<Node<_NodeType, _LinkType> >
     {
     public:
-      typedef _NodeType       node_type;
-      typedef _LinkType       link_type;
+      typedef Node<_NodeType,_LinkType>                   NodeType;
+      typedef Link<_NodeType,_LinkType>                   LinkType;
+      typedef _StorageType<NodeType>                      StorageType;
 
-      static const NetworkStorageType StorageType=_NetworkType;
+      //typedef NodeIterator<NodeType, _NetworkType>       iterator;
+      typedef typename StorageType::iterator             iterator;
+      typedef const NodeIterator<NodeType, _NetworkType>  const_iterator;
 
-      typedef NodeIterator<node_type, _NetworkType>       iterator;
-      typedef const NodeIterator<node_type, _NetworkType> const_iterator;
+      static const NetworkStorageType NetworkType       = _NetworkType;
+
 
     public:
+
+      using StorageType::begin;
+      using StorageType::end;
+      using StorageType::empty;
+      using StorageType::front;
+      using StorageType::back;
+
+
       // Construcotrs ..........................................................
-      Network() : mpFirst(NULL), mpLast(NULL), mCompactRepresentation(false) 
+      Network() 
+      : StorageType(), mCompactRepresentation(false), mIsExternal(false)
       { }
 
-      Network(node_type* pNode) : mpFirst(pNode), mpLast(NULL), 
-        mCompactRepresentation(false) 
+      /** 
+       * @brief Takes control over an existing network specified by @c pNode.
+       * 
+       * In this case, no deallocation will take place when destructor is called
+       */
+      Network(NodeType* pNode) 
+      : StorageType(pNode), mCompactRepresentation(false),
+        mIsExternal(true) 
       { }
 
       /// Builds a linear network from labels 
-      Network(const Label* pLabels, STK::NodeType  nodeType)
+      Network(const Label* pLabels, STK::NodeKind  nodeKind)
       { 
-        BuildFromLabels(pLabels, nodeType); 
+        BuildFromLabels(pLabels, nodeKind); 
       }
 
       // Destructor ............................................................
       ~Network()
       { 
-        Release(); 
+        if (!mIsExternal)
+          Clear(); 
       }
 
-
-      // Iterators and STL-like interface.......................................
-      /// return iterator for beginning of mutable sequence
-      iterator begin()
-      {	
-        //return iterator(mBaseNode.mpNext);
-        return iterator(mpFirst);
-      }
-
-      /// return iterator for end of mutable sequence
-      iterator end()
-      {	
-        return iterator(NULL);
-      }
-
-      bool
-      empty() const
-      { return mBaseNode.mpNext == &mBaseNode; }
+      const bool
+      IsCompact() const
+      { return mCompactRepresentation; }
 
 
       // creation and destruction functions ....................................
       void
-      BuildFromLabels(const Label* pLabels, NodeType nodeType);
+      BuildFromLabels(const Label* pLabels, NodeKind nodeType);
 
       void
-      Release();
+      Clear();
 
 
       // accessors ............................................................. 
-      node_type*
+      NodeType*
       pFirst()
       { 
-        return mpFirst; 
+        return StorageType::mpFirst; 
       }
 
-      node_type*
+      NodeType*
       pLast()
       { 
-        return mpLast; 
+        return StorageType::mpLast; 
       }
 
-      const node_type*
+      const NodeType*
       pFirst() const
       { 
-        return mpFirst; 
+        return StorageType::mpFirst; 
       }
 
 
-      node_type*
-      SetFirst(node_type* pFirst)
+      NodeType*
+      SetFirst(NodeType* pFirst)
       { 
-        mpFirst = pFirst; 
+        // we don't want any memory leaks
+        assert(IsEmpty());
+
+        StorageType::mpFirst     = pFirst; 
+        mIsExternal = true;
       }
 
-      node_type*
-      SetLast(node_type* pLast)
+      NodeType*
+      SetLast(NodeType* pLast)
       { 
-        mpLast = pLast; 
+        // we don't want any memory leaks
+        //assert(IsEmpty());
+
+        StorageType::mpLast = pLast; 
+        //mIsExternal = true;
       }
 
 
@@ -642,7 +1101,7 @@ namespace STK
       /// Returns true if network is empty
       bool
       IsEmpty() const
-      { return NULL == mpFirst; }
+      { return this->empty(); }
 
       
       /** 
@@ -720,20 +1179,33 @@ namespace STK
         MyHSearchData *         triphHash);
 
 
+      bool          mCompactRepresentation;
 
     private:
-      node_type*     mpFirst;   ///< self descriptive
-      node_type*     mpLast;    ///< self descriptive
 
-      /** 
-       * @brief Implicit node
-       *
-       * Also defines the end marker
-       */
-      node_type      mBaseNode;    
+      int 
+      LatticeLocalOptimization_ForwardPass(int strictTiming);
 
-      bool          mCompactRepresentation;
+      int 
+      LatticeLocalOptimization_BackwardPass(int strictTiming);
+
+      Network&
+      Reverse();
+
+
+      /// Indicates, whether network was created from an external structure.
+      /// It controls whether destruction of @c this calls the Clear()
+      /// function.
+      bool          mIsExternal;
     }; // class Network
+
+
+  // Explicit instantiation of the mostly used network types
+  template 
+    class Network<NODE_REGULAR, LINK_REGULAR, NETWORK_REGULAR, ListStorage>;
+
+  typedef Network<NODE_REGULAR, LINK_REGULAR, NETWORK_REGULAR, ListStorage>
+    RegularNetwork;
 
 
 
@@ -741,34 +1213,34 @@ namespace STK
   // GLOBAL FUNCTIONS
   //
   
-  Node* 
-  MakeNetworkFromLabels(Label* labels, enum NodeType node_type);
+  Node<NODE_REGULAR, LINK_REGULAR>* 
+  MakeNetworkFromLabels(Label* labels, enum NodeKind nodeKind);
   
   void ExpandWordNetworkByDictionary(
-    Node* first,
+    Node<NODE_REGULAR, LINK_REGULAR>* first,
     MyHSearchData* dict,
     int keep_word_nodes,
     int multiple_pronun);
   
   void ExpandMonophoneNetworkToTriphones(
-    Node* first,
+    Node<NODE_REGULAR, LINK_REGULAR>* first,
     MyHSearchData* nonCDphones,
     MyHSearchData* CDphones);
   
   void LatticeLocalOptimization(
-    Node* first,
+    Node<NODE_REGULAR, LINK_REGULAR>* first,
     int strictTiming,
     int trace_flag);
   
-  Node* DiscardUnwantedInfoInNetwork(
-    Node* first,
+  Node<NODE_REGULAR, LINK_REGULAR>* DiscardUnwantedInfoInNetwork(
+    Node<NODE_REGULAR, LINK_REGULAR>* first,
     STKNetworkOutputFormat format);
   
 
-  static int 
+  int 
   getInteger(char *str, char **endPtr, const char *file_name, int line_no);
 
-  static float 
+  float 
   getFloat(char *str, char **endPtr, const char *file_name, int line_no);
 
   template<class _NetworkType>
@@ -785,7 +1257,6 @@ namespace STK
     void
     ReadSTKNetwork(
       FILE*                     lfp,
-      _NetworkType&             rNetwork,
       struct MyHSearchData *    word_hash,
       struct MyHSearchData *    phone_hash,
       int                       notInDict,
@@ -793,12 +1264,14 @@ namespace STK
       long                      sampPeriod,
       const char *              file_name,
       const char *              in_MLF,
-      bool                      compactRepresentation);
+      bool                      compactRepresentation,
+      _NetworkType&             rNetwork);
+
 
     
   void WriteSTKNetwork(
     FILE* flp,
-    Node* node,
+    Node<NODE_REGULAR, LINK_REGULAR>* node,
     STKNetworkOutputFormat format,
     long sampPeriod,
     const char* label_file,
@@ -806,15 +1279,15 @@ namespace STK
   
   void WriteSTKNetworkInOldFormat(
     FILE* flp,
-    Node* node,
+    Node<NODE_REGULAR, LINK_REGULAR>* node,
     LabelFormat labelFormat,
     long sampPeriod,
     const char* label_file,
     const char* out_MNF);
   
-  void FreeNetwork(Node *node, bool compactRepresentation = false);
+  void FreeNetwork(Node<NODE_REGULAR, LINK_REGULAR> *node, bool compactRepresentation = false);
   
-  Node*
+  Node<NODE_REGULAR, LINK_REGULAR>*
   ReadSTKNetwork(
     FILE* lfp,
     MyHSearchData* word_hash,
@@ -826,7 +1299,7 @@ namespace STK
     const char* in_MLF,
     bool compactRepresentation = false);
   
-  Node*
+  Node<NODE_REGULAR, LINK_REGULAR>*
   ReadSTKNetworkInOldFormat(
     FILE* lfp,
     MyHSearchData* word_hash,
@@ -836,11 +1309,12 @@ namespace STK
     const char* file_name,
     const char* in_MLF);
 
-  Node* 
-  find_or_create_node(struct MyHSearchData *node_hash, const char *node_id, Node **last);
+  Node<NODE_REGULAR, LINK_REGULAR>* 
+  find_or_create_node(struct MyHSearchData *node_hash, const char *node_id, Node<NODE_REGULAR, LINK_REGULAR> **last);
 
   
-  Node* ReadHTKLattice(
+  Node<NODE_REGULAR, LINK_REGULAR>* 
+  ReadHTKLattice(
     FILE* lfp,
     MyHSearchData* word_hash,
     MyHSearchData* phone_hash,
@@ -849,14 +1323,14 @@ namespace STK
     const char* file_name);
   
   void ComputeAproximatePhoneAccuracy(
-    Node *first,
+    Node<NODE_REGULAR, LINK_REGULAR> *first,
     int type);
   
-  void SelfLinksToNullNodes(Node *first);
-  int RemoveRedundantNullNodes(Node *first);
+  void SelfLinksToNullNodes(Node<NODE_REGULAR, LINK_REGULAR> *first);
+  int RemoveRedundantNullNodes(Node<NODE_REGULAR, LINK_REGULAR> *first);
   
   void NetworkExpansionsAndOptimizations(
-    Node *node,
+    Node<NODE_REGULAR, LINK_REGULAR> *node,
     ExpansionOptions expOptions,
     STKNetworkOutputFormat out_net_fmt,
     MyHSearchData *dictHash,

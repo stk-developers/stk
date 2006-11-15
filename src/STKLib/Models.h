@@ -477,6 +477,16 @@ namespace STK
                FLOAT *      totLogLike, 
                int          mmiDenominatorAccums);
     
+    /**
+     * @brief Reads accumulators from file
+     * @param rFile file to read represented by FileListElem
+     * @param totFrames 
+     * @param totLogLike 
+     * @param MMI_denominator_accums 
+     */
+    void
+    ReadAccums(const FileListElem& rFile, long* totFrames, FLOAT* totLogLike, 
+        int mmiDenominatorAccums);
     
     void
     ReadXformStats(const char * pOutDir, bool binary);

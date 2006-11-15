@@ -304,16 +304,20 @@ using namespace STK;
   private:
     std::string         mLogical;     ///< Logical file name representation
     std::string         mPhysical;    ///< Pysical file name representation
+    FLOAT               mWeight;
     
   public:
     FileListElem(const std::string & rFileName);
     ~FileListElem() {}
     
     const std::string &
-    Logical() const { return mLogical; };
+    Logical() const { return mLogical; }
 
     const std::string &
-    Physical() const { return mPhysical; };
+    Physical() const { return mPhysical; }
+
+    const FLOAT&
+    Weight() const { return mWeight; }
         
     FileListElem *      mpNext;
     char *              mpPhysical;
@@ -544,6 +548,20 @@ using namespace STK;
   extern const char*    gpParmFilter;
   extern const char*    gpParmOFilter;
   extern const char*    gpScriptFilter;
+
+
+  struct ParameterRecord
+  {
+    std::string    mName;
+    std::string    mType;
+    std::string    mHelp;
+  };
+
+  extern std::vector<ParameterRecord>    gRegisteredParameters;
+
+  void
+  print_registered_parameters();
+
   
 //}; //namespace STK
 

@@ -144,16 +144,16 @@ int main(int argc, char *argv[])
   int                           i;
   int                           fcnt = 0;
   Label *                       labels;
-  Node *                        pLattice;
+  Decoder::NetworkType::NodeType*  pLattice;
   RegularNetwork                lattice;
   char                          line[1024];
   char                          label_file[1024];
   const char *                  cchrptr;
   
-  MyHSearchData        nonCDphHash;
-  MyHSearchData        phoneHash;
-  MyHSearchData        dictHash;
-  MyHSearchData        cfgHash;
+  MyHSearchData                 nonCDphHash;
+  MyHSearchData                 phoneHash;
+  MyHSearchData                 dictHash;
+  MyHSearchData                 cfgHash;
   
   FileListElem *                feature_files = NULL;
   FileListElem *                file_name = NULL;
@@ -171,21 +171,20 @@ int main(int argc, char *argv[])
   double                        state_pruning;
   double                        stprn_step;
   double                        stprn_limit;  
-//double  word_pruning;
          
-  const  char *                 hmm_dir;
-  const  char *                 hmm_ext;
-  const  char *                 out_lbl_dir;
-  const char *                  out_lbl_ext;
-  const char *                  in_lbl_dir;
-  const char *                  in_lbl_ext;
-  const char *                  out_MLF;
-  const char *                  in_MLF;
-  const char *                  network_file;
-  const char *                  hmm_list;
-  const char *                  dictionary;
-  char *                        script;
-  char *                        mmf;
+  const char*                   hmm_dir;
+  const char*                   hmm_ext;
+  const char*                   out_lbl_dir;
+  const char*                   out_lbl_ext;
+  const char*                   in_lbl_dir;
+  const char*                   in_lbl_ext;
+  const char*                   out_MLF;
+  const char*                   in_MLF;
+  const char*                   network_file;
+  const char*                   hmm_list;
+  const char*                   dictionary;
+        char*                   script;
+        char*                   mmf;
   const char*                   label_filter;
   const char*                   net_filter;
   const char*                   label_ofilter;
@@ -206,7 +205,7 @@ int main(int argc, char *argv[])
   int                           trace_flag;
   int                           targetKind;
   int                           derivOrder;
-  int  *                        derivWinLengths;
+  int*                          derivWinLengths;
   int                           startFrmExt;
   int                           endFrmExt;
   bool                          baum_welch;
@@ -221,7 +220,8 @@ int main(int argc, char *argv[])
   STKNetworkOutputFormat        out_net_fmt = {0};
   LabelFormat                   out_lbl_fmt = {0};
   LabelFormat                   in_lbl_fmt  = {0};
-  
+
+  bool  print_all_options; 
   
   in_lbl_fmt.TIMES_OFF = 1;
 
@@ -255,7 +255,6 @@ int main(int argc, char *argv[])
   for (; i < argc; i++) 
   {
     feature_repo.AddFile(argv[i]);
-    //last_file = AddFileElem(last_file, argv[i]);
   }
   
   // extract the feature parameters
@@ -324,8 +323,9 @@ int main(int argc, char *argv[])
 
   lat_ext      = GetParamStr(&cfgHash, SNAME":LATTICEEXT",      NULL);
   lat_is_incomplete = GetParamBool(&cfgHash,SNAME":INCOMPLETELATTICE",      false);
-
+  print_all_options = GetParamBool(&cfgHash,SNAME":PRINTALLOPTIONS", false);
   cchrptr      = GetParamStr(&cfgHash, SNAME":LABELFORMATING",  "");
+
   while (*cchrptr) 
   {
     switch (*cchrptr++) 
@@ -420,7 +420,12 @@ int main(int argc, char *argv[])
     CheckCommandLineParamUse(&cfgHash);
   }
 
+  if (print_all_options) 
+  {
+    print_registered_parameters();
+  }
  
+
   // initialize the feature repository
   feature_repo.Init(swap_features, startFrmExt, endFrmExt, targetKind, 
      derivOrder, derivWinLengths, cmn_path, cmn_mask, cvn_path, cvn_mask,
@@ -429,7 +434,6 @@ int main(int argc, char *argv[])
 
   if (NULL != script) 
     feature_repo.AddFileList(script, gpScriptFilter); 
-
   
   // parse the given MMF file(s)
   if (NULL != mmf)
@@ -439,7 +443,6 @@ int main(int argc, char *argv[])
       hset.ParseMmf(mmf, NULL);
     }
   }
-  
 
   // parse the HMM list
   if (hmm_list != NULL) 
@@ -480,14 +483,14 @@ int main(int argc, char *argv[])
     out_lbl_fmt.WORDS_OFF = 1;
   }
   
-  Network<Node,Link<LINK_BASIC>,NETWORK_COMPACT> mynet;
 
   if (network_file) 
   { // Unsupervised training
-    Node *node = NULL;
+    Decoder::NetworkType::NodeType* p_node = NULL;
     IStkStream input_stream;    
     
     input_stream.open(network_file, ios::in, transc_filter ? transc_filter : "");
+
     
     if (!input_stream.good())
     {
@@ -510,40 +513,54 @@ int main(int argc, char *argv[])
           NULL, 
           NULL);
               
-      node = MakeNetworkFromLabels(labels, 
+      p_node = MakeNetworkFromLabels(labels, 
           dictionary ? NT_WORD : NT_PHONE);
               
       ReleaseLabels(labels);
+
+      if (!compactNetworkRepresentation)
+        NetworkExpansionsAndOptimizations(
+            p_node, 
+            expOptions, 
+            in_net_fmt, 
+            &dictHash,
+            &nonCDphHash, 
+            &phoneHash);
     }
     else if (in_transc_fmt == TF_STK) 
     {
       //:TODO:
       // header.mSamplePeriod not initialized yet... 
-      node = ReadSTKNetwork(
-         ilfp, 
-         &dictHash,
-         &phoneHash, 
-         notInDictAction, 
-         in_lbl_fmt,
-         feature_repo.CurrentHeader().mSamplePeriod, 
-         network_file, 
-         NULL, compactNetworkRepresentation);
+      
+      RegularNetwork my_net(p_node);
+
+      ReadSTKNetwork(
+        ilfp, 
+        &dictHash,
+        &phoneHash, 
+        notInDictAction, 
+        in_lbl_fmt,
+        feature_repo.CurrentHeader().mSamplePeriod, 
+        network_file, 
+        NULL,
+        compactNetworkRepresentation,
+        my_net);
+
+      my_net.ExpansionsAndOptimizations(
+        expOptions, 
+        in_net_fmt, 
+        &dictHash,
+        &nonCDphHash, 
+        &phoneHash);
+
+      p_node = my_net.pFirst();
     }
     else 
     {
       Error("Too bad. What did you do ?!?");
     }
-                                
-    if (!compactNetworkRepresentation)
-      NetworkExpansionsAndOptimizations(
-          node, 
-          expOptions, 
-          in_net_fmt, 
-          &dictHash,
-          &nonCDphHash, 
-          &phoneHash);
                                       
-    decoder.Init(node, &hset, NULL, compactNetworkRepresentation);
+    decoder.Init(p_node, &hset, NULL, compactNetworkRepresentation);
   } 
   else 
   {
@@ -552,18 +569,15 @@ int main(int argc, char *argv[])
 
   lfp = OpenOutputMLF(out_MLF);
 
-  // we are going to read from the feature repository
-  feature_repo.Rewind();
-
 
   //////////////////////////////////////////////////////////////////////////////
   // read consequently all the feature files 
-  while (!feature_repo.EndOfList())
+  for (feature_repo.Rewind(); !feature_repo.EndOfList(); feature_repo.MoveNext())
   {
     if (trace_flag & 1) 
     {
       TraceLog("Processing file %d/%d '%s'", ++fcnt, feature_repo.QueueSize(), 
-          feature_repo.FollowingPhysical().c_str());
+          feature_repo.Current().Physical().c_str());
     }
     
     // read the feature matrix .................................................
@@ -572,7 +586,7 @@ int main(int argc, char *argv[])
     if (hset.mInputVectorSize != static_cast<int>(feature_matrix.Cols()))
     {
       Error("Vector size [%d] in '%s' is incompatible with HMM set [%d]",
-          feature_matrix.Cols(), feature_repo.CurrentPhysical().c_str(), 
+          feature_matrix.Cols(), feature_repo.Current().Physical().c_str(), 
           hset.mInputVectorSize);
     }
 
@@ -582,7 +596,7 @@ int main(int argc, char *argv[])
       static string    last_speaker_mmf;
       string           speaker_mmf;
 
-      ProcessMask(feature_repo.CurrentLogical(), mmf_mask, speaker_mmf);
+      ProcessMask(feature_repo.Current().Logical(), mmf_mask, speaker_mmf);
         
       if (last_speaker_mmf != speaker_mmf) 
       {
@@ -594,10 +608,10 @@ int main(int argc, char *argv[])
     // read the network file if given ..........................................
     if (!network_file) 
     {
-      Node* node = NULL;
+      Decoder::NetworkType::NodeType* p_node = NULL;
       
 
-      strcpy(label_file, feature_repo.CurrentLogical().c_str());
+      strcpy(label_file, feature_repo.Current().Logical().c_str());
 
       ilfp = OpenInputLabelFile(label_file, in_lbl_dir, 
           in_lbl_ext ? in_lbl_ext :
@@ -610,12 +624,12 @@ int main(int argc, char *argv[])
             dictionary ? UL_ERROR : UL_INSERT, in_lbl_fmt,
             feature_repo.CurrentHeader().mSamplePeriod, label_file, in_MLF, NULL);
 
-        node = MakeNetworkFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
+        p_node = MakeNetworkFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
         ReleaseLabels(labels);
       } 
       else if (in_transc_fmt == TF_STK) 
       {
-        node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash, notInDictAction,
+        p_node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash, notInDictAction,
             in_lbl_fmt, feature_repo.CurrentHeader().mSamplePeriod, label_file,
             in_MLF);
       } 
@@ -625,10 +639,10 @@ int main(int argc, char *argv[])
       }
 
       if (!compactNetworkRepresentation)
-        NetworkExpansionsAndOptimizations(node, expOptions, in_net_fmt, &dictHash,
+        NetworkExpansionsAndOptimizations(p_node, expOptions, in_net_fmt, &dictHash,
             &nonCDphHash, &phoneHash);
 
-      decoder.Init(node, &hset, NULL, false);
+      decoder.Init(p_node, &hset, NULL, false);
 
       CloseInputLabelFile(ilfp, in_MLF);
     }
@@ -706,11 +720,13 @@ int main(int argc, char *argv[])
 
     if (!lattice.IsEmpty())
     {
+      // lattice.ExpansionsAndOptimizations(expOptions, out_net_fmt,
+      //     NULL, NULL, NULL);
       //NetworkExpansionsAndOptimizations(pLattice, expOptions, out_net_fmt, 
       //    NULL, NULL, NULL);
     }
 
-    strcpy(label_file, feature_repo.CurrentLogical().c_str());
+    strcpy(label_file, feature_repo.Current().Logical().c_str());
     lfp = OpenOutputLabelFile(label_file, out_lbl_dir, out_lbl_ext, lfp, out_MLF);
 
     // write the output ........................................................
@@ -721,7 +737,7 @@ int main(int argc, char *argv[])
           feature_repo.CurrentHeader().mSamplePeriod, label_file, out_MLF);
           
       // we are not needing the lattice anymore, so free it from memory
-      lattice.Release();
+      lattice.Clear();
     } 
     else if (out_transc_fmt == TF_HTK) 
     {
@@ -742,7 +758,7 @@ int main(int argc, char *argv[])
 
     if (!network_file) 
     {
-      decoder.Release();
+      decoder.Clear();
     }
   } // while (!feature_repo.EndOfList())
 
@@ -750,12 +766,12 @@ int main(int argc, char *argv[])
   // clean up ..................................................................
   if (network_file) 
   {
-    decoder.Release();
+    decoder.Clear();
   }
   
   hset.Release();
   
-// my_hdestroy_r(&labelHash,   0);
+  // my_hdestroy_r(&labelHash,   0);
   my_hdestroy_r(&phoneHash,   1);
   my_hdestroy_r(&nonCDphHash, 0);
   FreeDictionary(&dictHash);
