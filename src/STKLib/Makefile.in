@@ -63,11 +63,11 @@ am_libSTKLib_a_OBJECTS = libSTKLib_a-BasicVector.$(OBJEXT) \
 	libSTKLib_a-Error.$(OBJEXT) libSTKLib_a-Features.$(OBJEXT) \
 	libSTKLib_a-Matrix.$(OBJEXT) libSTKLib_a-Models.$(OBJEXT) \
 	libSTKLib_a-Models_IO.$(OBJEXT) libSTKLib_a-Net.$(OBJEXT) \
-	libSTKLib_a-Net_IO.$(OBJEXT) libSTKLib_a-Viterbi.$(OBJEXT) \
+	libSTKLib_a-Net_IO.$(OBJEXT) libSTKLib_a-Decoder.$(OBJEXT) \
 	libSTKLib_a-ZNorm.$(OBJEXT) libSTKLib_a-common.$(OBJEXT) \
 	libSTKLib_a-dict.$(OBJEXT) libSTKLib_a-filmatch.$(OBJEXT) \
 	libSTKLib_a-fileio.$(OBJEXT) libSTKLib_a-getopt.$(OBJEXT) \
-	libSTKLib_a-labels.$(OBJEXT)
+	libSTKLib_a-labels.$(OBJEXT) libSTKLib_a-Lattice.$(OBJEXT)
 libSTKLib_a_OBJECTS = $(am_libSTKLib_a_OBJECTS)
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
@@ -199,10 +199,10 @@ EXTRA_libSTKLib_a_SOURCES = $(IMAGESC_SRC)
 libSTKLib_a_DEPENDENCIES = $(HSEARCH_R_OBJ)
 libSTKLib_a_SOURCES = BasicVector.cc BasicVector.h BasicVector.tcc Error.cc \
     Error.h Features.cc Features.h Matrix.cc Matrix.h Matrix.tcc Models.cc \
-    Models.h Models_IO.cc Net.h Net.cc Net.tcc Net_IO.cc Net_IO.tcc Viterbi.cc \
-		Viterbi.h ZNorm.cc ZNorm.h common.C common.h dict.C dict.h fileio.h \
+    Models.h Models_IO.cc Net.h Net.cc Net.tcc Net_IO.cc Net_IO.tcc Decoder.cc \
+		Decoder.h ZNorm.cc ZNorm.h common.C common.h dict.C dict.h fileio.h \
 		filmatch.C filmatch.h fileio.C getopt.C getopt.h labels.C labels.h \
-		stkstream.h stkstream.tcc
+		stkstream.h stkstream.tcc Lattice.cc Lattice.h
 
 all: all-am
 
@@ -278,14 +278,15 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-BasicVector.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-Decoder.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-Error.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-Features.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-Lattice.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-Matrix.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-Models.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-Models_IO.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-Net.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-Net_IO.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-Viterbi.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-ZNorm.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-common.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-dict.Po@am__quote@
@@ -420,19 +421,19 @@ libSTKLib_a-Net_IO.obj: Net_IO.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -c -o libSTKLib_a-Net_IO.obj `if test -f 'Net_IO.cc'; then $(CYGPATH_W) 'Net_IO.cc'; else $(CYGPATH_W) '$(srcdir)/Net_IO.cc'; fi`
 
-libSTKLib_a-Viterbi.o: Viterbi.cc
-@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -MT libSTKLib_a-Viterbi.o -MD -MP -MF "$(DEPDIR)/libSTKLib_a-Viterbi.Tpo" -c -o libSTKLib_a-Viterbi.o `test -f 'Viterbi.cc' || echo '$(srcdir)/'`Viterbi.cc; \
-@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libSTKLib_a-Viterbi.Tpo" "$(DEPDIR)/libSTKLib_a-Viterbi.Po"; else rm -f "$(DEPDIR)/libSTKLib_a-Viterbi.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Viterbi.cc' object='libSTKLib_a-Viterbi.o' libtool=no @AMDEPBACKSLASH@
+libSTKLib_a-Decoder.o: Decoder.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -MT libSTKLib_a-Decoder.o -MD -MP -MF "$(DEPDIR)/libSTKLib_a-Decoder.Tpo" -c -o libSTKLib_a-Decoder.o `test -f 'Decoder.cc' || echo '$(srcdir)/'`Decoder.cc; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libSTKLib_a-Decoder.Tpo" "$(DEPDIR)/libSTKLib_a-Decoder.Po"; else rm -f "$(DEPDIR)/libSTKLib_a-Decoder.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Decoder.cc' object='libSTKLib_a-Decoder.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -c -o libSTKLib_a-Viterbi.o `test -f 'Viterbi.cc' || echo '$(srcdir)/'`Viterbi.cc
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -c -o libSTKLib_a-Decoder.o `test -f 'Decoder.cc' || echo '$(srcdir)/'`Decoder.cc
 
-libSTKLib_a-Viterbi.obj: Viterbi.cc
-@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -MT libSTKLib_a-Viterbi.obj -MD -MP -MF "$(DEPDIR)/libSTKLib_a-Viterbi.Tpo" -c -o libSTKLib_a-Viterbi.obj `if test -f 'Viterbi.cc'; then $(CYGPATH_W) 'Viterbi.cc'; else $(CYGPATH_W) '$(srcdir)/Viterbi.cc'; fi`; \
-@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libSTKLib_a-Viterbi.Tpo" "$(DEPDIR)/libSTKLib_a-Viterbi.Po"; else rm -f "$(DEPDIR)/libSTKLib_a-Viterbi.Tpo"; exit 1; fi
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Viterbi.cc' object='libSTKLib_a-Viterbi.obj' libtool=no @AMDEPBACKSLASH@
+libSTKLib_a-Decoder.obj: Decoder.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -MT libSTKLib_a-Decoder.obj -MD -MP -MF "$(DEPDIR)/libSTKLib_a-Decoder.Tpo" -c -o libSTKLib_a-Decoder.obj `if test -f 'Decoder.cc'; then $(CYGPATH_W) 'Decoder.cc'; else $(CYGPATH_W) '$(srcdir)/Decoder.cc'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libSTKLib_a-Decoder.Tpo" "$(DEPDIR)/libSTKLib_a-Decoder.Po"; else rm -f "$(DEPDIR)/libSTKLib_a-Decoder.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Decoder.cc' object='libSTKLib_a-Decoder.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -c -o libSTKLib_a-Viterbi.obj `if test -f 'Viterbi.cc'; then $(CYGPATH_W) 'Viterbi.cc'; else $(CYGPATH_W) '$(srcdir)/Viterbi.cc'; fi`
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -c -o libSTKLib_a-Decoder.obj `if test -f 'Decoder.cc'; then $(CYGPATH_W) 'Decoder.cc'; else $(CYGPATH_W) '$(srcdir)/Decoder.cc'; fi`
 
 libSTKLib_a-ZNorm.o: ZNorm.cc
 @am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -MT libSTKLib_a-ZNorm.o -MD -MP -MF "$(DEPDIR)/libSTKLib_a-ZNorm.Tpo" -c -o libSTKLib_a-ZNorm.o `test -f 'ZNorm.cc' || echo '$(srcdir)/'`ZNorm.cc; \
@@ -531,6 +532,20 @@ libSTKLib_a-labels.obj: labels.C
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='labels.C' object='libSTKLib_a-labels.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -c -o libSTKLib_a-labels.obj `if test -f 'labels.C'; then $(CYGPATH_W) 'labels.C'; else $(CYGPATH_W) '$(srcdir)/labels.C'; fi`
+
+libSTKLib_a-Lattice.o: Lattice.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -MT libSTKLib_a-Lattice.o -MD -MP -MF "$(DEPDIR)/libSTKLib_a-Lattice.Tpo" -c -o libSTKLib_a-Lattice.o `test -f 'Lattice.cc' || echo '$(srcdir)/'`Lattice.cc; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libSTKLib_a-Lattice.Tpo" "$(DEPDIR)/libSTKLib_a-Lattice.Po"; else rm -f "$(DEPDIR)/libSTKLib_a-Lattice.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Lattice.cc' object='libSTKLib_a-Lattice.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -c -o libSTKLib_a-Lattice.o `test -f 'Lattice.cc' || echo '$(srcdir)/'`Lattice.cc
+
+libSTKLib_a-Lattice.obj: Lattice.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -MT libSTKLib_a-Lattice.obj -MD -MP -MF "$(DEPDIR)/libSTKLib_a-Lattice.Tpo" -c -o libSTKLib_a-Lattice.obj `if test -f 'Lattice.cc'; then $(CYGPATH_W) 'Lattice.cc'; else $(CYGPATH_W) '$(srcdir)/Lattice.cc'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libSTKLib_a-Lattice.Tpo" "$(DEPDIR)/libSTKLib_a-Lattice.Po"; else rm -f "$(DEPDIR)/libSTKLib_a-Lattice.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Lattice.cc' object='libSTKLib_a-Lattice.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -c -o libSTKLib_a-Lattice.obj `if test -f 'Lattice.cc'; then $(CYGPATH_W) 'Lattice.cc'; else $(CYGPATH_W) '$(srcdir)/Lattice.cc'; fi`
 
 .cc.o:
 @am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \

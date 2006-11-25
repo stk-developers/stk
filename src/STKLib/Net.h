@@ -23,7 +23,8 @@ namespace STK
 
   class FWBWR;
   class ActiveNodeRecord;
-  
+  class AlphaBeta;
+  class NodeBasicContent;
   
   // Enums
   //
@@ -36,7 +37,9 @@ namespace STK
     NT_SUBNET = 0x08,
     NT_TEE    = 0x10,
     NT_STICKY = 0x20,
-    NT_TRUE   = 0x40
+    NT_TRUE   = 0x40,
+    NT_LATTIMAGIC = 0x80   // this flag is set only for lattices
+                           // When set, model nodes act as word nodes
   }; // NodeType
 
   
@@ -85,17 +88,19 @@ namespace STK
   //############################################################################
   // Class list (overview)
 
-  template<NodeRepresentationType _NR, LinkRepresentationType _LR>
+  template<typename _NodeContent, typename _LinkContent, NodeRepresentationType _NR, LinkRepresentationType _LR>
     class Link;
 
-  template<NodeRepresentationType _NR, LinkRepresentationType _LR>
+  template<typename _NodeContent, typename _LinkContent, NodeRepresentationType _NR, LinkRepresentationType _LR>
     class NodeBasic;
 
-  template<NodeRepresentationType _NR, LinkRepresentationType _LR>
+  template<typename _NodeContent, typename _LinkContent, NodeRepresentationType _NR, LinkRepresentationType _LR>
     class Node;
 
 
-  template< NodeRepresentationType    _NodeType, 
+  template< typename                  _NodeContent,
+            typename                  _LinkContent,
+            NodeRepresentationType    _NodeType, 
             LinkRepresentationType    _LinkType,
             NetworkStorageType        _NetworkType,
             template<class> class     _StorageType > 
@@ -157,25 +162,31 @@ namespace STK
   // class ExpansionOptions 
   //****************************************************************************
   
+  class LinkContent
+  {
+  public:
+    FLOAT mAcousticLike;
+    FLOAT mLmLike;
+  };
 
   /** **************************************************************************
    ** **************************************************************************
    *  @brief Network link representation class
    */
-  template<NodeRepresentationType _NR>
-    class Link<_NR, LINK_REGULAR> 
+  template<typename _NodeContent, typename _LinkContent, NodeRepresentationType _NR>
+    class Link<_NodeContent, _LinkContent, _NR, LINK_REGULAR> : public _LinkContent
     {
     public:
       typedef FLOAT                     LikeType;
-      typedef Node<_NR, LINK_REGULAR>   NodeType;
+      typedef Node<_NodeContent, _LinkContent, _NR, LINK_REGULAR>   NodeType;
 
       // Constructors and destructor ...........................................
       Link() 
-      : mAcousticLike(0.0), mLmLike(0.0)
+      : _LinkContent(), mpNode(NULL), mAcousticLike(0.0), mLmLike(0.0)
       { }
 
       Link(NodeType* pNode)
-      : mpNode(pNode), mAcousticLike(0.0), mLmLike(0.0)
+      : _LinkContent(), mpNode(pNode), mAcousticLike(0.0), mLmLike(0.0)
       { }
 
       ~Link()
@@ -197,6 +208,21 @@ namespace STK
       void
       SetNode(NodeType* pNode)
       { mpNode = pNode; }
+
+      /** 
+       * @brief Makes the link to point nowhere
+       */
+      void
+      Detach()
+      { mpNode = NULL; }
+
+      bool
+      PointsNowhere() const
+      { return NULL == mpNode; }
+
+      LikeType
+      Like() const
+      { return mLmLike + mAcousticLike; }
 
       /** 
        * @brief Returns link's acoustic likelihood
@@ -256,12 +282,12 @@ namespace STK
    ** **************************************************************************
    *  @brief Network link representation class
    */
-  template<NodeRepresentationType _NR>
-    class Link<_NR, LINK_COMPACT> 
+  template<typename _NodeContent, typename _LinkContent, NodeRepresentationType _NR>
+    class Link<_NodeContent, _LinkContent, _NR, LINK_COMPACT> : public _LinkContent 
     {
     public:
       typedef FLOAT                     LikeType;
-      typedef Node<_NR, LINK_COMPACT>   NodeType;
+      typedef Node<_NodeContent, _LinkContent, _NR, LINK_COMPACT>   NodeType;
 
       // Constructors and destructor ...........................................
       Link() 
@@ -351,36 +377,166 @@ namespace STK
   // Link
   //****************************************************************************
 
+  struct NodeBasicContent
+  {
+    NodeBasicContent() : mpName(NULL), mType(NT_UNDEF), mpAnr(NULL)
+    {}
+
+    ~NodeBasicContent()
+    { 
+      if (NULL != mpAlphaBeta);
+        //delete mpAlphaBeta;
+    }
+
+    union 
+    {
+      char*         mpName;
+      Hmm*          mpHmm;
+      Pronun*       mpPronun;
+    };
+  
+    int             mType;
+    
+#   ifndef NDEBUG
+    //id of first emiting state - apply only for model type
+    int           mEmittingStateId;
+    int           mAux2;
+#   endif
+#   ifndef EXPANDNET_ONLY    
+    union
+    {
+      ActiveNodeRecord* mpAnr;
+      AlphaBeta*        mpAlphaBeta;
+    };
+#   endif
+  };
+
+  class NodeContent : public NodeBasicContent
+  {
+    typedef       long long  TimingType;
+    
+    int           mAux;
+
+    void
+    Init()
+    { mStart = mStop = UNDEF_TIME; }
+
+    //time range when model can be active - apply only for model type
+    void
+    SetStart(const TimingType& start)
+    { mStart = start; }
+
+    void
+    SetStop(const TimingType& stop)
+    { mStop = stop; }
+
+    const TimingType&
+    Start() const
+    { return mStart; }
+
+    const TimingType&
+    Stop() const
+    { return mStop; }
+
+
+    FLOAT         mPhoneAccuracy;
+  
+#   ifndef EXPANDNET_ONLY
+    Hmm*               mpHmmToUpdate;
+    FWBWR*             mpAlphaBetaList;
+    FWBWR*             mpAlphaBetaListReverse;
+#   endif        
+
+  protected:
+    TimingType     mStart;
+    TimingType     mStop;
+  };
+
   /** *************************************************************************
    ** *************************************************************************
    *  @brief Network node representation class
    */   
-  template<NodeRepresentationType _NR, LinkRepresentationType _LR>
-    class NodeBasic
+  template<typename _NodeContent, typename _LinkContent, NodeRepresentationType _NR, LinkRepresentationType _LR>
+    class NodeBasic : public _NodeContent
     {
     public:
-      union 
-      {
-        char*         mpName;
-        Hmm*          mpHmm;
-        Pronun*       mpPronun;
-      };
-    
-      int                 mType;
-      int                 mNLinks;
-      Link<NODE_REGULAR, LINK_REGULAR>*   mpLinks;
-      
-#   ifndef NDEBUG
-      //id of first emiting state - apply only for model type
-      int           mEmittingStateId;
-      int           mAux2;
-#   endif
-#   ifndef EXPANDNET_ONLY    
-      ActiveNodeRecord* mpAnr;
-#   endif
+      typedef Link<_NodeContent, _LinkContent, _NR, _LR> LinkType;
+      typedef Node<_NodeContent, _LinkContent, _NR, _LR> NodeType;
 
-      NodeBasic() : mpPronun(NULL), mType(NT_UNDEF), mNLinks(0), mpLinks(NULL), 
-        mpAnr(NULL) {}
+      NodeBasic() : NodeBasicContent(), mNLinks(0), mpLinks(NULL) {}
+
+
+      LinkType*
+      pLinks() const
+      { return mpLinks; }
+
+      int
+      NLinks() const
+      { return mNLinks; }
+
+
+      LinkType*
+      pBackLinks() const
+      { return NULL; }
+
+      int
+      NBackLinks() const
+      { return 0; }
+
+
+      /** 
+       * @brief Returns number of nodes that really point to me
+       * 
+       * In this case, the number is not known so -1 is returned.
+       */
+      int
+      NPredecessors() const
+      { return -1; }
+
+      /** 
+       * @brief Returns number of nodes that I really point to
+       * 
+       */
+      int
+      NSuccessors()
+      {
+        int s(0);
+
+        for (size_t i(0); i < mNLinks; i++)
+        {
+          if (! mpLinks[i].PointsNowhere())
+            ++s;
+        }
+
+        return s;
+      }
+
+      /** 
+       * @brief Finds a link to a given node
+       * 
+       * @param pNode 
+       */
+      LinkType*
+      pFindLink(const NodeType* pNode)
+      {
+        LinkType* p_link;
+
+        for (size_t i(0); i < mNLinks; i++)
+        {
+          p_link = &( mpLinks[i] );
+
+          if (p_link->pNode() == pNode)
+            return p_link;
+        }
+
+        return NULL;
+      }
+
+      LinkType*           mpLinks;
+      int                 mNLinks;
+
+    protected:
+
     }; 
   // class BasicNode
   //****************************************************************************
@@ -391,16 +547,17 @@ namespace STK
    ** *************************************************************************
    *  @brief Network node representation class
    */   
-  template<NodeRepresentationType _NR, LinkRepresentationType _LR>
-    class Node : public NodeBasic<_NR, _LR>
+  template<typename _NodeContent, typename _LinkContent, NodeRepresentationType _NR, LinkRepresentationType _LR>
+    class Node : public NodeBasic<_NodeContent, _LinkContent, _NR, _LR>
     {
     public:
       typedef       long long  TimingType;
+      typedef       Link<_NodeContent, _LinkContent, _NR, _LR> LinkType;
 
       Node*         mpNext;
       Node*         mpBackNext;
       int           mNBackLinks;
-      Link<_NR, _LR>*         mpBackLinks;
+      LinkType*     mpBackLinks;
       int           mAux;
 
       //time range when model can be active - apply only for model type
@@ -441,18 +598,68 @@ namespace STK
    ** *************************************************************************
    *  @brief Network node representation class
    */   
-  template<LinkRepresentationType _LR>
-    class Node<NODE_REGULAR, _LR> : public NodeBasic<NODE_REGULAR, _LR>
+  template<typename _NodeContent, typename _LinkContent, LinkRepresentationType _LR>
+    class Node<_NodeContent, _LinkContent, NODE_REGULAR, _LR> : public NodeBasic<_NodeContent, _LinkContent, NODE_REGULAR, _LR>
     {
     public:
       typedef       long long  TimingType;
+      typedef       Link<_NodeContent, _LinkContent, NODE_REGULAR, _LR> LinkType;
+      typedef       Node<_NodeContent, _LinkContent, NODE_REGULAR, _LR> NodeType;
 
       Node*         mpNext;
       Node*         mpBackNext;
       int           mNBackLinks;
-      Link<NODE_REGULAR, _LR>*         mpBackLinks;
+      LinkType*     mpBackLinks;
       int           mAux;
 
+      LinkType*
+      pBackLinks() const
+      { return mpBackLinks; }
+
+      int
+      NBackLinks() const
+      { return mNBackLinks; }
+
+      /** 
+       * @brief Returns number of nodes that I really point to
+       * 
+       */
+      int
+      NPredecessors()
+      {
+        int s(0);
+
+        for (size_t i(0); i < mNBackLinks; i++)
+        {
+          if (! mpBackLinks[i].PointsNowhere())
+            ++s;
+        }
+
+        return s;
+      }
+
+
+      /** 
+       * @brief Makes the specified link point nowhere. The target node is
+       * updated as well
+       * 
+       * @param pLink pointer to the link
+       *
+       * Use Link::PointNowhere() to check whether the link is detached
+       */
+      void
+      DetachLink(LinkType* pLink)
+      {
+        LinkType* p_back_link;
+
+        if (NULL != (p_back_link = pLink->pNode()->pFindBackLink(this)))
+        {
+          p_back_link->Detach();
+        }
+
+        pLink->Detach();
+      }
+      
 
       void
       Init()
@@ -475,6 +682,7 @@ namespace STK
       Stop() const
       { return mStop; }
 
+
       FLOAT         mPhoneAccuracy;
     
 #   ifndef EXPANDNET_ONLY
@@ -482,6 +690,28 @@ namespace STK
       FWBWR*             mpAlphaBetaList;
       FWBWR*             mpAlphaBetaListReverse;
 #   endif        
+
+      /** 
+       * @brief Finds a link to a given node
+       * 
+       * @param pNode 
+       */
+      LinkType*
+      pFindBackLink(const NodeType* pNode)
+      {
+        LinkType* p_link;
+
+        for (size_t i(0); i < mNBackLinks; i++)
+        {
+          p_link = &( mpBackLinks[i] );
+
+          if (p_link->pNode() == pNode)
+            return p_link;
+        }
+
+        return NULL;
+      }
+
     private:
       TimingType     mStart;
       TimingType     mStop;
@@ -495,8 +725,8 @@ namespace STK
    ** *************************************************************************
    *  @brief Network node representation class
    */   
-  template<LinkRepresentationType _LR>
-    class Node<NODE_COMPACT, _LR> : public NodeBasic<NODE_COMPACT, _LR>
+  template<typename _NodeContent, typename _LinkContent, LinkRepresentationType _LR>
+    class Node<_NodeContent, _LinkContent, NODE_COMPACT, _LR> : public NodeBasic<_NodeContent, _LinkContent, NODE_COMPACT, _LR>
     {
       typedef       long long  TimingType;
       
@@ -659,7 +889,7 @@ namespace STK
       _Self& 
       operator--()
       {
-        mpPtr = mpPtr->mpPrev;
+        mpPtr = mpPtr->mpBackNext;
         return *this;
       };
 
@@ -695,7 +925,6 @@ namespace STK
       }
 
 
-    private:
       pointer mpPtr; // pointer to container value type
 
     };
@@ -802,7 +1031,6 @@ namespace STK
       }
 
 
-    private:
       pointer mpPtr; // pointer to container value type
 
     };
@@ -892,6 +1120,8 @@ namespace STK
       empty() const
       { return NULL == mpFirst; }
 
+      iterator
+      erase(iterator pos);
 
     protected:
       _Content*     mpFirst;   ///< self descriptive
@@ -905,6 +1135,7 @@ namespace STK
   template<typename _Content>
     class ArrayStorage
     {
+    public:
       typedef NodeIterator<_Content, NETWORK_COMPACT>           iterator;
       typedef const iterator                                    const_iterator;
       typedef _Content                                          value_type;
@@ -989,13 +1220,14 @@ namespace STK
    * The Network class provides basic operations on graph structure. It 
    * encapsulates basic access to the network structure.
    */
-  template <NodeRepresentationType _NodeType, LinkRepresentationType _LinkType, 
-           NetworkStorageType _NetworkType, template<class> class _StorageType>
-    class Network : public _StorageType<Node<_NodeType, _LinkType> >
+  template <typename _NodeContent, typename _LinkContent, NodeRepresentationType _NodeType, 
+           LinkRepresentationType _LinkType, NetworkStorageType _NetworkType, 
+           template<class> class _StorageType>
+    class Network : public _StorageType<Node<_NodeContent, _LinkContent, _NodeType, _LinkType> >
     {
     public:
-      typedef Node<_NodeType,_LinkType>                   NodeType;
-      typedef Link<_NodeType,_LinkType>                   LinkType;
+      typedef Node<_NodeContent, _LinkContent, _NodeType,_LinkType>     NodeType;
+      typedef Link<_NodeContent, _LinkContent, _NodeType,_LinkType>     LinkType;
       typedef _StorageType<NodeType>                      StorageType;
 
       //typedef NodeIterator<NodeType, _NetworkType>       iterator;
@@ -1054,6 +1286,10 @@ namespace STK
       void
       Clear();
 
+      // Various ............................................................... 
+      Network&
+      TopologicalSort();
+
 
       // accessors ............................................................. 
       NodeType*
@@ -1103,6 +1339,29 @@ namespace STK
       IsEmpty() const
       { return this->empty(); }
 
+      void
+      PruneNode(NodeType* pNode);
+
+      /** 
+       * @brief Safely remove node
+       * 
+       * @param pNode pointer to a node to be removed
+       *
+       * The function also delete all links and backlinks to preserve network
+       * consistency
+       */
+      void
+      RemoveNode(NodeType* pNode);
+
+
+      /** 
+       * @brief This function unlinks the node, i.e. removes all links
+       * 
+       * @param pNode 
+       */
+      void
+      IsolateNode(NodeType* pNode);
+
       
       /** 
        * @brief Insert null node to self links
@@ -1123,6 +1382,13 @@ namespace STK
       void
       LatticeLocalOptimization(int strictTiming, int trace_flag);
 
+      /** 
+       * @brief 
+       * 
+       * @return 
+       */
+      int
+      RemoveRedundantNullNodes();
 
       /** 
        * @brief Self explanative
@@ -1202,9 +1468,9 @@ namespace STK
 
   // Explicit instantiation of the mostly used network types
   template 
-    class Network<NODE_REGULAR, LINK_REGULAR, NETWORK_REGULAR, ListStorage>;
+    class Network<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR, NETWORK_REGULAR, ListStorage>;
 
-  typedef Network<NODE_REGULAR, LINK_REGULAR, NETWORK_REGULAR, ListStorage>
+  typedef Network<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR, NETWORK_REGULAR, ListStorage>
     RegularNetwork;
 
 
@@ -1213,27 +1479,27 @@ namespace STK
   // GLOBAL FUNCTIONS
   //
   
-  Node<NODE_REGULAR, LINK_REGULAR>* 
+  Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* 
   MakeNetworkFromLabels(Label* labels, enum NodeKind nodeKind);
   
   void ExpandWordNetworkByDictionary(
-    Node<NODE_REGULAR, LINK_REGULAR>* first,
+    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* first,
     MyHSearchData* dict,
     int keep_word_nodes,
     int multiple_pronun);
   
   void ExpandMonophoneNetworkToTriphones(
-    Node<NODE_REGULAR, LINK_REGULAR>* first,
+    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* first,
     MyHSearchData* nonCDphones,
     MyHSearchData* CDphones);
   
   void LatticeLocalOptimization(
-    Node<NODE_REGULAR, LINK_REGULAR>* first,
+    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* first,
     int strictTiming,
     int trace_flag);
   
-  Node<NODE_REGULAR, LINK_REGULAR>* DiscardUnwantedInfoInNetwork(
-    Node<NODE_REGULAR, LINK_REGULAR>* first,
+  Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* DiscardUnwantedInfoInNetwork(
+    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* first,
     STKNetworkOutputFormat format);
   
 
@@ -1250,7 +1516,9 @@ namespace STK
       STKNetworkOutputFormat    format,
       long                      sampPeriod,
       const char*               label_file,
-      const char*               out_MNF);
+      const char*               out_MNF,
+      const FLOAT&              wPenalty,
+      const FLOAT&              lmScale);
   
 
   template <class _NetworkType>
@@ -1271,7 +1539,7 @@ namespace STK
     
   void WriteSTKNetwork(
     FILE* flp,
-    Node<NODE_REGULAR, LINK_REGULAR>* node,
+    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* node,
     STKNetworkOutputFormat format,
     long sampPeriod,
     const char* label_file,
@@ -1279,15 +1547,15 @@ namespace STK
   
   void WriteSTKNetworkInOldFormat(
     FILE* flp,
-    Node<NODE_REGULAR, LINK_REGULAR>* node,
+    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* node,
     LabelFormat labelFormat,
     long sampPeriod,
     const char* label_file,
     const char* out_MNF);
   
-  void FreeNetwork(Node<NODE_REGULAR, LINK_REGULAR> *node, bool compactRepresentation = false);
+  void FreeNetwork(Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *node, bool compactRepresentation = false);
   
-  Node<NODE_REGULAR, LINK_REGULAR>*
+  Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*
   ReadSTKNetwork(
     FILE* lfp,
     MyHSearchData* word_hash,
@@ -1299,7 +1567,7 @@ namespace STK
     const char* in_MLF,
     bool compactRepresentation = false);
   
-  Node<NODE_REGULAR, LINK_REGULAR>*
+  Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*
   ReadSTKNetworkInOldFormat(
     FILE* lfp,
     MyHSearchData* word_hash,
@@ -1309,11 +1577,11 @@ namespace STK
     const char* file_name,
     const char* in_MLF);
 
-  Node<NODE_REGULAR, LINK_REGULAR>* 
-  find_or_create_node(struct MyHSearchData *node_hash, const char *node_id, Node<NODE_REGULAR, LINK_REGULAR> **last);
+  Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* 
+  find_or_create_node(struct MyHSearchData *node_hash, const char *node_id, Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> **last);
 
   
-  Node<NODE_REGULAR, LINK_REGULAR>* 
+  Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* 
   ReadHTKLattice(
     FILE* lfp,
     MyHSearchData* word_hash,
@@ -1323,14 +1591,14 @@ namespace STK
     const char* file_name);
   
   void ComputeAproximatePhoneAccuracy(
-    Node<NODE_REGULAR, LINK_REGULAR> *first,
+    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *first,
     int type);
   
-  void SelfLinksToNullNodes(Node<NODE_REGULAR, LINK_REGULAR> *first);
-  int RemoveRedundantNullNodes(Node<NODE_REGULAR, LINK_REGULAR> *first);
+  void SelfLinksToNullNodes(Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *first);
+  int RemoveRedundantNullNodes(Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *first);
   
   void NetworkExpansionsAndOptimizations(
-    Node<NODE_REGULAR, LINK_REGULAR> *node,
+    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *node,
     ExpansionOptions expOptions,
     STKNetworkOutputFormat out_net_fmt,
     MyHSearchData *dictHash,

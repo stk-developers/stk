@@ -4,6 +4,26 @@
 
 namespace STK
 {
+  /*
+  template<LinkRepresentationType _LR>
+    Link<NODE_REGULAR, _LR>*
+    Node<NODE_REGULAR, _LR>::
+    pFindLink(const Node* pNode)
+    {
+      LinkType* p_link;
+
+      for (size_t i(0); i < NLinks(); i++)
+      {
+        p_link = &( mpLinks[i] );
+
+        if (p_link->pNode() == pNode)
+          return p_link;
+      }
+
+      return NULL;
+    }
+    */
+
   //***************************************************************************
   //***************************************************************************
   static int 
@@ -11,17 +31,17 @@ namespace STK
   {
   //  return ((LinkType *) a)->pNode() - ((LinkType *) b)->pNode();
   //  Did not work with gcc, probably bug in gcc pointer arithmetic
-    return (char *)((Link<NODE_REGULAR, LINK_REGULAR> *) a)->pNode() - 
-           (char *)((Link<NODE_REGULAR, LINK_REGULAR> *) b)->pNode();
+    return (char *)((Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *) a)->pNode() - 
+           (char *)((Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *) b)->pNode();
   }
 
   
   //***************************************************************************
   //***************************************************************************
-  template <NodeRepresentationType _NodeType, LinkRepresentationType _LinkType, 
+  template <typename _NodeContent, typename _LinkContent, NodeRepresentationType _NodeType, LinkRepresentationType _LinkType, 
            NetworkStorageType _NetworkType, template<class> class _StorageType>
     void 
-    Network<_NodeType, _LinkType, _NetworkType, _StorageType>::
+    Network<_NodeContent, _LinkContent, _NodeType, _LinkType, _NetworkType, _StorageType>::
     Clear() 
     {
       if (IsEmpty()) 
@@ -43,11 +63,11 @@ namespace STK
       }
       else
       {
-        NodeBasic<NODE_REGULAR, LINK_REGULAR>*  p_node(pFirst());
-        NodeBasic<NODE_REGULAR, LINK_REGULAR>*  p_tmp_node;
+        NodeBasic<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*  p_node(pFirst());
+        NodeBasic<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*  p_tmp_node;
 
-        for(p_tmp_node =  reinterpret_cast<NodeBasic<NODE_REGULAR, LINK_REGULAR>* >(p_node); 
-            p_tmp_node->mNLinks != 0; 
+        for(p_tmp_node =  reinterpret_cast<NodeBasic<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* >(p_node); 
+            p_tmp_node->NLinks() != 0; 
             p_tmp_node++) 
         {
           free(p_tmp_node->mpLinks);
@@ -62,10 +82,10 @@ namespace STK
 
   //***************************************************************************
   //***************************************************************************
-  template <NodeRepresentationType _NodeType, LinkRepresentationType _LinkType, 
+  template <typename _NodeContent, typename _LinkContent, NodeRepresentationType _NodeType, LinkRepresentationType _LinkType, 
            NetworkStorageType _NetworkType, template<class> class _StorageType>
     void 
-    Network<_NodeType, _LinkType, _NetworkType, _StorageType>::
+    Network<_NodeContent, _LinkContent, _NodeType, _LinkType, _NetworkType, _StorageType>::
     BuildFromLabels(const Label* pLabels, NodeKind nodeKind)
     {
       const Label*   p_lp;
@@ -152,10 +172,10 @@ namespace STK
 
   //***************************************************************************
   //***************************************************************************
-  template <NodeRepresentationType _NodeType, LinkRepresentationType _LinkType, 
+  template <typename _NodeContent, typename _LinkContent, NodeRepresentationType _NodeType, LinkRepresentationType _LinkType, 
            NetworkStorageType _NetworkType, template<class> class _StorageType>
     void 
-    Network<_NodeType, _LinkType, _NetworkType, _StorageType>::
+    Network<_NodeContent, _LinkContent, _NodeType, _LinkType, _NetworkType, _StorageType>::
     SelfLinksToNullNodes()
     {
       int   i;
@@ -169,7 +189,7 @@ namespace STK
       {
         NodeType* p_node_real_address = &(*p_node);
 
-        for (i=0; i < p_node->mNLinks; i++) 
+        for (i=0; i < p_node->NLinks(); i++) 
         {
           if (p_node->mpLinks[i].pNode() == &(*p_node))
           {
@@ -216,7 +236,7 @@ namespace STK
       /*
       for (node = pFirst(); node != NULL; node = node->mpNext) 
       {
-        for (i=0; i < node->mNLinks; i++) 
+        for (i=0; i < node->NLinks(); i++) 
         {
           if (node->mpLinks[i].pNode() == node) 
           {
@@ -263,13 +283,133 @@ namespace STK
   // SelfLinksToNullNodes()
   //****************************************************************************
   
+  //***************************************************************************
+  //***************************************************************************
+  // Remove null nones having less than three predecessors or less than three successors
+  template <typename _NodeContent, typename _LinkContent, NodeRepresentationType _NodeType, LinkRepresentationType _LinkType, 
+           NetworkStorageType _NetworkType, template<class> class _StorageType>
+    int 
+    Network<_NodeContent, _LinkContent, _NodeType, _LinkType, _NetworkType, _StorageType>::
+    RemoveRedundantNullNodes()
+    {
+      NodeType *    p_node;
+      NodeType *    tnode;
+      int       i;
+      int       j;
+      int       k;
+      int       node_removed = 0;
+    
+      pFirst()->mpBackNext = NULL;
+
+      for (p_node = pFirst(); p_node->mpNext != NULL; p_node = p_node->mpNext) 
+      {
+        p_node->mpNext->mpBackNext = p_node;
+      }
+
+      for (p_node = pFirst(); p_node != NULL; p_node = p_node->mpNext) 
+      {
+        if (p_node->mType & NT_WORD && p_node->mpPronun == NULL &&
+            p_node->mNLinks != 0 && p_node->mNBackLinks != 0  &&
+           (p_node->mNLinks == 1 || p_node->mNBackLinks == 1 ||
+           (p_node->mNLinks == 2 && p_node->mNBackLinks == 2))) 
+        {
+    
+        node_removed = 1;
+    
+        // Remove links to current node form backlinked nodes and realloc
+        // link arrays of backlinked nodes to hold p_node->mNLinks more backlinks
+          for (i = 0; i < p_node->mNBackLinks; i++) 
+          {
+            NodeType* bakcnode = p_node->mpBackLinks[i].pNode();
+
+            for (j=0; j<bakcnode->NLinks() && bakcnode->mpLinks[j].pNode()!=p_node; j++)
+            {}
+
+            assert(j < bakcnode->NLinks()); // Otherwise link to 'node' is missing
+                                          // from which backlink exists
+            bakcnode->mpLinks[j] = bakcnode->mpLinks[bakcnode->NLinks()-1];
+    
+            bakcnode->mpLinks = (LinkType *) 
+              realloc(bakcnode->mpLinks, (bakcnode->NLinks() - 1 + 
+                    p_node->NLinks()) * sizeof(LinkType));
+
+            if (bakcnode->mpLinks == NULL) 
+              Error("Insufficient memory");
+
+            bakcnode->mNLinks--;// += word->npronuns-1;
+          }
+    
+          // Remove backlinks to current node form linked nodes and realloc
+          // backlink arrays of linked nodes to hold word->npronuns more backlinks
+          for (i=0; i < p_node->NLinks(); i++) {
+            NodeType *forwnode = p_node->mpLinks[i].pNode();
+            for (j=0;j<forwnode->mNBackLinks&&forwnode->mpBackLinks[j].pNode()!=p_node;j++);
+            assert(j < forwnode->mNBackLinks);
+            // Otherwise link to 'node' is missing from which backlink exists
+            forwnode->mpBackLinks[j] = forwnode->mpBackLinks[forwnode->mNBackLinks-1];
+    
+            forwnode->mpBackLinks = (LinkType *)
+              realloc(forwnode->mpBackLinks,
+                    (forwnode->mNBackLinks - 1 + p_node->mNBackLinks) * sizeof(LinkType));
+            if (forwnode->mpBackLinks == NULL) Error("Insufficient memory");
+            forwnode->mNBackLinks--;
+          }
+          for (j = 0; j < p_node->mNBackLinks; j++) {
+            NodeType *backnode = p_node->mpBackLinks[j].pNode();
+            int orig_nlinks = backnode->NLinks();
+    
+            for (i=0; i < p_node->NLinks(); i++) {
+              for(k = 0; k < orig_nlinks && backnode->mpLinks[k].pNode() != p_node->mpLinks[i].pNode(); k++);
+              if(k < orig_nlinks) {
+                // Link<NODE_REGULAR, LINK_REGULAR> which is to be created already exists. Its duplication must be avoided.
+                backnode->mpLinks[k].SetLmLike(HIGHER_OF(backnode->mpLinks[k].LmLike(), 
+                                               p_node->mpLinks[i].LmLike() + p_node->mpBackLinks[j].LmLike()));
+              } else {
+                backnode->mpLinks[backnode->NLinks()].SetNode(p_node->mpLinks[i].pNode());
+                backnode->mpLinks[backnode->NLinks()].SetLmLike(
+                    p_node->mpLinks[i].LmLike() + p_node->mpBackLinks[j].LmLike());
+                --(backnode->mNLinks);
+              }
+            }
+          }
+          for (j = 0; j < p_node->NLinks(); j++) {
+            NodeType *forwnode = p_node->mpLinks[j].pNode();
+            int orig_nbacklinks = forwnode->mNBackLinks;
+    
+            for (i=0; i < p_node->mNBackLinks; i++) {
+              for(k = 0; k < orig_nbacklinks && forwnode->mpBackLinks[k].pNode() != p_node->mpBackLinks[i].pNode(); k++);
+              if (k < orig_nbacklinks) {
+                // Link which is to be created already exists. Its duplication must be avoided.
+                forwnode->mpBackLinks[k].SetLmLike(HIGHER_OF(forwnode->mpBackLinks[k].LmLike(), 
+                                                        p_node->mpBackLinks[i].LmLike() + p_node->mpLinks[j].LmLike()));
+              } else {
+                forwnode->mpBackLinks[forwnode->mNBackLinks  ].SetNode(p_node->mpBackLinks[i].pNode());
+                forwnode->mpBackLinks[forwnode->mNBackLinks++].SetLmLike(
+                    p_node->mpBackLinks[i].LmLike() + p_node->mpLinks[j].LmLike());
+              }
+            }
+          }
+          p_node->mpBackNext->mpNext = p_node->mpNext;
+          p_node->mpNext->mpBackNext = p_node->mpBackNext;
+          tnode = p_node;
+          p_node = p_node->mpBackNext;
+          free(tnode->mpLinks);
+          free(tnode->mpBackLinks);
+          free(tnode);
+        }
+      }
+      return node_removed;
+    }
+  //  RemoveRedundantNullNodes(Node<NODE_REGULAR, LINK_REGULAR> *pFirstNode)
+  //****************************************************************************
+
 
   //****************************************************************************
   //****************************************************************************
-  template <NodeRepresentationType _NodeType, LinkRepresentationType _LinkType, 
+  template <typename _NodeContent, typename _LinkContent, NodeRepresentationType _NodeType, LinkRepresentationType _LinkType, 
            NetworkStorageType _NetworkType, template<class> class _StorageType>
     void 
-    Network<_NodeType, _LinkType, _NetworkType, _StorageType>::
+    Network<_NodeContent, _LinkContent, _NodeType, _LinkType, _NetworkType, _StorageType>::
     ExpandByDictionary(
       MyHSearchData* pDict,
       bool keep_word_nodes,
@@ -313,23 +453,23 @@ namespace STK
         {
           NodeType *bakcnode = node->mpBackLinks[i].pNode();
 
-          for (j=0; j<bakcnode->mNLinks && bakcnode->mpLinks[j].pNode()!=node; j++)
+          for (j=0; j<bakcnode->NLinks() && bakcnode->mpLinks[j].pNode()!=node; j++)
           {}
 
-          assert(j < bakcnode->mNLinks); // Otherwise link to 'node' is missing
+          assert(j < bakcnode->NLinks()); // Otherwise link to 'node' is missing
                                         // from which backlink exists
-          bakcnode->mpLinks[j] = bakcnode->mpLinks[bakcnode->mNLinks-1];
+          bakcnode->mpLinks[j] = bakcnode->mpLinks[bakcnode->NLinks()-1];
     
           bakcnode->mpLinks = (LinkType *)
             realloc(bakcnode->mpLinks,
-                  (bakcnode->mNLinks - 1 + word->npronuns) * sizeof(LinkType));
+                  (bakcnode->NLinks() - 1 + word->npronuns) * sizeof(LinkType));
           if (bakcnode->mpLinks == NULL) Error("Insufficient memory");
           bakcnode->mNLinks--;// += word->npronuns-1;
         }
     
         // Remove backlinks to current node form linked nodes and realloc
         // backlink arrays of linked nodes to hold word->npronuns more backlinks
-        for (i=0; i < node->mNLinks; i++) 
+        for (i=0; i < node->NLinks(); i++) 
         {
           NodeType* forwnode = node->mpLinks[i].pNode();
 
@@ -425,26 +565,26 @@ namespace STK
             pronun_prev = tnode;
           }
           if ((pronun_prev->mpLinks =
-                (LinkType *) malloc(sizeof(LinkType) * node->mNLinks))==NULL ||
+                (LinkType *) malloc(sizeof(LinkType) * node->NLinks()))==NULL ||
             (pronun_first->mpBackLinks =
                 (LinkType *) malloc(sizeof(LinkType) * node->mNBackLinks)) == NULL) {
             Error("Insufficient memory");
           }
-          pronun_prev->mNLinks      = node->mNLinks;
+          pronun_prev->mNLinks      = node->NLinks();
           pronun_first->mNBackLinks = node->mNBackLinks;
     
           for (j = 0; j < node->mNBackLinks; j++) 
           {
             NodeType* backnode(node->mpBackLinks[j].pNode());
 
-            backnode->mpLinks[backnode->mNLinks].SetNode(pronun_first);
-            backnode->mpLinks[backnode->mNLinks].SetLmLike(node->mpBackLinks[j].LmLike());
-            backnode->mpLinks[backnode->mNLinks].SetAcousticLike(node->mpBackLinks[j].AcousticLike());
+            backnode->mpLinks[backnode->NLinks()].SetNode(pronun_first);
+            backnode->mpLinks[backnode->NLinks()].SetLmLike(node->mpBackLinks[j].LmLike());
+            backnode->mpLinks[backnode->NLinks()].SetAcousticLike(node->mpBackLinks[j].AcousticLike());
             backnode->mNLinks++;
             pronun_first->mpBackLinks[j] = node->mpBackLinks[j];
           }
 
-          for (j=0; j < node->mNLinks; j++) 
+          for (j=0; j < node->NLinks(); j++) 
           {
             NodeType *forwnode = node->mpLinks[j].pNode();
             forwnode->mpBackLinks[forwnode->mNBackLinks].SetNode(pronun_prev);
@@ -469,10 +609,10 @@ namespace STK
 
   //***************************************************************************
   //***************************************************************************
-  template <NodeRepresentationType _NodeType, LinkRepresentationType _LinkType, 
+  template <typename _NodeContent, typename _LinkContent, NodeRepresentationType _NodeType, LinkRepresentationType _LinkType, 
            NetworkStorageType _NetworkType, template<class> class _StorageType>
     void 
-    Network<_NodeType, _LinkType, _NetworkType, _StorageType>::
+    Network<_NodeContent, _LinkContent, _NodeType, _LinkType, _NetworkType, _StorageType>::
     ExpandMonophonesToTriphones(MyHSearchData *nonCDphones, 
         MyHSearchData *CDphones)
     {
@@ -494,8 +634,8 @@ namespace STK
         
         for (p_node = pFirst(); p_node != NULL; prev = p_node, p_node = p_node->mpNext) 
         {
-          if ((p_node->mNLinks == 0 || p_node->mNBackLinks == 0) ||
-              (p_node->mNLinks == 1 && p_node->mNBackLinks == 1)) 
+          if ((p_node->NLinks() == 0 || p_node->mNBackLinks == 0) ||
+              (p_node->NLinks() == 1 && p_node->mNBackLinks == 1)) 
           {
             continue;
           }
@@ -512,22 +652,22 @@ namespace STK
           assert(prev != NULL); //Otherwise pFirstNode node is not Null node
     
           // Remove links to current node form back-linked nodes and realloc
-          // link arrays of back-linked nodes to hold node->mNLinks more links
+          // link arrays of back-linked nodes to hold node->NLinks() more links
           for (j=0; j < p_node->mNBackLinks; j++) 
           {
             NodeType *backnode = p_node->mpBackLinks[j].pNode();
             
-            for (k=0; k<backnode->mNLinks && backnode->mpLinks[k].pNode()!=p_node; k++)
+            for (k=0; k<backnode->NLinks() && backnode->mpLinks[k].pNode()!=p_node; k++)
             {}
             
-            assert(k < backnode->mNLinks);
+            assert(k < backnode->NLinks());
             
             // Otherwise link to 'node' is missing from which backlink exists
-            backnode->mpLinks[k] = backnode->mpLinks[backnode->mNLinks-1];
+            backnode->mpLinks[k] = backnode->mpLinks[backnode->NLinks()-1];
     
             backnode->mpLinks = 
               (LinkType *) realloc((backnode->mpLinks), 
-                               (backnode->mNLinks-1+p_node->mNLinks)*sizeof(LinkType));
+                               (backnode->NLinks()-1+p_node->NLinks())*sizeof(LinkType));
             
             if (backnode->mpLinks == NULL) 
               Error("Insufficient memory");
@@ -537,7 +677,7 @@ namespace STK
           
           // Remove backlinks to current node form linked nodes and realloc
           // backlink arrays of linked nodes to hold node->mNBackLinks more backlinks
-          for (j=0; j < p_node->mNLinks; j++) 
+          for (j=0; j < p_node->NLinks(); j++) 
           {
             NodeType *forwnode = p_node->mpLinks[j].pNode();
             
@@ -560,7 +700,7 @@ namespace STK
           // Alloc new p_node->mNLinks * p_node->mNBackLinks nodes and create new links
           // so that each backlinked node is conected with each linked node through
           // one new node.
-          for (i=0; i < p_node->mNLinks; i++) 
+          for (i=0; i < p_node->NLinks(); i++) 
           {
             for (j=0; j < p_node->mNBackLinks; j++) 
             {
@@ -591,9 +731,9 @@ namespace STK
 
               forwlink.pNode()->mNBackLinks++;
 
-              backlink.pNode()->mpLinks    [backlink.pNode()->mNLinks    ].SetNode(tnode);
-              backlink.pNode()->mpLinks    [backlink.pNode()->mNLinks    ].SetLmLike(backlink.LmLike());
-              backlink.pNode()->mpLinks    [backlink.pNode()->mNLinks    ].SetAcousticLike(backlink.AcousticLike());
+              backlink.pNode()->mpLinks    [backlink.pNode()->NLinks()    ].SetNode(tnode);
+              backlink.pNode()->mpLinks    [backlink.pNode()->NLinks()    ].SetLmLike(backlink.LmLike());
+              backlink.pNode()->mpLinks    [backlink.pNode()->NLinks()    ].SetAcousticLike(backlink.AcousticLike());
 
               backlink.pNode()->mNLinks++;
 
@@ -626,7 +766,7 @@ namespace STK
         ENTRY * ep;
     
         if ((p_node->mType & NT_WORD) ||
-            (p_node->mNLinks == 1 && p_node->mNBackLinks == 1)) 
+            (p_node->NLinks() == 1 && p_node->mNBackLinks == 1)) 
         {
           continue;
         }
@@ -652,7 +792,7 @@ namespace STK
         // Count groups of linked nodes corresponding to different monophones
         id = -1;
         nforwmononodes = 0;
-        for (j=0; j < p_node->mNLinks; j++) 
+        for (j=0; j < p_node->NLinks(); j++) 
         {
           if (p_node->mpLinks[j].pNode()->mAux != id) 
           {
@@ -666,22 +806,22 @@ namespace STK
         for (j=0; j < p_node->mNBackLinks; j++) 
         {
           NodeType *backnode = p_node->mpBackLinks[j].pNode();
-          for (k=0; k<backnode->mNLinks && backnode->mpLinks[k].pNode()!=p_node; k++);
-          assert(k < backnode->mNLinks);
+          for (k=0; k<backnode->NLinks() && backnode->mpLinks[k].pNode()!=p_node; k++);
+          assert(k < backnode->NLinks());
           // Otherwise link to 'node' is missing from which backlink exists
           memmove(backnode->mpLinks+k, backnode->mpLinks+k+1,
-                  (backnode->mNLinks-k-1) * sizeof(LinkType));
+                  (backnode->NLinks()-k-1) * sizeof(LinkType));
     
           backnode->mpLinks = (LinkType *)
             realloc(backnode->mpLinks,
-                  (backnode->mNLinks-1+nforwmononodes)*sizeof(LinkType));
+                  (backnode->NLinks()-1+nforwmononodes)*sizeof(LinkType));
           if (backnode->mpLinks == NULL) Error("Insufficient memory");
           backnode->mNLinks--;
         }
     
         // Remove backlinks to current p_node form linked nodes and realloc
         // backlink arrays of linked nodes to hold nbackmononodes more backlinks
-        for (j=0; j < p_node->mNLinks; j++) 
+        for (j=0; j < p_node->NLinks(); j++) 
         {
           NodeType *forwnode = p_node->mpLinks[j].pNode();
           for (k=0;k<forwnode->mNBackLinks&&forwnode->mpBackLinks[k].pNode()!=p_node;k++);
@@ -706,13 +846,13 @@ namespace STK
         for (i=0; i < nforwmononodes; i++) 
         {
           for (forwmono_start = forwmono_end;
-              forwmono_end < p_node->mpLinks+p_node->mNLinks &&
+              forwmono_end < p_node->mpLinks+p_node->NLinks() &&
               forwmono_start->pNode()->mAux == forwmono_end->pNode()->mAux;
               forwmono_end++)
           {}
     
-          assert((i <  nforwmononodes-1 && forwmono_end <  p_node->mpLinks+p_node->mNLinks) ||
-                (i == nforwmononodes-1 && forwmono_end == p_node->mpLinks+p_node->mNLinks));
+          assert((i <  nforwmononodes-1 && forwmono_end <  p_node->mpLinks+p_node->NLinks()) ||
+                (i == nforwmononodes-1 && forwmono_end == p_node->mpLinks+p_node->NLinks()));
     
           LinkType *tlink, *backmono_start, *backmono_end = p_node->mpBackLinks;
           
@@ -736,7 +876,7 @@ namespace STK
             tnode->mNBackLinks   = backmono_end-backmono_start;
     
             if ((tnode->mpLinks =
-                (LinkType *) malloc(tnode->mNLinks * sizeof(LinkType))) == NULL ||
+                (LinkType *) malloc(tnode->NLinks() * sizeof(LinkType))) == NULL ||
               (tnode->mpBackLinks =
                 (LinkType *) malloc(tnode->mNBackLinks * sizeof(LinkType))) == NULL) 
             {
@@ -756,9 +896,9 @@ namespace STK
             for (tlink = backmono_start; tlink < backmono_end; tlink++) 
             {
               tnode->mpBackLinks[tlink-backmono_start] = *tlink;
-              tlink->pNode()->mpLinks[tlink->pNode()->mNLinks].SetNode(tnode);
-              tlink->pNode()->mpLinks[tlink->pNode()->mNLinks].SetLmLike(tlink->LmLike());
-              tlink->pNode()->mpLinks[tlink->pNode()->mNLinks].SetAcousticLike(tlink->AcousticLike());
+              tlink->pNode()->mpLinks[tlink->pNode()->NLinks()].SetNode(tnode);
+              tlink->pNode()->mpLinks[tlink->pNode()->NLinks()].SetLmLike(tlink->LmLike());
+              tlink->pNode()->mpLinks[tlink->pNode()->NLinks()].SetAcousticLike(tlink->AcousticLike());
 
               tlink->pNode()->mNLinks++;
             }
@@ -821,7 +961,7 @@ namespace STK
           
           for (rc = p_node;;) 
           {
-            rc = rc->mNLinks ? rc->mpLinks[0].pNode() : NULL;
+            rc = rc->NLinks() ? rc->mpLinks[0].pNode() : NULL;
             
             if (rc == NULL)               break;
             if (!(rc->mType & NT_PHONE))  continue;
@@ -899,10 +1039,10 @@ namespace STK
   
   //****************************************************************************
   //****************************************************************************
-  template <NodeRepresentationType _NodeType, LinkRepresentationType _LinkType, 
+  template <typename _NodeContent, typename _LinkContent, NodeRepresentationType _NodeType, LinkRepresentationType _LinkType, 
            NetworkStorageType _NetworkType, template<class> class _StorageType>
     void 
-    Network<_NodeType, _LinkType, _NetworkType, _StorageType>::
+    Network<_NodeContent, _LinkContent, _NodeType, _LinkType, _NetworkType, _StorageType>::
     ExpansionsAndOptimizations(
       ExpansionOptions        expOptions,
       const STKNetworkOutputFormat&  rFormat,
@@ -945,7 +1085,7 @@ namespace STK
         LatticeLocalOptimization(expOptions.mStrictTiming, expOptions.mTraceFlag);
       }
 
-      RemoveRedundantNullNodes(p_node);
+      RemoveRedundantNullNodes();
     } 
   // void NetworkExpansionsAndOptimizations( )
   //****************************************************************************
@@ -953,9 +1093,9 @@ namespace STK
   
   //****************************************************************************
   //****************************************************************************
-  template <NodeRepresentationType _NodeType, LinkRepresentationType _LinkType, NetworkStorageType _NetworkType, template<class> class _StorageType>
+  template <typename _NodeContent, typename _LinkContent, NodeRepresentationType _NodeType, LinkRepresentationType _LinkType, NetworkStorageType _NetworkType, template<class> class _StorageType>
     void 
-    Network<_NodeType, _LinkType, _NetworkType, _StorageType>::
+    Network<_NodeContent, _LinkContent, _NodeType, _LinkType, _NetworkType, _StorageType>::
     DiscardUnwantedInfo(const STKNetworkOutputFormat& format)
     {
       // TODO : change to iterator
@@ -966,7 +1106,7 @@ namespace STK
       {
         if (format.mNoLMLikes) 
         {
-          for (i=0; i < p_node->mNLinks;     i++) 
+          for (i=0; i < p_node->NLinks();     i++) 
             p_node->mpLinks    [i].SetLmLike(0.0);
           
           for (i=0; i < p_node->mNBackLinks; i++) 
@@ -975,7 +1115,7 @@ namespace STK
 
         if (format.mNoAcousticLikes) 
         {
-          for (i=0; i < p_node->mNLinks;     i++) 
+          for (i=0; i < p_node->NLinks();     i++) 
             p_node->mpLinks    [i].SetAcousticLike(0.0);
 
           for (i=0; i < p_node->mNBackLinks; i++) 
@@ -1005,9 +1145,9 @@ namespace STK
 
   //***************************************************************************
   //***************************************************************************
-  template <NodeRepresentationType _NodeType, LinkRepresentationType _LinkType, NetworkStorageType _NetworkType, template<class> class _StorageType>
+  template <typename _NodeContent, typename _LinkContent, NodeRepresentationType _NodeType, LinkRepresentationType _LinkType, NetworkStorageType _NetworkType, template<class> class _StorageType>
     void 
-    Network<_NodeType, _LinkType, _NetworkType, _StorageType>::
+    Network<_NodeContent, _LinkContent, _NodeType, _LinkType, _NetworkType, _StorageType>::
     LatticeLocalOptimization(int strictTiming, int trace_flag)
     {
       NodeType *    node;
@@ -1022,7 +1162,7 @@ namespace STK
       {
         node->mAux = 0;
         node->mpBackNext = node->mpNext;
-        qsort(node->mpLinks, node->mNLinks, sizeof(LinkType), lnkcmp);
+        qsort(node->mpLinks, node->NLinks(), sizeof(LinkType), lnkcmp);
         qsort(node->mpBackLinks, node->mNBackLinks, sizeof(LinkType), lnkcmp);
       }
     
@@ -1031,7 +1171,7 @@ namespace STK
       pFirst()->mAux = 1;
       for (lastnode = node = pFirst(); node != NULL; node = node->mpNext) 
       {
-        for (i=0; i < node->mNLinks; i++) 
+        for (i=0; i < node->NLinks(); i++) 
         {
           NodeType *lnknode = node->mpLinks[i].pNode();
           
@@ -1051,7 +1191,7 @@ namespace STK
         }
       }
       
-      if (lastnode->mNLinks != 0) 
+      if (lastnode->NLinks() != 0) 
       {
         // There is a cycle in graph so we cannot sort nodes
         // topologicaly, so sort it at least somehow. :o|
@@ -1064,7 +1204,7 @@ namespace STK
         pFirst()->mAux = 1;
         for (lastnode = node = pFirst(); node != NULL; node = node->mpNext) 
         {
-          for (i=0; i < node->mNLinks; i++) 
+          for (i=0; i < node->NLinks(); i++) 
           {
             NodeType *lnknode = node->mpLinks[i].pNode();
             if (lnknode->mAux == 0) 
@@ -1077,7 +1217,7 @@ namespace STK
           }
         }
         
-        for (node=pFirst(); node->mpNext->mNLinks != 0; node=node->mpNext)
+        for (node=pFirst(); node->mpNext->NLinks() != 0; node=node->mpNext)
         {}
     
         // Final node is not at the and of chain
@@ -1151,9 +1291,9 @@ namespace STK
 
   //****************************************************************************
   //****************************************************************************
-  template <NodeRepresentationType _NodeType, LinkRepresentationType _LinkType, NetworkStorageType _NetworkType, template<class> class _StorageType>
+  template <typename _NodeContent, typename _LinkContent, NodeRepresentationType _NodeType, LinkRepresentationType _LinkType, NetworkStorageType _NetworkType, template<class> class _StorageType>
     int 
-    Network<_NodeType, _LinkType, _NetworkType, _StorageType>::
+    Network<_NodeContent, _LinkContent, _NodeType, _LinkType, _NetworkType, _StorageType>::
     LatticeLocalOptimization_ForwardPass(int strictTiming)
     {
       int     i; 
@@ -1172,12 +1312,12 @@ namespace STK
       for (NodeType* p_node = pFirst(); p_node != NULL; p_node = p_node->mpNext) 
       //for (iterator   p_node = begin(); p_node != end(); p_node++) 
       {
-  /**/  for (i = 0; i < p_node->mNLinks; i++) 
+  /**/  for (i = 0; i < p_node->NLinks(); i++) 
         {
         
           p_tnode = p_node->mpLinks[i].pNode();
           
-          if (p_tnode->mNLinks == 0) 
+          if (p_tnode->NLinks() == 0) 
             continue;
     
           // Weight pushing
@@ -1197,22 +1337,22 @@ namespace STK
             p_tnode->mpBackLinks[l].AddLmLike(-t_lm_like);
             p_tnode->mpBackLinks[l].AddAcousticLike(-t_acoustic_like);
             
-            for (k=0; k<backnode->mNLinks && backnode->mpLinks[k].pNode()!=p_tnode; k++)
+            for (k=0; k<backnode->NLinks() && backnode->mpLinks[k].pNode()!=p_tnode; k++)
             {}
             
-            assert(k < backnode->mNLinks);
+            assert(k < backnode->NLinks());
 
             backnode->mpLinks[k].AddLmLike(-t_lm_like);
             backnode->mpLinks[k].AddAcousticLike(-t_acoustic_like);
 
 #ifndef NDEBUG
-            for (k++; k<backnode->mNLinks && backnode->mpLinks[k].pNode()!=p_tnode; k++)
+            for (k++; k<backnode->NLinks() && backnode->mpLinks[k].pNode()!=p_tnode; k++)
             {}
 #endif
-            assert(k == backnode->mNLinks);
+            assert(k == backnode->NLinks());
           }
           
-          for (l=0; l < p_tnode->mNLinks; l++) 
+          for (l=0; l < p_tnode->NLinks(); l++) 
           {
             NodeType* forwnode = p_tnode->mpLinks[l].pNode();
 
@@ -1239,15 +1379,15 @@ namespace STK
     
         // For current node 'p_node', check for each possible pair of its successors
         // ('inode' and 'jnode') whether the pair may be merged to single node.
-        for (i = 0; i < p_node->mNLinks-1; i++) 
+        for (i = 0; i < p_node->NLinks()-1; i++) 
         {
-          for (j = i+1; j < p_node->mNLinks; j++) 
+          for (j = i+1; j < p_node->NLinks(); j++) 
           {
             NodeType* inode = p_node->mpLinks[i].pNode();
             NodeType* jnode = p_node->mpLinks[j].pNode();
 
             // Final node may be never merged.
-            if (inode->mNLinks == 0 || jnode->mNLinks == 0) 
+            if (inode->NLinks() == 0 || jnode->NLinks() == 0) 
               continue;
 
 
@@ -1306,7 +1446,7 @@ namespace STK
               // inode and jnode are the same nodes with the same predeccessors
               // Remove jnode and add its links to inode
     
-            assert(inode->mNLinks && jnode->mNLinks);
+            assert(inode->NLinks() && jnode->NLinks());
     
             //TraceLog("Removing node: %s", 
             //    inode->mType & NT_PHONE ? inode->mpName : 
@@ -1318,13 +1458,13 @@ namespace STK
             for (l=0; l < jnode->mNBackLinks; l++) 
             {
               NodeType* backnode = jnode->mpBackLinks[l].pNode();
-              for (k=0; k<backnode->mNLinks && backnode->mpLinks[k].pNode()!=jnode; k++)
+              for (k=0; k<backnode->NLinks() && backnode->mpLinks[k].pNode()!=jnode; k++)
               { }
 
-              assert(k < backnode->mNLinks);
+              assert(k < backnode->NLinks());
               // Otherwise link to 'p_node' is missing from which backlink exists
               memmove(backnode->mpLinks+k, backnode->mpLinks+k+1,
-                      (backnode->mNLinks-k-1) * sizeof(LinkType));
+                      (backnode->NLinks()-k-1) * sizeof(LinkType));
 
               backnode->mNLinks--;
             }
@@ -1333,12 +1473,12 @@ namespace STK
     
             //Count jnode's links not present among inode's links
             rep = l = k = 0;
-            while (k < jnode->mNLinks) 
+            while (k < jnode->NLinks()) 
             {
               LinkType* ill = inode->mpLinks+l;
               LinkType* jlk = jnode->mpLinks+k;
 
-              if (l == inode->mNLinks || ill->pNode() > jlk->pNode())
+              if (l == inode->NLinks() || ill->pNode() > jlk->pNode())
               {
                 // k-th link of jnode will be included among inode's links.
                 // Redirect corresponding baclink to inode
@@ -1383,21 +1523,21 @@ namespace STK
               }
             }
             
-            l = inode->mNLinks;
-            inode->mNLinks += jnode->mNLinks-rep;
+            l = inode->NLinks();
+            inode->mNLinks += jnode->NLinks()-rep;
             inode->mpLinks = (LinkType *) realloc(inode->mpLinks,
-                                            inode->mNLinks * sizeof(LinkType));
+                                            inode->NLinks() * sizeof(LinkType));
             
             if (inode->mpLinks == NULL) 
               Error("Insufficient memory");
     
-            for (k = 0; k < jnode->mNLinks; k++) 
+            for (k = 0; k < jnode->NLinks(); k++) 
             {
               if (jnode->mpLinks[k].pNode() != NULL) 
                 inode->mpLinks[l++] = jnode->mpLinks[k];
             }
             
-            qsort(inode->mpLinks, inode->mNLinks, sizeof(LinkType), lnkcmp);
+            qsort(inode->mpLinks, inode->NLinks(), sizeof(LinkType), lnkcmp);
     
             inode->SetStart(inode->Start() == UNDEF_TIME || jnode->Start() == UNDEF_TIME
                             ? UNDEF_TIME 
@@ -1445,9 +1585,9 @@ namespace STK
 
   //***************************************************************************
   //***************************************************************************
-  template <NodeRepresentationType _NodeType, LinkRepresentationType _LinkType, NetworkStorageType _NetworkType, template<class> class _StorageType>
+  template <typename _NodeContent, typename _LinkContent, NodeRepresentationType _NodeType, LinkRepresentationType _LinkType, NetworkStorageType _NetworkType, template<class> class _StorageType>
     int 
-    Network<_NodeType, _LinkType, _NetworkType, _StorageType>::
+    Network<_NodeContent, _LinkContent, _NodeType, _LinkType, _NetworkType, _StorageType>::
     LatticeLocalOptimization_BackwardPass(int strictTiming)
     {
       int     node_removed;
@@ -1464,9 +1604,9 @@ namespace STK
 
   //***************************************************************************
   //***************************************************************************
-  template <NodeRepresentationType _NodeType, LinkRepresentationType _LinkType, NetworkStorageType _NetworkType, template<class> class _StorageType>
-    Network<_NodeType, _LinkType, _NetworkType, _StorageType>&
-    Network<_NodeType, _LinkType, _NetworkType, _StorageType>::
+  template <typename _NodeContent, typename _LinkContent, NodeRepresentationType _NodeType, LinkRepresentationType _LinkType, NetworkStorageType _NetworkType, template<class> class _StorageType>
+    Network<_NodeContent, _LinkContent, _NodeType, _LinkType, _NetworkType, _StorageType>&
+    Network<_NodeContent, _LinkContent, _NodeType, _LinkType, _NetworkType, _StorageType>::
     Reverse()
     {
       NodeType*  node;
@@ -1476,7 +1616,7 @@ namespace STK
       for (node = StorageType::mpFirst; node != NULL; node = node->mpBackNext) 
       {
         LinkType*  links   = node->mpLinks;
-        int         nlinks  = node->mNLinks;
+        int         nlinks  = node->NLinks();
 
         node->mpLinks       = node->mpBackLinks;
         node->mNLinks       = node->mNBackLinks;
@@ -1493,6 +1633,208 @@ namespace STK
       StorageType::mpLast  = p_first;
 
       return *this;
+    }
+
+  //***************************************************************************
+  //***************************************************************************
+  template <typename _NodeContent, typename _LinkContent, NodeRepresentationType _NodeType, LinkRepresentationType _LinkType, 
+           NetworkStorageType _NetworkType, template<class> class _StorageType>
+    Network<_NodeContent, _LinkContent, _NodeType, _LinkType, _NetworkType, _StorageType>&
+    Network<_NodeContent, _LinkContent, _NodeType, _LinkType, _NetworkType, _StorageType>::
+    TopologicalSort()
+    {
+      size_t    i;
+      size_t    j;
+      NodeType* p_node;
+      NodeType* p_lastnode;
+
+      // Sort nodes in topological order
+      // printf("Sorting nodes...\n");
+      pFirst()->mAux = 1;
+      for (p_lastnode = p_node = pFirst(); p_node != NULL; p_node = p_node->mpNext) 
+      {
+        for (i = 0; i < p_node->NLinks(); i++) 
+        {
+          NodeType* p_link_node = p_node->mpLinks[i].pNode();
+          
+          if (p_link_node->mAux == 0) 
+          {
+            for (j = 0; j<p_link_node->mNBackLinks && 
+                        p_link_node->mpBackLinks[j].pNode()->mAux==1; j++)
+            {}
+            
+            if (j == p_link_node->mNBackLinks) 
+            {
+              p_lastnode->mpNext  = p_link_node;
+              p_lastnode          = p_link_node;
+              p_link_node->mAux   = 1;
+              p_link_node->mpNext = NULL;
+            }
+          }
+        }
+      }
+
+      return *this;
+    }
+  // TopSort()
+
+
+  //**************************************************************************
+  //**************************************************************************
+  template <typename _NodeContent, typename _LinkContent, NodeRepresentationType _NodeType, LinkRepresentationType _LinkType, 
+           NetworkStorageType _NetworkType, template<class> class _StorageType>
+    void
+    Network<_NodeContent, _LinkContent, _NodeType, _LinkType, _NetworkType, _StorageType>::
+    IsolateNode(NodeType* pNode)
+    {
+      if (pNode->pLinks())
+      {
+        for (size_t i(0); i< pNode->NLinks(); i++)
+        {
+          LinkType* p_link = &( pNode->pLinks()[i] );
+          LinkType* p_back_link;
+          
+          if (! p_link->PointsNowhere() 
+          && (NULL != (p_back_link = p_link->pNode()->pFindBackLink(pNode))))
+          {
+            p_back_link->Detach();
+          }
+        }
+
+        // TODO: use delete
+        free(pNode->pLinks());
+        pNode->mpLinks = NULL;
+        pNode->mNLinks = 0;
+      }
+
+      if (pNode->pBackLinks())
+      {
+        for (size_t i(0); i< pNode->NBackLinks(); i++)
+        {
+          LinkType* p_link = &( pNode->pBackLinks()[i] );
+          LinkType* p_back_link;
+          
+          if (! p_link->PointsNowhere() 
+          && (NULL != (p_back_link = p_link->pNode()->pFindLink(pNode))))
+          {
+            p_back_link->Detach();
+          }
+        }
+
+        // TODO: use delete
+        free(pNode->pBackLinks());
+        pNode->mpBackLinks = NULL;
+        pNode->mNBackLinks = 0;
+
+      }
+    }
+  // IsolateNode
+  //**************************************************************************
+
+
+  //**************************************************************************
+  //**************************************************************************
+  template <typename _NodeContent, typename _LinkContent, NodeRepresentationType _NodeType, LinkRepresentationType _LinkType, 
+           NetworkStorageType _NetworkType, template<class> class _StorageType>
+    void
+    Network<_NodeContent, _LinkContent, _NodeType, _LinkType, _NetworkType, _StorageType>::
+    RemoveNode(NodeType* pNode)
+    {
+      LinkType* p_link;
+
+      IsolateNode(pNode);
+
+      erase(iterator(pNode));
+    }
+  // RemoveNode(NodeType* pNode);
+  //**************************************************************************
+
+
+  //**************************************************************************
+  //**************************************************************************
+  template <typename _NodeContent, typename _LinkContent, NodeRepresentationType _NodeType, LinkRepresentationType _LinkType, 
+           NetworkStorageType _NetworkType, template<class> class _StorageType>
+    void
+    Network<_NodeContent, _LinkContent, _NodeType, _LinkType, _NetworkType, _StorageType>::
+    PruneNode(NodeType* pNode)
+    {
+      NodeType* p_aux_node;
+      LinkType* p_aux_link;
+
+      // Check whether I am the only successor or predecessor. If yes, 
+      // recursively prune forward and backward
+
+      // forward prune
+      for (size_t i = 0; i < pNode->NLinks(); i++)
+      {
+        p_aux_link = &( pNode->pLinks()[i] );
+
+        // I am the only predecessor of p_aux_node, so I prune it first
+        if (! p_aux_link->PointsNowhere())
+        {
+          p_aux_node = p_aux_link->pNode();
+
+          if (1 == p_aux_node->NPredecessors())
+          { 
+            // Detach the link first, so no recursive pruning goes back
+            p_aux_link->Detach();
+
+            PruneNode(p_aux_node);
+          }
+          else
+          {
+            pNode->DetachLink(p_aux_link);
+          }
+        }
+      }
+
+      // backward prune
+      for (size_t i = 0; i < pNode->NBackLinks(); i++)
+      {
+        p_aux_link = &( pNode->pBackLinks()[i] );
+
+        // I am the only predecessor of p_aux_node, so I prune it first
+        if (! p_aux_link->PointsNowhere())
+        {
+          p_aux_node = p_aux_link->pNode();
+
+          if (1 == p_aux_node->NSuccessors())
+          { 
+            // Detach the link first, so no recursive pruning goes back
+            p_aux_link->Detach();
+
+            PruneNode(p_aux_node);
+          }
+          else
+          {
+            pNode->DetachLink(p_aux_link);
+          }
+        }
+      }
+
+      erase(iterator(pNode));
+    }
+  // RemoveNode(NodeType* pNode);
+  //**************************************************************************
+
+
+  template<typename _Content>
+    typename ListStorage<_Content>::iterator
+    ListStorage<_Content>::
+    erase(iterator pos)
+    {
+
+      _Content* p_prev = pos.mpPtr->mpBackNext;
+      _Content* p_next = pos.mpPtr->mpNext;
+      iterator  tmp    = iterator(pos.mpPtr->mpNext);
+
+      if (NULL != p_prev)
+        p_prev->mpNext = p_next;
+
+      if (NULL != p_next)
+        p_next->mpBackNext = p_prev;
+
+      return tmp;
     }
 
 } // namespace STK

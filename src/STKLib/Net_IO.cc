@@ -43,15 +43,15 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  Node<NODE_REGULAR, LINK_REGULAR>*
-  find_or_create_node(struct MyHSearchData *node_hash, const char *node_id, Node<NODE_REGULAR, LINK_REGULAR> **last)
+  Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*
+  find_or_create_node(struct MyHSearchData *node_hash, const char *node_id, Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> **last)
   // Auxiliary function used by ReadHTKLattice_new. (Optionally initialize
   // uninitialized node_hash) Search for node record at key node_id. If found,
   // pointer to this record is returned, otherwise new node record is allocated
   // with type set to NT_UNDEF and entered to has at key node_id and pointer
   // to this new record is returned.
   {
-    Node<NODE_REGULAR, LINK_REGULAR>*   p_node;
+    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*   p_node;
     ENTRY   e = {0}; //{0} is just to make compiler happy
     ENTRY*  ep;
   
@@ -62,9 +62,9 @@ namespace STK
     my_hsearch_r(e, FIND, &ep, node_hash);
   
     if (ep != NULL) 
-      return (Node<NODE_REGULAR, LINK_REGULAR> *) ep->data;  
+      return (Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *) ep->data;  
   
-    p_node = (Node<NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NODE_REGULAR, LINK_REGULAR>));
+    p_node = (Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>));
     
     if (p_node == NULL) 
       Error("Insufficient memory");
@@ -127,7 +127,7 @@ namespace STK
   void 
   WriteSTKNetwork(
     FILE*                   pFp,
-    Node<NODE_REGULAR, LINK_REGULAR>*                   pFirst,
+    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*                   pFirst,
     STKNetworkOutputFormat  format,
     long                    sampPeriod,
     const char*             net_file,
@@ -135,7 +135,7 @@ namespace STK
   {
     int     n;
     int     l=0;
-    Node<NODE_REGULAR, LINK_REGULAR>*   node;
+    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*   node;
   
     for (n = 0, node = pFirst; node != NULL; node = node->mpNext, n++)  
     {
@@ -293,14 +293,14 @@ namespace STK
   //***************************************************************************
   void WriteSTKNetworkInOldFormat(
     FILE        *lfp,
-    Node<NODE_REGULAR, LINK_REGULAR>       *first,
+    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>       *first,
     LabelFormat labelFormat,
     long        sampPeriod,
     const char  *net_file,
     const char  *out_MNF)
   {
     int   i;
-    Node<NODE_REGULAR, LINK_REGULAR>* node;
+    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* node;
   
     for (i = 0, node = first; node != NULL; node = node->mpNext, i++)  {
       node->mAux = i;
@@ -443,7 +443,7 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  Node<NODE_REGULAR, LINK_REGULAR> *ReadSTKNetworkInOldFormat(
+  Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *ReadSTKNetworkInOldFormat(
     FILE*                     lfp,
     struct MyHSearchData*     word_hash,
     struct MyHSearchData*     phone_hash,
@@ -467,8 +467,8 @@ namespace STK
     char      wordOrModelName[1024] = {'\0'};
     double    linkLike;
     double    pronunProb;
-    Node<NODE_REGULAR, LINK_REGULAR>*     node;
-    Node<NODE_REGULAR, LINK_REGULAR>**    nodes;
+    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*     node;
+    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>**    nodes;
   
     std::stringstream ss; 
     
@@ -491,11 +491,11 @@ namespace STK
     }
     numOfNodes = t1;
     
-    if ((nodes = (Node<NODE_REGULAR, LINK_REGULAR> **) calloc(numOfNodes, sizeof(Node<NODE_REGULAR, LINK_REGULAR> *))) == NULL) {
+    if ((nodes = (Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> **) calloc(numOfNodes, sizeof(Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *))) == NULL) {
       Error("Insufficient memory");
     }
     for (i=0; i < numOfNodes; i++) {
-      if ((nodes[i] = (Node<NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NODE_REGULAR, LINK_REGULAR>))) == NULL) {
+      if ((nodes[i] = (Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>))) == NULL) {
         Error("Insufficient memory");
       }
       nodes[i]->mType = NT_UNDEF;
@@ -550,7 +550,7 @@ namespace STK
   
       if (nodeType == 'S') {
         FILE *snfp;
-        Node<NODE_REGULAR, LINK_REGULAR> *subnetFirst;
+        Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *subnetFirst;
   
   //      --*totalNumOfNodes; // Subnet node doesn't count
   
@@ -649,7 +649,7 @@ namespace STK
         while (node->mpNext != NULL) node = node->mpNext;
       }
       if (numOfLinks) {
-        if ((node->mpLinks = (Link<NODE_REGULAR, LINK_REGULAR> *) malloc(numOfLinks * sizeof(Link<NODE_REGULAR, LINK_REGULAR>))) == NULL) {
+        if ((node->mpLinks = (Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *) malloc(numOfLinks * sizeof(Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>))) == NULL) {
           Error("Insufficient memory");
         }
       } else {
@@ -664,7 +664,7 @@ namespace STK
       for (j=0; j < static_cast<size_t>(numOfLinks); j++) {
         if (fscanf(lfp, "%d ", &linkId) != 1) {
           Error("Invalid definition of node %d in file %s.\n"
-                "Link<NODE_REGULAR, LINK_REGULAR> Id is expected in link list", nodeId, file_name);
+                "Link Id is expected in link list", nodeId, file_name);
         }
         if (static_cast<size_t>(linkId) >= numOfNodes) {
           Error("Invalid definition of node %d in file %s.\n"
@@ -714,13 +714,13 @@ namespace STK
     // create back links
     for (i = 0; i < numOfNodes; i++) {
       if (!nodes[i]->mpBackLinks) // Could be allready alocated for subnetwork
-        nodes[i]->mpBackLinks = (Link<NODE_REGULAR, LINK_REGULAR> *) malloc(nodes[i]->mNBackLinks * sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
+        nodes[i]->mpBackLinks = (Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *) malloc(nodes[i]->mNBackLinks * sizeof(Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>));
       if (nodes[i]->mpBackLinks == NULL) Error("Insufficient memory");
       nodes[i]->mNBackLinks = 0;
     }
     for (i = 0; i < numOfNodes; i++) {
       for (j=0; j < static_cast<size_t>(nodes[i]->mNLinks); j++) {
-        Node<NODE_REGULAR, LINK_REGULAR> *forwNode = nodes[i]->mpLinks[j].pNode();
+        Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *forwNode = nodes[i]->mpLinks[j].pNode();
 
         forwNode->mpBackLinks[forwNode->mNBackLinks].SetNode(nodes[i]);
         forwNode->mpBackLinks[forwNode->mNBackLinks].SetLmLike(nodes[i]->mpLinks[j].LmLike());
@@ -755,7 +755,7 @@ namespace STK
 
   //***************************************************************************
   //***************************************************************************
-  Node<NODE_REGULAR, LINK_REGULAR>*
+  Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*
   ReadSTKNetwork(
     FILE*                     lfp,
     struct MyHSearchData *    word_hash,
@@ -767,12 +767,12 @@ namespace STK
     const char *              in_MLF,
     bool                      compactRepresentation)
   {
-    Node<NODE_REGULAR, LINK_REGULAR>*            node;
-    Node<NODE_REGULAR, LINK_REGULAR>*            enode = NULL;
-    Node<NODE_REGULAR, LINK_REGULAR>*            first = NULL;
-    Node<NODE_REGULAR, LINK_REGULAR>*            last  = NULL;
-    Node<NODE_REGULAR, LINK_REGULAR>*            fnode = NULL;
-    Node<NODE_REGULAR, LINK_REGULAR>*            lnode;
+    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*            node;
+    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*            enode = NULL;
+    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*            first = NULL;
+    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*            last  = NULL;
+    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*            fnode = NULL;
+    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*            lnode;
     char*            line;
     int              line_no   =  0;
     int              nnodes    =  0;
@@ -786,7 +786,7 @@ namespace STK
     MyHSearchData node_hash = {0};
     struct ReadlineData   rld       = {0};
     
-    NodeBasic<NODE_REGULAR, LINK_REGULAR>* first_basic;
+    NodeBasic<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* first_basic;
   
     for (;;) 
     {
@@ -841,7 +841,7 @@ namespace STK
           if (!*chptr || !strcmp(chptr, "I")) {
             if (compactRepresentation)
             {
-               node = reinterpret_cast<Node<NODE_REGULAR, LINK_REGULAR> *>(&first_basic[getInteger(valptr, &chptr, file_name, line_no)]);
+               node = reinterpret_cast<Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *>(&first_basic[getInteger(valptr, &chptr, file_name, line_no)]);
                if (node->mType == NT_UNDEF)
                  node->mType = NT_WORD;
             }
@@ -870,7 +870,7 @@ namespace STK
               if (first != NULL)
                 Error("Redefinition of N= (NODES=) is not allowed in CSTK format (%s:%d)", file_name, line_no);
                 
-              first = reinterpret_cast<Node<NODE_REGULAR, LINK_REGULAR> *>(first_basic = new NodeBasic<NODE_REGULAR, LINK_REGULAR>[nnodes]);
+              first = reinterpret_cast<Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *>(first_basic = new NodeBasic<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>[nnodes]);
             }
             else if (node_hash.mTabSize == 0 && !my_hcreate_r(nnodes, &node_hash)) 
             {
@@ -1058,8 +1058,8 @@ namespace STK
                 while(isspace(*pCh)) pCh++;
               }
               
-              node->mpLinks = (Link<NODE_REGULAR, LINK_REGULAR> *) 
-                realloc(node->mpLinks, (node->mNLinks + nl) * sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
+              node->mpLinks = (Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *) 
+                realloc(node->mpLinks, (node->mNLinks + nl) * sizeof(Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>));
 
               // initialize the new links
               for (size_t new_i = node->mNLinks; new_i < node->mNLinks + nl; new_i++)
@@ -1080,7 +1080,7 @@ namespace STK
           {
             if (compactRepresentation)
             {
-               enode = reinterpret_cast<Node<NODE_REGULAR, LINK_REGULAR> *>(&first_basic[getInteger(valptr, 
+               enode = reinterpret_cast<Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *>(&first_basic[getInteger(valptr, 
                      &chptr, file_name, line_no)]);
                if (enode->mType == NT_UNDEF)
                  enode->mType = NT_WORD;
@@ -1132,7 +1132,7 @@ namespace STK
             char  name[1024];
             float time;
             int   n;
-            Node<NODE_REGULAR, LINK_REGULAR>*  last = node;
+            Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*  last = node;
             FLOAT lm_like  = node->mpLinks[node->mNLinks-1].LmLike();
   
             if (node->mpLinks[node->mNLinks-1].pNode() != enode) {
@@ -1147,12 +1147,12 @@ namespace STK
 
             while (sscanf(phn_marks, ":%[^,:]%n,%f%n", name, &n, &time, &n) > 0) 
             {
-              Node<NODE_REGULAR, LINK_REGULAR> *tnode;
+              Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *tnode;
               phn_marks+=n;
   
-              if ((tnode          = (Node<NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NODE_REGULAR, LINK_REGULAR>))) == NULL
-              || (tnode->mpLinks  = (Link<NODE_REGULAR, LINK_REGULAR> *) malloc(
-                                        sizeof(Link<NODE_REGULAR, LINK_REGULAR>))) == NULL) 
+              if ((tnode          = (Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>))) == NULL
+              || (tnode->mpLinks  = (Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *) malloc(
+                                        sizeof(Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>))) == NULL) 
               {
                 Error("Insufficient memory");
               }
@@ -1247,8 +1247,8 @@ namespace STK
       for (node = lnode; node != NULL; node = node->mpBackNext)
       {
         // pre-allocate space for back-links
-        node->mpBackLinks = (Link<NODE_REGULAR, LINK_REGULAR> *) 
-          malloc(node->mNBackLinks * sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
+        node->mpBackLinks = (Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *) 
+          malloc(node->mNBackLinks * sizeof(Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>));
 
           // initialize the new links
           for (size_t new_i = 0; new_i < node->mNBackLinks; new_i++)
@@ -1289,7 +1289,7 @@ namespace STK
         int i;
         for (i = 0; i < node->mNLinks; i++) 
         {
-          Node<NODE_REGULAR, LINK_REGULAR>* p_forwnode = node->mpLinks[i].pNode();
+          Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* p_forwnode = node->mpLinks[i].pNode();
           // 
           p_forwnode->mpBackLinks[p_forwnode->mNBackLinks].SetNode(node);
           p_forwnode->mpBackLinks[p_forwnode->mNBackLinks].SetLmLike(node->mpLinks[i].LmLike());
@@ -1304,7 +1304,7 @@ namespace STK
           int i;
           for (i = 0; i < node->mNBackLinks; i++) 
           {
-            Node<NODE_REGULAR, LINK_REGULAR>* p_backnode = node->mpBackLinks[i].pNode();
+            Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* p_backnode = node->mpBackLinks[i].pNode();
             // skip nodes inserted by d=...
             while (p_backnode->mType == (NT_PHONE | NT_MODEL)) 
             {
@@ -1371,7 +1371,7 @@ namespace STK
       }
 
       if (first->mpPronun != NULL) {
-        node = (Node<NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NODE_REGULAR, LINK_REGULAR>));
+        node = (Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>));
         if (node == NULL) Error("Insufficient memory");
         node->mpNext       = first;
         node->mpBackNext   = NULL;
@@ -1383,13 +1383,13 @@ namespace STK
         node->mNBackLinks = 0;
         node->mpBackLinks  = NULL;
         node->mNLinks     = 1;
-        node->mpLinks      = (Link<NODE_REGULAR, LINK_REGULAR>*) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
+        node->mpLinks      = (Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*) malloc(sizeof(Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>));
         if (node->mpLinks == NULL) Error("Insufficient memory");
         node->mpLinks[0].SetLmLike(0.0);
         node->mpLinks[0].SetAcousticLike(0.0);
         node->mpLinks[0].SetNode(first);
         first->mNBackLinks = 1;
-        first->mpBackLinks  = (Link<NODE_REGULAR, LINK_REGULAR>*) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
+        first->mpBackLinks  = (Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*) malloc(sizeof(Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>));
         if (first->mpBackLinks == NULL) Error("Insufficient memory");
         first->mpBackLinks[0].SetLmLike(0.0);
         first->mpBackLinks[0].SetAcousticLike(0.0);
@@ -1397,7 +1397,7 @@ namespace STK
         first = node;
       }
       if (last->mpPronun != NULL) {
-        node = (Node<NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NODE_REGULAR, LINK_REGULAR>));
+        node = (Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>));
         if (node == NULL) Error("Insufficient memory");
         last->mpNext      = node;
         node->mpNext      = NULL;
@@ -1409,13 +1409,13 @@ namespace STK
         node->mNLinks    = 0;
         node->mpLinks     = NULL;
         last->mNLinks = 1;
-        last->mpLinks  = (Link<NODE_REGULAR, LINK_REGULAR>*) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
+        last->mpLinks  = (Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*) malloc(sizeof(Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>));
         if (last->mpLinks == NULL) Error("Insufficient memory");
         last->mpLinks[0].SetLmLike(0.0);
         last->mpLinks[0].SetAcousticLike(0.0);
         last->mpLinks[0].SetNode(node);
         node->mNBackLinks = 1;
-        node->mpBackLinks  = (Link<NODE_REGULAR, LINK_REGULAR>*) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
+        node->mpBackLinks  = (Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*) malloc(sizeof(Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>));
         if (node->mpBackLinks == NULL) Error("Insufficient memory");
         node->mpBackLinks[0].SetLmLike(0.0);
         node->mpBackLinks[0].SetAcousticLike(0.0);
@@ -1432,7 +1432,7 @@ namespace STK
     
   //***************************************************************************
   //***************************************************************************
-  Node<NODE_REGULAR, LINK_REGULAR>* 
+  Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* 
   ReadHTKLattice(
     FILE *            lfp,
     MyHSearchData *   word_hash,
@@ -1441,7 +1441,7 @@ namespace STK
     long              sampPeriod,
     const char *      file_name)
   {
-    Node<NODE_REGULAR, LINK_REGULAR> **nodes = NULL, *node,
+    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> **nodes = NULL, *node,
         *first = NULL, *last = NULL,
         *fnode, *lnode = NULL;
     char line[1024];
@@ -1490,7 +1490,7 @@ namespace STK
               Error("Redefinition of number of nodes (%s:%d)",file_name,line_no);
             }
             nnodes = strtoull(valptr, NULL, 10);
-            nodes  = (Node<NODE_REGULAR, LINK_REGULAR> **) calloc(nnodes, sizeof(Node<NODE_REGULAR, LINK_REGULAR> *));
+            nodes  = (Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> **) calloc(nnodes, sizeof(Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *));
             if (nodes == NULL) Error("Insufficient memory");
             break;
           }
@@ -1502,7 +1502,7 @@ namespace STK
               Error("Redefinition of node %d (%s:%d)",
               node_id, file_name, line_no);
             }
-            nodes[node_id] = (Node<NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NODE_REGULAR, LINK_REGULAR>));
+            nodes[node_id] = (Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>));
             if (nodes[node_id] == NULL) Error("Insufficient memory");
   
             if (last == NULL) {
@@ -1598,7 +1598,7 @@ namespace STK
   
         int linkId = nodes[arc_start]->mNLinks++;
         nodes[arc_start]->mpLinks =
-          (Link<NODE_REGULAR, LINK_REGULAR> *) realloc(nodes[arc_start]->mpLinks, (linkId+1) * sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
+          (Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *) realloc(nodes[arc_start]->mpLinks, (linkId+1) * sizeof(Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>));
   
         if (nodes[arc_start]->mpLinks == NULL) Error("Insufficient memory");
   
@@ -1613,9 +1613,9 @@ namespace STK
           while (sscanf(phn_marks, ":%[^,],%f%n", name, &time, &n) > 1) {
             phn_marks+=n;
   
-            if ((node            = (Node<NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NODE_REGULAR, LINK_REGULAR>))) == NULL ||
-              (node->mpLinks     = (Link<NODE_REGULAR, LINK_REGULAR> *) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>))) == NULL ||
-              (node->mpBackLinks = (Link<NODE_REGULAR, LINK_REGULAR> *) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>))) == NULL) {
+            if ((node            = (Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>))) == NULL ||
+              (node->mpLinks     = (Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *) malloc(sizeof(Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>))) == NULL ||
+              (node->mpBackLinks = (Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *) malloc(sizeof(Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>))) == NULL) {
               Error("Insufficient memory");
             }
             node->mType = NT_PHONE;
@@ -1660,7 +1660,7 @@ namespace STK
         }
         linkId = nodes[arc_end]->mNBackLinks++;
         nodes[arc_end]->mpBackLinks =
-          (Link<NODE_REGULAR, LINK_REGULAR> *) realloc(nodes[arc_end]->mpBackLinks, (linkId+1) * sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
+          (Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *) realloc(nodes[arc_end]->mpBackLinks, (linkId+1) * sizeof(Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>));
   
         if (nodes[arc_end]->mpBackLinks == NULL) Error("Insufficient memory");
   
@@ -1721,7 +1721,7 @@ namespace STK
       last->mpBackNext = lnode;
     }
     if (first->mpPronun != NULL) {
-      node = (Node<NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NODE_REGULAR, LINK_REGULAR>));
+      node = (Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>));
       if (node == NULL) Error("Insufficient memory");
       node->mpNext       = first;
       node->mpBackNext   = NULL;
@@ -1733,20 +1733,20 @@ namespace STK
       node->mNBackLinks = 0;
       node->mpBackLinks  = NULL;
       node->mNLinks     = 1;
-      node->mpLinks      = (Link<NODE_REGULAR, LINK_REGULAR>*) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
+      node->mpLinks      = (Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*) malloc(sizeof(Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>));
       if (node->mpLinks == NULL) Error("Insufficient memory");
       node->mpLinks[0].SetLmLike(0.0);
       node->mpLinks[0].SetNode(first);
   
       first->mNBackLinks = 1;
-      first->mpBackLinks  = (Link<NODE_REGULAR, LINK_REGULAR>*) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
+      first->mpBackLinks  = (Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*) malloc(sizeof(Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>));
       if (first->mpBackLinks == NULL) Error("Insufficient memory");
       first->mpBackLinks[0].SetLmLike(0.0);
       first->mpBackLinks[0].SetNode(node);
       first = node;
     }
     if (last->mpPronun != NULL) {
-      node = (Node<NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NODE_REGULAR, LINK_REGULAR>));
+      node = (Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>));
       if (node == NULL) Error("Insufficient memory");
       last->mpNext      = node;
       node->mpNext      = NULL;
@@ -1760,13 +1760,13 @@ namespace STK
       node->mpLinks     = NULL;
   
       last->mNLinks = 1;
-      last->mpLinks  = (Link<NODE_REGULAR, LINK_REGULAR>*) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
+      last->mpLinks  = (Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*) malloc(sizeof(Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>));
       if (last->mpLinks == NULL) Error("Insufficient memory");
       last->mpLinks[0].SetLmLike(0.0);
       last->mpLinks[0].SetNode(node);
   
       node->mNBackLinks = 1;
-      node->mpBackLinks  = (Link<NODE_REGULAR, LINK_REGULAR>*) malloc(sizeof(Link<NODE_REGULAR, LINK_REGULAR>));
+      node->mpBackLinks  = (Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*) malloc(sizeof(Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>));
       if (node->mpBackLinks == NULL) Error("Insufficient memory");
       node->mpBackLinks[0].SetLmLike(0.0);
       node->mpBackLinks[0].SetNode(last);

@@ -324,7 +324,7 @@ int main(int argc, char *argv[])
       assert(in_transc_fmt != TF_ERR);
     }
     for (;;) { //in cases of MLF or MNF, we must process all records
-      Node<NODE_REGULAR, LINK_REGULAR>* p_node = NULL;
+      Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* p_node = NULL;
 
       if (in_transc_fmt == TF_MLF
       || in_transc_fmt == TF_MNF
@@ -378,7 +378,8 @@ int main(int argc, char *argv[])
       {
         RegularNetwork tmp_net;
         tmp_net.SetFirst(p_node);
-        WriteSTKNetwork(out_MLF_fp, tmp_net, out_net_fmt, 1, label_file, out_MLF_fn);
+        WriteSTKNetwork(out_MLF_fp, tmp_net, out_net_fmt, 1, label_file, 
+            out_MLF_fn, 0.0, 1.0);
       }
 
       CloseOutputLabelFile(out_MLF_fp, out_MLF_fn);

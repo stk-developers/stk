@@ -18,7 +18,7 @@
 
 #define MODULE_VERSION "0.6 "__TIME__" "__DATE__
 
-#include "STKLib/Viterbi.h"
+#include "STKLib/Decoder.h"
 #include "STKLib/Models.h"
 #include "STKLib/fileio.h"
 #include "STKLib/labels.h"
@@ -38,7 +38,7 @@ using namespace STK;
 
 typedef struct _LRTrace LRTrace;
 struct _LRTrace {
-  Node<NODE_REGULAR, LINK_REGULAR> *mpWordEnd;
+  Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *mpWordEnd;
   FLOAT lastLR;
   FLOAT candidateLR;
   long long candidateStartTime;

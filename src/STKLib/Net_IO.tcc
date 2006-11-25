@@ -48,7 +48,7 @@ namespace STK
       MyHSearchData node_hash = {0};
       struct ReadlineData   rld       = {0};
       
-      NodeBasic<NODE_REGULAR, LINK_REGULAR>* first_basic;
+      NodeBasic<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* first_basic;
     
       for (;;) 
       {
@@ -143,7 +143,7 @@ namespace STK
                 if (first != NULL)
                   Error("Redefinition of N= (NODES=) is not allowed in CSTK format (%s:%d)", file_name, line_no);
                   
-                first = reinterpret_cast<_node_type *>(first_basic = new NodeBasic<NODE_REGULAR, LINK_REGULAR>[nnodes]);
+                first = reinterpret_cast<_node_type *>(first_basic = new NodeBasic<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>[nnodes]);
               }
               else if (node_hash.mTabSize == 0 && !my_hcreate_r(nnodes, &node_hash)) 
               {
@@ -684,13 +684,15 @@ namespace STK
       _NetworkType&           rNetwork,
       STKNetworkOutputFormat  format,
       long                    sampPeriod,
-      const char*             net_file,
-      const char*             out_MNF)
+      const char*             pNetFile,
+      const char*             out_MNF,
+      const FLOAT&            wPenalty,
+      const FLOAT&            lmScale)
     {
       int                                     n;
       int                                     l=0;
       typename _NetworkType::iterator         p_node;
-      float                                   lm_scale;
+      float                                   lm_scale(lmScale);
 
     
       // use the mAux field to index the nodes
@@ -704,13 +706,17 @@ namespace STK
 
       for (p_node = rNetwork.begin(); p_node != rNetwork.end(); p_node++)
       {
+        if (p_node->NSuccessors() < 1)
+          continue;
+
         int j;
     
         if (format.mAllFieldNames) fputs("I=", pFp);
         if (format.mBase62Labels) fprintBase62(pFp, p_node->mAux);
         else                      fprintf(pFp,"%d", p_node->mAux);
     
-        if (!format.mNoTimes && p_node->Stop() != UNDEF_TIME) {
+        if (!format.mNoTimes && p_node->Stop() != UNDEF_TIME) 
+        {
           fputs(" t=", pFp);
     
           if (p_node->Start() != UNDEF_TIME && format.mStartTimes) {
@@ -757,10 +763,13 @@ namespace STK
     
           for (j = 0; j < p_node->mNLinks; j ++) 
           {
+            if (p_node->mpLinks[j].PointsNowhere())
+              continue;
+
             putc(' ', pFp);
             if (format.mAllFieldNames) fputs("E=", pFp);
             if (format.mBase62Labels) fprintBase62(pFp, p_node->mpLinks[j].pNode()->mAux);
-            else                     fprintf(pFp,"%d", p_node->mpLinks[j].pNode()->mAux);
+            else                      fprintf(pFp,"%d", p_node->mpLinks[j].pNode()->mAux);
 
             // output language probability
             if ((!close_enough(p_node->mpLinks[j].LmLike(), 0.0, 10)) 
@@ -781,7 +790,7 @@ namespace STK
         fputs("\n", pFp);
 
         if (ferror(pFp)) {
-          Error("Cannot write to output network file %s", out_MNF ? out_MNF : net_file);
+          Error("Cannot write to output network file %s", out_MNF ? out_MNF : pNetFile);
         }
       }
     
@@ -790,10 +799,16 @@ namespace STK
         l = 0;
         for (p_node = rNetwork.begin(); p_node != rNetwork.end(); p_node++) 
         {
+          if (p_node->NSuccessors() < 1)
+            continue;
+
           int j;
     
           for (j = 0; j < p_node->mNLinks; j ++) 
           {
+            if (p_node->mpLinks[j].PointsNowhere())
+              continue;
+
             if (format.mAllFieldNames) 
               fprintf(pFp, format.mArcDefsWithJ ? "J=%d S=" : "I=", l++);
 
@@ -822,7 +837,7 @@ namespace STK
             fputs("\n", pFp);
 
             if (ferror(pFp)) 
-              Error("Cannot write to output network file %s", out_MNF ? out_MNF : net_file);
+              Error("Cannot write to output network file %s", out_MNF ? out_MNF : pNetFile);
             
           }
         }
@@ -841,7 +856,7 @@ namespace STK
       _NetworkType&           rNetwork,
       STKNetworkOutputFormat  format,
       long                    sampPeriod,
-      const char*             net_file,
+      const char*             pNetFile,
       const char*             out_MNF)
     {
       int                         n;
@@ -935,7 +950,7 @@ namespace STK
         fputs("\n", pFp);
 
         if (ferror(pFp)) {
-          Error("Cannot write to output network file %s", out_MNF ? out_MNF : net_file);
+          Error("Cannot write to output network file %s", out_MNF ? out_MNF : pNetFile);
         }
       }
     
@@ -976,7 +991,7 @@ namespace STK
             fputs("\n", pFp);
 
             if (ferror(pFp)) 
-              Error("Cannot write to output network file %s", out_MNF ? out_MNF : net_file);
+              Error("Cannot write to output network file %s", out_MNF ? out_MNF : pNetFile);
             
           }
         }

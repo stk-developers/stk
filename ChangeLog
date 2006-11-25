@@ -1,0 +1,13 @@
+2006-11-15	Ondrej Glembek	glembek@fit.vutbr.cz
+
+	* src/STKLib/Net_IO.h (WriteSTKNetwork - template version): Added parameters
+	  wPenalty, lmScale to correctly output language score
+
+	* src/STKLib/Net_IO.tcc (WriteSTKNetwork - template version): Added parameters
+	  wPenalty, lmScale to correctly output language score
+	
+2006-11-20  Ondrej Glembek	glembek@fit.vutbr.cz
+
+  * src/STKLib/Decoder.h (class ActiveNodeRecord): Renamed attribute
+	  mIsActiveNode to mActiveNodeFlag
+

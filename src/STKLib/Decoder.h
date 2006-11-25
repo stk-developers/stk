@@ -10,8 +10,8 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef STK_Viterbi_h
-#define STK_Viterbi_h
+#ifndef STK_Decoder_h
+#define STK_Decoder_h
 
 #define bordel_staff
 
@@ -43,6 +43,7 @@ namespace STK
   class Decoder;
   class ActiveNodeRecord;
   class Token;
+  class Lattice;
   
   //###########################################################################
   //###########################################################################
@@ -327,7 +328,7 @@ namespace STK
     ViterbiStep(FLOAT* pObservation);
     
     FLOAT             
-    ViterbiDone(Label** pLabels, NetworkType* pNetwork = NULL);
+    ViterbiDone(Label** pLabels, Lattice* pNetwork = NULL);
     
     //FLOAT             
     //ViterbiDone(Label** pLabels, Node ** pLattice = NULL);
@@ -466,7 +467,7 @@ namespace STK
   public:
     /// Token's likelihood precision type
     typedef double                            LikeType;
-    typedef Node<NODE_REGULAR, LINK_REGULAR>  NodeType;
+    typedef Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>  NodeType;
 
     LikeType                mLike;            ///< Total likelihood
     LikeType                mAcousticLike;    ///< Acoustic likelihood
@@ -496,11 +497,11 @@ namespace STK
     Label*
     pGetLabels();
     
-    Node<NODE_REGULAR, LINK_REGULAR>*
+    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*
     pGetLattice();
     
     void
-    AddWordLinkRecord(Node<NODE_REGULAR, LINK_REGULAR>* pNode, int stateIdx, int time);
+    AddWordLinkRecord(Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* pNode, int stateIdx, int time);
     
     void 
     AddAlternativeHypothesis(WordLinkRecord* pWlr);
@@ -522,7 +523,7 @@ namespace STK
   public:
     typedef double     LikeType;
 
-    Node<NODE_REGULAR, LINK_REGULAR>*              mpNode;
+    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*              mpNode;
     int                mStateIdx;
     int                mAux;             
     LikeType           mLike;
@@ -537,7 +538,7 @@ namespace STK
     bool               mIsFreed;
   #endif
 
-    Node<NODE_REGULAR, LINK_REGULAR>*
+    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*
     pNode() const
     { return mpNode; }
   }; 
@@ -548,26 +549,33 @@ namespace STK
   
   /** *************************************************************************
    ** *************************************************************************
-   * @brief 
+   * @brief Active node record
+   *
+   * Token passing procedure is applied only to active nodes (models).Therefore
+   * it is necessary that each node keeps a record of its tokens. 
+   * ActiveNodeRecord serves as a token pool.
    */
   class ActiveNodeRecord
   {
   public:
-    Node<NODE_REGULAR, LINK_REGULAR> *  mpNode;
-    Node<NODE_REGULAR, LINK_REGULAR> *  mpNextActiveModel;
-    Node<NODE_REGULAR, LINK_REGULAR> *  mpPrevActiveModel;
-    Node<NODE_REGULAR, LINK_REGULAR> *  mpNextActiveNode;
-    Node<NODE_REGULAR, LINK_REGULAR> *  mpPrevActiveNode;
+    typedef Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> NodeType;
+
+
+    NodeType*             mpNode;
+    NodeType*             mpNextActiveModel;
+    NodeType*             mpPrevActiveModel;
+    NodeType*             mpNextActiveNode;
+    NodeType*             mpPrevActiveNode;
     
-    bool    mIsActiveModel;
-    int     mIsActiveNode;
-    int     mAux;
+    bool                  mIsActiveModel;
+    int                   mActiveNodeFlag;
+    int                   mAux;
 
-    Token * mpExitToken;
-    Token * mpTokens;
+    Token*                mpExitToken;
+    Token*                mpTokens;
 
 
-    ActiveNodeRecord(Node<NODE_REGULAR, LINK_REGULAR>* pNode) : mpNode(pNode), mIsActiveModel(false), mIsActiveNode(0)
+    ActiveNodeRecord(NodeType* pNode) : mpNode(pNode), mIsActiveModel(false), mActiveNodeFlag(0)
     {
       int numOfTokens = mpNode->mType & NT_MODEL ? mpNode->mpHmm->mNStates : 1;
       mpTokens        = new Token[numOfTokens];
@@ -581,16 +589,31 @@ namespace STK
   //***************************************************************************
 
 
-    
-  
+
   /** *************************************************************************
    ** *************************************************************************
    *  @brief Alpha and Beta pair for forward/backward propagation
    */
-  struct AlphaBeta 
+  struct AlphaBeta
   {
+    AlphaBeta() : mAlpha(0.0), mBeta(0.0)
+    {}
+
+    ~AlphaBeta()
+    {}
+
     FLOAT             mAlpha;
     FLOAT             mBeta;
+  };
+    
+  
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Alpha and Beta pair for forward/backward propagation augmented
+   *  with accuracies for MPE training
+   */
+  struct AlphaBetaMPE : public AlphaBeta
+  {
     FloatInLog        mAlphaAccuracy;
     FloatInLog        mBetaAccuracy;
   };
@@ -601,7 +624,7 @@ namespace STK
   public:
     FWBWR*            mpNext;
     int               mTime;
-    AlphaBeta         mpState[1];
+    AlphaBetaMPE      mpState[1];
   };
   
   
@@ -698,5 +721,5 @@ namespace STK
   */
 }; // namespace STK
 
-#endif  // #ifndef STK_Viterbi_h
+#endif  // #ifndef STK_Decoder_h
   

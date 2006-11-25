@@ -24,12 +24,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "STKLib/Features.h"
 
-#include "STKLib/Viterbi.h"
+#include "STKLib/Decoder.h"
 #include "STKLib/Models.h"
 #include "STKLib/fileio.h"
 #include "STKLib/labels.h"
 #include "STKLib/common.h"
-
+#include "STKLib/Lattice.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 // THE STANDARD HEADERS
@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
   int                           fcnt = 0;
   Label *                       labels;
   Decoder::NetworkType::NodeType*  pLattice;
-  RegularNetwork                lattice;
+  Lattice                       lattice;
   char                          line[1024];
   char                          label_file[1024];
   const char *                  cchrptr;
@@ -720,10 +720,10 @@ int main(int argc, char *argv[])
 
     if (!lattice.IsEmpty())
     {
-      // lattice.ExpansionsAndOptimizations(expOptions, out_net_fmt,
-      //     NULL, NULL, NULL);
       //NetworkExpansionsAndOptimizations(pLattice, expOptions, out_net_fmt, 
       //    NULL, NULL, NULL);
+      lattice.ForwardBackward();
+      lattice.PosteriorPrune(state_pruning);
     }
 
     strcpy(label_file, feature_repo.Current().Logical().c_str());
@@ -734,7 +734,8 @@ int main(int argc, char *argv[])
     if (!lattice.IsEmpty())
     {
       WriteSTKNetwork(lfp, lattice, out_net_fmt, 
-          feature_repo.CurrentHeader().mSamplePeriod, label_file, out_MLF);
+          feature_repo.CurrentHeader().mSamplePeriod, label_file, out_MLF,
+          decoder.mWPenalty, decoder.mLmScale);
           
       // we are not needing the lattice anymore, so free it from memory
       lattice.Clear();
@@ -750,7 +751,8 @@ int main(int argc, char *argv[])
           alignment & (MODEL_ALIGNMENT|STATE_ALIGNMENT) ? NT_MODEL : NT_WORD);
       
       WriteSTKNetwork(lfp, tmp_net, out_net_fmt, 
-          feature_repo.CurrentHeader().mSamplePeriod, label_file, out_MLF);
+          feature_repo.CurrentHeader().mSamplePeriod, label_file, out_MLF,
+          decoder.mWPenalty, decoder.mLmScale);
     }
 
     CloseOutputLabelFile(lfp, out_MLF);

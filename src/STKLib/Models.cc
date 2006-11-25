@@ -11,7 +11,7 @@
  ***************************************************************************/
 
 #include "Models.h"
-#include "Viterbi.h"
+#include "Decoder.h"
 #include "stkstream.h"
 #include "common.h"
 

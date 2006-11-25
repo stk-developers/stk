@@ -1,5 +1,5 @@
 #include "Models.h"
-#include "Viterbi.h"
+#include "Decoder.h"
 
 namespace STK
 {
