@@ -202,7 +202,11 @@ namespace STK
         
       }
       p_start_node->mpAlphaBeta = new AlphaBeta();
+      p_start_node->mpAlphaBeta->mAlpha = LOG_0;
+      p_start_node->mpAlphaBeta->mBeta = LOG_0;
     }
+
+    pFirst()->mpAlphaBeta->mAlpha = 0.0;
 
     // forward direction
     for (p_start_node = pFirst(); NULL != p_start_node; 
@@ -215,9 +219,10 @@ namespace STK
 
         score = p_start_node->mpAlphaBeta->mAlpha + p_link->Like();
         
-        if (viterbi && (score > p_end_node->mpAlphaBeta->mAlpha))
+        if (viterbi)
         {
-          p_end_node->mpAlphaBeta->mAlpha = score;
+          if (score > p_end_node->mpAlphaBeta->mAlpha)
+            p_end_node->mpAlphaBeta->mAlpha = score;
         }
         else
         {
@@ -226,6 +231,8 @@ namespace STK
         }
       }
     }
+
+    pLast()->mpAlphaBeta->mBeta  = 0.0;
 
     // backward direction
     for (p_start_node = pLast(); NULL != p_start_node; 
@@ -236,11 +243,12 @@ namespace STK
         LinkType* p_link     (&(p_start_node->mpBackLinks[i]));
         NodeType* p_end_node (p_link->pNode());
 
-        score = p_start_node->mpAlphaBeta->mAlpha + p_link->Like();
+        score = p_start_node->mpAlphaBeta->mBeta + p_link->Like();
         
-        if (viterbi && (score > p_end_node->mpAlphaBeta->mBeta))
+        if (viterbi)
         {
-          p_end_node->mpAlphaBeta->mBeta = score;
+          if (score > p_end_node->mpAlphaBeta->mBeta)
+            p_end_node->mpAlphaBeta->mBeta = score;
         }
         else
         {
@@ -265,7 +273,7 @@ namespace STK
   {
     assert(NULL != pLast()->mpAlphaBeta);
 
-    FLOAT      end_alpha(pLast()->mpAlphaBeta->mAlpha);
+    FLOAT      end_alpha = pLast()->mpAlphaBeta->mAlpha;
     NodeType*  p_start_node;
 
     for (p_start_node = pLast(); NULL != p_start_node;
@@ -280,7 +288,7 @@ namespace STK
       
       // we will count the number of pruned links, so that if all links
       // are deleted, we can drop the node
-      size_t links_changed(0);
+      size_t links_changed = 0;
 
       for (size_t i = 0; i < p_start_node->mNBackLinks; i++)
       {

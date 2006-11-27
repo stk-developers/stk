@@ -16,7 +16,7 @@
 
 #define MODULE_VERSION "0.2 "__TIME__" "__DATE__
 
-#include "STKLib/Net.h"
+#include "STKLib/Decoder.h"
 #include "STKLib/labels.h"
 #include "STKLib/common.h"
 
@@ -354,7 +354,7 @@ int main(int argc, char *argv[])
       /*
         FILE* tmp_fp = fopen("temp.net", "w");
 
-        RegularNetwork tmp_net;
+        DecoderNetwork tmp_net;
         tmp_net.SetFirst(p_node);
         WriteSTKNetwork(tmp_fp, tmp_net, out_net_fmt, 1, label_file, out_MLF_fn);
         fclose(tmp_fp);
@@ -376,7 +376,7 @@ int main(int argc, char *argv[])
       } 
       else 
       {
-        RegularNetwork tmp_net;
+        DecoderNetwork tmp_net;
         tmp_net.SetFirst(p_node);
         WriteSTKNetwork(out_MLF_fp, tmp_net, out_net_fmt, 1, label_file, 
             out_MLF_fn, 0.0, 1.0);

@@ -954,7 +954,10 @@ namespace STK
 
   
 
-#define OPTIMIZE_GAUSSIAN_COMPUTATION      
+#if ENABLE_SSE
+# define OPTIMIZE_GAUSSIAN_COMPUTATION      
+#endif
+
   //***************************************************************************
   //***************************************************************************
   // The function does the gaussian dist exponent operations.

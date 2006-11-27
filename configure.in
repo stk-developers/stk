@@ -77,15 +77,16 @@ AC_CHECK_FUNCS([getopt])
 
 ################################################################################
 # CECK FOR THE REENTRANT VERSIONS OF HSEARCH FUNCTIONS
+usemy_hsearch_r_inc=no
+AC_DEFINE(HAVE_REENTRANT_SEARCH, [1], 
+          [use internal reentran version of search_h])
+
 AC_CHECK_FUNCS([hsearch_r hcreate_r hdestroy_r], 
   #KLUDGE: $ac_func not documented in original autoconf documentation... 
   #  TODO: Google it out...
-  [AC_CHECK_DECLS([$ac_func],
-     [AC_DEFINE(HAVE_REENTRANT_SEARCH, [1], 
-                [use internal reentran version of search_h])
+  [AC_CHECK_DECLS([$ac_func],[
       REENTRANT_SEARCH_INCLUDE_FLAG=""
       REENTRANT_SEARCH_OBJ=""
-      usemy_hsearch_r_inc=no
       usemy_hsearch_r_obj=no
      ],
      [AC_DEFINE(HAVE_REENTRANT_SEARCH, [0], 

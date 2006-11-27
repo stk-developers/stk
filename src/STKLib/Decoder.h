@@ -19,6 +19,7 @@
 #include "labels.h"
 #include "dict.h"
 #include "Net.h"
+#include "DecoderNetwork.h"
 
 
 #include <list>
@@ -111,6 +112,8 @@ namespace STK
   };
 
   
+  
+
   /** *************************************************************************
    ** *************************************************************************
    *  @brief Decoder representation
@@ -118,7 +121,7 @@ namespace STK
   class Decoder 
   {
   public:
-    typedef RegularNetwork  NetworkType;
+    typedef DecoderNetwork  NetworkType;
 
   private:
     /**
@@ -454,8 +457,10 @@ namespace STK
   }; // class WlrReference
 
 
+  /** 
+   * @brief Data structure used for alternative hpothesis list
+   */
   typedef std::list<WlrReference>   AltHypList;
-
 
 
   /** *************************************************************************
@@ -596,14 +601,16 @@ namespace STK
    */
   struct AlphaBeta
   {
-    AlphaBeta() : mAlpha(0.0), mBeta(0.0)
+    typedef  FLOAT   LikeType;
+
+    AlphaBeta() : mAlpha(LOG_0), mBeta(LOG_0)
     {}
 
     ~AlphaBeta()
     {}
 
-    FLOAT             mAlpha;
-    FLOAT             mBeta;
+    LikeType             mAlpha;
+    LikeType             mBeta;
   };
     
   
@@ -619,9 +626,12 @@ namespace STK
   };
   
   
-  class FWBWR 
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Forward-Backward record
+   */
+  struct FWBWR 
   {
-  public:
     FWBWR*            mpNext;
     int               mTime;
     AlphaBetaMPE      mpState[1];

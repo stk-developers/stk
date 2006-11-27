@@ -33,7 +33,7 @@ namespace STK
   /** 
    * @brief 
    */
-  class Lattice : public RegularNetwork
+  class Lattice : public DecoderNetwork
   {
   public:
     /** 

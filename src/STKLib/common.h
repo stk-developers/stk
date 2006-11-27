@@ -239,6 +239,20 @@ typedef union
 #  define WHITE_CHARS " \t"
 #endif
 
+
+#include <sys/stat.h>
+
+#if !defined(S_IFDIR)
+#  if defined(_IFDIR)
+#    define S_IFDIR _IFDIR
+#  elif defined(_S_IFDIR)
+#    define S_IFDIR _S_IFDIR
+#  else
+#    error "_IFDIR flag not found. Please check your sys/stat.h header file for compatible flag"
+#  endif
+#endif
+
+
 using namespace STK;
 
     

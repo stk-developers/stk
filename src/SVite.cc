@@ -532,7 +532,7 @@ int main(int argc, char *argv[])
       //:TODO:
       // header.mSamplePeriod not initialized yet... 
       
-      RegularNetwork my_net(p_node);
+      DecoderNetwork my_net(p_node);
 
       ReadSTKNetwork(
         ilfp, 
@@ -723,7 +723,7 @@ int main(int argc, char *argv[])
       //NetworkExpansionsAndOptimizations(pLattice, expOptions, out_net_fmt, 
       //    NULL, NULL, NULL);
       lattice.ForwardBackward();
-      lattice.PosteriorPrune(state_pruning);
+      lattice.PosteriorPrune(state_pruning > 0.0 ? state_pruning : -LOG_0);
     }
 
     strcpy(label_file, feature_repo.Current().Logical().c_str());
@@ -747,7 +747,7 @@ int main(int argc, char *argv[])
     } 
     else 
     {
-      RegularNetwork tmp_net(labels, 
+      DecoderNetwork tmp_net(labels, 
           alignment & (MODEL_ALIGNMENT|STATE_ALIGNMENT) ? NT_MODEL : NT_WORD);
       
       WriteSTKNetwork(lfp, tmp_net, out_net_fmt, 

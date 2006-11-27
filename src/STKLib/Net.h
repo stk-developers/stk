@@ -26,21 +26,6 @@ namespace STK
   class AlphaBeta;
   class NodeBasicContent;
   
-  // Enums
-  //
-  enum NodeKind 
-  {
-    NT_UNDEF  = 0x00,
-    NT_WORD   = 0x01,
-    NT_MODEL  = 0x02,
-    NT_PHONE  = 0x04,
-    NT_SUBNET = 0x08,
-    NT_TEE    = 0x10,
-    NT_STICKY = 0x20,
-    NT_TRUE   = 0x40,
-    NT_LATTIMAGIC = 0x80   // this flag is set only for lattices
-                           // When set, model nodes act as word nodes
-  }; // NodeType
 
   
   enum NodeRepresentationType
@@ -74,13 +59,6 @@ namespace STK
   }; // enum NetworkType
 
 
-  enum NotInDictActionType
-  {
-    WORD_NOT_IN_DIC_UNSET = 0,
-    WORD_NOT_IN_DIC_ERROR = 1,
-    WORD_NOT_IN_DIC_WARN  = 2,
-    PRON_NOT_IN_DIC_ERROR = 4
-  }; // NotInDictActionType;
     
 
 
@@ -114,66 +92,13 @@ namespace STK
   //############################################################################
 
 
-  /** **************************************************************************
-   ** **************************************************************************
-   *  @brief STK network specific output format options
-   */
-  class STKNetworkOutputFormat 
-  {
-  public:
-    unsigned mNoLMLikes              : 1 ;
-    unsigned mNoTimes                : 1 ;
-    unsigned mStartTimes             : 1 ;
-    unsigned mNoWordNodes            : 1 ;
-    unsigned mNoModelNodes           : 1 ;
-    unsigned mNoPronunVars           : 1 ;
-    unsigned mNoDefaults             : 1 ;
-    unsigned mAllFieldNames          : 1 ;
-    unsigned mArcDefsToEnd           : 1 ;
-    unsigned mArcDefsWithJ           : 1 ;
-    unsigned mBase62Labels           : 1 ;
-    unsigned mAproxAccuracy          : 1 ;
-    unsigned mNoAcousticLikes        : 1 ;
-                                     
-    //Have no effect yet             
-    unsigned mStripTriphones         : 1 ;
-    unsigned mLinNodeSeqs            : 1 ;
-  };
-  // class STKNetworkOutputFormat 
-  //****************************************************************************
   
-
-
-  /** **************************************************************************
-   ** **************************************************************************
-   *  @brief Network expansion options definitions
-   */
-  class ExpansionOptions 
-  {
-  public:
-    unsigned mNoOptimization    : 1;
-    unsigned mNoWordExpansion   : 1;
-    unsigned mRespectPronunVar  : 1;
-    unsigned mRemoveWordsNodes  : 1;
-    unsigned mCDPhoneExpansion  : 1;
-    unsigned mStrictTiming      : 1;
-    unsigned mTraceFlag;
-  };
-  // class ExpansionOptions 
-  //****************************************************************************
-  
-  class LinkContent
-  {
-  public:
-    FLOAT mAcousticLike;
-    FLOAT mLmLike;
-  };
 
   /** **************************************************************************
    ** **************************************************************************
    *  @brief Network link representation class
    */
-  template<typename _NodeContent, typename _LinkContent, NodeRepresentationType _NR>
+  template<class _NodeContent, typename _LinkContent, NodeRepresentationType _NR>
     class Link<_NodeContent, _LinkContent, _NR, LINK_REGULAR> : public _LinkContent
     {
     public:
@@ -182,22 +107,15 @@ namespace STK
 
       // Constructors and destructor ...........................................
       Link() 
-      : _LinkContent(), mpNode(NULL), mAcousticLike(0.0), mLmLike(0.0)
+      : _LinkContent(), mpNode(NULL)
       { }
 
       Link(NodeType* pNode)
-      : _LinkContent(), mpNode(pNode), mAcousticLike(0.0), mLmLike(0.0)
+      : _LinkContent(), mpNode(pNode)
       { }
 
       ~Link()
       { }
-
-      /** 
-       * @brief Initializes the link probabilities
-       */
-      void
-      Init()
-      { mLmLike = mAcousticLike = 0.0; }
 
 
       // Accessors ............................................................
@@ -220,60 +138,11 @@ namespace STK
       PointsNowhere() const
       { return NULL == mpNode; }
 
-      LikeType
-      Like() const
-      { return mLmLike + mAcousticLike; }
-
-      /** 
-       * @brief Returns link's acoustic likelihood
-       */
-      const LikeType&
-      AcousticLike() const
-      { return mAcousticLike; }
-
-      /** 
-       * @brief Returns link's LM likelihood
-       */
-      const LikeType&
-      LmLike() const
-      { return mLmLike; }
-
-      /** 
-       * @brief Sets link's acoustic likelihood
-       */
-      void
-      SetAcousticLike(const LikeType& like)
-      { mAcousticLike = like; }
-      
-
-      /** 
-       * @brief Returns link's LM likelihood
-       */
-      void
-      SetLmLike(const LikeType& like) 
-      { mLmLike = like; }
-
-      /** 
-       * @brief Sets link's acoustic likelihood
-       */
-      void
-      AddAcousticLike(const LikeType& like)
-      { mAcousticLike += like; }
-      
-
-      /** 
-       * @brief Returns link's LM likelihood
-       */
-      void
-      AddLmLike(const LikeType& like) 
-      { mLmLike += like; }
-
-
 
     private:
       NodeType *    mpNode;
-      LikeType      mAcousticLike;
-      LikeType      mLmLike;
+      //LikeType      mAcousticLike;
+      //LikeType      mLmLike;
     }; 
   // Link
   //****************************************************************************
@@ -291,11 +160,11 @@ namespace STK
 
       // Constructors and destructor ...........................................
       Link() 
-      : mLmLike(0.0)
+      : _LinkContent()
       { }
 
       Link(NodeType* pNode)
-      : mpNode(pNode), mLmLike(0.0)
+      : _LinkContent(), mpNode(pNode)
       { }
 
       ~Link()
@@ -306,7 +175,7 @@ namespace STK
        */
       void
       Init()
-      { mLmLike = 0.0; }
+      { }
 
 
       // Accessors ............................................................
@@ -319,138 +188,12 @@ namespace STK
       { mpNode = pNode; }
 
 
-      /** 
-       * @brief Returns link's acoustic likelihood
-       */
-      const LikeType&
-      AcousticLike() const
-      { return 0.0; }
-
-      /** 
-       * @brief Returns link's LM likelihood
-       */
-      const LikeType&
-      LmLike() const
-      { return mLmLike; }
-
-      /** 
-       * @brief Sets the link's acoustic likelihood
-       *
-       * This function really does'nt do anything as compact node does not 
-       * contain any acoustic info. The method is implemented for compatibility
-       * reasons only!
-       */
-      void
-      SetAcousticLike(const LikeType& like)
-      { }
-
-      /** 
-       * @brief Sets link's LM likelihood
-       */
-      void
-      SetLmLike(const LikeType& like) 
-      { mLmLike = like; }
-
-      /** 
-       * @brief Adds like to the link's acoustic likelihood
-       *
-       * This function really does'nt do anything as compact node does not 
-       * contain any acoustic info. The method is implemented for compatibility
-       * reasons only!
-       */
-      void
-      AddAcousticLike(const LikeType& like)
-      { }
-
-      /** 
-       * @brief Adds like to the link's LM likelihood
-       */
-      void
-      AddLmLike(const LikeType& like) 
-      { mLmLike += like; }
-
-
     private:
       NodeType *    mpNode;
-      LikeType      mLmLike;
     }; 
   // Link
   //****************************************************************************
 
-  struct NodeBasicContent
-  {
-    NodeBasicContent() : mpName(NULL), mType(NT_UNDEF), mpAnr(NULL)
-    {}
-
-    ~NodeBasicContent()
-    { 
-      if (NULL != mpAlphaBeta);
-        //delete mpAlphaBeta;
-    }
-
-    union 
-    {
-      char*         mpName;
-      Hmm*          mpHmm;
-      Pronun*       mpPronun;
-    };
-  
-    int             mType;
-    
-#   ifndef NDEBUG
-    //id of first emiting state - apply only for model type
-    int           mEmittingStateId;
-    int           mAux2;
-#   endif
-#   ifndef EXPANDNET_ONLY    
-    union
-    {
-      ActiveNodeRecord* mpAnr;
-      AlphaBeta*        mpAlphaBeta;
-    };
-#   endif
-  };
-
-  class NodeContent : public NodeBasicContent
-  {
-    typedef       long long  TimingType;
-    
-    int           mAux;
-
-    void
-    Init()
-    { mStart = mStop = UNDEF_TIME; }
-
-    //time range when model can be active - apply only for model type
-    void
-    SetStart(const TimingType& start)
-    { mStart = start; }
-
-    void
-    SetStop(const TimingType& stop)
-    { mStop = stop; }
-
-    const TimingType&
-    Start() const
-    { return mStart; }
-
-    const TimingType&
-    Stop() const
-    { return mStop; }
-
-
-    FLOAT         mPhoneAccuracy;
-  
-#   ifndef EXPANDNET_ONLY
-    Hmm*               mpHmmToUpdate;
-    FWBWR*             mpAlphaBetaList;
-    FWBWR*             mpAlphaBetaListReverse;
-#   endif        
-
-  protected:
-    TimingType     mStart;
-    TimingType     mStop;
-  };
 
   /** *************************************************************************
    ** *************************************************************************
@@ -560,8 +303,6 @@ namespace STK
       LinkType*     mpBackLinks;
       int           mAux;
 
-      //time range when model can be active - apply only for model type
-      FLOAT         mPhoneAccuracy;
 
       void
       SetStart(const TimingType& start)
@@ -1261,12 +1002,6 @@ namespace STK
         mIsExternal(true) 
       { }
 
-      /// Builds a linear network from labels 
-      Network(const Label* pLabels, STK::NodeKind  nodeKind)
-      { 
-        BuildFromLabels(pLabels, nodeKind); 
-      }
-
       // Destructor ............................................................
       ~Network()
       { 
@@ -1278,10 +1013,6 @@ namespace STK
       IsCompact() const
       { return mCompactRepresentation; }
 
-
-      // creation and destruction functions ....................................
-      void
-      BuildFromLabels(const Label* pLabels, NodeKind nodeType);
 
       void
       Clear();
@@ -1373,244 +1104,20 @@ namespace STK
       SelfLinksToNullNodes();
 
 
-      /** 
-       * @brief Performs various optimizations on lattice
-       * 
-       * @param strictTiming 
-       * @param trace_flag 
-       */
-      void
-      LatticeLocalOptimization(int strictTiming, int trace_flag);
-
-      /** 
-       * @brief 
-       * 
-       * @return 
-       */
-      int
-      RemoveRedundantNullNodes();
-
-      /** 
-       * @brief Self explanative
-       * 
-       * @param dict 
-       * @param keep_word_nodes 
-       * @param multiple_pronun 
-       */
-      void
-      ExpandByDictionary(MyHSearchData* pDict, bool keepWordNodes, 
-          bool multiplePronun);
-
-
-      /** 
-       * @brief Self explanative
-       * 
-       * @param nonCDphones 
-       * @param CDphones 
-       */
-      void
-      ExpandMonophonesToTriphones(MyHSearchData *nonCDphones, 
-          MyHSearchData *CDphones);
-
-
-      /** 
-       * @brief Discards unwanted information in network records
-       * 
-       * @param rFormat 
-       *
-       * The function discard the information in network records that is not to be
-       * saved to the output. This should allow for more effective network
-       * optimization, which will be run after calling this function and before
-       * saving network to file.
-       */
-      void
-      DiscardUnwantedInfo(const STKNetworkOutputFormat& rFormat);
-
-
-      /** 
-       * @brief 
-       * 
-       * @param expOptions 
-       * @param out_net_fmt 
-       * @param wordHash 
-       * @param nonCDphHash 
-       * @param triphHash 
-       */
-      void 
-      ExpansionsAndOptimizations(
-        ExpansionOptions        expOptions,
-        const STKNetworkOutputFormat&  rFormat,
-        MyHSearchData *         wordHash,
-        MyHSearchData *         nonCDphHash,
-        MyHSearchData *         triphHash);
-
-
       bool          mCompactRepresentation;
-
-    private:
-
-      int 
-      LatticeLocalOptimization_ForwardPass(int strictTiming);
-
-      int 
-      LatticeLocalOptimization_BackwardPass(int strictTiming);
 
       Network&
       Reverse();
 
-
+    private:
       /// Indicates, whether network was created from an external structure.
       /// It controls whether destruction of @c this calls the Clear()
       /// function.
       bool          mIsExternal;
     }; // class Network
-
-
-  // Explicit instantiation of the mostly used network types
-  template 
-    class Network<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR, NETWORK_REGULAR, ListStorage>;
-
-  typedef Network<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR, NETWORK_REGULAR, ListStorage>
-    RegularNetwork;
-
-
-
   
-  // GLOBAL FUNCTIONS
-  //
-  
-  Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* 
-  MakeNetworkFromLabels(Label* labels, enum NodeKind nodeKind);
-  
-  void ExpandWordNetworkByDictionary(
-    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* first,
-    MyHSearchData* dict,
-    int keep_word_nodes,
-    int multiple_pronun);
-  
-  void ExpandMonophoneNetworkToTriphones(
-    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* first,
-    MyHSearchData* nonCDphones,
-    MyHSearchData* CDphones);
-  
-  void LatticeLocalOptimization(
-    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* first,
-    int strictTiming,
-    int trace_flag);
-  
-  Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* DiscardUnwantedInfoInNetwork(
-    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* first,
-    STKNetworkOutputFormat format);
-  
-
-  int 
-  getInteger(char *str, char **endPtr, const char *file_name, int line_no);
-
-  float 
-  getFloat(char *str, char **endPtr, const char *file_name, int line_no);
-
-  template<class _NetworkType>
-    void WriteSTKNetwork(
-      FILE*                     flp,
-      _NetworkType&             rNetwork,
-      STKNetworkOutputFormat    format,
-      long                      sampPeriod,
-      const char*               label_file,
-      const char*               out_MNF,
-      const FLOAT&              wPenalty,
-      const FLOAT&              lmScale);
-  
-
-  template <class _NetworkType>
-    void
-    ReadSTKNetwork(
-      FILE*                     lfp,
-      struct MyHSearchData *    word_hash,
-      struct MyHSearchData *    phone_hash,
-      int                       notInDict,
-      LabelFormat               labelFormat,
-      long                      sampPeriod,
-      const char *              file_name,
-      const char *              in_MLF,
-      bool                      compactRepresentation,
-      _NetworkType&             rNetwork);
-
-
-    
-  void WriteSTKNetwork(
-    FILE* flp,
-    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* node,
-    STKNetworkOutputFormat format,
-    long sampPeriod,
-    const char* label_file,
-    const char* out_MNF);
-  
-  void WriteSTKNetworkInOldFormat(
-    FILE* flp,
-    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* node,
-    LabelFormat labelFormat,
-    long sampPeriod,
-    const char* label_file,
-    const char* out_MNF);
-  
-  void FreeNetwork(Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *node, bool compactRepresentation = false);
-  
-  Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*
-  ReadSTKNetwork(
-    FILE* lfp,
-    MyHSearchData* word_hash,
-    MyHSearchData* phone_hash,
-    int notInDict,
-    LabelFormat labelFormat,
-    long sampPeriod,
-    const char* file_name,
-    const char* in_MLF,
-    bool compactRepresentation = false);
-  
-  Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*
-  ReadSTKNetworkInOldFormat(
-    FILE* lfp,
-    MyHSearchData* word_hash,
-    MyHSearchData* phone_hash,
-    LabelFormat labelFormat,
-    long sampPeriod,
-    const char* file_name,
-    const char* in_MLF);
-
-  Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* 
-  find_or_create_node(struct MyHSearchData *node_hash, const char *node_id, Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> **last);
-
-  
-  Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* 
-  ReadHTKLattice(
-    FILE* lfp,
-    MyHSearchData* word_hash,
-    MyHSearchData* phone_hash,
-    LabelFormat labelFormat,
-    long sampPeriod,
-    const char* file_name);
-  
-  void ComputeAproximatePhoneAccuracy(
-    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *first,
-    int type);
-  
-  void SelfLinksToNullNodes(Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *first);
-  int RemoveRedundantNullNodes(Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *first);
-  
-  void NetworkExpansionsAndOptimizations(
-    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *node,
-    ExpansionOptions expOptions,
-    STKNetworkOutputFormat out_net_fmt,
-    MyHSearchData *dictHash,
-    MyHSearchData *nonCDphHash,
-    MyHSearchData *triphHash);
-
-  int fprintBase62(FILE *fp, int v);
-
-
 }; // namespace STK
 
 #include "Net.tcc"
-#include "Net_IO.tcc"
 
 #endif // STK_Net_h
