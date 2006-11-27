@@ -519,7 +519,7 @@ namespace STK
 // ****************************************************************************
 
 
-#include "Net_IO.tcc"
+#include "DecoderNetwork_IO.tcc"
   
 #endif // #define STK_Decoder_Network_h
 
