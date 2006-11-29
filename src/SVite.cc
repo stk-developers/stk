@@ -216,6 +216,11 @@ int main(int argc, char *argv[])
   int                           notInDictAction = WORD_NOT_IN_DIC_UNSET;
   
   ExpansionOptions              expOptions  = {0};
+  ExpansionOptions              emptyExpOpts= {0}; 
+                                emptyExpOpts.mStrictTiming   = true;
+                                emptyExpOpts.mNoOptimization = true;
+                                emptyExpOpts.mNoWordExpansion= true;
+                                
   STKNetworkOutputFormat        in_net_fmt  = {0};
   STKNetworkOutputFormat        out_net_fmt = {0};
   LabelFormat                   out_lbl_fmt = {0};
@@ -720,8 +725,8 @@ int main(int argc, char *argv[])
 
     if (!lattice.IsEmpty())
     {
-      //NetworkExpansionsAndOptimizations(pLattice, expOptions, out_net_fmt, 
-      //    NULL, NULL, NULL);
+      lattice.ExpansionsAndOptimizations(emptyExpOpts, out_net_fmt, 
+                                         NULL, NULL, NULL);
       lattice.ForwardBackward();
       lattice.PosteriorPrune(state_pruning > 0.0 ? state_pruning : -LOG_0);
     }

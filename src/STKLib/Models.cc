@@ -879,7 +879,7 @@ namespace STK
             if (f != cov[k*(k+1)/2+j]) 
             {
               Error("Covariance matrix '%s' in file '%s' must be symetric",
-                    nodeName, file->mpStatsP);
+                    nodeName, file->mpStatsN);
             }
           }
   
