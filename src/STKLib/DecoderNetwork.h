@@ -18,6 +18,9 @@
 namespace STK
 {
 
+  class ActiveNodeRecord;
+  class AlphaBeta;
+
   /** **************************************************************************
    ** **************************************************************************
    *  @brief STK network specific output format options
@@ -371,13 +374,17 @@ namespace STK
     void 
     SelfLinksToNullNodes();
 
-    private:
+    void 
+    ComputeAproximatePhoneAccuracy(int type);
 
-      int 
-      LatticeLocalOptimization_ForwardPass(int strictTiming);
 
-      int 
-      LatticeLocalOptimization_BackwardPass(int strictTiming);
+  private:
+
+    int 
+    LatticeLocalOptimization_ForwardPass(int strictTiming);
+
+    int 
+    LatticeLocalOptimization_BackwardPass(int strictTiming);
 
   };
   // class DecoderNetwork
@@ -386,35 +393,16 @@ namespace STK
 
 
 
-  Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* 
-  MakeNetworkFromLabels(Label* labels, enum NodeKind nodeKind);
-  
-  void ExpandWordNetworkByDictionary(
-    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* first,
-    MyHSearchData* dict,
-    int keep_word_nodes,
-    int multiple_pronun);
-  
-  void ExpandMonophoneNetworkToTriphones(
-    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* first,
-    MyHSearchData* nonCDphones,
-    MyHSearchData* CDphones);
-  
-  void LatticeLocalOptimization(
-    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* first,
-    int strictTiming,
-    int trace_flag);
-  
-  Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* DiscardUnwantedInfoInNetwork(
-    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* first,
-    STKNetworkOutputFormat format);
-  
 
   int 
   getInteger(char *str, char **endPtr, const char *file_name, int line_no);
 
   float 
   getFloat(char *str, char **endPtr, const char *file_name, int line_no);
+
+  int 
+  RemoveCommentLines(FILE *fp);
+
 
   template<class _NetworkType>
     void WriteSTKNetwork(
@@ -427,6 +415,16 @@ namespace STK
       const FLOAT&              wPenalty,
       const FLOAT&              lmScale);
   
+
+  template<class _NetworkType>
+    void WriteSTKNetworkInOldFormat(
+      FILE* flp,
+      _NetworkType&             rNetwork,
+      LabelFormat labelFormat,
+      long sampPeriod,
+      const char* label_file,
+      const char* out_MNF);
+
 
   template <class _NetworkType>
     void
@@ -443,74 +441,27 @@ namespace STK
       _NetworkType&             rNetwork);
 
 
+  template <class _NetworkType>
+    void
+    ReadSTKNetworkInOldFormat(
+      FILE*                     lfp,
+      MyHSearchData*            word_hash,
+      MyHSearchData*            phone_hash,
+      LabelFormat               labelFormat,
+      long                      sampPeriod,
+      const char*               file_name,
+      const char*               in_MLF,
+      _NetworkType&             rNetwork);
+
     
-  void WriteSTKNetwork(
-    FILE* flp,
-    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* node,
-    STKNetworkOutputFormat format,
-    long sampPeriod,
-    const char* label_file,
-    const char* out_MNF);
-  
-  void WriteSTKNetworkInOldFormat(
-    FILE* flp,
-    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* node,
-    LabelFormat labelFormat,
-    long sampPeriod,
-    const char* label_file,
-    const char* out_MNF);
   
   void FreeNetwork(Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *node, bool compactRepresentation = false);
   
-  Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*
-  ReadSTKNetwork(
-    FILE* lfp,
-    MyHSearchData* word_hash,
-    MyHSearchData* phone_hash,
-    int notInDict,
-    LabelFormat labelFormat,
-    long sampPeriod,
-    const char* file_name,
-    const char* in_MLF,
-    bool compactRepresentation = false);
-  
-  Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*
-  ReadSTKNetworkInOldFormat(
-    FILE* lfp,
-    MyHSearchData* word_hash,
-    MyHSearchData* phone_hash,
-    LabelFormat labelFormat,
-    long sampPeriod,
-    const char* file_name,
-    const char* in_MLF);
 
   Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* 
   find_or_create_node(struct MyHSearchData *node_hash, const char *node_id, Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> **last);
 
   
-  Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* 
-  ReadHTKLattice(
-    FILE* lfp,
-    MyHSearchData* word_hash,
-    MyHSearchData* phone_hash,
-    LabelFormat labelFormat,
-    long sampPeriod,
-    const char* file_name);
-  
-  void ComputeAproximatePhoneAccuracy(
-    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *first,
-    int type);
-  
-  void SelfLinksToNullNodes(Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *first);
-  int RemoveRedundantNullNodes(Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *first);
-  
-  void NetworkExpansionsAndOptimizations(
-    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *node,
-    ExpansionOptions expOptions,
-    STKNetworkOutputFormat out_net_fmt,
-    MyHSearchData *dictHash,
-    MyHSearchData *nonCDphHash,
-    MyHSearchData *triphHash);
 
   int fprintBase62(FILE *fp, int v);
   

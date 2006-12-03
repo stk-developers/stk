@@ -2861,7 +2861,8 @@ namespace STK
     // Need to contain at least 2 states for propper token passing
     if (maxStatesInModel < 2)
     {
-      Error("The network does not contain any model with 2 or more states (possibly no dictionary suplied for word-based network)");
+      Error("The network does not contain any model "
+            "(possibly no dictionary suplied for word-based network)");
     }
 
     mpAuxTokens = new Token[maxStatesInModel-1];

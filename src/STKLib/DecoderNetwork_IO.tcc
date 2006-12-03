@@ -4,8 +4,12 @@
  *  You should not attempt to use it directly.
  */
 
+#include <sstream>
+
+
 namespace STK
 {
+
   //****************************************************************************
   //****************************************************************************
   template <class _NetworkType>
@@ -48,7 +52,8 @@ namespace STK
       MyHSearchData node_hash = {0};
       struct ReadlineData   rld       = {0};
       
-      NodeBasic<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* first_basic;
+      NodeBasic<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*
+        first_basic;
     
       for (;;) 
       {
@@ -99,7 +104,8 @@ namespace STK
           if (state == AFTER_J) 
           {
             if (*chptr && strcmp(chptr,"START") && strcmp(chptr,"S")) {
-              Error("Term 'J=' must be followed by term 'S=' (%s:%d)", file_name, line_no);
+              Error("Term 'J=' must be followed by term 'S=' (%s:%d)", 
+                  file_name, line_no);
             }
             state = LINE_START;
             chptr="";
@@ -110,7 +116,9 @@ namespace STK
             if (!*chptr || !strcmp(chptr, "I")) {
               if (compactRepresentation)
               {
-                p_node = reinterpret_cast<_node_type *>(&first_basic[getInteger(valptr, &chptr, file_name, line_no)]);
+                p_node = reinterpret_cast<_node_type *>
+                  (&first_basic[getInteger(valptr, &chptr, file_name, line_no)]);
+
                 if (p_node->mType == NT_UNDEF)
                   p_node->mType = NT_WORD;
               }
@@ -141,9 +149,13 @@ namespace STK
               if (compactRepresentation)
               {
                 if (first != NULL)
-                  Error("Redefinition of N= (NODES=) is not allowed in CSTK format (%s:%d)", file_name, line_no);
+                  Error("Redefinition of N= (NODES=) is not allowed in "
+                        "CSTK format (%s:%d)", 
+                        file_name, line_no);
                   
-                first = reinterpret_cast<_node_type *>(first_basic = new NodeBasic<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>[nnodes]);
+                first = reinterpret_cast<_node_type *> (first_basic = new
+                    NodeBasic<NodeBasicContent, LinkContent, NODE_REGULAR,
+                               LINK_REGULAR>[nnodes]);
               }
               else if (node_hash.mTabSize == 0 && !my_hcreate_r(nnodes, &node_hash)) 
               {
@@ -166,7 +178,9 @@ namespace STK
             && !(labelFormat.TIMES_OFF) && !(compactRepresentation)) 
             {
               char *colonptr=valptr;
-              while (*colonptr && !isspace(*colonptr) && *colonptr != ',') colonptr++;
+
+              while (*colonptr && !isspace(*colonptr) && *colonptr != ',')
+                colonptr++;
     
               if (*colonptr == ',') {
                 if (colonptr != valptr) {
@@ -295,17 +309,21 @@ namespace STK
                 }
                 p_node->mpPronun = word->pronuns[pron_var-1];
               }
-              if (state == ARC_DEF) {
-                // Count number of link definitions on the rest of the line and prealocate memory for links
+
+              if (state == ARC_DEF) 
+              {
+                // Count number of link definitions on the rest of the line and
+                // prealocate memory for links
                 char *pCh;
                 int nl = 1;
                 
                 if (skipHTKstr(valptr, &pCh)) 
                   Error("%s (%s:%d)", pCh, file_name, line_no);
                 
-                while(*pCh != '\0') {
-                  if (!strncmp("END=", pCh, 4) || !strncmp("E=", pCh, 2)) nl++;
-                
+                while(*pCh != '\0') 
+                {
+                  if (!strncmp("END=", pCh, 4) || !strncmp("E=", pCh, 2)) 
+                    nl++;
                 
                   while(isalnum(*pCh)) pCh++;
                   
@@ -318,6 +336,7 @@ namespace STK
                   }
                   
                   nl++;
+
                   if(!isspace(*pCh) && *pCh != '\0')
                     Error("Invalid character '%c' (%s:%d, char %d)",
                           *pCh, file_name, line_no, pCh-line+1);
@@ -326,12 +345,14 @@ namespace STK
                 }
                 
                 p_node->mpLinks = static_cast<_link_type * >
-                  (realloc(p_node->mpLinks, (p_node->mNLinks + nl) * sizeof(_link_type)));
+                  (realloc(p_node->mpLinks, (p_node->mNLinks + nl) 
+                           * sizeof(_link_type)));
 
                 if (p_node->mpLinks == NULL) 
                   Error("Insufficient memory");              
 
-                for (size_t i_count(p_node->mNLinks); i_count < p_node->mNLinks + nl; i_count++)
+                for (size_t i_count(p_node->mNLinks); i_count < p_node->mNLinks
+                      + nl; i_count++)
                 {
                   p_node->mpLinks[i_count].Init();
                 }
@@ -344,7 +365,9 @@ namespace STK
             if (!*chptr || !strcmp(chptr, "END") || !strcmp(chptr, "E")) {
               if (compactRepresentation)
               {
-                 enode = reinterpret_cast<_node_type *>(&first_basic[getInteger(valptr, &chptr, file_name, line_no)]);
+                 enode = reinterpret_cast<_node_type *>
+                   (&first_basic[getInteger(valptr, &chptr, file_name, line_no)]);
+
                  if (enode->mType == NT_UNDEF)
                    enode->mType = NT_WORD;
               }
@@ -376,14 +399,16 @@ namespace STK
               FLOAT lm_like = getFloat(valptr, &chptr, file_name, line_no);
               
               // Set LM score to link starting in node. This link can possibly
-              // lead to a phone node already inserted (div=) between 'p_node' and'enode'
+              // lead to a phone node already inserted (div=) between 'p_node'
+              // and'enode'
               p_node->mpLinks[p_node->mNLinks-1].SetLmLike(lm_like);
             } 
             
             else if (!strcmp(chptr, "acoustic") || !strcmp(chptr, "a")) 
             {
-              // Set acoustic score to link starting in p_node. This link can possibly
-              // lead to a phone node already inserted (div=) between 'p_node' and'enode'
+              // Set acoustic score to link starting in p_node. This link can
+              // possibly lead to a phone node already inserted (div=) between
+              // 'p_node' and'enode'
               FLOAT acoustic_like = getFloat(valptr, &chptr, file_name, line_no);
               p_node->mpLinks[p_node->mNLinks-1].SetAcousticLike(acoustic_like);
             } 
@@ -391,7 +416,8 @@ namespace STK
             else if (!strcmp(chptr, "div") || !strcmp(chptr, "d")) 
             {
               if (compactRepresentation)
-                Error("d= or div= is not allowed in CSTK format (%s:%d)", file_name, line_no);
+                Error("d= or div= is not allowed in CSTK format (%s:%d)", 
+                    file_name, line_no);
               
               ENTRY   e;
               ENTRY*  ep;
@@ -418,8 +444,9 @@ namespace STK
                 _node_type* tnode;
                 phn_marks+=n;
     
-                if ((tnode          = (_node_type *) calloc(1, sizeof(_node_type))) == NULL
-                || (tnode->mpLinks  = (_link_type *) malloc(sizeof(_link_type))) == NULL) 
+                if ((tnode = (_node_type *) calloc(1, sizeof(_node_type))) == NULL
+                || (tnode->mpLinks  = (_link_type *) malloc(sizeof(_link_type))) 
+                     == NULL) 
                 {
                   Error("Insufficient memory");
                 }
@@ -537,7 +564,8 @@ namespace STK
           for (i = 0; i < p_node->mNLinks; i++) {
             _node_type* p_forwnode = p_node->mpLinks[i].pNode();
             p_forwnode->mpBackLinks[p_forwnode->mNBackLinks].SetNode(p_node);
-            p_forwnode->mpBackLinks[p_forwnode->mNBackLinks++].SetLmLike(p_node->mpLinks[i].LmLike());
+            p_forwnode->mpBackLinks[p_forwnode->mNBackLinks].SetLmLike(p_node->mpLinks[i].LmLike());
+            ++p_forwnode->mNBackLinks;
           }
         }
       
@@ -673,6 +701,357 @@ namespace STK
     }           
     // Node *ReadSTKNetwork(...)
     //**************************************************************************
+
+
+
+  //****************************************************************************
+  //****************************************************************************
+  template <class _NetworkType>
+    void
+    ReadSTKNetworkInOldFormat(
+      FILE*                     lfp,
+      MyHSearchData*            word_hash,
+      MyHSearchData*            phone_hash,
+      LabelFormat               labelFormat,
+      long                      sampPeriod,
+      const char*               file_name,
+      const char*               in_MLF,
+      _NetworkType&             rNetwork)
+    {
+      // to make it easier, we define local typedefs
+      typedef          _NetworkType              _network_type;
+      typedef typename _NetworkType::NodeType    _node_type;
+      typedef typename _NetworkType::LinkType    _link_type;
+      
+      const NetworkStorageType network_storage = _NetworkType::NetworkType;
+
+      size_t    numOfNodes;
+      size_t    i;
+      size_t    j;
+      size_t    ch;
+      
+      int       nodeId = 0;
+      int       linkId;
+      int       numOfLinks;
+      int       pronunVar;
+      long long start;
+      long long stop;
+      char      nodeType;
+      char      wordOrModelName[1024] = {'\0'};
+      double    linkLike;
+      double    pronunProb;
+      _node_type*     node;
+      _node_type**    nodes;
+    
+      std::stringstream ss; 
+      
+      RemoveCommentLines(lfp);
+    
+      if (fscanf(lfp," %1023[^0-9]", wordOrModelName) == 1) 
+      {
+        for ( i =0; i < strlen(wordOrModelName); i++) 
+        {
+          wordOrModelName[i] = toupper(wordOrModelName[i]);
+        }
+        while (--i>=0 && (wordOrModelName[i] == '='||isspace(wordOrModelName[i]))) 
+        {
+          wordOrModelName[i] = '\0';
+        }
+      }
+
+      int t1, t2;    
+      if ((strcmp(wordOrModelName, "NUMNODES:") &&
+          strcmp(wordOrModelName, "NUMBEROFNODES")) ||        //Obsolete NumerOfNodes
+        fscanf(lfp," %d NumberOfArcs=%d", &t1, &t2)<1)
+      {       //Obsolete NumerOfArcs
+        Error("Syntax error in file %s\nKeyword NumNodes: is missing", file_name);
+      }
+      numOfNodes = t1;
+      
+      if ((nodes = (_node_type **) calloc(numOfNodes, sizeof(_node_type *))) == NULL) 
+      {
+        Error("Insufficient memory");
+      }
+
+      for (i=0; i < numOfNodes; i++) 
+      {
+        if ((nodes[i] = (_node_type *) calloc(1, sizeof(_node_type))) == NULL) {
+          Error("Insufficient memory");
+        }
+        nodes[i]->mType = NT_UNDEF;
+      }
+
+      for (i=0; i < numOfNodes; i++) 
+      {
+        RemoveCommentLines(lfp);
+    
+        switch (fscanf(lfp, "%d %c %1023s", &nodeId, &nodeType, wordOrModelName)) 
+        {
+          case  3:
+            break; //OK
+    
+          case -1:
+            for (j=0; j < numOfNodes; j++) 
+            {
+              if (nodes[j] == NULL) {
+                Error("Node %d is not defined in file %s", (int) j, file_name);
+              }
+            }
+            
+          default:
+            Error("Invalid syntax in definition of node %d in file %s",
+                  nodeId, file_name);
+        }
+        
+        if (static_cast<size_t>(nodeId) >= numOfNodes) {
+          Error("Invalid definition of node %d in file %s.\n"
+                "Node Id is bigger than number of nodes", nodeId, file_name);
+        }
+        node = nodes[nodeId];
+    
+        if (node->mType != NT_UNDEF)
+          Error("Redefinition of node %d in file %s", nodeId, file_name);
+        
+        if (toupper(nodeType) != nodeType) {
+          nodeType = toupper(nodeType);
+          node->mType = 0;
+        } else {
+          node->mType = NT_TRUE;
+        }
+        if (nodeType != 'M' && nodeType != 'W' && nodeType != 'N' &&
+          nodeType != 'S' && nodeType != 'K' && nodeType != 'F') {
+          Error("Invalid definition of node %d in file %s.\n"
+                "Supported values for node type are: M - model, "
+                "W - word, N - null, S - subnet, K - keyword, F - filler",
+                nodeId, file_name);
+        }
+        node->SetStart(UNDEF_TIME); 
+        node->SetStop (UNDEF_TIME);
+        node->mPhoneAccuracy = 1.0;
+    //    node->mAux = *totalNumOfNodes;
+    //    ++*totalNumOfNodes;
+    
+        if (nodeType == 'S') 
+        {
+          FILE *snfp;
+          _node_type*    subnetFirst = NULL;
+          _network_type  my_net(subnetFirst);
+    
+    //      --*totalNumOfNodes; // Subnet node doesn't count
+    
+          if ((snfp = fopen(wordOrModelName, "rt")) == NULL) {
+            Error("Cannot open network file: %s", wordOrModelName);
+          }
+
+          // TODO: This needs an operation of comosing networks...
+          ReadSTKNetworkInOldFormat(snfp, word_hash, phone_hash, labelFormat, 
+              sampPeriod, wordOrModelName, NULL, my_net);
+
+          my_net.pFirst()->mNBackLinks = node->mNBackLinks;
+          *node = *(my_net.pFirst());
+          free(my_net.pFirst());
+
+          fclose(snfp);
+        } 
+        else if (nodeType == 'M') 
+        {
+          ENTRY e, *ep;
+
+          node->mType |= NT_PHONE;
+          e.key  = wordOrModelName;
+          e.data = NULL;
+
+          my_hsearch_r(e, FIND, &ep, phone_hash);
+    
+          if (ep == NULL) {
+            e.key  = strdup(wordOrModelName);
+            e.data = e.key;
+    
+            if (e.key == NULL || !my_hsearch_r(e, ENTER, &ep, phone_hash)) {
+              Error("Insufficient memory");
+            }
+            ep->data = e.data;
+          }
+          node->mpName = (char *) ep->data;
+          fscanf(lfp, " {%lf}", &pronunProb);
+          // We are not interested in PhoneAccuracy
+        } else {
+          node->mType |= NT_WORD;
+    
+          if (nodeType == 'K' || nodeType == 'F') {
+          node->mType |= NT_STICKY;
+          nodeType = nodeType == 'K' ? 'W' : 'N';
+          }
+          if (nodeType == 'W') {
+            ENTRY e = {0}; //{0} is just to make compiler happy
+            ENTRY *ep;
+            Word *word = NULL;
+    
+            e.key  = wordOrModelName;
+            my_hsearch_r(e, FIND, &ep, word_hash);
+    
+            if (ep == NULL) {
+              Error("Invalid definition of node %d in file %s.\n"
+                    "Unknown word '%s'", nodeId, file_name, e.key);
+            }
+            word = (Word *) ep->data;
+    
+            while (isspace(ch = fgetc(lfp)));
+            if (ch != '[') {
+              ungetc(ch, lfp);
+            } else {
+              if (fscanf(lfp, "%1023[^]]", wordOrModelName) != 1) {
+    //           pronun.outSymbol = NULL;
+              } else{
+    //           pronun.outSymbol = wordOrModelName;
+              }
+              if (fgetc(lfp) != ']'){
+                Error("Invalid definition of node %d in file %s.\n"
+                      "Missing ']' after output symbol definition", nodeId,
+                      file_name);
+              }
+            }
+            if (fscanf(lfp, "{%d %lf}", &pronunVar, &pronunProb) != 2) {
+              pronunProb = 0.0;
+              pronunVar = 0;
+            } else {
+              pronunVar--;
+            }
+            if (word->npronuns <= pronunVar) {
+              Error("Invalid definition of node %d in file %s.\n"
+                    "Word %s does not have pronunciation varian %d",
+                    nodeId, file_name, word->mpName, pronunVar+1);
+            }
+            node->mpPronun = word ? word->pronuns[pronunVar] : NULL;
+          } else {
+            node->mpPronun = NULL;
+          }
+        }
+
+        if (nodeType != 'S') 
+        {
+          if (fscanf(lfp, " (%lld %lld)", &start, &stop)==2 
+          && !(labelFormat.TIMES_OFF)) 
+          {
+            long center_shift = labelFormat.CENTRE_TM ? sampPeriod / 2 : 0;
+            node->SetStart((start - center_shift - labelFormat.left_extent)  
+                / sampPeriod);
+            node->SetStop((stop  + center_shift + labelFormat.right_extent) 
+                / sampPeriod);
+          }
+        }
+
+        if (fscanf(lfp, "%d ", &numOfLinks) != 1) {
+          Error("Invalid definition of node %d in file %s.\n"
+                "Number of links is expected", nodeId, file_name);
+        }
+
+        if (nodeType == 'S') { // Add links to the final node of the subnetwork
+          while (node->mpNext != NULL) node = node->mpNext;
+        }
+
+        if (numOfLinks) {
+          if ((node->mpLinks = (_link_type *) malloc(numOfLinks * sizeof(_link_type))) == NULL) {
+            Error("Insufficient memory");
+          }
+        } else {
+          if (nodeType == 'M') {
+            Error("Invalid definition of node %d in file %s.\n"
+                  "Model node must have at least one link", nodeId, file_name);
+          }
+          node->mpLinks = NULL;
+        }
+        node->mNLinks = numOfLinks;
+    
+        for (j=0; j < static_cast<size_t>(numOfLinks); j++) {
+          if (fscanf(lfp, "%d ", &linkId) != 1) {
+            Error("Invalid definition of node %d in file %s.\n"
+                  "Link Id is expected in link list", nodeId, file_name);
+          }
+          if (static_cast<size_t>(linkId) >= numOfNodes) {
+            Error("Invalid definition of node %d in file %s.\n"
+                  "Link Id is bigger than number of nodes", nodeId, file_name);
+          }
+          if (fscanf(lfp, "{%lf} ", &linkLike) != 1) {
+            linkLike = 0.0;
+          }
+          node->mpLinks[j].SetNode(nodes[linkId]);
+          node->mpLinks[j].SetLmLike(linkLike);
+          ++nodes[linkId]->mNBackLinks;
+        }
+      }
+      for (i = 1; i < numOfNodes-1; i++) {
+        if (nodes[i]->mNLinks == 0) {
+          if (nodes[numOfNodes-1]->mNLinks == 0) {
+            Error("Network contains multiple nodes with no successors (%s)",
+                  file_name);
+          }
+          node = nodes[numOfNodes-1];
+          nodes[numOfNodes-1] = nodes[i];
+          nodes[i] = node;
+        }
+        if (nodes[i]->mNBackLinks == 0) {
+          if (nodes[0]->mNBackLinks == 0) {
+            Error("Network contains multiple nodes with no predecessor (%s)",
+                  file_name);
+          }
+          node = nodes[0];
+          nodes[0] = nodes[i];
+          nodes[i] = node;
+          i--;
+          continue; // Check this node again. Could be the first one
+        }
+      }
+      if (nodes[0]->mNBackLinks != 0 || nodes[numOfNodes-1]->mNLinks != 0) {
+        Error("Network contain no start node or no final node (%s)", file_name);
+      }
+      if (!(nodes[0]           ->mType & NT_WORD) || nodes[0]           ->mpPronun != NULL ||
+        !(nodes[numOfNodes-1]->mType & NT_WORD) || nodes[numOfNodes-1]->mpPronun != NULL) {
+        Error("Start node and final node must be Null nodes (%s)", file_name);
+      }
+      for (i = 0; i < numOfNodes-1; i++) {
+        nodes[i]->mpNext = nodes[i+1];
+      }
+    
+      // create back links
+      for (i = 0; i < numOfNodes; i++) {
+        if (!nodes[i]->mpBackLinks) // Could be allready alocated for subnetwork
+          nodes[i]->mpBackLinks = (_link_type *) malloc(nodes[i]->mNBackLinks * sizeof(_link_type));
+        if (nodes[i]->mpBackLinks == NULL) Error("Insufficient memory");
+        nodes[i]->mNBackLinks = 0;
+      }
+      for (i = 0; i < numOfNodes; i++) {
+        for (j=0; j < static_cast<size_t>(nodes[i]->mNLinks); j++) {
+          _node_type *forwNode = nodes[i]->mpLinks[j].pNode();
+
+          forwNode->mpBackLinks[forwNode->mNBackLinks].SetNode(nodes[i]);
+          forwNode->mpBackLinks[forwNode->mNBackLinks].SetLmLike(nodes[i]->mpLinks[j].LmLike());
+          forwNode->mNBackLinks++;
+        }
+      }
+      node = nodes[0];
+      free(nodes);
+    
+      if (in_MLF) {
+        char *chptr;
+        do {
+            char line[1024];
+            if (fgets(line, sizeof(line), lfp) == NULL) {
+              Error("Missing '.' at the end of network '%s' in NMF '%s'",
+                    file_name, in_MLF);
+            }
+            chptr = line + strspn(line, " \n\t");
+        } while (!*chptr);
+    
+        if ((chptr[0] != '.' || (chptr[1] != '\0' && !isspace(chptr[1])))) {
+          Error("Missing '.' at the end of network '%s' in NMF '%s'",
+                file_name, in_MLF);
+        }
+      }
+    }
+    // ReadSTKNetworkInOldFormat(
+    //**************************************************************************
+
 
 
   //****************************************************************************
@@ -845,6 +1224,118 @@ namespace STK
     }
     // WriteSTKNetwork(...
     //***************************************************************************
+
+  //***************************************************************************
+  //***************************************************************************
+  template <class _NetworkType>
+    void 
+    WriteSTKNetworkInOldFormat(
+      FILE*                   pFp,
+      _NetworkType&           rNetwork,
+      LabelFormat labelFormat,
+      long        sampPeriod,
+      const char  *net_file,
+      const char  *out_MNF)
+    {
+      // to make it easier, we define local typedefs
+      typedef          _NetworkType              _network_type;
+      typedef typename _NetworkType::NodeType    _node_type;
+      typedef typename _NetworkType::LinkType    _link_type;
+
+
+      int   i;
+
+      typename _NetworkType::iterator         p_node;
+      _node_type* node;
+    
+      for (i = 0, p_node = rNetwork.begin(); p_node != rNetwork.end(); 
+           ++p_node, ++i)  
+      {
+        p_node->mAux = i;
+      }
+
+      fprintf(pFp,"NUMNODES: %d\n", i);
+
+      for (i = 0, p_node = rNetwork.begin(); p_node != rNetwork.end(); 
+          ++p_node, ++i) 
+      {
+        int j;
+        int type = p_node->mType & NT_MODEL       ? 'M'  :
+                   p_node->mType & NT_PHONE       ? 'M'  :
+                   p_node->mType & NT_SUBNET      ? 'S'  :
+                   p_node->mType & NT_WORD        ?
+                    (p_node->mpPronun == NULL     ?
+                       (p_node->mType & NT_STICKY ? 'F'  :
+                                                    'N') :
+                       (p_node->mType & NT_STICKY ? 'K'  :
+                                                    'W')):
+                                                    '?';
+        if (!(p_node->mType & NT_TRUE)) 
+        {
+          type = tolower(type);
+        }
+
+        fprintf(pFp,"%d\t%c %s",
+                i, type,
+                p_node->mType & NT_MODEL   ? p_node->mpHmm->mpMacro->mpName :
+                p_node->mType & NT_PHONE   ? p_node->mpName :
+                p_node->mType & NT_SUBNET  ? p_node->mpName :
+                p_node->mType & NT_WORD    ?
+                  (p_node->mpPronun == NULL ? "-" :
+                                          p_node->mpPronun->mpWord->mpName):
+                                          "?");
+        if (p_node->mType & NT_WORD && p_node->mpPronun) 
+        {
+          if (p_node->mpPronun->mpWord->mpName != p_node->mpPronun->outSymbol) 
+          {
+            fprintf(pFp," [%s]", p_node->mpPronun->outSymbol);
+          }
+
+          if (p_node->mpPronun->prob != 0.0 
+          ||  p_node->mpPronun->mpWord->npronuns > 1) 
+          {
+            fprintf(pFp," {%d "FLOAT_FMT"}",
+                    p_node->mpPronun->variant_no,
+                    p_node->mpPronun->prob);
+          }
+        }
+
+        if (p_node->mType & NT_PHONE && p_node->mPhoneAccuracy != 1.0) 
+        {
+          fprintf(pFp," {"FLOAT_FMT"}", p_node->mPhoneAccuracy);
+        }
+
+        if (!(labelFormat.TIMES_OFF) &&
+          p_node->Start() != UNDEF_TIME && p_node->Stop() != UNDEF_TIME) 
+        {
+          int ctm = labelFormat.CENTRE_TM;
+          fprintf   (pFp," (");
+          fprintf_ll(pFp, sampPeriod * (2 * p_node->Start() + ctm) / 2 
+              - labelFormat.left_extent);
+          fprintf   (pFp," ");
+          fprintf_ll(pFp, sampPeriod * (2 * p_node->Stop() - ctm)  / 2 
+              + labelFormat.right_extent);
+          fprintf   (pFp,")");
+        }
+
+        fprintf(pFp,"\t%d", p_node->mNLinks);
+        for (j = 0; j < p_node->mNLinks; j ++) 
+        {
+          fprintf(pFp," %d",p_node->mpLinks[j].pNode()->mAux);
+          if (p_node->mpLinks[j].LmLike() != 0.0) 
+          {
+            fprintf(pFp," {"FLOAT_FMT"}", p_node->mpLinks[j].LmLike());
+          }
+        }
+
+        fputs("\n", pFp);
+
+        if (ferror(pFp)) {
+          Error("Cannot write to output network file %s", out_MNF ? out_MNF : net_file);
+        }
+      }
+    }
+
 
   /*
   //****************************************************************************

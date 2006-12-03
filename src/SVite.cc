@@ -492,7 +492,8 @@ int main(int argc, char *argv[])
   if (network_file) 
   { // Unsupervised training
     Decoder::NetworkType::NodeType* p_node = NULL;
-    IStkStream input_stream;    
+    Decoder::NetworkType            my_net(p_node);
+    IStkStream                      input_stream;    
     
     input_stream.open(network_file, ios::in, transc_filter ? transc_filter : "");
 
@@ -518,14 +519,12 @@ int main(int argc, char *argv[])
           NULL, 
           NULL);
               
-      p_node = MakeNetworkFromLabels(labels, 
-          dictionary ? NT_WORD : NT_PHONE);
+      my_net.BuildFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
               
       ReleaseLabels(labels);
 
       if (!compactNetworkRepresentation)
-        NetworkExpansionsAndOptimizations(
-            p_node, 
+        my_net.ExpansionsAndOptimizations(
             expOptions, 
             in_net_fmt, 
             &dictHash,
@@ -537,7 +536,6 @@ int main(int argc, char *argv[])
       //:TODO:
       // header.mSamplePeriod not initialized yet... 
       
-      DecoderNetwork my_net(p_node);
 
       ReadSTKNetwork(
         ilfp, 
@@ -557,13 +555,13 @@ int main(int argc, char *argv[])
         &dictHash,
         &nonCDphHash, 
         &phoneHash);
-
-      p_node = my_net.pFirst();
     }
     else 
     {
       Error("Too bad. What did you do ?!?");
     }
+
+    p_node = my_net.pFirst();
                                       
     decoder.Init(p_node, &hset, NULL, compactNetworkRepresentation);
   } 
@@ -614,39 +612,48 @@ int main(int argc, char *argv[])
     if (!network_file) 
     {
       Decoder::NetworkType::NodeType* p_node = NULL;
+      Decoder::NetworkType            my_net(p_node);
       
 
+      // construct the name
       strcpy(label_file, feature_repo.Current().Logical().c_str());
 
+      // open the label
       ilfp = OpenInputLabelFile(label_file, in_lbl_dir, 
           in_lbl_ext ? in_lbl_ext :
           in_transc_fmt == TF_STK ? "net" : "lab",
           ilfp, in_MLF);
 
+      // decide what to do depending on input format
       if (in_transc_fmt == TF_HTK) 
       {
         labels = ReadLabels(ilfp, dictionary ? &dictHash : &phoneHash, 
             dictionary ? UL_ERROR : UL_INSERT, in_lbl_fmt,
             feature_repo.CurrentHeader().mSamplePeriod, label_file, in_MLF, NULL);
 
-        p_node = MakeNetworkFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
+        my_net.BuildFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
+
         ReleaseLabels(labels);
       } 
       else if (in_transc_fmt == TF_STK) 
       {
-        p_node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash, notInDictAction,
+        ReadSTKNetwork(ilfp, &dictHash, &phoneHash, notInDictAction,
             in_lbl_fmt, feature_repo.CurrentHeader().mSamplePeriod, label_file,
-            in_MLF);
+            in_MLF, compactNetworkRepresentation,  my_net);
       } 
       else 
       {
         Error("Too bad. What did you do ?!?");
       }
 
+      // we perform optimizations of not in compact representation
       if (!compactNetworkRepresentation)
-        NetworkExpansionsAndOptimizations(p_node, expOptions, in_net_fmt, &dictHash,
+      {
+        my_net.ExpansionsAndOptimizations(expOptions, in_net_fmt, &dictHash,
             &nonCDphHash, &phoneHash);
+      }
 
+      p_node = my_net.pFirst();
       decoder.Init(p_node, &hset, NULL, false);
 
       CloseInputLabelFile(ilfp, in_MLF);

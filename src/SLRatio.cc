@@ -444,69 +444,87 @@ int main(int argc, char *argv[]) {
       notInDictAction |= (int) PRON_NOT_IN_DIC_ERROR;
     }
   }
-  if (dictHash.mNEntries == 0) expOptions.mNoWordExpansion = 1;
 
-  if (!network_file) {
+  if (dictHash.mNEntries == 0) 
+    expOptions.mNoWordExpansion = 1;
+
+
+  if (!network_file) 
+  {
     ilfp = OpenInputMLF(in_MLF);
-  } else {
+  } 
+  else 
+  {
     ilfp = fopen(network_file, "rt");
     if (ilfp  == NULL) Error("Cannot open network file: %s", network_file);
 
-    Decoder::NetworkType::NodeType* node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash,
-                                notInDictAction, in_lbl_fmt,
-                                header.mSamplePeriod, network_file, NULL);
-    NetworkExpansionsAndOptimizations(node, expOptions, in_net_fmt, &dictHash,
-                                      &nonCDphHash, &phoneHash);
-    //InitNetwork(&net, node, &hset, NULL);
+    Decoder::NetworkType::NodeType* node;
+    Decoder::NetworkType            my_net(node);
+    
+
+    ReadSTKNetwork(ilfp, &dictHash, &phoneHash, notInDictAction,
+        in_lbl_fmt, header.mSamplePeriod, network_file, NULL, false,
+        my_net);
+
+    my_net.ExpansionsAndOptimizations(expOptions, in_net_fmt, &dictHash,
+        &nonCDphHash, &phoneHash);
+
+    node = my_net.pFirst();
+
     net.Init(node, &hset, NULL);
     fclose(ilfp);
     lrt = MakeLRTraceTable(&net, &nWords, filler_end);
   }
+
   lfp = OpenOutputMLF(out_MLF);
 
-  for (file_name = feature_files; file_name; file_name = file_name->mpNext) {
 
+  for (file_name = feature_files; file_name; file_name = file_name->mpNext) 
+  {
     if (trace_flag & 1) {
       TraceLog("Processing file %d/%d '%s'", ++fcnt,
                  nfeature_files,file_name->mpPhysical);
     }
+
     if (cmn_mask) process_mask(file_name->logical, cmn_mask, cmn_file);
     if (cvn_mask) process_mask(file_name->logical, cvn_mask, cvn_file);
     
-#ifndef USE_NEW_MATRIX  
-    obsMx = ReadHTKFeatures(file_name->mpPhysical, swap_features,
-                            startFrmExt, endFrmExt, targetKind,
-                            derivOrder, derivWinLengths, &header,
-                            cmn_path, cvn_path, cvg_file, &rhfbuff);
-#else
     ReadHTKFeatures(file_name->mpPhysical, swap_features,
                     startFrmExt, endFrmExt, targetKind,
                     derivOrder, derivWinLengths, &header,
                     cmn_path, cvn_path, cvg_file, &rhfbuff, feature_matrix);
-#endif
 
-    if (hset.mInputVectorSize != static_cast<int>(header.mSampleSize / sizeof(float))) {
+    if (hset.mInputVectorSize != static_cast<int>(header.mSampleSize 
+          / sizeof(float))) 
+    {
       Error("Vector size [%d] in '%s' is incompatible with HMM set [%d]",
-            header.mSampleSize/sizeof(float), file_name->mpPhysical, hset.mInputVectorSize);
+            header.mSampleSize/sizeof(float), file_name->mpPhysical, 
+            hset.mInputVectorSize);
     }
-    if (!network_file) {
+
+    if (!network_file) 
+    {
       Decoder::NetworkType::NodeType* node = NULL;
+      Decoder::NetworkType            my_net(node);
+
       strcpy(label_file, file_name->logical);
       ilfp = OpenInputLabelFile(label_file, in_lbl_dir,
                               in_lbl_ext ? in_lbl_ext : "net",
                               ilfp, in_MLF);
 
-      node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash, notInDictAction,
-                            in_lbl_fmt, header.mSamplePeriod, label_file, in_MLF);
+      ReadSTKNetwork(ilfp, &dictHash, &phoneHash, notInDictAction, in_lbl_fmt,
+          header.mSamplePeriod, label_file, in_MLF, false, my_net);
 
-      NetworkExpansionsAndOptimizations(node, expOptions, in_net_fmt, &dictHash,
-                                        &nonCDphHash, &phoneHash);
+      my_net.ExpansionsAndOptimizations(expOptions, in_net_fmt, &dictHash,
+          &nonCDphHash, &phoneHash);
 
-      //InitNetwork(&net, node, &hset, NULL);
+      node = my_net.pFirst();
       net.Init(node, &hset, NULL);
+
       CloseInputLabelFile(ilfp, in_MLF);
       lrt = MakeLRTraceTable(&net, &nWords, filler_end);
     }
+
     net.mWPenalty     = word_penalty;
     net.mMPenalty     = model_penalty;
     net.mLmScale      = grammar_scale;

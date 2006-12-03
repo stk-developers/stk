@@ -566,6 +566,7 @@ int main(int argc, char* argv[])
   if (network_file) 
   { // Unsupervised training
     Decoder::NetworkType::NodeType*   p_node = NULL;
+    Decoder::NetworkType              my_net(p_node);
     IStkStream                        input_stream;    
     
     input_stream.open(network_file, ios::in, transc_filter ? transc_filter : "");
@@ -589,39 +590,26 @@ int main(int argc, char* argv[])
           NULL, 
           NULL);
           
-      p_node = MakeNetworkFromLabels( labels, dictionary ? NT_WORD : NT_PHONE);
+      my_net.BuildFromLabels( labels, dictionary ? NT_WORD : NT_PHONE);
           
       ReleaseLabels(labels);
     }
     else if (in_transc_fmt == TF_STK) 
     {
-      p_node = ReadSTKNetwork(
-         ilfp, 
-         &dictHash,
-         &phoneHash, 
-         notInDictAction, 
-         in_lbl_fmt,
-         feature_repo.CurrentHeader().mSamplePeriod, 
-         network_file, 
-         NULL);
+      ReadSTKNetwork( ilfp, &dictHash, &phoneHash, notInDictAction, in_lbl_fmt,
+         feature_repo.CurrentHeader().mSamplePeriod, network_file, NULL,
+         false, my_net);
     }
     else 
     {
       Error("Too bad. What did you do ?!?");
     }
                                 
-    NetworkExpansionsAndOptimizations(
-        p_node, 
-        expOptions, 
-        in_net_fmt, 
-        &dictHash,
-        &nonCDphHash, 
-        &phoneHash);
+    my_net.ExpansionsAndOptimizations(expOptions, in_net_fmt, &dictHash,
+        &nonCDphHash, &phoneHash);
                                       
-    decoder.Init(
-        p_node, 
-        hset_alig, 
-        &hset);
+    p_node = my_net.pFirst();
+    decoder.Init(p_node, hset_alig, &hset);
     
     min_examples = 0;
   } 
@@ -813,6 +801,7 @@ int main(int argc, char* argv[])
       if (!network_file) 
       {
         Decoder::NetworkType::NodeType* p_node = NULL;
+        Decoder::NetworkType            my_net(p_node);
 
         strcpy(label_file, feature_repo.Current().Logical().c_str());
         
@@ -835,15 +824,13 @@ int main(int argc, char* argv[])
               src_mlf, 
               NULL);
               
-          p_node = MakeNetworkFromLabels(
-              labels, 
-              dictionary ? NT_WORD : NT_PHONE);
+          my_net.BuildFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
               
           ReleaseLabels(labels);
         } 
         else if (in_transc_fmt == TF_STK) 
         {
-          p_node = ReadSTKNetwork(
+          ReadSTKNetwork(
               ilfp, 
               &dictHash, 
               &phoneHash, 
@@ -851,17 +838,19 @@ int main(int argc, char* argv[])
               in_lbl_fmt,
               feature_repo.CurrentHeader().mSamplePeriod, 
               label_file, 
-              src_mlf);
+              src_mlf, false, my_net);
         } 
         else 
         {
           Error("Too bad. What did you do ?!?");
         }
 
-        NetworkExpansionsAndOptimizations(p_node, expOptions, in_net_fmt, 
+        my_net.ExpansionsAndOptimizations(expOptions, in_net_fmt, 
             &dictHash, &nonCDphHash, &phoneHash);
 
+        p_node = my_net.pFirst();
         decoder.Init(p_node, hset_alig, &hset);
+
         CloseInputLabelFile(ilfp, src_mlf);
       }
       

@@ -22,8 +22,6 @@ namespace STK
 {
 
   class FWBWR;
-  class ActiveNodeRecord;
-  class AlphaBeta;
   class NodeBasicContent;
   
 
@@ -92,7 +90,171 @@ namespace STK
   //############################################################################
 
 
+  /** *************************************************************************
+   ** *************************************************************************
+   * @brief Node iterator class (REGULAR_COMPACT specialization)
+   */
+  template<class _LinkType>
+    class LinkIterator
+    {
+    public:
+      typedef LinkIterator<_LinkType>           _Self;
+      typedef _LinkType                         LinkType;
+
+      typedef std::bidirectional_iterator_tag   iterator_category;
+      typedef _LinkType                         value_type;
+      typedef value_type &                      reference;
+      typedef const reference                   const_reference;
+      typedef value_type *                      pointer;
+      typedef const pointer                     const_pointer;
+      typedef ptrdiff_t                         difference_type;
+
+
+    public:
+      /// default constructor
+      LinkIterator() 
+      { }
+
+      /// copy constructor
+      LinkIterator(value_type *pPtr) : mpPtr(pPtr)
+      { }
+
+
+      /// return designated object
+      reference 
+      operator*() const 
+      {
+        return (*mpPtr);
+      }
+
+      /// return a pointer to designated object
+      pointer 
+      operator->() const 
+      {
+        return &(*mpPtr);
+      }
+
+      /// preincrement
+      _Self& 
+      operator++()
+      {
+        mpPtr++;
+        return *this;
+      };
+
+      /// predecrement
+      _Self& 
+      operator--()
+      {
+        mpPtr--;
+        return *this;
+      };
+
+
+      /// postincrement
+      _Self operator++(int) 
+      {
+        _Self tmp = *this;
+        ++*this;
+        return (tmp);
+      }
+
+      /// postdecrement
+      _Self operator--(int) 
+      {
+        _Self tmp = *this;
+        --*this;
+        return (tmp);
+      }
+
+      /// test for iterator equality
+      bool 
+      operator==(const _Self& rRight) const 
+      {
+        return (mpPtr == rRight.mpPtr);
+      }
+
+      /// test for iterator inequality
+      bool 
+      operator!=(const _Self& rRight) const 
+      {
+        return (!(mpPtr == rRight.mpPtr));
+      }
+
+
+      pointer mpPtr; // pointer to container value type
+
+    };
+  // template<class _NodeType>
+  //   class NodeIterator<_NodeType, NETWORK_COMPACT> 
+  //****************************************************************************
+
+  template<class _LinkContent>
+    class LinkArray
+    {
+    public:
+      typedef  _LinkContent value_type;
+      typedef value_type & reference;
+      typedef const value_type & const_reference;
+      typedef LinkIterator<_LinkContent> iterator;
+      typedef const iterator const_iterator;
+      typedef int difference_type;
+      typedef int size_type;
+
+      // CONSTRUCTORS AND DESTRUCTORS ..........................................
+      LinkArray() 
+      : mpArray(NULL), mSize(0)
+      { }
+
+      LinkArray(size_type size)
+      { 
+        if (NULL == (mpArray = (value_type*) calloc(size, sizeof(value_type))))
+          Error("Cannot allocate memory");
+      }
+
+      ~LinkArray()
+      {
+        if (NULL != mpArray)
+          free(mpArray);
+      }
+
+
+      void
+      resize(size_type newSize);
+
+      /// Returns number of elements
+      size_type
+      size() const
+      { return mSize; }
+
+      /// Returns maximum number of links. 
+      size_type
+      max_size() const
+      { return size_type(-1); }
+
+
+      /// True if empty
+      bool
+      empty() const
+      { return mSize > 0 ? false : true; }
+
+
+      iterator
+      begin()
+      { return iterator(&mpArray[0]); }
+
+      iterator
+      end()
+      { return iterator(&mpArray[mSize]); }
+
+
+    protected:
+
+      value_type*  mpArray;
+      size_type    mSize;
+    };
   
+
 
   /** **************************************************************************
    ** **************************************************************************
@@ -141,8 +303,7 @@ namespace STK
 
     private:
       NodeType *    mpNode;
-      //LikeType      mAcousticLike;
-      //LikeType      mLmLike;
+
     }; 
   // Link
   //****************************************************************************
@@ -194,24 +355,31 @@ namespace STK
   // Link
   //****************************************************************************
 
+   
 
   /** *************************************************************************
    ** *************************************************************************
    *  @brief Network node representation class
    */   
-  template<typename _NodeContent, typename _LinkContent, NodeRepresentationType _NR, LinkRepresentationType _LR>
+  template<typename _NodeContent, typename _LinkContent, 
+    NodeRepresentationType _NR, LinkRepresentationType _LR>
     class NodeBasic : public _NodeContent
     {
     public:
       typedef Link<_NodeContent, _LinkContent, _NR, _LR> LinkType;
       typedef Node<_NodeContent, _LinkContent, _NR, _LR> NodeType;
 
-      NodeBasic() : NodeBasicContent(), mNLinks(0), mpLinks(NULL) {}
+      NodeBasic() 
+      : _NodeContent(), mNLinks(0), mpLinks(NULL) {}
 
 
       LinkType*
       pLinks() const
       { return mpLinks; }
+
+      LinkType*&
+      rpLinks() const
+      { return &mpLinks; }
 
       int
       NLinks() const
@@ -290,7 +458,8 @@ namespace STK
    ** *************************************************************************
    *  @brief Network node representation class
    */   
-  template<typename _NodeContent, typename _LinkContent, NodeRepresentationType _NR, LinkRepresentationType _LR>
+  template<typename _NodeContent, typename _LinkContent, 
+    NodeRepresentationType _NR, LinkRepresentationType _LR>
     class Node : public NodeBasic<_NodeContent, _LinkContent, _NR, _LR>
     {
     public:

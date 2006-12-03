@@ -306,16 +306,20 @@ int main(int argc, char *argv[])
   in_MLF_fp  = OpenInputMLF(in_MLF_fn);
   out_MLF_fp = OpenOutputMLF(out_MLF_fn);
 
-  for (file_name=feature_files; file_name != NULL; file_name=file_name->mpNext) {
-    if (trace_flag & 1) {
-      TraceLog("Processing file %d/%d '%s'", ++fcnt, nfeature_files,file_name->logical);
+  for (file_name=feature_files; file_name != NULL; file_name=file_name->mpNext) 
+  {
+    if (trace_flag & 1) 
+    {
+      TraceLog("Processing file %d/%d '%s'", ++fcnt, nfeature_files,
+          file_name->logical);
     }
 
     strcpy(label_file, file_name->logical);
     in_MLF_fp = OpenInputLabelFile(label_file, in_lbl_dir,
                                    in_lbl_ext, in_MLF_fp, in_MLF_fn);
 
-    if (in_MLF_fn == NULL && IsMLF(in_MLF_fp)) {
+    if (in_MLF_fn == NULL && IsMLF(in_MLF_fp)) 
+    {
       in_transc_fmt = in_transc_fmt == TF_HTK ? TF_MLF :
       in_transc_fmt == TF_STK ? TF_MNF :
       in_transc_fmt == TF_NOF ? TF_MOF : TF_ERR;
@@ -323,74 +327,85 @@ int main(int argc, char *argv[])
       in_MLF_fn = label_file;
       assert(in_transc_fmt != TF_ERR);
     }
-    for (;;) { //in cases of MLF or MNF, we must process all records
-      Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* p_node = NULL;
+
+    for (;;) 
+    { //in cases of MLF or MNF, we must process all records
+      DecoderNetwork::NodeType*    p_node = NULL;
+      DecoderNetwork               my_net(p_node);
 
       if (in_transc_fmt == TF_MLF
-      || in_transc_fmt == TF_MNF
-      || in_transc_fmt == TF_MOF) {
+      ||  in_transc_fmt == TF_MNF
+      ||  in_transc_fmt == TF_MOF) 
+      {
         label_file[0]='\0'; // Ref. MLF is read sequentially record by record
-        if (!OpenInputLabelFile(label_file, NULL, NULL, in_MLF_fp, in_MLF_fn)) {
+
+        if (!OpenInputLabelFile(label_file, NULL, NULL, in_MLF_fp, in_MLF_fn)) 
+        {
           break; // Whole MLF or MNF processed
         }
+
         if (trace_flag & 1) TraceLog("Processing file %d '%s'", ++fcnt, label_file);
       }
-      if (in_transc_fmt == TF_HTK || in_transc_fmt == TF_MLF) {
+
+      if (in_transc_fmt == TF_HTK || in_transc_fmt == TF_MLF) 
+      {
         labels = ReadLabels(in_MLF_fp, dictionary ? &dictHash : &phoneHash,
-                                       dictionary ? UL_ERROR : UL_INSERT, in_lbl_fmt,
-                                       /*sampleRate*/ 1, label_file, in_MLF_fn, NULL);
-        p_node = MakeNetworkFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
+            dictionary ? UL_ERROR : UL_INSERT, in_lbl_fmt, /*sampleRate*/ 1,
+            label_file, in_MLF_fn, NULL);
+        
+        my_net.BuildFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
+
         ReleaseLabels(labels);
-      } else if (in_transc_fmt == TF_STK || in_transc_fmt == TF_MNF) {
-        p_node = ReadSTKNetwork(in_MLF_fp, &dictHash, &phoneHash, notInDictAction,
-                              in_lbl_fmt, /*sampleRate*/ 1, label_file, in_MLF_fn);
-      } else if (in_transc_fmt == TF_NOF || in_transc_fmt == TF_MOF) {
-        p_node = ReadSTKNetworkInOldFormat(
-                 in_MLF_fp, &dictHash, &phoneHash, in_lbl_fmt,
-                 /*sampleRate*/ 1, label_file, in_MLF_fn);
+      } 
+      else if (in_transc_fmt == TF_STK || in_transc_fmt == TF_MNF) 
+      {
+        ReadSTKNetwork(in_MLF_fp, &dictHash, &phoneHash, notInDictAction, 
+            in_lbl_fmt, /*sampleRate*/ 1, label_file, in_MLF_fn, false,
+            my_net); 
+      } 
+      else if (in_transc_fmt == TF_NOF || in_transc_fmt == TF_MOF) 
+      {                                                            
+        ReadSTKNetworkInOldFormat(in_MLF_fp, &dictHash, &phoneHash, 
+            in_lbl_fmt, /*sampleRate*/ 1, label_file, in_MLF_fn,
+            my_net);
       }
+
       CloseInputLabelFile(in_MLF_fp, in_MLF_fn);
 
-      /*
-        FILE* tmp_fp = fopen("temp.net", "w");
-
-        DecoderNetwork tmp_net;
-        tmp_net.SetFirst(p_node);
-        WriteSTKNetwork(tmp_fp, tmp_net, out_net_fmt, 1, label_file, out_MLF_fn);
-        fclose(tmp_fp);
-      */
-
-      NetworkExpansionsAndOptimizations(p_node, expOptions, out_net_fmt, &dictHash,
-                                        &nonCDphHash, &triphHash);
+      my_net.ExpansionsAndOptimizations(expOptions, out_net_fmt, &dictHash, 
+          &nonCDphHash, &triphHash);
 
       if (out_net_fmt.mAproxAccuracy)
-        ComputeAproximatePhoneAccuracy(p_node, 0);
+        my_net.ComputeAproximatePhoneAccuracy(0);
 
       out_MLF_fp = OpenOutputLabelFile(label_file, out_lbl_dir, out_lbl_ext,
                                       out_MLF_fp, out_MLF_fn);
 
       if (out_transc_fmt == TF_NOF) 
       {
-        WriteSTKNetworkInOldFormat(out_MLF_fp, p_node, out_lbl_fmt, 1,
-                                 label_file, out_MLF_fn);
+        WriteSTKNetworkInOldFormat(out_MLF_fp, my_net, out_lbl_fmt, 1,
+            label_file, out_MLF_fn);
       } 
       else 
       {
-        DecoderNetwork tmp_net;
-        tmp_net.SetFirst(p_node);
-        WriteSTKNetwork(out_MLF_fp, tmp_net, out_net_fmt, 1, label_file, 
+        WriteSTKNetwork(out_MLF_fp, my_net, out_net_fmt, 1, label_file, 
             out_MLF_fn, 0.0, 1.0);
       }
 
       CloseOutputLabelFile(out_MLF_fp, out_MLF_fn);
-      FreeNetwork(p_node);
+      my_net.Clear();
+
+      //FreeNetwork(p_node);
 
       if (in_transc_fmt == TF_HTK
       || in_transc_fmt == TF_STK
-      || in_transc_fmt == TF_NOF) {
-        break; // We are dealing with single record in these cases
+      || in_transc_fmt == TF_NOF) 
+      {
+        // We are dealing with single record in these cases
+        break; 
       }
     }
+
     if (in_transc_fmt == TF_MLF || in_transc_fmt == TF_MNF) {
       CloseInputMLF(in_MLF_fp);
     }
