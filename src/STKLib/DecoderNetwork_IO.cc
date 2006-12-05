@@ -30,15 +30,15 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*
-  find_or_create_node(struct MyHSearchData *node_hash, const char *node_id, Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> **last)
+  DecoderNetwork::NodeType*
+  find_or_create_node(struct MyHSearchData *node_hash, const char *node_id, DecoderNetwork::NodeType** last)
   // Auxiliary function used by ReadHTKLattice_new. (Optionally initialize
   // uninitialized node_hash) Search for node record at key node_id. If found,
   // pointer to this record is returned, otherwise new node record is allocated
   // with type set to NT_UNDEF and entered to has at key node_id and pointer
   // to this new record is returned.
   {
-    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*   p_node;
+    DecoderNetwork::NodeType*   p_node;
     ENTRY   e = {0}; //{0} is just to make compiler happy
     ENTRY*  ep;
   
@@ -49,17 +49,17 @@ namespace STK
     my_hsearch_r(e, FIND, &ep, node_hash);
   
     if (ep != NULL) 
-      return (Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *) ep->data;  
+      return (DecoderNetwork::NodeType*) ep->data;  
   
-    p_node = (Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *) calloc(1, sizeof(Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>));
+    p_node = (DecoderNetwork::NodeType*) calloc(1, sizeof(DecoderNetwork::NodeType));
     
     if (p_node == NULL) 
       Error("Insufficient memory");
   
-    p_node->mNLinks     = 0;
-    p_node->mpLinks     = NULL;
-    p_node->mNBackLinks = 0;
-    p_node->mpBackLinks = NULL;
+    p_node->rNLinks()     = 0;
+    p_node->rpLinks()     = NULL;
+    p_node->rNBackLinks() = 0;
+    p_node->rpBackLinks() = NULL;
     p_node->mType       = NT_WORD;
     p_node->SetStart(UNDEF_TIME);
     p_node->SetStop(UNDEF_TIME);

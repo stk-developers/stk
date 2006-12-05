@@ -30,7 +30,6 @@ namespace STK
       typedef typename _NetworkType::NodeType    _node_type;
       typedef typename _NetworkType::LinkType    _link_type;
       
-      const NetworkStorageType network_storage = _NetworkType::NetworkType;
 
 
       _node_type*      p_node;
@@ -52,7 +51,7 @@ namespace STK
       MyHSearchData node_hash = {0};
       struct ReadlineData   rld       = {0};
       
-      NodeBasic<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*
+      NodeBasic<NodeBasicContent, LinkContent, LinkArray>*
         first_basic;
     
       for (;;) 
@@ -154,8 +153,7 @@ namespace STK
                         file_name, line_no);
                   
                 first = reinterpret_cast<_node_type *> (first_basic = new
-                    NodeBasic<NodeBasicContent, LinkContent, NODE_REGULAR,
-                               LINK_REGULAR>[nnodes]);
+                    NodeBasic<NodeBasicContent, LinkContent, LinkArray>[nnodes]);
               }
               else if (node_hash.mTabSize == 0 && !my_hcreate_r(nnodes, &node_hash)) 
               {
@@ -344,17 +342,17 @@ namespace STK
                   while(isspace(*pCh)) pCh++;
                 }
                 
-                p_node->mpLinks = static_cast<_link_type * >
-                  (realloc(p_node->mpLinks, (p_node->mNLinks + nl) 
+                p_node->rpLinks() = static_cast<_link_type * >
+                  (realloc(p_node->rpLinks(), (p_node->rNLinks() + nl) 
                            * sizeof(_link_type)));
 
-                if (p_node->mpLinks == NULL) 
+                if (p_node->rpLinks() == NULL) 
                   Error("Insufficient memory");              
 
-                for (size_t i_count(p_node->mNLinks); i_count < p_node->mNLinks
+                for (size_t i_count(p_node->rNLinks()); i_count < p_node->rNLinks()
                       + nl; i_count++)
                 {
-                  p_node->mpLinks[i_count].Init();
+                  p_node->rpLinks()[i_count].Init();
                 }
               }
             }
@@ -379,19 +377,19 @@ namespace STK
                 enode = find_or_create_node(&node_hash, valptr, &last);
               }
     
-              int nl = ++p_node->mNLinks;
+              int nl = ++p_node->rNLinks();
               
-              // Links are counted and p_node->mpLinks is properly realocated 
+              // Links are counted and p_node->rpLinks() is properly realocated 
               // at the end of the node definition above
-              p_node->mpLinks[nl-1].SetNode(enode);
-              p_node->mpLinks[nl-1].SetLmLike(0.0);
-              p_node->mpLinks[nl-1].SetAcousticLike(0.0);
+              p_node->rpLinks()[nl-1].SetNode(enode);
+              p_node->rpLinks()[nl-1].SetLmLike(0.0);
+              p_node->rpLinks()[nl-1].SetAcousticLike(0.0);
     
               // TODO: don't make it dependent on whether the network is compact
               // or not but on the fact, that the nodes are capable of storing
               // backlinks
               if (!(compactRepresentation))
-                ++enode->mNBackLinks;  
+                ++enode->rNBackLinks();  
             } 
             
             else if (!strcmp(chptr, "language") || !strcmp(chptr, "l")) 
@@ -401,7 +399,7 @@ namespace STK
               // Set LM score to link starting in node. This link can possibly
               // lead to a phone node already inserted (div=) between 'p_node'
               // and'enode'
-              p_node->mpLinks[p_node->mNLinks-1].SetLmLike(lm_like);
+              p_node->rpLinks()[p_node->rNLinks()-1].SetLmLike(lm_like);
             } 
             
             else if (!strcmp(chptr, "acoustic") || !strcmp(chptr, "a")) 
@@ -410,7 +408,7 @@ namespace STK
               // possibly lead to a phone node already inserted (div=) between
               // 'p_node' and'enode'
               FLOAT acoustic_like = getFloat(valptr, &chptr, file_name, line_no);
-              p_node->mpLinks[p_node->mNLinks-1].SetAcousticLike(acoustic_like);
+              p_node->rpLinks()[p_node->rNLinks()-1].SetAcousticLike(acoustic_like);
             } 
 
             else if (!strcmp(chptr, "div") || !strcmp(chptr, "d")) 
@@ -425,9 +423,9 @@ namespace STK
               float   time;
               int     n;
               _node_type*   last = p_node;
-              FLOAT   lm_like  = p_node->mpLinks[p_node->mNLinks-1].LmLike();
+              FLOAT   lm_like  = p_node->rpLinks()[p_node->rNLinks()-1].LmLike();
     
-              if (p_node->mpLinks[p_node->mNLinks-1].pNode() != enode) 
+              if (p_node->rpLinks()[p_node->rNLinks()-1].pNode() != enode) 
               {
                 Error("Redefinition of  (%s:%d)", chptr, file_name, line_no);
               }
@@ -445,7 +443,7 @@ namespace STK
                 phn_marks+=n;
     
                 if ((tnode = (_node_type *) calloc(1, sizeof(_node_type))) == NULL
-                || (tnode->mpLinks  = (_link_type *) malloc(sizeof(_link_type))) 
+                || (tnode->rpLinks()  = (_link_type *) malloc(sizeof(_link_type))) 
                      == NULL) 
                 {
                   Error("Insufficient memory");
@@ -454,8 +452,8 @@ namespace STK
                 //Use special type to mark nodes inserted by d=..., they will need
                 //special treatment. Later, they will become ordinary NT_PHONE nodes
                 tnode->mType      = NT_PHONE | NT_MODEL;
-                tnode->mNLinks    = tnode->mNBackLinks = 1;
-                tnode->mpLinks[0].Init();
+                tnode->rNLinks()    = tnode->rNBackLinks() = 1;
+                tnode->rpLinks()[0].Init();
                 tnode->mpBackNext  = enode->mpBackNext;
                 enode->mpBackNext  = tnode;
                 tnode->mPhoneAccuracy = 1.0;
@@ -478,17 +476,17 @@ namespace STK
                 }
                                                    
                 tnode->mpName = (char *) ep->data;
-                last->mpLinks[last->mNLinks-1].SetNode(tnode);
-                last->mpLinks[last->mNLinks-1].SetLmLike(0.0);
-                last->mpLinks[last->mNLinks-1].SetAcousticLike(0.0);
+                last->rpLinks()[last->rNLinks()-1].SetNode(tnode);
+                last->rpLinks()[last->rNLinks()-1].SetLmLike(0.0);
+                last->rpLinks()[last->rNLinks()-1].SetAcousticLike(0.0);
                 last = tnode;
               }
               if (strcmp(phn_marks,":")) {
                 Error("Invalid specification of phone marks (d=) (%s:%d)",
                       file_name, line_no);
               }
-              last->mpLinks[last->mNLinks-1].SetNode(enode);
-              last->mpLinks[last->mNLinks-1].SetLmLike(lm_like);
+              last->rpLinks()[last->rNLinks()-1].SetNode(enode);
+              last->rpLinks()[last->rNLinks()-1].SetLmLike(lm_like);
             } else if (getHTKstr(valptr, &chptr)) { // Skip unknown term
               Error("%s (%s:%d)", chptr, file_name, line_no);
             }
@@ -506,12 +504,12 @@ namespace STK
           if (first_basic[i].mType == NT_UNDEF)
             Error("Node %d not defined in network file (%s)", i, file_name);
           
-          for (int j = 0; j < first_basic[i].mNLinks; j++)
-            if (first_basic[i].mpLinks[j].pNode() == first_basic)
+          for (int j = 0; j < first_basic[i].rNLinks(); j++)
+            if (first_basic[i].rpLinks()[j].pNode() == first_basic)
               Error("Node 0 must be the initial network node (%s)", file_name);
         }
         
-        if (first_basic[nnodes-1].mNLinks != 0)
+        if (first_basic[nnodes-1].rNLinks() != 0)
           Error("Node with the highest id (%d) must be the final network node (%s)",
                 nnodes-1, file_name);
       }
@@ -527,32 +525,35 @@ namespace STK
       
         for (p_node = lnode; p_node != NULL; p_node = p_node->mpBackNext)
         {
-          p_node->mpBackLinks = (_link_type *) malloc(p_node->mNBackLinks * sizeof(_link_type));
-          if (p_node->mpBackLinks == NULL) Error("Insufficient memory");
+          p_node->rpBackLinks() = (_link_type *) 
+            malloc(p_node->rNBackLinks() * sizeof(_link_type));
+
+          if (p_node->rpBackLinks() == NULL) 
+            Error("Insufficient memory");
           
-          for (size_t i_count(0); i_count < p_node->mNBackLinks; i_count++)
+          for (size_t i_count(0); i_count < p_node->rNBackLinks(); i_count++)
           { 
-            p_node->mpBackLinks[i_count].Init(); 
+            p_node->rpBackLinks()[i_count].Init(); 
           }
 
           if (p_node->mpBackNext) 
             p_node->mpBackNext->mpNext = p_node;
       
-          if (p_node->mNLinks == 0) 
+          if (p_node->rNLinks() == 0) 
           {
             if (last)
               Error("Network has multiple nodes with no successors (%s)", file_name);
             last = p_node;
           }
           
-          if (p_node->mNBackLinks == 0) 
+          if (p_node->rNBackLinks() == 0) 
           {
             if (first)
               Error("Network has multiple nodes with no predecessor (%s)", file_name);
             first = p_node;
           }
         
-          p_node->mNBackLinks = 0;
+          p_node->rNBackLinks() = 0;
         }
         if (!first || !last) {
           Error("Network contain no start node or no final node (%s)", file_name);
@@ -561,11 +562,11 @@ namespace STK
         for (p_node = lnode; p_node != NULL; p_node = p_node->mpBackNext)
         {
           int i;
-          for (i = 0; i < p_node->mNLinks; i++) {
-            _node_type* p_forwnode = p_node->mpLinks[i].pNode();
-            p_forwnode->mpBackLinks[p_forwnode->mNBackLinks].SetNode(p_node);
-            p_forwnode->mpBackLinks[p_forwnode->mNBackLinks].SetLmLike(p_node->mpLinks[i].LmLike());
-            ++p_forwnode->mNBackLinks;
+          for (i = 0; i < p_node->rNLinks(); i++) {
+            _node_type* p_forwnode = p_node->rpLinks()[i].pNode();
+            p_forwnode->rpBackLinks()[p_forwnode->rNBackLinks()].SetNode(p_node);
+            p_forwnode->rpBackLinks()[p_forwnode->rNBackLinks()].SetLmLike(p_node->rpLinks()[i].LmLike());
+            ++p_forwnode->rNBackLinks();
           }
         }
       
@@ -575,12 +576,12 @@ namespace STK
           if (p_node->Start() == UNDEF_TIME && p_node->Stop() != UNDEF_TIME) 
           {
             int i;
-            for (i = 0; i < p_node->mNBackLinks; i++) {
-              _node_type *backnode = p_node->mpBackLinks[i].pNode();
+            for (i = 0; i < p_node->rNBackLinks(); i++) {
+              _node_type *backnode = p_node->rpBackLinks()[i].pNode();
               // skip nodes inserted by d=...
               while (backnode->mType == (NT_PHONE | NT_MODEL)) {
-                assert(backnode->mNBackLinks == 1);
-                backnode = backnode->mpBackLinks[0].pNode();
+                assert(backnode->rNBackLinks() == 1);
+                backnode = backnode->rpBackLinks()[0].pNode();
               }
               if (backnode->Stop() != UNDEF_TIME) {
                 p_node->SetStart(p_node->Start() == UNDEF_TIME
@@ -596,12 +597,12 @@ namespace STK
           //only phone durations. Absolute times must be computed derived starting from
           //the end time of the node to which arc with d=... definition points.
           if (p_node->mType == (NT_PHONE | NT_MODEL)) {
-            assert(p_node->mNLinks == 1);
-            p_node->SetStop(p_node->mpLinks[0].pNode()->mType == (NT_PHONE | NT_MODEL)
+            assert(p_node->rNLinks() == 1);
+            p_node->SetStop(p_node->rpLinks()[0].pNode()->mType == (NT_PHONE | NT_MODEL)
                         && p_node->Start() != UNDEF_TIME
-                        ? p_node->mpLinks[0].pNode()->Start() : p_node->mpLinks[0].pNode()->Stop());
+                        ? p_node->rpLinks()[0].pNode()->Start() : p_node->rpLinks()[0].pNode()->Stop());
             p_node->SetStart(p_node->Start() != UNDEF_TIME && p_node->Stop() != UNDEF_TIME
-                          ? p_node->Stop() - p_node->Start() : p_node->mpLinks[0].pNode()->Start());
+                          ? p_node->Stop() - p_node->Start() : p_node->rpLinks()[0].pNode()->Start());
           }
         }
         
@@ -653,18 +654,18 @@ namespace STK
           p_node->mpPronun     = NULL;
           p_node->SetStart(UNDEF_TIME);
           p_node->SetStop(UNDEF_TIME);
-          p_node->mNBackLinks = 0;
-          p_node->mpBackLinks  = NULL;
-          p_node->mNLinks     = 1;
-          p_node->mpLinks      = (_link_type*) malloc(sizeof(_link_type));
-          if (p_node->mpLinks == NULL) Error("Insufficient memory");
-          p_node->mpLinks[0].Init();
-          p_node->mpLinks[0].SetNode(first);
-          first->mNBackLinks = 1;
-          first->mpBackLinks  = (_link_type*) malloc(sizeof(_link_type));
-          if (first->mpBackLinks == NULL) Error("Insufficient memory");
-          first->mpBackLinks[0].Init();
-          first->mpBackLinks[0].SetNode(p_node);
+          p_node->rNBackLinks() = 0;
+          p_node->rpBackLinks()  = NULL;
+          p_node->rNLinks()     = 1;
+          p_node->rpLinks()      = (_link_type*) malloc(sizeof(_link_type));
+          if (p_node->rpLinks() == NULL) Error("Insufficient memory");
+          p_node->rpLinks()[0].Init();
+          p_node->rpLinks()[0].SetNode(first);
+          first->rNBackLinks() = 1;
+          first->rpBackLinks()  = (_link_type*) malloc(sizeof(_link_type));
+          if (first->rpBackLinks() == NULL) Error("Insufficient memory");
+          first->rpBackLinks()[0].Init();
+          first->rpBackLinks()[0].SetNode(p_node);
           first = p_node;
         }
 
@@ -679,18 +680,18 @@ namespace STK
           p_node->mpPronun    = NULL;
           p_node->SetStart(UNDEF_TIME);
           p_node->SetStop(UNDEF_TIME);
-          p_node->mNLinks    = 0;
-          p_node->mpLinks     = NULL;
-          last->mNLinks = 1;
-          last->mpLinks  = (_link_type*) malloc(sizeof(_link_type));
-          if (last->mpLinks == NULL) Error("Insufficient memory");
-          last->mpLinks[0].Init();
-          last->mpLinks[0].SetNode(p_node);
-          p_node->mNBackLinks = 1;
-          p_node->mpBackLinks  = (_link_type*) malloc(sizeof(_link_type));
-          if (p_node->mpBackLinks == NULL) Error("Insufficient memory");
-          p_node->mpBackLinks[0].Init();
-          p_node->mpBackLinks[0].SetNode(last);
+          p_node->rNLinks()    = 0;
+          p_node->rpLinks()     = NULL;
+          last->rNLinks() = 1;
+          last->rpLinks()  = (_link_type*) malloc(sizeof(_link_type));
+          if (last->rpLinks() == NULL) Error("Insufficient memory");
+          last->rpLinks()[0].Init();
+          last->rpLinks()[0].SetNode(p_node);
+          p_node->rNBackLinks() = 1;
+          p_node->rpBackLinks()  = (_link_type*) malloc(sizeof(_link_type));
+          if (p_node->rpBackLinks() == NULL) Error("Insufficient memory");
+          p_node->rpBackLinks()[0].Init();
+          p_node->rpBackLinks()[0].SetNode(last);
           last = p_node;
         }
       }
@@ -723,7 +724,6 @@ namespace STK
       typedef typename _NetworkType::NodeType    _node_type;
       typedef typename _NetworkType::LinkType    _link_type;
       
-      const NetworkStorageType network_storage = _NetworkType::NetworkType;
 
       size_t    numOfNodes;
       size_t    i;
@@ -847,7 +847,7 @@ namespace STK
           ReadSTKNetworkInOldFormat(snfp, word_hash, phone_hash, labelFormat, 
               sampPeriod, wordOrModelName, NULL, my_net);
 
-          my_net.pFirst()->mNBackLinks = node->mNBackLinks;
+          my_net.pFirst()->rNBackLinks() = node->rNBackLinks();
           *node = *(my_net.pFirst());
           free(my_net.pFirst());
 
@@ -951,7 +951,7 @@ namespace STK
         }
 
         if (numOfLinks) {
-          if ((node->mpLinks = (_link_type *) malloc(numOfLinks * sizeof(_link_type))) == NULL) {
+          if ((node->rpLinks() = (_link_type *) malloc(numOfLinks * sizeof(_link_type))) == NULL) {
             Error("Insufficient memory");
           }
         } else {
@@ -959,9 +959,9 @@ namespace STK
             Error("Invalid definition of node %d in file %s.\n"
                   "Model node must have at least one link", nodeId, file_name);
           }
-          node->mpLinks = NULL;
+          node->rpLinks() = NULL;
         }
-        node->mNLinks = numOfLinks;
+        node->rNLinks() = numOfLinks;
     
         for (j=0; j < static_cast<size_t>(numOfLinks); j++) {
           if (fscanf(lfp, "%d ", &linkId) != 1) {
@@ -975,14 +975,14 @@ namespace STK
           if (fscanf(lfp, "{%lf} ", &linkLike) != 1) {
             linkLike = 0.0;
           }
-          node->mpLinks[j].SetNode(nodes[linkId]);
-          node->mpLinks[j].SetLmLike(linkLike);
-          ++nodes[linkId]->mNBackLinks;
+          node->rpLinks()[j].SetNode(nodes[linkId]);
+          node->rpLinks()[j].SetLmLike(linkLike);
+          ++nodes[linkId]->rNBackLinks();
         }
       }
       for (i = 1; i < numOfNodes-1; i++) {
-        if (nodes[i]->mNLinks == 0) {
-          if (nodes[numOfNodes-1]->mNLinks == 0) {
+        if (nodes[i]->rNLinks() == 0) {
+          if (nodes[numOfNodes-1]->rNLinks() == 0) {
             Error("Network contains multiple nodes with no successors (%s)",
                   file_name);
           }
@@ -990,8 +990,8 @@ namespace STK
           nodes[numOfNodes-1] = nodes[i];
           nodes[i] = node;
         }
-        if (nodes[i]->mNBackLinks == 0) {
-          if (nodes[0]->mNBackLinks == 0) {
+        if (nodes[i]->rNBackLinks() == 0) {
+          if (nodes[0]->rNBackLinks() == 0) {
             Error("Network contains multiple nodes with no predecessor (%s)",
                   file_name);
           }
@@ -1002,7 +1002,7 @@ namespace STK
           continue; // Check this node again. Could be the first one
         }
       }
-      if (nodes[0]->mNBackLinks != 0 || nodes[numOfNodes-1]->mNLinks != 0) {
+      if (nodes[0]->rNBackLinks() != 0 || nodes[numOfNodes-1]->rNLinks() != 0) {
         Error("Network contain no start node or no final node (%s)", file_name);
       }
       if (!(nodes[0]           ->mType & NT_WORD) || nodes[0]           ->mpPronun != NULL ||
@@ -1015,18 +1015,18 @@ namespace STK
     
       // create back links
       for (i = 0; i < numOfNodes; i++) {
-        if (!nodes[i]->mpBackLinks) // Could be allready alocated for subnetwork
-          nodes[i]->mpBackLinks = (_link_type *) malloc(nodes[i]->mNBackLinks * sizeof(_link_type));
-        if (nodes[i]->mpBackLinks == NULL) Error("Insufficient memory");
-        nodes[i]->mNBackLinks = 0;
+        if (!nodes[i]->rpBackLinks()) // Could be allready alocated for subnetwork
+          nodes[i]->rpBackLinks() = (_link_type *) malloc(nodes[i]->rNBackLinks() * sizeof(_link_type));
+        if (nodes[i]->rpBackLinks() == NULL) Error("Insufficient memory");
+        nodes[i]->rNBackLinks() = 0;
       }
       for (i = 0; i < numOfNodes; i++) {
-        for (j=0; j < static_cast<size_t>(nodes[i]->mNLinks); j++) {
-          _node_type *forwNode = nodes[i]->mpLinks[j].pNode();
+        for (j=0; j < static_cast<size_t>(nodes[i]->rNLinks()); j++) {
+          _node_type *forwNode = nodes[i]->rpLinks()[j].pNode();
 
-          forwNode->mpBackLinks[forwNode->mNBackLinks].SetNode(nodes[i]);
-          forwNode->mpBackLinks[forwNode->mNBackLinks].SetLmLike(nodes[i]->mpLinks[j].LmLike());
-          forwNode->mNBackLinks++;
+          forwNode->rpBackLinks()[forwNode->rNBackLinks()].SetNode(nodes[i]);
+          forwNode->rpBackLinks()[forwNode->rNBackLinks()].SetLmLike(nodes[i]->rpLinks()[j].LmLike());
+          forwNode->rNBackLinks()++;
         }
       }
       node = nodes[0];
@@ -1075,18 +1075,32 @@ namespace STK
 
     
       // use the mAux field to index the nodes
-      for (n = 0, p_node = rNetwork.begin(); p_node != rNetwork.end(); p_node++, n++)
+      for (n = 0, p_node = rNetwork.begin(); p_node != rNetwork.end(); ++p_node)
       {
-        p_node->mAux = n;
-        l += p_node->mNLinks;
+        typename _NetworkType::iterator         tmp_node(p_node);
+        ++tmp_node;
+        if ((tmp_node != rNetwork.end() && p_node->NSuccessors() < 1)
+        ||  (p_node != rNetwork.begin() && p_node->NPredecessors() < 1))
+        {
+          continue;
+        }
+
+        p_node->mAux = n++;
+        l += p_node->NSuccessors();
       }
       
       fprintf(pFp,"N=%d L=%d\n", n, l);
 
-      for (p_node = rNetwork.begin(); p_node != rNetwork.end(); p_node++)
+      for (p_node = rNetwork.begin(); p_node != rNetwork.end(); ++p_node)
       {
-        if (p_node->NSuccessors() < 1)
+        typename _NetworkType::iterator         tmp_node(p_node);
+        ++tmp_node;
+        
+        if ((tmp_node != rNetwork.end() && p_node->NSuccessors() < 1)
+        ||  (p_node != rNetwork.begin() && p_node->NPredecessors() < 1))
+        {
           continue;
+        }
 
         int j;
     
@@ -1138,30 +1152,30 @@ namespace STK
 
         if (!format.mArcDefsToEnd) 
         {
-          if (format.mAllFieldNames) fprintf(pFp," J=%d", p_node->mNLinks);
+          if (format.mAllFieldNames) fprintf(pFp," J=%d", p_node->rNLinks());
     
-          for (j = 0; j < p_node->mNLinks; j ++) 
+          for (j = 0; j < p_node->rNLinks(); j ++) 
           {
-            if (p_node->mpLinks[j].PointsNowhere())
+            if (p_node->rpLinks()[j].PointsNowhere())
               continue;
 
             putc(' ', pFp);
             if (format.mAllFieldNames) fputs("E=", pFp);
-            if (format.mBase62Labels) fprintBase62(pFp, p_node->mpLinks[j].pNode()->mAux);
-            else                      fprintf(pFp,"%d", p_node->mpLinks[j].pNode()->mAux);
+            if (format.mBase62Labels) fprintBase62(pFp, p_node->rpLinks()[j].pNode()->mAux);
+            else                      fprintf(pFp,"%d", p_node->rpLinks()[j].pNode()->mAux);
 
             // output language probability
-            if ((!close_enough(p_node->mpLinks[j].LmLike(), 0.0, 10)) 
+            if ((!close_enough(p_node->rpLinks()[j].LmLike(), 0.0, 10)) 
             &&  (!format.mNoLMLikes))
             {
-              fprintf(pFp," l="FLOAT_FMT, p_node->mpLinks[j].LmLike() / lm_scale);
+              fprintf(pFp," l="FLOAT_FMT, p_node->rpLinks()[j].LmLike() / lm_scale);
             }
 
             // output acoustic probability
-            if ((p_node->mpLinks[j].AcousticLike() != 0.0) 
+            if ((!close_enough(p_node->rpLinks()[j].AcousticLike(), 0.0, 10)) 
             && !(format.mNoAcousticLikes))
             {
-              fprintf(pFp," a="FLOAT_FMT, p_node->mpLinks[j].AcousticLike());
+              fprintf(pFp," a="FLOAT_FMT, p_node->rpLinks()[j].AcousticLike());
             }
           }
         }
@@ -1183,9 +1197,9 @@ namespace STK
 
           int j;
     
-          for (j = 0; j < p_node->mNLinks; j ++) 
+          for (j = 0; j < p_node->rNLinks(); j ++) 
           {
-            if (p_node->mpLinks[j].PointsNowhere())
+            if (p_node->rpLinks()[j].PointsNowhere())
               continue;
 
             if (format.mAllFieldNames) 
@@ -1196,21 +1210,21 @@ namespace STK
             putc(' ', pFp); // space = ' ';
             if (format.mAllFieldNames) fputs("E=", pFp);
 
-            if (format.mBase62Labels) fprintBase62(pFp, p_node->mpLinks[j].pNode()->mAux);
-            else                      fprintf(pFp,"%d", p_node->mpLinks[j].pNode()->mAux);
+            if (format.mBase62Labels) fprintBase62(pFp, p_node->rpLinks()[j].pNode()->mAux);
+            else                      fprintf(pFp,"%d", p_node->rpLinks()[j].pNode()->mAux);
 
             // output language probability
-            if ((!close_enough(p_node->mpLinks[j].LmLike(), 0.0, 10)) 
+            if ((!close_enough(p_node->rpLinks()[j].LmLike(), 0.0, 10)) 
             && (!format.mNoLMLikes))
             {
-              fprintf(pFp," l="FLOAT_FMT, p_node->mpLinks[j].LmLike() / lm_scale);
+              fprintf(pFp," l="FLOAT_FMT, p_node->rpLinks()[j].LmLike() / lm_scale);
             }
 
             // output acoustic probability
-            if ((p_node->mpLinks[j].AcousticLike() != 0.0) 
+            if ((!close_enough(p_node->rpLinks()[j].AcousticLike(), 0.0, 10)) 
             && !(format.mNoAcousticLikes))
             {
-              fprintf(pFp," a="FLOAT_FMT, p_node->mpLinks[j].AcousticLike());
+              fprintf(pFp," a="FLOAT_FMT, p_node->rpLinks()[j].AcousticLike());
             }
 
             fputs("\n", pFp);
@@ -1318,13 +1332,13 @@ namespace STK
           fprintf   (pFp,")");
         }
 
-        fprintf(pFp,"\t%d", p_node->mNLinks);
-        for (j = 0; j < p_node->mNLinks; j ++) 
+        fprintf(pFp,"\t%d", p_node->rNLinks());
+        for (j = 0; j < p_node->rNLinks(); j ++) 
         {
-          fprintf(pFp," %d",p_node->mpLinks[j].pNode()->mAux);
-          if (p_node->mpLinks[j].LmLike() != 0.0) 
+          fprintf(pFp," %d",p_node->rpLinks()[j].pNode()->mAux);
+          if (p_node->rpLinks()[j].LmLike() != 0.0) 
           {
-            fprintf(pFp," {"FLOAT_FMT"}", p_node->mpLinks[j].LmLike());
+            fprintf(pFp," {"FLOAT_FMT"}", p_node->rpLinks()[j].LmLike());
           }
         }
 
@@ -1358,7 +1372,7 @@ namespace STK
       for (n = 0, p_node = rNetwork.pFirst(); p_node != NULL; p_node = p_node->mpNext, n++)  
       {
         p_node->mAux = n;
-        l += p_node->mNLinks;
+        l += p_node->rNLinks();
       }
       
       fprintf(pFp,"N=%d L=%d\n", n, l);
@@ -1413,27 +1427,27 @@ namespace STK
 
         if (!format.mArcDefsToEnd) 
         {
-          if (format.mAllFieldNames) fprintf(pFp," J=%d", p_node->mNLinks);
+          if (format.mAllFieldNames) fprintf(pFp," J=%d", p_node->rNLinks());
     
-          for (j = 0; j < p_node->mNLinks; j ++) 
+          for (j = 0; j < p_node->rNLinks(); j ++) 
           {
             putc(' ', pFp);
             if (format.mAllFieldNames) fputs("E=", pFp);
-            if (format.mBase62Labels) fprintBase62(pFp, p_node->mpLinks[j].pNode()->mAux);
-            else                     fprintf(pFp,"%d", p_node->mpLinks[j].pNode()->mAux);
+            if (format.mBase62Labels) fprintBase62(pFp, p_node->rpLinks()[j].pNode()->mAux);
+            else                     fprintf(pFp,"%d", p_node->rpLinks()[j].pNode()->mAux);
 
             // output language probability
-            if ((!close_enough(p_node->mpLinks[j].mLmLike, 0.0, 10)) 
+            if ((!close_enough(p_node->rpLinks()[j].mLmLike, 0.0, 10)) 
             &&  (!format.mNoLMLikes))
             {
-              fprintf(pFp," l="FLOAT_FMT, p_node->mpLinks[j].mLmLike);
+              fprintf(pFp," l="FLOAT_FMT, p_node->rpLinks()[j].mLmLike);
             }
 
             // output acoustic probability
-            if ((p_node->mpLinks[j].AcousticLike() != 0.0) 
+            if ((p_node->rpLinks()[j].AcousticLike() != 0.0) 
             && !(format.mNoAcousticLikes))
             {
-              fprintf(pFp," a="FLOAT_FMT, p_node->mpLinks[j].mAcousticLike);
+              fprintf(pFp," a="FLOAT_FMT, p_node->rpLinks()[j].mAcousticLike);
             }
           }
         }
@@ -1452,7 +1466,7 @@ namespace STK
         {
           int j;
     
-          for (j = 0; j < p_node->mNLinks; j ++) 
+          for (j = 0; j < p_node->rNLinks(); j ++) 
           {
             if (format.mAllFieldNames) 
               fprintf(pFp, format.mArcDefsWithJ ? "J=%d S=" : "I=", l++);
@@ -1462,21 +1476,21 @@ namespace STK
             putc(' ', pFp); // space = ' ';
             if (format.mAllFieldNames) fputs("E=", pFp);
 
-            if (format.mBase62Labels) fprintBase62(pFp, p_node->mpLinks[j].pNode()->mAux);
-            else                      fprintf(pFp,"%d", p_node->mpLinks[j].pNode()->mAux);
+            if (format.mBase62Labels) fprintBase62(pFp, p_node->rpLinks()[j].pNode()->mAux);
+            else                      fprintf(pFp,"%d", p_node->rpLinks()[j].pNode()->mAux);
 
             // output language probability
-            if ((!close_enough(p_node->mpLinks[j].mLmLike, 0.0, 10)) 
+            if ((!close_enough(p_node->rpLinks()[j].mLmLike, 0.0, 10)) 
             && (!format.mNoLMLikes))
             {
-              fprintf(pFp," l="FLOAT_FMT, p_node->mpLinks[j].mLmLike);
+              fprintf(pFp," l="FLOAT_FMT, p_node->rpLinks()[j].mLmLike);
             }
 
             // output acoustic probability
-            if ((p_node->mpLinks[j].mAcousticLike != 0.0) 
+            if ((p_node->rpLinks()[j].mAcousticLike != 0.0) 
             && !(format.mNoAcousticLikes))
             {
-              fprintf(pFp," a="FLOAT_FMT, p_node->mpLinks[j].mAcousticLike);
+              fprintf(pFp," a="FLOAT_FMT, p_node->rpLinks()[j].mAcousticLike);
             }
 
             fputs("\n", pFp);

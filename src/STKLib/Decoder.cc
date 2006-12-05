@@ -229,8 +229,8 @@ namespace STK
     for (node = mpActiveNodes; node != NULL; node = node->mpAnr->mpNextActiveNode) 
     {
       int     i;
-      int     n_links = InForwardPass() ? node->mNLinks : node->mNBackLinks;
-      NetworkType::LinkType*   links   = InForwardPass() ? node->mpLinks : node->mpBackLinks;
+      int     n_links = InForwardPass() ? node->rNLinks() : node->rNBackLinks();
+      NetworkType::LinkType*   links   = InForwardPass() ? node->rpLinks() : node->rpBackLinks();
       
       if (node->mAux2 == HasCycleCounter) 
       {
@@ -271,8 +271,8 @@ namespace STK
     for (node = mpActiveNodes; node != NULL; node = node->mpAnr->mpNextActiveNode) 
     {
       int     i;
-      int     n_links = InForwardPass() ? node->mNLinks : node->mNBackLinks;
-      NetworkType::LinkType *  links   = InForwardPass() ? node->mpLinks : node->mpBackLinks;
+      int     n_links = InForwardPass() ? node->rNLinks() : node->rNBackLinks();
+      NetworkType::LinkType *  links   = InForwardPass() ? node->rpLinks() : node->rpBackLinks();
   
       for (i=0; i <n_links; i++)
       {
@@ -299,8 +299,8 @@ namespace STK
   MarkWordNodesLeadingFrom(NetworkType::NodeType* node)
   {
     int       i;
-    int       n_links = InForwardPass() ? node->mNLinks : node->mNBackLinks;
-    NetworkType::LinkType*     p_links = InForwardPass() ? node->mpLinks : node->mpBackLinks;
+    int       n_links = InForwardPass() ? node->rNLinks() : node->rNBackLinks();
+    NetworkType::LinkType*     p_links = InForwardPass() ? node->rpLinks() : node->rpBackLinks();
   
     for (i = 0; i < n_links; i++) 
     {
@@ -344,8 +344,8 @@ namespace STK
   pActivateWordNodesLeadingFrom(NetworkType::NodeType* pNode)
   {
     int     i;
-    int     n_links = InForwardPass() ? pNode->mNLinks : pNode->mNBackLinks;
-    NetworkType::LinkType*   p_links   = InForwardPass() ? pNode->mpLinks : pNode->mpBackLinks;
+    int     n_links = InForwardPass() ? pNode->rNLinks() : pNode->rNBackLinks();
+    NetworkType::LinkType*   p_links   = InForwardPass() ? pNode->rpLinks() : pNode->rpBackLinks();
   
     for (i = 0; i < n_links; i++) 
     {
@@ -456,8 +456,8 @@ namespace STK
   DeactivateWordNodesLeadingFrom(NetworkType::NodeType* pNode)
   {
     int       i;
-    int       n_links = InForwardPass() ? pNode->mNLinks : pNode->mNBackLinks;
-    NetworkType::LinkType *    links   = InForwardPass() ? pNode->mpLinks : pNode->mpBackLinks;
+    int       n_links = InForwardPass() ? pNode->rNLinks() : pNode->rNBackLinks();
+    NetworkType::LinkType *    links   = InForwardPass() ? pNode->rpLinks() : pNode->rpBackLinks();
     
     assert(pNode->mpAnr != NULL);
   
@@ -2093,14 +2093,14 @@ namespace STK
     lattice_to->mType  = to->mType;
     lattice_to->mpName = to->mpName; // !!! Relys on union, stays for all mpName, mpHmm and mpPronun
     
-    int nl = ++lattice_from->mNLinks;
+    int nl = ++lattice_from->rNLinks();
 
-    lattice_from->mpLinks = (NetworkType::LinkType *) realloc(lattice_from->mpLinks, nl * sizeof(NetworkType::LinkType));
-    if (lattice_from->mpLinks == NULL) Error("Insufficient memory");
+    lattice_from->rpLinks() = (NetworkType::LinkType *) realloc(lattice_from->rpLinks(), nl * sizeof(NetworkType::LinkType));
+    if (lattice_from->rpLinks() == NULL) Error("Insufficient memory");
           
-    lattice_from->mpLinks[nl-1].mpNode = lattice_to;
-    lattice_from->mpLinks[nl-1].mLike = lmLike;
-    lattice_from->mpLinks[nl-1].mpNode->mNBackLinks++;
+    lattice_from->rpLinks()[nl-1].mpNode = lattice_to;
+    lattice_from->rpLinks()[nl-1].mLike = lmLike;
+    lattice_from->rpLinks()[nl-1].mpNode->rNBackLinks()++;
     
   }*/
   // AddLinkToLattice(NetworkType::NodeType *from, NetworkType::NodeType *to, FLOAT lmLike)
@@ -2214,8 +2214,8 @@ namespace STK
             p_node->mpAnr->mpExitToken->AddWordLinkRecord(p_node, -1, mTime);
           }
   
-          n_links = InForwardPass() ? p_node->mNLinks : p_node->mNBackLinks;
-          links  = InForwardPass() ? p_node->mpLinks  : p_node->mpBackLinks;
+          n_links = InForwardPass() ? p_node->rNLinks() : p_node->rNBackLinks();
+          links  = InForwardPass() ? p_node->rpLinks()  : p_node->rpBackLinks();
   
           for (i = 0; i < n_links; i++) 
           {
@@ -2654,12 +2654,12 @@ namespace STK
   
     for (node = rNetwork().pFirst(); node != NULL; node = node->mpNext) 
     {
-      node->mAux = node->mNBackLinks;
+      node->mAux = node->rNBackLinks();
     }
   
-    for (i = 0; i < rNetwork().pFirst()->mNLinks; i++) 
+    for (i = 0; i < rNetwork().pFirst()->rNLinks(); i++) 
     {
-      rNetwork().pFirst()->mpLinks[i].pNode()->mAux--;
+      rNetwork().pFirst()->rpLinks()[i].pNode()->mAux--;
     }
   
     last = rNetwork().pFirst();
@@ -2676,9 +2676,9 @@ namespace STK
         if ((((*curPtr)->mType & NT_MODEL) && !((*curPtr)->mType & NT_TEE))
           || (*curPtr)->mAux == 0) 
         {
-          for (j = 0; j < (*curPtr)->mNLinks; j++) 
+          for (j = 0; j < (*curPtr)->rNLinks(); j++) 
           {
-            (*curPtr)->mpLinks[j].pNode()->mAux--;
+            (*curPtr)->rpLinks()[j].pNode()->mAux--;
           }
   
           last = (last->mpNext = *curPtr);
@@ -2707,17 +2707,17 @@ namespace STK
     /// !!! What is this sorting links good for ???
     for (node = rNetwork().pFirst(); node != NULL; node = node->mpNext) 
     {
-      if (node->mNLinks > 1)
-        qsort(node->mpLinks, node->mNLinks, sizeof(NetworkType::LinkType), cmplnk);
+      if (node->rNLinks() > 1)
+        qsort(node->rpLinks(), node->rNLinks(), sizeof(NetworkType::LinkType), cmplnk);
     }
   
   // Sort nodes for backward propagation
   
     for (node = rNetwork().pFirst(); node != NULL; node = node->mpNext)
-      node->mAux = node->mNLinks;
+      node->mAux = node->rNLinks();
   
-    for (i = 0; i < rNetwork().pLast()->mNBackLinks; i++)
-      rNetwork().pLast()->mpBackLinks[i].pNode()->mAux--;
+    for (i = 0; i < rNetwork().pLast()->rNBackLinks(); i++)
+      rNetwork().pLast()->rpBackLinks()[i].pNode()->mAux--;
   
     last = rNetwork().pLast();
     chain = rNetwork().pLast()->mpBackNext;
@@ -2733,9 +2733,9 @@ namespace STK
         if ((((*curPtr)->mType & NT_MODEL) && !((*curPtr)->mType & NT_TEE))
           || (*curPtr)->mAux == 0) 
         {
-          for (j = 0; j < (*curPtr)->mNBackLinks; j++) 
+          for (j = 0; j < (*curPtr)->rNBackLinks(); j++) 
           {
-            (*curPtr)->mpBackLinks[j].pNode()->mAux--;
+            (*curPtr)->rpBackLinks()[j].pNode()->mAux--;
           }
   
           last = (last->mpBackNext = *curPtr);
@@ -2757,8 +2757,8 @@ namespace STK
     /// !!! What is this sorting links good for ???
     for (node = rNetwork().pFirst(); node != NULL; node = node->mpNext) 
     {
-      if (node->mNBackLinks > 1)
-        qsort(node->mpBackLinks, node->mNBackLinks, sizeof(NetworkType::LinkType), cmplnk);
+      if (node->rNBackLinks() > 1)
+        qsort(node->rpBackLinks(), node->rNBackLinks(), sizeof(NetworkType::LinkType), cmplnk);
     }
   } // Decoder::SortNodes();
 */  
@@ -2782,7 +2782,7 @@ namespace STK
     // for (p_node =  rNetwork().begin(); 
     // p_node != rNetwork().end(); 
     // p_last_node = p_node, p_node = mCompactRepresentation 
-    // ? (p_node->mNLinks ? reinterpret_cast<NetworkType::NodeType*>(reinterpret_cast<NodeBasic<NODE_REGULAR, LINK_REGULAR>* >(p_node)+1) : NULL)
+    // ? (p_node->rNLinks() ? reinterpret_cast<NetworkType::NodeType*>(reinterpret_cast<NodeBasic<NODE_REGULAR, LINK_REGULAR>* >(p_node)+1) : NULL)
     // : p_node->mpNext)
     
     for (p_node =  rNetwork().begin(); 
@@ -3932,7 +3932,7 @@ namespace STK
   //***************************************************************************
   void 
   Token::
-  AddWordLinkRecord(Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* pNode, int stateIndex, int time)
+  AddWordLinkRecord(NodeType* pNode, int stateIndex, int time)
   {
     WordLinkRecord* wlr;
   
@@ -3967,165 +3967,7 @@ namespace STK
   }
   //***************************************************************************
 
-  
-  //***************************************************************************
-  //***************************************************************************
-  static void 
-  MakeLatticeNodesForWordLinkRecords(WordLinkRecord* pWlr, 
-      Lattice::NodeType*& rpFirst)
-  {
-    // mAux had been initialized to zero. Now, it is used to count how many
-    // successors has been already processed. 
 
-    if(++pWlr->mAux < pWlr->mNReferences) 
-      return;
-      
-    // All successors has been already processed, so make new lattice node
-    // corresponding to pWlr and initialize it according to pWlr->pNode().
-    Lattice::NodeType* pNode = 
-      (Lattice::NodeType *) calloc(1, sizeof(Lattice::NodeType));
-
-    if (pNode == NULL) 
-      Error("Insufficient memory");
-        
-    switch (pWlr->pNode()->mType & (NT_WORD | NT_MODEL | NT_PHONE)) 
-    {
-      case NT_WORD:  pNode->mpPronun = pWlr->pNode()->mpPronun; break;
-      case NT_MODEL: pNode->mpHmm    = pWlr->pNode()->mpHmm;    break;
-      case NT_PHONE: pNode->mpName   = pWlr->pNode()->mpName;   break;
-      default:       Error("Fatal: Invalid node type");
-    }
-      
-    pNode->mType       = pWlr->pNode()->mType;
-    pNode->SetStart(UNDEF_TIME);
-    pNode->SetStop(pWlr->mTime);
-    pNode->mpAlphaBeta == NULL;
-      
-    pNode->mNBackLinks = pWlr->mpNext    == NULL ? 0 :
-                         pWlr->mpAltHyps == NULL ? 1 : pWlr->mpAltHyps->size() + 1;
-                         
-    // If rpFirst == NULL, pWlr is the wery last WLR referenced by token in last state
-    pNode->mNLinks     = rpFirst == NULL ? 0 : pWlr->mNReferences;
-
-
-    // Allocate space for links and backlinks      
-    pNode->mpLinks     = (Lattice::LinkType *) malloc(pNode->mNLinks     * sizeof(Lattice::LinkType));
-    pNode->mpBackLinks = (Lattice::LinkType *) malloc(pNode->mNBackLinks * sizeof(Lattice::LinkType));
-    if (pNode->mpLinks == NULL || pNode->mpBackLinks == NULL) 
-      Error("Insufficient memory");
-        
-    // Push new node to lattice node list
-    pNode->mpNext = rpFirst;
-    pNode->mpBackNext = NULL;
-    rpFirst = pNode;
-    
-    if (pNode->mpNext != NULL) 
-      pNode->mpNext->mpBackNext = pNode;
-      
-      
-    // Set pWlr->pNode() to the new lattice node, so we can latter easily
-    // establish  links between the nodes in the lattice nodes
-    pWlr->mpNode = pNode;
-      
-    // All successors has been already processed, so continue recursively with Wlr's predecessors
-    if(pWlr->mpNext != NULL)
-    {
-      MakeLatticeNodesForWordLinkRecords(pWlr->mpNext, rpFirst);
-        
-      if(pWlr->mpAltHyps != NULL)
-      {
-        for(AltHypList::iterator i = pWlr->mpAltHyps->begin(); i != pWlr->mpAltHyps->end(); i++)
-          MakeLatticeNodesForWordLinkRecords(i->mpWlr, rpFirst);
-      }
-    }
-  }
-  // MakeLatticeNodesForWordLinkRecords(WordLinkRecord* pWlr, Node*& rpFirst)
-  //***************************************************************************
-
-  
-
-  //***************************************************************************
-  //***************************************************************************
-  static void 
-  EstablishLinksBetweenLatticeNodes(WordLinkRecord* pWlr)
-  {
-    // After calling MakeLatticeNodesForWordLinkRecords, mAux was set to pWlr->mNReferencesen.
-    // Use it  to count down the successors that has been already processed. 
-    if(--pWlr->mAux > 0) 
-      return;
-      
-    // All successors have been already processed, so continue recursively with 
-    // Wlr's predecessors
-    if(pWlr->mpNext != NULL)
-    {
-      int j = 0;
-      WordLinkRecord*           p                   = pWlr->mpNext;
-      WordLinkRecord::LikeType  aux_total_like      = pWlr->mLike - p->mLike;
-      WordLinkRecord::LikeType  aux_acoustic_like   = pWlr->mAcousticLike - p->mAcousticLike;
-
-      p->pNode()->mpLinks[p->mNReferences - p->mAux].SetNode(         pWlr->pNode());
-      p->pNode()->mpLinks[p->mNReferences - p->mAux].SetLmLike(       float_safe_substract(aux_total_like, aux_acoustic_like, 3));
-      p->pNode()->mpLinks[p->mNReferences - p->mAux].SetAcousticLike( aux_acoustic_like);
-
-      pWlr->pNode()->mpBackLinks[j].SetNode(          p->pNode());
-      pWlr->pNode()->mpBackLinks[j].SetLmLike(        float_safe_substract(aux_total_like, aux_acoustic_like, 3));
-      pWlr->pNode()->mpBackLinks[j].SetAcousticLike(  aux_acoustic_like);
-
-      //printf("1 i->mLike         = %f   p->mLike         = %f   diff = %e\n",  pWlr->mLike, p->mLike, static_cast<float>(pWlr->mLike - p->mLike)); 
-      //printf("1 i->mAcousticLike = %f   p->mAcousticLike = %f   diff = %e\n",  pWlr->mAcousticLike, p->mAcousticLike, static_cast<float>(pWlr->mAcousticLike - p->mAcousticLike)); 
-      //printf("1 i->mLike - i->mAcousticLike = %e\n",  static_cast<float>(pWlr->mLike - pWlr->mAcousticLike)); 
-      //printf("1 p->mLike - p->mAcousticLike = %e\n",  static_cast<float>(p->mLike - p->mAcousticLike)); 
-
-      // recursively do the rest of the WLR's
-      EstablishLinksBetweenLatticeNodes(pWlr->mpNext);
-        
-      if(pWlr->mpAltHyps != NULL)
-      {
-        AltHypList::iterator i;
-        
-        for(j = 1, i = pWlr->mpAltHyps->begin(); i != pWlr->mpAltHyps->end(); j++, i++)
-        {
-          WordLinkRecord*           p                   = i->mpWlr;
-          WordLinkRecord::LikeType  aux_total_like      = i->mLike - p->mLike;
-          WordLinkRecord::LikeType  aux_acoustic_like   = i->mAcousticLike - p->mAcousticLike;
-          
-          p->pNode()->mpLinks[p->mNReferences - p->mAux].SetNode(pWlr->pNode());
-          p->pNode()->mpLinks[p->mNReferences - p->mAux].SetLmLike(float_safe_substract(aux_total_like, aux_acoustic_like, 3));
-          p->pNode()->mpLinks[p->mNReferences - p->mAux].SetAcousticLike(aux_acoustic_like);
-
-          pWlr->pNode()->mpBackLinks[j].SetNode(p->pNode());
-          pWlr->pNode()->mpBackLinks[j].SetLmLike(float_safe_substract(aux_total_like, aux_acoustic_like, 3));
-          pWlr->pNode()->mpBackLinks[j].SetAcousticLike(aux_acoustic_like);
-
-          //printf("n i->mLike         = %f   p->mLike         = %f   diff = %e\n",  i->mLike, p->mLike, static_cast<float>(i->mLike - p->mLike)); 
-          //printf("n i->mAcousticLike = %f   p->mAcousticLike = %f   diff = %e\n",  i->mAcousticLike, p->mAcousticLike, static_cast<float>(i->mAcousticLike - p->mAcousticLike)); 
-          //printf("n i->mLike - i->mAcousticLike = %e\n",  static_cast<float>(i->mLike - i->mAcousticLike)); 
-          //printf("n p->mLike - p->mAcousticLike = %e\n",  static_cast<float>(p->mLike - p->mAcousticLike)); 
-        
-          // recursively do the rest of the WLR's
-          EstablishLinksBetweenLatticeNodes(i->mpWlr);
-        }
-      }
-    }
-  }
-  // EstablishLinksBetweenLatticeNodes(WordLinkRecord* pWlr)
-  //***************************************************************************
-  
-
-  //***************************************************************************
-  //***************************************************************************
-  Token::NodeType*
-  Token::
-  pGetLattice()
-  {
-    NodeType* pFirst = NULL;
-    MakeLatticeNodesForWordLinkRecords(mpWlr, pFirst);
-    EstablishLinksBetweenLatticeNodes(mpWlr);
-    
-    return pFirst;
-  }
-
-  
   //***************************************************************************
   //***************************************************************************
   Label *

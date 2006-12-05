@@ -38,7 +38,7 @@ using namespace STK;
 
 typedef struct _LRTrace LRTrace;
 struct _LRTrace {
-  Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *mpWordEnd;
+  DecoderNetwork::NodeType* mpWordEnd;
   FLOAT lastLR;
   FLOAT candidateLR;
   long long candidateStartTime;

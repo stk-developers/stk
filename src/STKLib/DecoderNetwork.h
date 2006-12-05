@@ -252,11 +252,9 @@ namespace STK
   //###########################################################################
   
   template 
-    class Network<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR,
-          NETWORK_REGULAR, ListStorage>;
+    class Network<NodeBasicContent, LinkContent, ListStorage, LinkArray>;
 
-  typedef Network<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR,
-          NETWORK_REGULAR, ListStorage>
+  typedef Network<NodeBasicContent, LinkContent, ListStorage, LinkArray>
     _DecoderNetwork;
   
 
@@ -455,11 +453,11 @@ namespace STK
 
     
   
-  void FreeNetwork(Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *node, bool compactRepresentation = false);
+  void FreeNetwork(DecoderNetwork::NodeType *node, bool compactRepresentation = false);
   
 
-  Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* 
-  find_or_create_node(struct MyHSearchData *node_hash, const char *node_id, Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> **last);
+  DecoderNetwork::NodeType* 
+  find_or_create_node(struct MyHSearchData *node_hash, const char *node_id, DecoderNetwork::NodeType **last);
 
   
 

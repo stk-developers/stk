@@ -472,7 +472,7 @@ namespace STK
   public:
     /// Token's likelihood precision type
     typedef double                            LikeType;
-    typedef Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>  NodeType;
+    typedef Node<NodeBasicContent, LinkContent, LinkArray>  NodeType;
 
     LikeType                mLike;            ///< Total likelihood
     LikeType                mAcousticLike;    ///< Acoustic likelihood
@@ -502,11 +502,11 @@ namespace STK
     Label*
     pGetLabels();
     
-    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*
+    NodeType*
     pGetLattice();
     
     void
-    AddWordLinkRecord(Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>* pNode, int stateIdx, int time);
+    AddWordLinkRecord(NodeType* pNode, int stateIdx, int time);
     
     void 
     AddAlternativeHypothesis(WordLinkRecord* pWlr);
@@ -527,8 +527,9 @@ namespace STK
   {
   public:
     typedef double     LikeType;
+    typedef Node<NodeBasicContent, LinkContent, LinkArray>  NodeType;
 
-    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*              mpNode;
+    NodeType*          mpNode;
     int                mStateIdx;
     int                mAux;             
     LikeType           mLike;
@@ -543,7 +544,7 @@ namespace STK
     bool               mIsFreed;
   #endif
 
-    Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR>*
+    NodeType*
     pNode() const
     { return mpNode; }
   }; 
@@ -563,7 +564,7 @@ namespace STK
   class ActiveNodeRecord
   {
   public:
-    typedef Node<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> NodeType;
+    typedef Node<NodeBasicContent, LinkContent, LinkArray>  NodeType;
 
 
     NodeType*             mpNode;

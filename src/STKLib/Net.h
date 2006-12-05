@@ -25,61 +25,34 @@ namespace STK
   class NodeBasicContent;
   
 
-  
-  enum NodeRepresentationType
-  {
-    NODE_REGULAR              = 0,
-    NODE_COMPACT              = 1
-  }; // NodeRepresentationType
-
-
-  enum LinkStorageType
-  {
-    LINKS_IN_ARRAY            = 0,
-    LINKS_IN_LIST             = 1
-  }; // enum LinkStorageType
-
-
-  enum LinkRepresentationType
-  {
-    LINK_REGULAR              = 0,
-    LINK_COMPACT              = 1
-  }; // LinkRepresentationType
-
-
-  /** 
-   * @brief Network representation type
-   */
-  enum NetworkStorageType
-  {
-    NETWORK_REGULAR           = 0,
-    NETWORK_COMPACT           = 1
-  }; // enum NetworkType
-
-
-    
 
 
   //############################################################################
   //############################################################################
   // Class list (overview)
 
-  template<typename _NodeContent, typename _LinkContent, NodeRepresentationType _NR, LinkRepresentationType _LR>
+  template< typename _NodeContent, 
+            typename _LinkContent, 
+            template<class> class     _LinkContainer > 
     class Link;
 
-  template<typename _NodeContent, typename _LinkContent, NodeRepresentationType _NR, LinkRepresentationType _LR>
+
+  template< typename _NodeContent, 
+            typename _LinkContent, 
+            template<class> class     _LinkContainer > 
     class NodeBasic;
 
-  template<typename _NodeContent, typename _LinkContent, NodeRepresentationType _NR, LinkRepresentationType _LR>
+
+  template< typename _NodeContent, 
+            typename _LinkContent, 
+            template<class> class     _LinkContainer > 
     class Node;
 
 
   template< typename                  _NodeContent,
             typename                  _LinkContent,
-            NodeRepresentationType    _NodeType, 
-            LinkRepresentationType    _LinkType,
-            NetworkStorageType        _NetworkType,
-            template<class> class     _StorageType > 
+            template<class> class     _NodeContainer,
+            template<class> class     _LinkContainer > 
     class Network;
 
 
@@ -193,29 +166,29 @@ namespace STK
     class LinkArray
     {
     public:
-      typedef  _LinkContent value_type;
-      typedef value_type & reference;
-      typedef const value_type & const_reference;
-      typedef LinkIterator<_LinkContent> iterator;
-      typedef const iterator const_iterator;
-      typedef int difference_type;
-      typedef int size_type;
+      typedef  _LinkContent                 value_type;
+      typedef value_type &                  reference;
+      typedef const value_type &            const_reference;
+      typedef LinkIterator<_LinkContent>    iterator;
+      typedef const iterator                const_iterator;
+      typedef ptrdiff_t                     difference_type;
+      typedef int                           size_type;
 
       // CONSTRUCTORS AND DESTRUCTORS ..........................................
       LinkArray() 
-      : mpArray(NULL), mSize(0)
+      : mpPtr(NULL), mSize(0)
       { }
 
       LinkArray(size_type size)
       { 
-        if (NULL == (mpArray = (value_type*) calloc(size, sizeof(value_type))))
+        if (NULL == (mpPtr = (value_type*) calloc(size, sizeof(value_type))))
           Error("Cannot allocate memory");
       }
 
       ~LinkArray()
       {
-        if (NULL != mpArray)
-          free(mpArray);
+        if (NULL != mpPtr)
+          free(mpPtr);
       }
 
 
@@ -241,16 +214,25 @@ namespace STK
 
       iterator
       begin()
-      { return iterator(&mpArray[0]); }
+      { return iterator(&mpPtr[0]); }
 
       iterator
       end()
-      { return iterator(&mpArray[mSize]); }
+      { return iterator(&mpPtr[mSize]); }
 
+      void
+      clear()
+      {
+        if (NULL != mpPtr)
+          free(mpPtr);
+        
+        mpPtr = NULL;
+        mSize = 0;
+      }
 
-    protected:
+    public:
 
-      value_type*  mpArray;
+      value_type*  mpPtr;
       size_type    mSize;
     };
   
@@ -260,12 +242,14 @@ namespace STK
    ** **************************************************************************
    *  @brief Network link representation class
    */
-  template<class _NodeContent, typename _LinkContent, NodeRepresentationType _NR>
-    class Link<_NodeContent, _LinkContent, _NR, LINK_REGULAR> : public _LinkContent
+  template<class _NodeContent, typename _LinkContent, 
+    template<class> class _LinkContainer>
+    class Link 
+    : public _LinkContent
     {
     public:
       typedef FLOAT                     LikeType;
-      typedef Node<_NodeContent, _LinkContent, _NR, LINK_REGULAR>   NodeType;
+      typedef Node<_NodeContent, _LinkContent, _LinkContainer>   NodeType;
 
       // Constructors and destructor ...........................................
       Link() 
@@ -308,52 +292,7 @@ namespace STK
   // Link
   //****************************************************************************
 
-  /** **************************************************************************
-   ** **************************************************************************
-   *  @brief Network link representation class
-   */
-  template<typename _NodeContent, typename _LinkContent, NodeRepresentationType _NR>
-    class Link<_NodeContent, _LinkContent, _NR, LINK_COMPACT> : public _LinkContent 
-    {
-    public:
-      typedef FLOAT                     LikeType;
-      typedef Node<_NodeContent, _LinkContent, _NR, LINK_COMPACT>   NodeType;
 
-      // Constructors and destructor ...........................................
-      Link() 
-      : _LinkContent()
-      { }
-
-      Link(NodeType* pNode)
-      : _LinkContent(), mpNode(pNode)
-      { }
-
-      ~Link()
-      { }
-
-      /** 
-       * @brief Initializes the link probabilities
-       */
-      void
-      Init()
-      { }
-
-
-      // Accessors ............................................................
-      NodeType*
-      pNode() const
-      { return mpNode; }
-
-      void
-      SetNode(NodeType* pNode)
-      { mpNode = pNode; }
-
-
-    private:
-      NodeType *    mpNode;
-    }; 
-  // Link
-  //****************************************************************************
 
    
 
@@ -361,33 +300,36 @@ namespace STK
    ** *************************************************************************
    *  @brief Network node representation class
    */   
-  template<typename _NodeContent, typename _LinkContent, 
-    NodeRepresentationType _NR, LinkRepresentationType _LR>
+  template< typename                    _NodeContent, 
+            typename                    _LinkContent, 
+            template<class> class       _LinkContainer>
     class NodeBasic : public _NodeContent
     {
     public:
-      typedef Link<_NodeContent, _LinkContent, _NR, _LR> LinkType;
-      typedef Node<_NodeContent, _LinkContent, _NR, _LR> NodeType;
+      typedef Link<_NodeContent, _LinkContent, _LinkContainer>      LinkType;
+      typedef Node<_NodeContent, _LinkContent, _LinkContainer>      NodeType;
+      typedef _LinkContainer<LinkType>                              LinkContainer;
+
 
       NodeBasic() 
-      : _NodeContent(), mNLinks(0), mpLinks(NULL) {}
+      : _NodeContent(), mLinks() {}
 
 
-      LinkType*
-      pLinks() const
-      { return mpLinks; }
+      // TODO: This will be somehow replaced
+      LinkType*&
+      rpLinks() 
+      { return mLinks.mpPtr; }
+
+      typename LinkContainer::size_type&
+      rNLinks() 
+      { return mLinks.mSize; }
+
+      const typename LinkContainer::size_type&
+      NLinks() const
+      { return mLinks.mSize; }
 
       LinkType*&
-      rpLinks() const
-      { return &mpLinks; }
-
-      int
-      NLinks() const
-      { return mNLinks; }
-
-
-      LinkType*
-      pBackLinks() const
+      rpBackLinks() 
       { return NULL; }
 
       int
@@ -413,9 +355,9 @@ namespace STK
       {
         int s(0);
 
-        for (size_t i(0); i < mNLinks; i++)
+        for (size_t i(0); i < NLinks(); i++)
         {
-          if (! mpLinks[i].PointsNowhere())
+          if (! rpLinks()[i].PointsNowhere())
             ++s;
         }
 
@@ -432,9 +374,9 @@ namespace STK
       {
         LinkType* p_link;
 
-        for (size_t i(0); i < mNLinks; i++)
+        for (size_t i(0); i < NLinks(); i++)
         {
-          p_link = &( mpLinks[i] );
+          p_link = &( rpLinks()[i] );
 
           if (p_link->pNode() == pNode)
             return p_link;
@@ -443,92 +385,70 @@ namespace STK
         return NULL;
       }
 
-      LinkType*           mpLinks;
-      int                 mNLinks;
+      
+      /** 
+       * @brief Gives access to the forward links container
+       * 
+       * @return 
+       */
+      LinkContainer&
+      Links() 
+      { return mLinks; }
 
-    protected:
 
+      LinkContainer       mLinks;
     }; 
   // class BasicNode
   //****************************************************************************
   
 
 
+
+
   /** *************************************************************************
    ** *************************************************************************
    *  @brief Network node representation class
    */   
-  template<typename _NodeContent, typename _LinkContent, 
-    NodeRepresentationType _NR, LinkRepresentationType _LR>
-    class Node : public NodeBasic<_NodeContent, _LinkContent, _NR, _LR>
+  template< typename                _NodeContent, 
+            typename                _LinkContent, 
+            template<class> class   _LinkContainer>
+    class Node
+    : public NodeBasic<_NodeContent, _LinkContent, _LinkContainer>
     {
     public:
-      typedef       long long  TimingType;
-      typedef       Link<_NodeContent, _LinkContent, _NR, _LR> LinkType;
+      typedef long long  TimingType;
+      typedef Link<_NodeContent, _LinkContent, _LinkContainer> LinkType;
+      typedef Node<_NodeContent, _LinkContent, _LinkContainer> NodeType;
+      typedef ptrdiff_t                        difference_type;
+      typedef _LinkContainer<LinkType>          LinkContainer;
+
 
       Node*         mpNext;
       Node*         mpBackNext;
-      int           mNBackLinks;
-      LinkType*     mpBackLinks;
-      int           mAux;
 
-
-      void
-      SetStart(const TimingType& start)
-      { mStart = start; }
-
-      void
-      SetStop(const TimingType& stop)
-      { mStop = stop; }
-
-      const TimingType&
-      Start() const
-      { return mStart; }
-
-      const TimingType&
-      Stop() const
-      { return mStop; }
-
-    
-#   ifndef EXPANDNET_ONLY
-      Hmm*               mpHmmToUpdate;
-      FWBWR*             mpAlphaBetaList;
-      FWBWR*             mpAlphaBetaListReverse;
-#   endif        
     private:
-      TimingType     mStart;
-      TimingType     mStop;
-      
-    }; 
-  // class Node
-  //****************************************************************************
-
-
-  /** *************************************************************************
-   ** *************************************************************************
-   *  @brief Network node representation class
-   */   
-  template<typename _NodeContent, typename _LinkContent, LinkRepresentationType _LR>
-    class Node<_NodeContent, _LinkContent, NODE_REGULAR, _LR> : public NodeBasic<_NodeContent, _LinkContent, NODE_REGULAR, _LR>
-    {
+      LinkContainer     mBackLinks;
+     
     public:
-      typedef       long long  TimingType;
-      typedef       Link<_NodeContent, _LinkContent, NODE_REGULAR, _LR> LinkType;
-      typedef       Node<_NodeContent, _LinkContent, NODE_REGULAR, _LR> NodeType;
-
-      Node*         mpNext;
-      Node*         mpBackNext;
-      int           mNBackLinks;
-      LinkType*     mpBackLinks;
       int           mAux;
 
-      LinkType*
-      pBackLinks() const
-      { return mpBackLinks; }
+
+      LinkType*&
+      rpBackLinks() 
+      { return mBackLinks.mpPtr; }
+
+      LinkContainer&
+      BackLinks()
+      {return mBackLinks; }
+
+
+      typename LinkContainer::size_type&
+      rNBackLinks() 
+      { return mBackLinks.mSize; }
 
       int
-      NBackLinks() const
-      { return mNBackLinks; }
+      NBackLinks() 
+      { return rNBackLinks(); }
 
       /** 
        * @brief Returns number of nodes that I really point to
@@ -539,9 +459,9 @@ namespace STK
       {
         int s(0);
 
-        for (size_t i(0); i < mNBackLinks; i++)
+        for (size_t i(0); i < NBackLinks(); i++)
         {
-          if (! mpBackLinks[i].PointsNowhere())
+          if (! rpBackLinks()[i].PointsNowhere())
             ++s;
         }
 
@@ -570,6 +490,16 @@ namespace STK
         pLink->Detach();
       }
       
+      /** 
+       * @brief Makes the specified link point nowhere. The target node is
+       * updated as well
+       * 
+       * @param pLink pointer to the link
+       *
+       * Use Link::PointNowhere() to check whether the link is detached
+       */
+      void
+      RemoveLink(LinkType* pLink);
 
       void
       Init()
@@ -611,9 +541,9 @@ namespace STK
       {
         LinkType* p_link;
 
-        for (size_t i(0); i < mNBackLinks; i++)
+        for (size_t i(0); i < NBackLinks(); i++)
         {
-          p_link = &( mpBackLinks[i] );
+          p_link = &( rpBackLinks()[i] );
 
           if (p_link->pNode() == pNode)
             return p_link;
@@ -631,108 +561,6 @@ namespace STK
   //****************************************************************************
 
 
-  /** *************************************************************************
-   ** *************************************************************************
-   *  @brief Network node representation class
-   */   
-  template<typename _NodeContent, typename _LinkContent, LinkRepresentationType _LR>
-    class Node<_NodeContent, _LinkContent, NODE_COMPACT, _LR> : public NodeBasic<_NodeContent, _LinkContent, NODE_COMPACT, _LR>
-    {
-      typedef       long long  TimingType;
-      
-      //time range when model can be active - apply only for model type
-      const TimingType&
-      Start() const
-      { return 0; }
-
-      const TimingType&
-      Stop() const
-      { return 0; }
-
-#   ifndef EXPANDNET_ONLY
-      Hmm*               mpHmmToUpdate;
-      FWBWR*             mpAlphaBetaList;
-      FWBWR*             mpAlphaBetaListReverse;
-#   endif        
-    }; 
-  // class Node
-  //****************************************************************************
-
-
-  /** *************************************************************************
-   ** *************************************************************************
-   * @brief Node iterator class
-   */
-  template<class _NodeType, NetworkStorageType _StorageType>
-    class NodeIterator 
-    {
-    public:
-      typedef NodeIterator<_NodeType, _StorageType>           _Self;
-      typedef _NodeType                                       _Node;
-
-      typedef std::bidirectional_iterator_tag  iterator_category;
-      typedef _NodeType                        value_type;
-      typedef value_type &                     reference;
-      typedef value_type *                     pointer;
-      typedef ptrdiff_t                        difference_type;
-
-    public:
-      /// default constructor
-      NodeIterator();
-
-      /// copy constructor
-      NodeIterator(value_type *pPtr);
-
-
-      /// return storage type
-      const NetworkStorageType&
-      StorageType() const;
-
-
-      /// return designated object
-      reference 
-      operator*() const 
-      {
-        return (*mpPtr);
-      }
-
-      /// return a pointer to designated object
-      pointer 
-      operator->() const 
-      {
-        return &(*mpPtr);
-      }
-
-      /// preincrement
-      _Self& 
-      operator++();
-
-      /// predecrement
-      _Self& 
-      operator--();
-
-
-      /// postincrement
-      _Self operator++(int);
-
-      /// postdecrement
-      _Self operator--(int);
-
-      /// test for iterator equality
-      bool 
-      operator==(const _Self& rRight) const;
-
-      /// test for iterator inequality
-      bool 
-      operator!=(const _Self& rRight) const;
-
-    private:
-      pointer mpPtr; // pointer to container value type
-
-    };
-  // template<class _NodeType, NetworkStorageType _StorageType>
-  //   class NodeIterator 
-  //****************************************************************************
 
 
 
@@ -740,13 +568,13 @@ namespace STK
 
   /** *************************************************************************
    ** *************************************************************************
-   * @brief Node iterator class (REGULAR_NETWORK specialization)
+   * @brief Node iterator class 
    */
   template<class _NodeType>
-    class NodeIterator<_NodeType, NETWORK_REGULAR> 
+    class NodeListIterator
     {
     public:
-      typedef NodeIterator<_NodeType, NETWORK_REGULAR>        _Self;
+      typedef NodeListIterator<_NodeType>        _Self;
       typedef _NodeType                                       _Node;
 
       typedef std::bidirectional_iterator_tag  iterator_category;
@@ -759,18 +587,12 @@ namespace STK
 
     public:
       /// default constructor
-      NodeIterator() 
+      NodeListIterator() 
       : mpPtr() { }
 
       /// copy constructor
-      NodeIterator(value_type *pPtr) 
+      NodeListIterator(value_type *pPtr) 
       : mpPtr(pPtr) { }
-
-
-      /// return storage type
-      const NetworkStorageType&
-      StorageType() const
-      { return NETWORK_REGULAR; }
 
 
       /// return designated object
@@ -849,10 +671,10 @@ namespace STK
    * @brief Node iterator class (REGULAR_COMPACT specialization)
    */
   template<class _NodeType>
-    class NodeIterator<_NodeType, NETWORK_COMPACT> 
+    class NodeArrayIterator
     {
     public:
-      typedef NodeIterator<_NodeType, NETWORK_COMPACT>        _Self;
+      typedef NodeArrayIterator<_NodeType>        _Self;
       typedef _NodeType                                       _Node;
 
       typedef std::bidirectional_iterator_tag   iterator_category;
@@ -865,18 +687,13 @@ namespace STK
 
     public:
       /// default constructor
-      NodeIterator() 
+      NodeArrayIterator() 
       { }
 
       /// copy constructor
-      NodeIterator(value_type *pPtr) : mpPtr(pPtr)
+      NodeArrayIterator(value_type *pPtr) : mpPtr(pPtr)
       { }
 
-
-      /// return storage type
-      const NetworkStorageType&
-      StorageType() const
-      { return NETWORK_COMPACT; }
 
 
       /// return designated object
@@ -945,7 +762,7 @@ namespace STK
 
     };
   // template<class _NodeType>
-  //   class NodeIterator<_NodeType, NETWORK_COMPACT> 
+  //   class NodeArrayIterator<_NodeType> 
   //****************************************************************************
 
 
@@ -963,7 +780,7 @@ namespace STK
     class ListStorage
     {
     public:
-      typedef NodeIterator<_Content, NETWORK_REGULAR>           iterator;
+      typedef NodeListIterator<_Content>           iterator;
       typedef const iterator                                    const_iterator;
       typedef _Content                                          value_type;
       typedef typename iterator::pointer                        pointer;
@@ -1033,6 +850,9 @@ namespace STK
       iterator
       erase(iterator pos);
 
+      void
+      clear();
+
     protected:
       _Content*     mpFirst;   ///< self descriptive
       _Content*     mpLast;    ///< self descriptive
@@ -1046,7 +866,7 @@ namespace STK
     class ArrayStorage
     {
     public:
-      typedef NodeIterator<_Content, NETWORK_COMPACT>           iterator;
+      typedef NodeArrayIterator<_Content>           iterator;
       typedef const iterator                                    const_iterator;
       typedef _Content                                          value_type;
       typedef typename iterator::pointer                        pointer;
@@ -1130,35 +950,35 @@ namespace STK
    * The Network class provides basic operations on graph structure. It 
    * encapsulates basic access to the network structure.
    */
-  template <typename _NodeContent, typename _LinkContent, NodeRepresentationType _NodeType, 
-           LinkRepresentationType _LinkType, NetworkStorageType _NetworkType, 
-           template<class> class _StorageType>
-    class Network : public _StorageType<Node<_NodeContent, _LinkContent, _NodeType, _LinkType> >
+  template< typename                  _NodeContent, 
+            typename                  _LinkContent, 
+            template<class> class     _NodeContainer, 
+            template<class> class     _LinkContainer>
+    class Network 
+    : public _NodeContainer< Node<_NodeContent, _LinkContent, _LinkContainer> >
     {
     public:
-      typedef Node<_NodeContent, _LinkContent, _NodeType,_LinkType>     NodeType;
-      typedef Link<_NodeContent, _LinkContent, _NodeType,_LinkType>     LinkType;
-      typedef _StorageType<NodeType>                      StorageType;
+      typedef Node<_NodeContent, _LinkContent, _LinkContainer>     NodeType;
+      typedef Link<_NodeContent, _LinkContent, _LinkContainer>     LinkType;
+      typedef _NodeContainer<NodeType>                      NodeContainer;
 
-      //typedef NodeIterator<NodeType, _NetworkType>       iterator;
-      typedef typename StorageType::iterator             iterator;
-      typedef const NodeIterator<NodeType, _NetworkType>  const_iterator;
+      typedef typename NodeContainer::iterator             iterator;
+      typedef const iterator  const_iterator;
 
-      static const NetworkStorageType NetworkType       = _NetworkType;
 
 
     public:
 
-      using StorageType::begin;
-      using StorageType::end;
-      using StorageType::empty;
-      using StorageType::front;
-      using StorageType::back;
-
+      /*
+      using NodeContainer::end;
+      using NodeContainer::empty;
+      using NodeContainer::front;
+      using NodeContainer::back;
+      */
 
       // Construcotrs ..........................................................
       Network() 
-      : StorageType(), mCompactRepresentation(false), mIsExternal(false)
+      : NodeContainer(), mCompactRepresentation(false), mIsExternal(false)
       { }
 
       /** 
@@ -1167,7 +987,7 @@ namespace STK
        * In this case, no deallocation will take place when destructor is called
        */
       Network(NodeType* pNode) 
-      : StorageType(pNode), mCompactRepresentation(false),
+      : NodeContainer(pNode), mCompactRepresentation(false),
         mIsExternal(true) 
       { }
 
@@ -1195,19 +1015,19 @@ namespace STK
       NodeType*
       pFirst()
       { 
-        return StorageType::mpFirst; 
+        return NodeContainer::mpFirst; 
       }
 
       NodeType*
       pLast()
       { 
-        return StorageType::mpLast; 
+        return NodeContainer::mpLast; 
       }
 
       const NodeType*
       pFirst() const
       { 
-        return StorageType::mpFirst; 
+        return NodeContainer::mpFirst; 
       }
 
 
@@ -1217,7 +1037,7 @@ namespace STK
         // we don't want any memory leaks
         assert(IsEmpty());
 
-        StorageType::mpFirst     = pFirst; 
+        NodeContainer::mpFirst     = pFirst; 
         mIsExternal = true;
       }
 
@@ -1227,7 +1047,7 @@ namespace STK
         // we don't want any memory leaks
         //assert(IsEmpty());
 
-        StorageType::mpLast = pLast; 
+        NodeContainer::mpLast = pLast; 
         //mIsExternal = true;
       }
 
@@ -1250,8 +1070,29 @@ namespace STK
        * The function also delete all links and backlinks to preserve network
        * consistency
        */
-      void
+      iterator
+      RemoveNode(iterator iNode);
+
+
+      /** 
+       * @brief Safely remove node
+       * 
+       * @param pNode pointer to a node to be removed
+       *
+       * The function also delete all links and backlinks to preserve network
+       * consistency
+       */
+      iterator
       RemoveNode(NodeType* pNode);
+
+
+      /** 
+       * @brief This function unlinks the node, i.e. removes all links
+       * 
+       * @param pNode 
+       */
+      void
+      IsolateNode(iterator iNode);
 
 
       /** 

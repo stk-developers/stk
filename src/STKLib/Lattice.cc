@@ -49,17 +49,17 @@ namespace STK
     pNode->SetStop(pWlr->mTime);
     pNode->mpAlphaBeta == NULL;
       
-    pNode->mNBackLinks = pWlr->mpNext    == NULL ? 0 :
+    pNode->rNBackLinks() = pWlr->mpNext    == NULL ? 0 :
                          pWlr->mpAltHyps == NULL ? 1 : pWlr->mpAltHyps->size() + 1;
                          
     // If rpNode == NULL, pWlr is the wery last WLR referenced by token in last state
-    pNode->mNLinks     = rpNode == NULL ? 0 : pWlr->mNReferences;
+    pNode->rNLinks()     = rpNode == NULL ? 0 : pWlr->mNReferences;
 
 
     // Allocate space for links and backlinks      
-    pNode->mpLinks     = (Lattice::LinkType *) malloc(pNode->mNLinks     * sizeof(Lattice::LinkType));
-    pNode->mpBackLinks = (Lattice::LinkType *) malloc(pNode->mNBackLinks * sizeof(Lattice::LinkType));
-    if (pNode->mpLinks == NULL || pNode->mpBackLinks == NULL) 
+    pNode->rpLinks()     = (Lattice::LinkType *) malloc(pNode->rNLinks()     * sizeof(Lattice::LinkType));
+    pNode->rpBackLinks() = (Lattice::LinkType *) malloc(pNode->rNBackLinks() * sizeof(Lattice::LinkType));
+    if (pNode->rpLinks() == NULL || pNode->rpBackLinks() == NULL) 
       Error("Insufficient memory");
         
     // Push new node to lattice node list
@@ -112,13 +112,13 @@ namespace STK
       WordLinkRecord::LikeType  aux_total_like      = pWlr->mLike - p->mLike;
       WordLinkRecord::LikeType  aux_acoustic_like   = pWlr->mAcousticLike - p->mAcousticLike;
 
-      p->pNode()->mpLinks[p->mNReferences - p->mAux].SetNode(         pWlr->pNode());
-      p->pNode()->mpLinks[p->mNReferences - p->mAux].SetLmLike(       float_safe_substract(aux_total_like, aux_acoustic_like, 3));
-      p->pNode()->mpLinks[p->mNReferences - p->mAux].SetAcousticLike( aux_acoustic_like);
+      p->pNode()->rpLinks()[p->mNReferences - p->mAux].SetNode(         pWlr->pNode());
+      p->pNode()->rpLinks()[p->mNReferences - p->mAux].SetLmLike(       float_safe_substract(aux_total_like, aux_acoustic_like, 3));
+      p->pNode()->rpLinks()[p->mNReferences - p->mAux].SetAcousticLike( aux_acoustic_like);
 
-      pWlr->pNode()->mpBackLinks[j].SetNode(          p->pNode());
-      pWlr->pNode()->mpBackLinks[j].SetLmLike(        float_safe_substract(aux_total_like, aux_acoustic_like, 3));
-      pWlr->pNode()->mpBackLinks[j].SetAcousticLike(  aux_acoustic_like);
+      pWlr->pNode()->rpBackLinks()[j].SetNode(          p->pNode());
+      pWlr->pNode()->rpBackLinks()[j].SetLmLike(        float_safe_substract(aux_total_like, aux_acoustic_like, 3));
+      pWlr->pNode()->rpBackLinks()[j].SetAcousticLike(  aux_acoustic_like);
 
       //printf("1 i->mLike         = %f   p->mLike         = %f   diff = %e\n",  pWlr->mLike, p->mLike, static_cast<float>(pWlr->mLike - p->mLike)); 
       //printf("1 i->mAcousticLike = %f   p->mAcousticLike = %f   diff = %e\n",  pWlr->mAcousticLike, p->mAcousticLike, static_cast<float>(pWlr->mAcousticLike - p->mAcousticLike)); 
@@ -138,13 +138,13 @@ namespace STK
           WordLinkRecord::LikeType  aux_total_like      = i->mLike - p->mLike;
           WordLinkRecord::LikeType  aux_acoustic_like   = i->mAcousticLike - p->mAcousticLike;
           
-          p->pNode()->mpLinks[p->mNReferences - p->mAux].SetNode(pWlr->pNode());
-          p->pNode()->mpLinks[p->mNReferences - p->mAux].SetLmLike(float_safe_substract(aux_total_like, aux_acoustic_like, 3));
-          p->pNode()->mpLinks[p->mNReferences - p->mAux].SetAcousticLike(aux_acoustic_like);
+          p->pNode()->rpLinks()[p->mNReferences - p->mAux].SetNode(pWlr->pNode());
+          p->pNode()->rpLinks()[p->mNReferences - p->mAux].SetLmLike(float_safe_substract(aux_total_like, aux_acoustic_like, 3));
+          p->pNode()->rpLinks()[p->mNReferences - p->mAux].SetAcousticLike(aux_acoustic_like);
 
-          pWlr->pNode()->mpBackLinks[j].SetNode(p->pNode());
-          pWlr->pNode()->mpBackLinks[j].SetLmLike(float_safe_substract(aux_total_like, aux_acoustic_like, 3));
-          pWlr->pNode()->mpBackLinks[j].SetAcousticLike(aux_acoustic_like);
+          pWlr->pNode()->rpBackLinks()[j].SetNode(p->pNode());
+          pWlr->pNode()->rpBackLinks()[j].SetLmLike(float_safe_substract(aux_total_like, aux_acoustic_like, 3));
+          pWlr->pNode()->rpBackLinks()[j].SetAcousticLike(aux_acoustic_like);
 
           //printf("n i->mLike         = %f   p->mLike         = %f   diff = %e\n",  i->mLike, p->mLike, static_cast<float>(i->mLike - p->mLike)); 
           //printf("n i->mAcousticLike = %f   p->mAcousticLike = %f   diff = %e\n",  i->mAcousticLike, p->mAcousticLike, static_cast<float>(i->mAcousticLike - p->mAcousticLike)); 
@@ -157,7 +157,7 @@ namespace STK
       }
     }
   }
-  // EstablishLinksBetweenLatticeNodes(WordLinkRecord* pWlr)
+  // EstablishLinks(WordLinkRecord* pWlr)
   //***************************************************************************
 
   // ************************************************************************
@@ -204,6 +204,7 @@ namespace STK
       p_start_node->mpAlphaBeta = new AlphaBeta();
       p_start_node->mpAlphaBeta->mAlpha = LOG_0;
       p_start_node->mpAlphaBeta->mBeta = LOG_0;
+      p_start_node->mAux  = 0;
     }
 
     pFirst()->mpAlphaBeta->mAlpha = 0.0;
@@ -212,9 +213,9 @@ namespace STK
     for (p_start_node = pFirst(); NULL != p_start_node; 
          p_start_node = p_start_node->mpNext) 
     {
-      for (size_t i = 0; i < p_start_node->mNLinks; i++)
+      for (size_t i = 0; i < p_start_node->rNLinks(); i++)
       {
-        LinkType* p_link     (&(p_start_node->mpLinks[i]));
+        LinkType* p_link     (&(p_start_node->rpLinks()[i]));
         NodeType* p_end_node (p_link->pNode());
 
         score = p_start_node->mpAlphaBeta->mAlpha + p_link->Like();
@@ -238,9 +239,9 @@ namespace STK
     for (p_start_node = pLast(); NULL != p_start_node; 
          p_start_node = p_start_node->mpBackNext) 
     {
-      for (size_t i = 0; i < p_start_node->mNBackLinks; i++)
+      for (size_t i = 0; i < p_start_node->rNBackLinks(); i++)
       {
-        LinkType* p_link     (&(p_start_node->mpBackLinks[i]));
+        LinkType* p_link     (&(p_start_node->rpBackLinks()[i]));
         NodeType* p_end_node (p_link->pNode());
 
         score = p_start_node->mpAlphaBeta->mBeta + p_link->Like();
@@ -276,44 +277,40 @@ namespace STK
     FLOAT      end_alpha = pLast()->mpAlphaBeta->mAlpha;
     NodeType*  p_start_node;
 
-    for (p_start_node = pLast(); NULL != p_start_node;
-         p_start_node = p_start_node->mpBackNext) 
+    iterator   p_node(begin());
+
+    while (p_node != end())
     {
-      // prune the node if not the end node and has no successors
-      if (p_start_node != pLast() && 0 == p_start_node->NSuccessors())
+      // Prune the node if it has no predecessors
+      if (p_node != begin() && 0 == p_node->NPredecessors())
       {
-        IsolateNode(p_start_node);
+        p_node = RemoveNode(p_node);
         continue;
       }
-      
-      // we will count the number of pruned links, so that if all links
-      // are deleted, we can drop the node
-      size_t links_changed = 0;
 
-      for (size_t i = 0; i < p_start_node->mNBackLinks; i++)
+      // ... else go through every link and prune the links
+      for (size_t i = 0; i < p_node->NLinks(); ++i)
       {
-        LinkType* p_link     (&(p_start_node->mpBackLinks[i]));
-        NodeType* p_end_node (p_link->pNode());
+        LinkType* p_link = &(p_node->rpLinks()[i]);
+        iterator p_end_node(p_link->pNode());
 
-        // we don't physically delete anything... just mark for deletion...
-        if (p_end_node->mpAlphaBeta->mAlpha + p_start_node->mpAlphaBeta->mBeta 
+        if (p_node->mpAlphaBeta->mAlpha + p_end_node->mpAlphaBeta->mBeta 
             + p_link->Like() + thresh < end_alpha)
         {
-          LinkType* p_reverse_link = p_end_node->pFindLink(p_start_node);
-
-          assert(NULL != p_reverse_link);
-
-          p_link->Detach();
-          p_reverse_link->Detach();
-
-          links_changed++;
+          p_node->DetachLink(p_link);
         }
+      }
 
-        if (links_changed == p_start_node->mNBackLinks)
-        {
-          // we are going to remove the node if no backlinks point to it
-          //PruneNode(p_start_node);
-        }
+      iterator p_tmp_node = p_node;
+      ++ p_tmp_node;
+
+      if (p_tmp_node != end() && p_node->NSuccessors() == 0)
+      {
+        p_node = RemoveNode(p_node);
+      }
+      else
+      {
+        ++p_node;
       }
     }
   };
