@@ -192,15 +192,10 @@ namespace STK
     FLOAT      score(0.0);
 
     // We assume, that the list is topologically sorted
-    
     // Clear all records
     for (p_start_node = pFirst(); NULL != p_start_node; 
          p_start_node = p_start_node->mpNext) 
     {
-      if (NULL != p_start_node->mpAlphaBeta)
-      {
-        
-      }
       p_start_node->mpAlphaBeta = new AlphaBeta();
       p_start_node->mpAlphaBeta->mAlpha = LOG_0;
       p_start_node->mpAlphaBeta->mBeta = LOG_0;
@@ -275,42 +270,52 @@ namespace STK
     assert(NULL != pLast()->mpAlphaBeta);
 
     FLOAT      end_alpha = pLast()->mpAlphaBeta->mAlpha;
-    NodeType*  p_start_node;
 
-    iterator   p_node(begin());
+    iterator   i_node(begin());
+    iterator   i_rbegin(pLast());
+    iterator   i_rend(begin()); --i_rend;
 
-    while (p_node != end())
+    while (i_node != end())
     {
       // Prune the node if it has no predecessors
-      if (p_node != begin() && 0 == p_node->NPredecessors())
+      if (i_node != begin() && i_node != i_rbegin 
+      &&  0 == i_node->NPredecessors())
       {
-        p_node = RemoveNode(p_node);
+        i_node = RemoveNode(i_node);
         continue;
       }
 
       // ... else go through every link and prune the links
-      for (size_t i = 0; i < p_node->NLinks(); ++i)
+      for (size_t i = 0; i < i_node->NLinks(); ++i)
       {
-        LinkType* p_link = &(p_node->rpLinks()[i]);
+        LinkType* p_link = &(i_node->rpLinks()[i]);
         iterator p_end_node(p_link->pNode());
 
-        if (p_node->mpAlphaBeta->mAlpha + p_end_node->mpAlphaBeta->mBeta 
+        if (i_node->mpAlphaBeta->mAlpha + p_end_node->mpAlphaBeta->mBeta 
             + p_link->Like() + thresh < end_alpha)
         {
-          p_node->DetachLink(p_link);
+          i_node->DetachLink(p_link);
         }
       }
 
-      iterator p_tmp_node = p_node;
-      ++ p_tmp_node;
-
-      if (p_tmp_node != end() && p_node->NSuccessors() == 0)
+      if (i_node != begin() && i_node != i_rbegin && i_node->NSuccessors() == 0)
       {
-        p_node = RemoveNode(p_node);
+        i_node = RemoveNode(i_node);
       }
       else
       {
-        ++p_node;
+        ++i_node;
+      }
+    }
+
+    // In the forward pass, we might have left some nodes with no successors.
+    // It is now time to remove those
+    for (i_node = i_rbegin; i_node != i_rend; --i_node)
+    {
+      if (i_node != begin() && i_node != i_rbegin 
+      && (i_node->NSuccessors() == 0))
+      {
+        i_node = RemoveNode(i_node);
       }
     }
   };

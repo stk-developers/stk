@@ -239,7 +239,7 @@ namespace STK
     RemoveNode(NodeType* pNode)
     {
       IsolateNode(pNode);
-      erase(iterator(pNode));
+      return erase(iterator(pNode));
     }
   // RemoveNode(NodeType* pNode);
   //**************************************************************************
