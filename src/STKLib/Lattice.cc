@@ -62,6 +62,19 @@ namespace STK
     if (pNode->rpLinks() == NULL || pNode->rpBackLinks() == NULL) 
       Error("Insufficient memory");
         
+
+    for (size_t ii = 0; ii < pNode->NLinks(); ++ii)
+    {
+      pNode->rpLinks()[ii].mAcousticLike = LOG_0;
+      pNode->rpLinks()[ii].mLmLike = LOG_0;
+    }
+
+    for (size_t ii = 0; ii < pNode->NBackLinks(); ++ii)
+    {
+      pNode->rpBackLinks()[ii].mAcousticLike = LOG_0;
+      pNode->rpBackLinks()[ii].mLmLike = LOG_0;
+    }
+
     // Push new node to lattice node list
     pNode->mpNext = rpNode;
     pNode->mpBackNext = NULL;
@@ -137,6 +150,7 @@ namespace STK
           WordLinkRecord*           p                   = i->mpWlr;
           WordLinkRecord::LikeType  aux_total_like      = i->mLike - p->mLike;
           WordLinkRecord::LikeType  aux_acoustic_like   = i->mAcousticLike - p->mAcousticLike;
+
           
           p->pNode()->rpLinks()[p->mNReferences - p->mAux].SetNode(pWlr->pNode());
           p->pNode()->rpLinks()[p->mNReferences - p->mAux].SetLmLike(float_safe_substract(aux_total_like, aux_acoustic_like, 3));
@@ -191,29 +205,32 @@ namespace STK
     bool       viterbi = true;
     FLOAT      score(0.0);
 
+    iterator   i_node(begin());
+    iterator   i_rbegin(pLast());
+    iterator   i_rend(begin()); --i_rend;
+
     // We assume, that the list is topologically sorted
     // Clear all records
-    for (p_start_node = pFirst(); NULL != p_start_node; 
-         p_start_node = p_start_node->mpNext) 
+    for (i_node = begin(); i_node != end(); ++i_node)
     {
-      p_start_node->mpAlphaBeta = new AlphaBeta();
-      p_start_node->mpAlphaBeta->mAlpha = LOG_0;
-      p_start_node->mpAlphaBeta->mBeta = LOG_0;
-      p_start_node->mAux  = 0;
+      i_node->mpAlphaBeta = new AlphaBeta();
+      i_node->mpAlphaBeta->mAlpha = LOG_0;
+      i_node->mpAlphaBeta->mBeta = LOG_0;
+      i_node->mAux  = 0;
     }
 
-    pFirst()->mpAlphaBeta->mAlpha = 0.0;
+    begin()->mpAlphaBeta->mAlpha = 0.0;
 
     // forward direction
-    for (p_start_node = pFirst(); NULL != p_start_node; 
-         p_start_node = p_start_node->mpNext) 
+    for (i_node = begin(); i_node != end(); ++i_node)
     {
-      for (size_t i = 0; i < p_start_node->rNLinks(); i++)
+      for (size_t i = 0; i < i_node->NLinks(); i++)
       {
-        LinkType* p_link     (&(p_start_node->rpLinks()[i]));
+        LinkType* p_link     (&(i_node->rpLinks()[i]));
         NodeType* p_end_node (p_link->pNode());
 
-        score = p_start_node->mpAlphaBeta->mAlpha + p_link->Like();
+        score = i_node->mpAlphaBeta->mAlpha + p_link->Like();
+
         
         if (viterbi)
         {
@@ -231,15 +248,14 @@ namespace STK
     pLast()->mpAlphaBeta->mBeta  = 0.0;
 
     // backward direction
-    for (p_start_node = pLast(); NULL != p_start_node; 
-         p_start_node = p_start_node->mpBackNext) 
+    for (i_node = i_rbegin; i_node != i_rend; --i_node)
     {
-      for (size_t i = 0; i < p_start_node->rNBackLinks(); i++)
+      for (size_t i = 0; i < i_node->NBackLinks(); i++)
       {
-        LinkType* p_link     (&(p_start_node->rpBackLinks()[i]));
+        LinkType* p_link     (&(i_node->rpBackLinks()[i]));
         NodeType* p_end_node (p_link->pNode());
 
-        score = p_start_node->mpAlphaBeta->mBeta + p_link->Like();
+        score = i_node->mpAlphaBeta->mBeta + p_link->Like();
         
         if (viterbi)
         {
@@ -270,6 +286,8 @@ namespace STK
     assert(NULL != pLast()->mpAlphaBeta);
 
     FLOAT      end_alpha = pLast()->mpAlphaBeta->mAlpha;
+    FLOAT      start_beta = begin()->mpAlphaBeta->mBeta;
+
 
     iterator   i_node(begin());
     iterator   i_rbegin(pLast());
@@ -289,10 +307,11 @@ namespace STK
       for (size_t i = 0; i < i_node->NLinks(); ++i)
       {
         LinkType* p_link = &(i_node->rpLinks()[i]);
-        iterator p_end_node(p_link->pNode());
+        iterator  p_end_node(p_link->pNode());
+        FLOAT     score = i_node->mpAlphaBeta->mAlpha + p_end_node->mpAlphaBeta->mBeta 
+              + p_link->Like() + thresh;
 
-        if (i_node->mpAlphaBeta->mAlpha + p_end_node->mpAlphaBeta->mBeta 
-            + p_link->Like() + thresh < end_alpha)
+        if (score < end_alpha || score < start_beta)
         {
           i_node->DetachLink(p_link);
         }

@@ -1091,10 +1091,9 @@ namespace STK
       FLOAT   t_acoustic_like;
       FLOAT   t_lm_like;
 
-
       
       for (NodeType* p_node = pFirst(); p_node != NULL; p_node = p_node->mpNext) 
-      //for (iterator   p_node = begin(); p_node != end(); p_node++) 
+      //for (iterator p_node = begin(); p_node != end(); ++p_node) 
       {
   /**/  for (i = 0; i < p_node->NLinks(); i++) 
         {
@@ -1106,12 +1105,12 @@ namespace STK
     
           // Weight pushing
           t_lm_like = p_tnode->rpBackLinks()[0].LmLike();
-          t_acoustic_like = p_tnode->rpBackLinks()[0].AcousticLike();
+          //t_acoustic_like = p_tnode->rpBackLinks()[0].AcousticLike();
           
           for (l=1; l <  p_tnode->rNBackLinks(); l++) 
           {
             t_lm_like = HIGHER_OF(t_lm_like, p_tnode->rpBackLinks()[l].LmLike());
-            t_acoustic_like = HIGHER_OF(t_acoustic_like, p_tnode->rpBackLinks()[l].AcousticLike());
+            //t_acoustic_like = HIGHER_OF(t_acoustic_like, p_tnode->rpBackLinks()[l].AcousticLike());
           }
           
           for (l=0; l < p_tnode->rNBackLinks(); l++) 
@@ -1119,7 +1118,7 @@ namespace STK
             NodeType* backnode = p_tnode->rpBackLinks()[l].pNode();
 
             p_tnode->rpBackLinks()[l].AddLmLike(-t_lm_like);
-            p_tnode->rpBackLinks()[l].AddAcousticLike(-t_acoustic_like);
+            //p_tnode->rpBackLinks()[l].AddAcousticLike(-t_acoustic_like);
             
             for (k=0; k<backnode->NLinks() && backnode->rpLinks()[k].pNode()!=p_tnode; k++)
             {}
@@ -1127,7 +1126,7 @@ namespace STK
             assert(k < backnode->NLinks());
 
             backnode->rpLinks()[k].AddLmLike(-t_lm_like);
-            backnode->rpLinks()[k].AddAcousticLike(-t_acoustic_like);
+            //backnode->rpLinks()[k].AddAcousticLike(-t_acoustic_like);
 
 #ifndef NDEBUG
             for (k++; k<backnode->NLinks() && backnode->rpLinks()[k].pNode()!=p_tnode; k++)
@@ -1141,7 +1140,7 @@ namespace STK
             NodeType* forwnode = p_tnode->rpLinks()[l].pNode();
 
             p_tnode->rpLinks()[l].AddLmLike(t_lm_like);
-            p_tnode->rpLinks()[l].AddAcousticLike(t_acoustic_like);
+            //p_tnode->rpLinks()[l].AddAcousticLike(t_acoustic_like);
             
             for (k=0; k<forwnode->rNBackLinks() && forwnode->rpBackLinks()[k].pNode()!=p_tnode;k++)
             {}
@@ -1149,7 +1148,7 @@ namespace STK
             assert(k < forwnode->rNBackLinks());
 
             forwnode->rpBackLinks()[k].AddLmLike(t_lm_like);
-            forwnode->rpBackLinks()[k].AddAcousticLike(t_acoustic_like);
+            //forwnode->rpBackLinks()[k].AddAcousticLike(t_acoustic_like);
 
 #ifndef NDEBUG
             for (k++; k<forwnode->rNBackLinks() && forwnode->rpBackLinks()[k].pNode()!=p_tnode;k++)
@@ -1167,8 +1166,10 @@ namespace STK
         {
           for (j = i+1; j < p_node->NLinks(); j++) 
           {
-            NodeType* inode = p_node->rpLinks()[i].pNode();
-            NodeType* jnode = p_node->rpLinks()[j].pNode();
+            //NodeType* inode = p_node->rpLinks()[i].pNode();
+            //NodeType* jnode = p_node->rpLinks()[j].pNode();
+            iterator inode(p_node->rpLinks()[i].pNode());
+            iterator jnode(p_node->rpLinks()[j].pNode());
 
             // Final node may be never merged.
             if (inode->NLinks() == 0 || jnode->NLinks() == 0) 
@@ -1188,7 +1189,7 @@ namespace STK
     //             inode->mpPronun->outSymbol  != jnode->mpPronun->outSymbol ||
     //             inode->mpPronun->variant_no != jnode->mpPronun->variant_no ||
     //             inode->mpPronun->prob       != jnode->mpPronun->prob)
-            || (inode->rNBackLinks() != jnode->rNBackLinks())) 
+            || (inode->NBackLinks() != jnode->NBackLinks())) 
             {
               continue;
             }
@@ -1202,7 +1203,7 @@ namespace STK
             // Weights on the links from predecesors does not have to be exactely
             // the same, but the must not differ more than by 
             // SIGNIFICANT_PROB_DIFFERENCE
-            for (l=0; l < inode->rNBackLinks(); l++) 
+            for (l=0; l < inode->NBackLinks(); l++) 
             {
               if (inode->rpBackLinks()[l].pNode() != jnode->rpBackLinks()[l].pNode()) 
                 break;
@@ -1222,11 +1223,11 @@ namespace STK
               }
             }
             
-            if (l < inode->rNBackLinks()) 
+            if (l < inode->NBackLinks()) 
               continue;
     
     /*        if (memcmp(inode->rpBackLinks(), jnode->rpBackLinks(),
-                      inode->rNBackLinks() * sizeof(Link<NODE_REGULAR, LINK_BASIC>))) {
+                      inode->NBackLinks() * sizeof(Link<NODE_REGULAR, LINK_BASIC>))) {
               continue;
             }*/
               // inode and jnode are the same nodes with the same predeccessors
@@ -1241,11 +1242,11 @@ namespace STK
 
 
             // Remove links to jnode form predeccessors
-            for (l=0; l < jnode->rNBackLinks(); l++) 
+            for (l=0; l < jnode->NBackLinks(); l++) 
             {
               NodeType* backnode = jnode->rpBackLinks()[l].pNode();
 
-              for (k=0; k<backnode->NLinks() && backnode->rpLinks()[k].pNode()!=jnode;
+              for (k=0; k<backnode->NLinks() && backnode->rpLinks()[k].pNode()!=jnode.mpPtr;
                    k++)
               { }
 
@@ -1270,13 +1271,13 @@ namespace STK
               {
                 // k-th link of jnode will be included among inode's links.
                 // Redirect corresponding baclink to inode
-                for (m = 0; m < jlk->pNode()->rNBackLinks()
-                            && jlk->pNode()->rpBackLinks()[m].pNode() != jnode; m++)
+                for (m = 0; m < jlk->pNode()->NBackLinks()
+                            && jlk->pNode()->rpBackLinks()[m].pNode() != jnode.mpPtr; m++)
                 {}
                 
-                assert(m < jlk->pNode()->rNBackLinks());
-                jlk->pNode()->rpBackLinks()[m].SetNode(inode);
-                qsort(jlk->pNode()->rpBackLinks(), jlk->pNode()->rNBackLinks(),
+                assert(m < jlk->pNode()->NBackLinks());
+                jlk->pNode()->rpBackLinks()[m].SetNode(inode.mpPtr);
+                qsort(jlk->pNode()->rpBackLinks(), jlk->pNode()->NBackLinks(),
                       sizeof(LinkType), lnkcmp);
                 k++;
               } 
@@ -1286,7 +1287,7 @@ namespace STK
                 // the same node. Link from jnode is redundant.
                 // Remove backlinks to jnode form jnode's succesors
                 for (m = 0; m < jlk->pNode()->rNBackLinks()
-                          && jlk->pNode()->rpBackLinks()[m].pNode() != jnode; m++);
+                          && jlk->pNode()->rpBackLinks()[m].pNode() != jnode.mpPtr; m++);
                 {}
                 
                 assert(m < jlk->pNode()->rNBackLinks());
@@ -1344,8 +1345,8 @@ namespace STK
               inode->mpNext->mpBackNext = inode->mpBackNext;
               inode->mpNext           = jnode->mpNext;
               inode->mpBackNext       = jnode->mpBackNext;
-              inode->mpBackNext->mpNext = inode;
-              inode->mpNext->mpBackNext = inode;
+              inode->mpBackNext->mpNext = inode.mpPtr;
+              inode->mpNext->mpBackNext = inode.mpPtr;
               inode->mAux = jnode->mAux;
             } 
             else
@@ -1355,9 +1356,11 @@ namespace STK
             }
             
             inode->mType |= jnode->mType & NT_TRUE;
-            free(jnode->rpLinks());
-            free(jnode->rpBackLinks());
-            free(jnode);
+            
+            // free(jnode->rpLinks());
+            // free(jnode->rpBackLinks());
+            // free(jnode);
+            erase(jnode);
             --j; // Process j-th node again
                  // there is new shifted node on this index
     
@@ -1620,8 +1623,6 @@ namespace STK
     for (p_node = pFirst(); p_node->mpNext != NULL; p_node = p_node->mpNext) 
     {
       p_node->mpNext->mpBackNext = p_node;
-      if (p_node->NLinks() < 0 || p_node->NBackLinks() < 0)
-        std::cout << p_node->NLinks() << "  " << p_node->NBackLinks() << std::endl;
     }
 
     for (p_node = pFirst(); p_node != NULL; p_node = p_node->mpNext) 
@@ -1676,34 +1677,58 @@ namespace STK
           NodeType *backnode = p_node->rpBackLinks()[j].pNode();
           int orig_nlinks = backnode->NLinks();
   
-          for (i=0; i < p_node->NLinks(); i++) {
+          for (i=0; i < p_node->NLinks(); i++) 
+          {
             for(k = 0; k < orig_nlinks && backnode->rpLinks()[k].pNode() != p_node->rpLinks()[i].pNode(); k++);
-            if(k < orig_nlinks) {
-              // Link<NODE_REGULAR, LINK_REGULAR> which is to be created already exists. Its duplication must be avoided.
+
+            if(k < orig_nlinks) 
+            {
+              // Link which is to be created already exists. Its duplication must be avoided.
               backnode->rpLinks()[k].SetLmLike(HIGHER_OF(backnode->rpLinks()[k].LmLike(), 
                                              p_node->rpLinks()[i].LmLike() + p_node->rpBackLinks()[j].LmLike()));
-            } else {
+
+              backnode->rpLinks()[k].SetAcousticLike(HIGHER_OF(backnode->rpLinks()[k].AcousticLike(), 
+                                             p_node->rpLinks()[i].AcousticLike() + p_node->rpBackLinks()[j].AcousticLike()));
+            } 
+            else 
+            {
               backnode->rpLinks()[backnode->NLinks()].SetNode(p_node->rpLinks()[i].pNode());
+
               backnode->rpLinks()[backnode->NLinks()].SetLmLike(
                   p_node->rpLinks()[i].LmLike() + p_node->rpBackLinks()[j].LmLike());
+
+              backnode->rpLinks()[backnode->NLinks()].SetAcousticLike(
+                  p_node->rpLinks()[i].AcousticLike() + p_node->rpBackLinks()[j].AcousticLike());
+
               ++(backnode->rNLinks());
             }
           }
         }
-        for (j = 0; j < p_node->NLinks(); j++) {
+
+        for (j = 0; j < p_node->NLinks(); j++) 
+        {
           NodeType *forwnode = p_node->rpLinks()[j].pNode();
           int orig_nbacklinks = forwnode->rNBackLinks();
   
-          for (i=0; i < p_node->rNBackLinks(); i++) {
+          for (i=0; i < p_node->rNBackLinks(); i++) 
+          {
             for(k = 0; k < orig_nbacklinks && forwnode->rpBackLinks()[k].pNode() != p_node->rpBackLinks()[i].pNode(); k++);
+
             if (k < orig_nbacklinks) {
               // Link which is to be created already exists. Its duplication must be avoided.
               forwnode->rpBackLinks()[k].SetLmLike(HIGHER_OF(forwnode->rpBackLinks()[k].LmLike(), 
                                                       p_node->rpBackLinks()[i].LmLike() + p_node->rpLinks()[j].LmLike()));
+
+              forwnode->rpBackLinks()[k].SetAcousticLike(HIGHER_OF(forwnode->rpBackLinks()[k].AcousticLike(), 
+                                                      p_node->rpBackLinks()[i].AcousticLike() + p_node->rpLinks()[j].AcousticLike()));
             } else {
               forwnode->rpBackLinks()[forwnode->rNBackLinks()].SetNode(p_node->rpBackLinks()[i].pNode());
+
               forwnode->rpBackLinks()[forwnode->rNBackLinks()].SetLmLike(
                   p_node->rpBackLinks()[i].LmLike() + p_node->rpLinks()[j].LmLike());
+
+              forwnode->rpBackLinks()[forwnode->rNBackLinks()].SetAcousticLike(
+                  p_node->rpBackLinks()[i].AcousticLike() + p_node->rpLinks()[j].AcousticLike());
 
               forwnode->rNBackLinks()++;
             }
