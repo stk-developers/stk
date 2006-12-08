@@ -1092,8 +1092,8 @@ namespace STK
       FLOAT   t_lm_like;
 
       
-      for (NodeType* p_node = pFirst(); p_node != NULL; p_node = p_node->mpNext) 
-      //for (iterator p_node = begin(); p_node != end(); ++p_node) 
+      //for (NodeType* p_node = pFirst(); p_node != NULL; p_node = p_node->mpNext) 
+      for (iterator p_node = begin(); p_node != end(); ++p_node) 
       {
   /**/  for (i = 0; i < p_node->NLinks(); i++) 
         {
@@ -1343,8 +1343,8 @@ namespace STK
             // In the 'next' list, move inode to jnode's lower position
               inode->mpBackNext->mpNext = inode->mpNext;
               inode->mpNext->mpBackNext = inode->mpBackNext;
-              inode->mpNext           = jnode->mpNext;
-              inode->mpBackNext       = jnode->mpBackNext;
+              inode->mpNext             = jnode->mpNext;
+              inode->mpBackNext         = jnode->mpBackNext;
               inode->mpBackNext->mpNext = inode.mpPtr;
               inode->mpNext->mpBackNext = inode.mpPtr;
               inode->mAux = jnode->mAux;
@@ -1360,7 +1360,10 @@ namespace STK
             // free(jnode->rpLinks());
             // free(jnode->rpBackLinks());
             // free(jnode);
+            jnode.mpPtr->mpNext = NULL;
+            jnode.mpPtr->mpBackNext = NULL;
             erase(jnode);
+
             --j; // Process j-th node again
                  // there is new shifted node on this index
     

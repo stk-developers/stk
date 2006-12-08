@@ -637,6 +637,8 @@ int main(int argc, char *argv[])
       } 
       else if (in_transc_fmt == TF_STK) 
       {
+        if (trace_flag & 2)
+          TraceLog("Recognition network: Loading \"%s\"", label_file);
         ReadSTKNetwork(ilfp, &dictHash, &phoneHash, notInDictAction,
             in_lbl_fmt, feature_repo.CurrentHeader().mSamplePeriod, label_file,
             in_MLF, compactNetworkRepresentation,  my_net);
@@ -649,6 +651,8 @@ int main(int argc, char *argv[])
       // we perform optimizations of not in compact representation
       if (!compactNetworkRepresentation)
       {
+        if (trace_flag & 2)
+          TraceLog("Recognition network: Performing expansions and optimizations");
         my_net.ExpansionsAndOptimizations(expOptions, in_net_fmt, &dictHash,
             &nonCDphHash, &phoneHash);
       }
@@ -680,6 +684,10 @@ int main(int argc, char *argv[])
       if (alignment & MODEL_ALIGNMENT && out_lbl_fmt.WORDS_OFF) decoder.mAlignment &= ~WORD_ALIGNMENT;
       if (alignment & STATE_ALIGNMENT && out_lbl_fmt.FRAME_SCR) decoder.mAlignment |=  FRAME_ALIGNMENT;
     }
+
+    fflush(stdout);
+    if (trace_flag & 2)
+      TraceLog("Recognition network: Performing recognition...");
 
     for (;;) 
     {
@@ -732,10 +740,21 @@ int main(int argc, char *argv[])
 
     if (!lattice.IsEmpty())
     {
+      if (trace_flag & 2)
+        TraceLog("Lattice: Performing optimizations (first pass)...");
       lattice.ExpansionsAndOptimizations(emptyExpOpts, out_net_fmt, 
                                          NULL, NULL, NULL);
+      if (trace_flag & 2)
+        TraceLog("Lattice: Computing posterior probabilities...");
       lattice.ForwardBackward();
+      
+      if (trace_flag & 2)
+        TraceLog("Lattice: Performing posterior pruning...");
       lattice.PosteriorPrune(state_pruning > 0.0 ? state_pruning : -LOG_0);
+
+      if (trace_flag & 2)
+        TraceLog("Lattice: Performing optimizations (second pass)...");
+      lattice.ExpansionsAndOptimizations(emptyExpOpts, out_net_fmt, NULL, NULL, NULL);
     }
 
     strcpy(label_file, feature_repo.Current().Logical().c_str());

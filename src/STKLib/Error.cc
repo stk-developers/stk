@@ -53,6 +53,7 @@ namespace STK
     fflush(stderr);
     vfprintf(stdout, msg, ap);
     fputc('\n', stdout);
+    fflush(stdout);
     va_end(ap);
   }
 

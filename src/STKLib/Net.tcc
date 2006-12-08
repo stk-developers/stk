@@ -194,6 +194,8 @@ namespace STK
       {
         for (size_t i(0); i< pNode->NLinks(); i++)
         {
+          // we delete the fist link since DeleteLink shifts the links to the left
+          pNode->DeleteLink(pNode->rpLinks());
           LinkType* p_link = &( pNode->rpLinks()[i] );
           LinkType* p_back_link;
           
@@ -372,6 +374,38 @@ namespace STK
       mpLast = NULL;
     }
   //**************************************************************************
+
+  
+  template<class _LinkContent>
+    void
+    LinkArray<_LinkContent>::
+    defragment()
+    {
+      size_type last_free = mSize;
+
+      for (size_type i = 0; i < mSize; ++i)
+      {
+        if (NULL == mpPtr[i].pNode() && last_free > i)
+        { // mark the initial inconsistency
+          last_free = i;
+          continue;
+        }
+
+        if (NULL != mpPtr[i].pNode() && i > last_free)
+        {
+          mpPtr[last_free] = mpPtr[i];
+          ++last_free;
+        }
+      }
+
+      // free the memory if necessary
+      //if (mSize != last_free)
+      //  mpPtr = static_cast<value_type *> (realloc(mpPtr, last_free * 
+      //        sizeof(value_type)));
+
+      // update number of links
+      mSize = last_free;
+    }
 
 } // namespace STK
 

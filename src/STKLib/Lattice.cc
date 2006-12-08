@@ -336,6 +336,11 @@ namespace STK
       {
         i_node = RemoveNode(i_node);
       }
+      else
+      {
+        i_node->Links().defragment();
+        i_node->BackLinks().defragment();
+      }
     }
   };
   // PosteriorPruning()

@@ -200,10 +200,11 @@ namespace STK
       size() const
       { return mSize; }
 
+      //
       /// Returns maximum number of links. 
       size_type
       max_size() const
-      { return size_type(-1); }
+      { return size_type(mSize); }
 
 
       /// True if empty
@@ -212,14 +213,25 @@ namespace STK
       { return mSize > 0 ? false : true; }
 
 
+
+      /** 
+       * @brief Returns an iterator pointing to the begining of the array
+       */
       iterator
       begin()
       { return iterator(&mpPtr[0]); }
 
+      /** 
+       * @brief Returns an iterator pointing past the end of the array
+       */
       iterator
       end()
       { return iterator(&mpPtr[mSize]); }
 
+      
+      /** 
+       * @brief Clears the array
+       */
       void
       clear()
       {
@@ -229,6 +241,16 @@ namespace STK
         mpPtr = NULL;
         mSize = 0;
       }
+
+      /** 
+       * @brief Defragments the storage space. 
+       *
+       * It is possilbe that some links point nowhere. These link records are
+       * replaced by the next non-empty links, so no clusters occur in the 
+       * array.
+       */
+      void
+      defragment();
 
     public:
 
@@ -467,6 +489,29 @@ namespace STK
 
         return s;
       }
+
+
+      /** 
+       * @brief Makes the specified link point nowhere. The target node is
+       * updated as well
+       * 
+       * @param pLink pointer to the link
+       *
+       * Use Link::PointNowhere() to check whether the link is detached
+       */
+      void
+      DeleteLink(LinkType* pLink);
+
+      /** 
+       * @brief Makes the specified link point nowhere. The target node is
+       * updated as well
+       * 
+       * @param pLink pointer to the link
+       *
+       * Use Link::PointNowhere() to check whether the link is detached
+       */
+      void
+      DeleteBackLink(LinkType* pLink);
 
 
       /** 
@@ -1125,6 +1170,54 @@ namespace STK
       /// function.
       bool          mIsExternal;
     }; // class Network
+
+
+
+  template< typename                _NodeContent, 
+            typename                _LinkContent, 
+            template<class> class   _LinkContainer>
+    void
+    Node<_NodeContent, _LinkContent, _LinkContainer>::
+    DeleteLink(LinkType* pLink)
+    {
+      NodeType* p_node = pLink->pNode();
+      LinkType* p_back_link = p_node->pFindBackLink(this);
+
+      assert (NULL != p_back_link);
+
+      ptrdiff_t offset = p_back_link - p_node->rpBackLinks();
+
+      memmove(p_back_link, p_back_link + 1, (p_node->NBackLinks() - offset - 1) * sizeof(LinkType)); 
+      p_node->rNLinks()--;
+
+      offset = pLink - NodeBasic<_NodeContent, _LinkContent, _LinkContainer>::rpLinks();
+
+      memmove(pLink, pLink + 1, (NodeBasic<_NodeContent, _LinkContent, _LinkContainer>::NLinks() - offset) * sizeof(LinkType));
+      NodeBasic<_NodeContent, _LinkContent, _LinkContainer>::rNLinks() --;
+    }
+  
+  template< typename                _NodeContent, 
+            typename                _LinkContent, 
+            template<class> class   _LinkContainer>
+    void
+    Node<_NodeContent, _LinkContent, _LinkContainer>::
+    DeleteBackLink(LinkType* pLink)
+    {
+      NodeType* p_back_node = pLink->pNode();
+      LinkType* p_back_link = p_back_node->pFindLink(this);
+
+      assert (NULL != p_back_link);
+
+      ptrdiff_t offset = p_back_link - p_back_node->rpLinks();
+
+      memmove(p_back_link, p_back_link + 1, (p_back_node->NLinks() - offset - 1) * sizeof(LinkType)); 
+      p_back_node->rNLinks()--;
+
+      offset = pLink - rpBackLinks();
+
+      memmove(pLink, pLink + 1, (NBackLinks() - offset) * sizeof(LinkType));
+      rNBackLinks() --;
+    }
   
 }; // namespace STK
 
