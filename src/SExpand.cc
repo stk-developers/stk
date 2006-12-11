@@ -389,7 +389,7 @@ int main(int argc, char *argv[])
       else 
       {
         WriteSTKNetwork(out_MLF_fp, my_net, out_net_fmt, 1, label_file, 
-            out_MLF_fn, 0.0, 1.0);
+            out_MLF_fn, 0.0, 0.0, 1.0);
       }
 
       CloseOutputLabelFile(out_MLF_fp, out_MLF_fn);

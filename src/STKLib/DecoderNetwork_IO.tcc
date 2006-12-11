@@ -1065,7 +1065,8 @@ namespace STK
       long                    sampPeriod,
       const char*             pNetFile,
       const char*             out_MNF,
-      const FLOAT&            wPenalty,
+      const FLOAT&            wordPenalty,
+      const FLOAT&            modelPenalty,
       const FLOAT&            lmScale)
     {
       int                                     n;
@@ -1164,11 +1165,25 @@ namespace STK
             if (format.mBase62Labels) fprintBase62(pFp, p_node->rpLinks()[j].pNode()->mAux);
             else                      fprintf(pFp,"%d", p_node->rpLinks()[j].pNode()->mAux);
 
+
+            
+            FLOAT lm_score;
+
+            if      (p_node->rpLinks()[j].pNode()->mType & NT_MODEL)
+              lm_score = (p_node->rpLinks()[j].LmLike() - modelPenalty) / lm_scale; 
+
+            else if (p_node->rpLinks()[j].pNode()->mType & NT_WORD 
+            &&       p_node->rpLinks()[j].pNode()->mpPronun != NULL)
+              lm_score = (p_node->rpLinks()[j].LmLike() - wordPenalty) / lm_scale; 
+
+            else   
+              lm_score = p_node->rpLinks()[j].LmLike() / lm_scale; 
+
             // output language probability
-            if ((!close_enough(p_node->rpLinks()[j].LmLike(), 0.0, 10)) 
+            if ((!close_enough(lm_score, 0.0, 10)) 
             &&  (!format.mNoLMLikes))
             {
-              fprintf(pFp," l="FLOAT_FMT, p_node->rpLinks()[j].LmLike() / lm_scale);
+              fprintf(pFp," l="FLOAT_FMT, lm_score);
             }
 
             // output acoustic probability
@@ -1213,11 +1228,22 @@ namespace STK
             if (format.mBase62Labels) fprintBase62(pFp, p_node->rpLinks()[j].pNode()->mAux);
             else                      fprintf(pFp,"%d", p_node->rpLinks()[j].pNode()->mAux);
 
+            
+            FLOAT lm_score;
+
+            if      (p_node->rpLinks()[j].pNode()->mType & NT_MODEL)
+              lm_score = (p_node->rpLinks()[j].LmLike() - modelPenalty) / lm_scale; 
+            else if (p_node->rpLinks()[j].pNode()->mType & NT_WORD 
+            &&       p_node->rpLinks()[j].pNode()->mpPronun != NULL)
+              lm_score = (p_node->rpLinks()[j].LmLike() - wordPenalty) / lm_scale; 
+            else   
+              lm_score = p_node->rpLinks()[j].LmLike() / lm_scale; 
+
             // output language probability
-            if ((!close_enough(p_node->rpLinks()[j].LmLike(), 0.0, 10)) 
+            if ((!close_enough(lm_score, 0.0, 10)) 
             && (!format.mNoLMLikes))
             {
-              fprintf(pFp," l="FLOAT_FMT, p_node->rpLinks()[j].LmLike() / lm_scale);
+              fprintf(pFp," l="FLOAT_FMT, lm_score );
             }
 
             // output acoustic probability

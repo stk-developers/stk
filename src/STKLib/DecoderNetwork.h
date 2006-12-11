@@ -245,6 +245,8 @@ namespace STK
   };
 
 
+
+
   //###########################################################################
   //###########################################################################
   // Explicit instantiation of the network types used in decoder
@@ -257,6 +259,21 @@ namespace STK
   typedef Network<NodeBasicContent, LinkContent, ListStorage, LinkArray>
     _DecoderNetwork;
   
+
+  /** 
+   * @brief Various network properties
+   */
+  struct DecoderNetworkProps
+  {
+    FLOAT                       mWPenalty;  
+    FLOAT                       mMPenalty;
+    FLOAT                       mPronScale;
+    FLOAT                       mLmScale;
+    FLOAT                       mTranScale;
+    FLOAT                       mOutpScale;
+    FLOAT                       mOcpScale;
+  };
+
 
   /** *************************************************************************
    ** *************************************************************************
@@ -410,7 +427,8 @@ namespace STK
       long                      sampPeriod,
       const char*               label_file,
       const char*               out_MNF,
-      const FLOAT&              wPenalty,
+      const FLOAT&              wordPenalty,
+      const FLOAT&              modelPenalty,
       const FLOAT&              lmScale);
   
 

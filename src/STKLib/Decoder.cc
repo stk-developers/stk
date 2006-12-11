@@ -554,6 +554,26 @@ namespace STK
   //***************************************************************************
   //***************************************************************************
   void
+  Token::
+  Penalize(LikeType penalty)
+  {
+    mLike += penalty;
+
+    if (NULL != mpAltHyps)
+    {
+      for (AltHypList::iterator it = mpAltHyps->begin(); it != mpAltHyps->end(); 
+           ++it)
+      {
+        it->mLike += penalty;
+      }
+    }
+  }
+  //***************************************************************************
+
+
+  //***************************************************************************
+  //***************************************************************************
+  void
   Token::AddAlternativeHypothesis(WordLinkRecord* pWlr, Token::LikeType like, 
       Token::LikeType acousticLike)
   { 
@@ -569,190 +589,13 @@ namespace STK
   }
   // Token::AddAlternativeHypothesis(...)
   //***************************************************************************
-
   
-  //***************************************************************************
-  //***************************************************************************
-  void
-  Token::AddAlternativeHypothesis(WordLinkRecord* pWlr)
-  { 
-    WlrReference  tmp_wlr_ref(pWlr, 0.0, 0.0);
-
-    if (mpAltHyps == NULL)
-      mpAltHyps = new AltHypList;
-    
-    assert(pWlr != NULL);
-
-    mpAltHyps->push_back(tmp_wlr_ref);
-    pWlr->mNReferences++;
-  }
-  //***************************************************************************
-  
-  
-#ifdef USE_OLD_TOKEN_PASSING
-  //***************************************************************************
-  //***************************************************************************
-  int 
-  PassTokenMaxForLattices(Token* from, Token* to, FLOAT mLike)
-  {
-    int ret = 0;
-    
-#ifdef TRACE_TOKENS
-    printf("(%.2f + %.2f -> %.2f = ", from->mLike, mLike, to->mLike);
-#endif
-    
-    // Since we generate lattices, WLR is created for each node and therefor 
-    // WLR for token 'from' should have been just created
-    assert(from->mpAltHyps == NULL);
-    
-    if (!to->IsActive() || from->mLike + mLike > to->mLike) 
-    {
-      Token::AltHypList * pAltHyps = NULL;
-      
-      if(to->IsActive()) 
-      {
-        to->AddAlternativeHypothesis(to->mpWlr);
-        pAltHyps = to->mpAltHyps;
-      }
-      
-      KillToken(to);
-  
-      ret = 1;
-      *to = *from;
-      to->mLike += mLike;
-      to->mpAltHyps = pAltHyps;
-      
-      if (to->mpWlr) 
-        to->mpWlr->mNReferences++;
-    } else {
-      to->AddAlternativeHypothesis(from->mpWlr);
-    }
-
-#ifdef TRACE_TOKENS
-    printf("%.2f)\n", to->mLike);
-#endif
-
-    return ret;
-  }
-  
-  
-  //***************************************************************************
-  //***************************************************************************
-  int 
-  PassTokenMax(Token* from, Token* to, FLOAT mLike)
-  {
-    assert(from->mpAltHyps == NULL);
-    int ret = 0;
-    
-  #ifdef TRACE_TOKENS
-    printf("(%.2f + %.2f -> %.2f = ", from->mLike, mLike, to->mLike);
-  #endif
-    
-    if (!to->IsActive() || from->mLike + mLike > to->mLike) 
-    {
-
-      KillToken(to);
-  
-      ret = 1;
-      *to = *from;
-      to->mLike += mLike;
-      
-      if (to->mpWlr) 
-        to->mpWlr->mNReferences++;
-    }
-  #ifdef TRACE_TOKENS
-    printf("%.2f)\n", to->mLike);
-  #endif
-    return ret;
-  }
-  
-  /*int PassTokenSum(Token *from, Token *to, FLOAT mLike)
-  {
-    double tl;
-    int ret = 0;
-  #ifdef TRACE_TOKENS
-    printf("(%.2f + %.2f -> %.2f = ", from->mLike, mLike, to->mLike);
-  #endif
-    if (IS_ACTIVE(*to)) {
-      tl = LogAdd(to->mLike, from->mLike + mLike);
-    } else {
-      tl = from->mLike + mLike;
-    }
-  
-    if (!IS_ACTIVE(*to) || from->mLike + mLike > to->mBestLike) {
-      KillToken(to);
-  
-      ret = 1;
-      *to = *from;
-      to->mBestLike = from->mLike + mLike;
-      if (to->mpWlr) {
-        to->mpWlr->mNReferences++;
-      }
-    }
-  
-    to->mLike = tl;
-  #ifdef TRACE_TOKENS
-    printf("%.2f)\n", to->mLike);
-  #endif
-    return ret;
-  }*/
-  
-  
-  //***************************************************************************
-  //***************************************************************************
-  int 
-  PassTokenSum(Token* from, Token* to, FLOAT like)
-  {
-    double        tl;
-    FloatInLog    fe;
-    FloatInLog    fil_from_like = {like, 0};
-    int           ret = 0;
-    
-#ifdef TRACE_TOKENS
-    printf("(%.2f + %.2f -> %.2f = ", from->mLike, like, to->mLike);
-#endif
-    
-    if (to->IsActive()) 
-    {
-      tl = LogAdd(to->mLike, from->mLike + like);
-      fe = FIL_Add(to->mAccuracy, FIL_Mul(from->mAccuracy, fil_from_like));
-    } 
-    else 
-    {
-      tl = from->mLike + like;
-      fe = FIL_Mul(from->mAccuracy, fil_from_like);
-    }
-  
-    if (!to->IsActive() || from->mLike + like > to->mBestLike) 
-    {
-      KillToken(to);
-  
-      ret = 1;
-      *to = *from;
-      to->mBestLike = from->mLike + like;
-      
-      if (to->mpWlr) 
-      {
-        to->mpWlr->mNReferences++;
-      }
-    }
-  
-    to->mLike     = tl;
-    to->mAccuracy = fe;
-#ifdef TRACE_TOKENS
-    printf("%.2f)\n", to->mLike);
-#endif
-    return ret;
-  }
-
-#else
-
 
   //***************************************************************************
   //***************************************************************************
   int 
   PassTokenMaxForLattices(Token* pFrom, Token* pTo, FLOAT totalLike, 
-      FLOAT acousticLike)
+      FLOAT acousticLike, FLOAT totalPenalty)
   {
     int ret = 0;
     
@@ -764,7 +607,8 @@ namespace STK
     // WLR for token 'from' should have been just created
     assert(pFrom->mpAltHyps == NULL);
     
-    //printf("PassTokenMaxForLattices: totalLike = %f  acousticLike = %f\n", totalLike, acousticLike);
+    //printf("PassTokenMaxForLattices: totalLike = %f  acousticLike = %f\n", 
+    //  totalLike, acousticLike);
     
     if (!pTo->IsActive() || pFrom->mLike + totalLike > pTo->mLike) 
     {
@@ -818,20 +662,19 @@ namespace STK
   //***************************************************************************
   int 
   PassTokenMax(Token* pFrom, Token* pTo, FLOAT totalLike, 
-      FLOAT acousticLike)
+      FLOAT acousticLike, FLOAT totalPenalty)
   {
     assert(pFrom->mpAltHyps == NULL);
     int ret = 0;
     
-  #ifdef TRACE_TOKENS
+#ifdef TRACE_TOKENS
     printf("(%.2f + %.2f -> %.2f = ", pFrom->mLike, mLike, to->mLike);
-  #endif
+#endif
     
     //printf("PassTokenMax: totalLike = %f  acousticLike = %f\n", totalLike, acousticLike);
 
     if (!pTo->IsActive() || pFrom->mLike + totalLike > pTo->mLike) 
     {
-
       KillToken(pTo);
   
       ret = 1;
@@ -853,7 +696,7 @@ namespace STK
   //***************************************************************************
   int 
   PassTokenSum(Token* pFrom, Token* pTo, FLOAT totalLike, 
-      FLOAT acousticLike)
+      FLOAT acousticLike, FLOAT totalPenalty)
   {
     double        tl;
     double        acoustic_like;
@@ -901,7 +744,6 @@ namespace STK
     return ret;
   }
   
-#endif // USE_OLD_TOKEN_PASSIGN  
 
 
 
@@ -931,7 +773,8 @@ namespace STK
         assert(wlr->mIsFreed == false);
         wlr->mIsFreed = true;
 #else
-        free(wlr);
+        //free(wlr);
+        delete wlr;
 #endif
       }
     }
@@ -2021,50 +1864,6 @@ namespace STK
   //***************************************************************************
   
 
-
-  //***************************************************************************
-  //***************************************************************************
-  /*
-  void
-  Decoder::
-  GenerateToken(NetworkType::NodeType* pNode)
-  {
-    // activate the node
-    ActivateNode(pNode);
-    
-    // generate the token
-    pNode->mpAnr->mpTokens[0].mLike = 0.0;
-    pNode->mpAnr->mpTokens[0].mAcousticLike = 0.0;
-    pNode->mpAnr->mpTokens[0].mAccuracy.logvalue = LOG_0;
-    pNode->mpAnr->mpTokens[0].mAccuracy.negative = 0;
-
-#ifdef bordel_staff
-    pNode->mpAnr->mpTokens[0].mBestLike = 0.0;
-#endif
-  
-    // propagate the token further
-    TokenPropagationInNetwork();
-
-    DeactivateNode(pNode);
-    
-    return;
-    DeactivateWordNodesLeadingFrom(pNode);
-    
-    
-    if (pNode->mpAnr->mpPrevActiveNode) 
-    {
-      pNode->mpAnr->mpPrevActiveNode->mpAnr->mpNextActiveNode = pNode->mpAnr->mpNextActiveNode;
-    }
-
-    delete pNode->mpAnr;
-    pNode->mpAnr = NULL;    
-  }
-  */
-  // GenerateToken(NetworkType::NodeType* pNode)
-  //***************************************************************************
-
-
-
   //***************************************************************************
   //***************************************************************************
   /*void 
@@ -2171,12 +1970,14 @@ namespace STK
           }
             
           PassTokenInModel(&p_node->mpAnr->mpTokens[0], 
-              p_node->mpAnr->mpExitToken, trans_prob, trans_prob);
+              p_node->mpAnr->mpExitToken, trans_prob, trans_prob, 0.0);
         }
       }
   
       if (p_node->mpAnr->mpExitToken->IsActive()) 
       {
+        FLOAT total_penalty;
+
 //      assert(p_node->mActiveNodeFlag || (p_node->mType & NT_TEE && p_node->mIsActive));
 //      for (Xnode = mpActiveNodes; Xnode && Xnode != p_node; Xnode = Xnode->mpNextActiveNode);
 //      assert(Xnode);
@@ -2189,12 +1990,18 @@ namespace STK
             else 
               WriteBeta(mTime, p_node, 0, p_node->mpAnr->mpExitToken);
           }
-          p_node->mpAnr->mpExitToken->mLike += mMPenalty;
+          //p_node->mpAnr->mpExitToken->mLike += mMPenalty;
+          p_node->mpAnr->mpExitToken->Penalize(mMPenalty);
+
+          total_penalty = mMPenalty;
         }
         else if (p_node->mType & NT_WORD && p_node->mpPronun != NULL) 
         {
-          p_node->mpAnr->mpExitToken->mLike += mWPenalty +
-                                             mPronScale * p_node->mpPronun->prob;
+          //p_node->mpAnr->mpExitToken->mLike += mWPenalty +
+          //                                   mPronScale * p_node->mpPronun->prob;
+          p_node->mpAnr->mpExitToken->Penalize(mWPenalty + mPronScale * 
+              p_node->mpPronun->prob);
+          total_penalty = mWPenalty + mPronScale * p_node->mpPronun->prob;
           
           /*if (p_node->mpExitToken->mLike < mWordThresh) {
             p_node->mpExitToken->mLike = LOG_0;
@@ -2256,8 +2063,7 @@ namespace STK
 //                AddLinkToLattice(p_node, links[i].pNode(), lm_like);
               
               PassTokenInNetwork(p_node->mpAnr->mpExitToken,
-                  &links[i].pNode()->mpAnr->mpTokens[0], lm_like, acoustic_like);
-
+                  &links[i].pNode()->mpAnr->mpTokens[0], lm_like, acoustic_like, total_penalty);
             }
           }
         } 
@@ -2430,7 +2236,7 @@ namespace STK
 #endif
 
             if (PassTokenInModel(&mpAuxTokens[i], &p_node->mpAnr->mpTokens[j], 
-                  trans_prob, trans_prob)) 
+                  trans_prob, trans_prob, 0.0)) 
             {
               winingToken = i;
             }
@@ -2526,7 +2332,7 @@ namespace STK
 #endif
             if (PassTokenInModel(&p_node->mpAnr->mpTokens[i],
                                  &p_node->mpAnr->mpTokens[p_hmm->mNStates - 1],
-                                 trans_prob, trans_prob)) 
+                                 trans_prob, trans_prob, 0.0)) 
             {
               winingToken = i;
             }
@@ -2630,13 +2436,6 @@ namespace STK
 
     
 /*
-  //***************************************************************************
-  //***************************************************************************
-  int 
-  cmplnk(const void *a, const void *b)
-  {
-    return ((Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *) a)->pNode()->mAux - ((Link<NodeBasicContent, LinkContent, NODE_REGULAR, LINK_REGULAR> *) b)->pNode()->mAux;
-  }
 
   //***************************************************************************
   //***************************************************************************
@@ -2787,7 +2586,7 @@ namespace STK
     
     for (p_node =  rNetwork().begin(); 
          p_node != rNetwork().end(); 
-         p_last_node = p_node, p_node++)
+         p_last_node = p_node, ++p_node)
     {
       if (p_node->mType & NT_PHONE)  
       {
@@ -2912,11 +2711,18 @@ namespace STK
   Decoder:: 
   Init(ModelSet* pHmms, ModelSet* pHmmsToUpdate, bool compactRepresentation) 
   {
-    int maxStatesInModel;
-    
+    int                       maxStatesInModel;
+
     mCompactRepresentation = compactRepresentation;
     PhoneNodesToModelNodes(pHmms, pHmmsToUpdate, maxStatesInModel);
   
+    // Need to contain at least 2 states for propper token passing
+    if (maxStatesInModel < 2)
+    {
+      Error("The network does not contain any model "
+            "(possibly no dictionary suplied for word-based network)");
+    }
+
     mpAuxTokens = new Token[maxStatesInModel-1];
     mpOutPCache = (Cache*) malloc(pHmms->mNStates      * sizeof(Cache));
     mpMixPCache = (Cache*) malloc(pHmms->mNMixtures    * sizeof(Cache));
@@ -3936,8 +3742,9 @@ namespace STK
   {
     WordLinkRecord* wlr;
   
-    if ((wlr = (WordLinkRecord*) malloc(sizeof(WordLinkRecord))) == NULL)
-      Error("Insufficient memory");
+    // if ((wlr = (WordLinkRecord*) malloc(sizeof(WordLinkRecord))) == NULL)
+    //  Error("Insufficient memory");
+    wlr = new WordLinkRecord;
   
     wlr->mStateIdx      = stateIndex;
     wlr->mLike          = mLike;

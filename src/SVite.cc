@@ -519,12 +519,19 @@ int main(int argc, char *argv[])
           NULL, 
           NULL);
               
-      my_net.BuildFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
+      //my_net.BuildFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
+      decoder.rNetwork().BuildFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
               
       ReleaseLabels(labels);
 
       if (!compactNetworkRepresentation)
-        my_net.ExpansionsAndOptimizations(
+        // my_net.ExpansionsAndOptimizations(
+        //     expOptions, 
+        //     in_net_fmt, 
+        //     &dictHash,
+        //     &nonCDphHash, 
+        //     &phoneHash);
+        decoder.rNetwork().ExpansionsAndOptimizations(
             expOptions, 
             in_net_fmt, 
             &dictHash,
@@ -535,7 +542,18 @@ int main(int argc, char *argv[])
     {
       //:TODO:
       // header.mSamplePeriod not initialized yet... 
-      
+
+      // ReadSTKNetwork(
+      //   ilfp, 
+      //   &dictHash,
+      //   &phoneHash, 
+      //   notInDictAction, 
+      //   in_lbl_fmt,
+      //   feature_repo.CurrentHeader().mSamplePeriod, 
+      //   network_file, 
+      //   NULL,
+      //   compactNetworkRepresentation,
+      //   my_net);
 
       ReadSTKNetwork(
         ilfp, 
@@ -547,9 +565,16 @@ int main(int argc, char *argv[])
         network_file, 
         NULL,
         compactNetworkRepresentation,
-        my_net);
+        decoder.rNetwork());
 
-      my_net.ExpansionsAndOptimizations(
+      // my_net.ExpansionsAndOptimizations(
+      //   expOptions, 
+      //   in_net_fmt, 
+      //   &dictHash,
+      //   &nonCDphHash, 
+      //   &phoneHash);
+
+      decoder.rNetwork().ExpansionsAndOptimizations(
         expOptions, 
         in_net_fmt, 
         &dictHash,
@@ -561,9 +586,10 @@ int main(int argc, char *argv[])
       Error("Too bad. What did you do ?!?");
     }
 
-    p_node = my_net.pFirst();
+    // p_node = my_net.pFirst();
                                       
-    decoder.Init(p_node, &hset, NULL, compactNetworkRepresentation);
+    //decoder.Init(p_node, &hset, NULL, compactNetworkRepresentation);
+    decoder.Init(&hset, NULL, compactNetworkRepresentation);
   } 
   else 
   {
@@ -766,7 +792,7 @@ int main(int argc, char *argv[])
     {
       WriteSTKNetwork(lfp, lattice, out_net_fmt, 
           feature_repo.CurrentHeader().mSamplePeriod, label_file, out_MLF,
-          decoder.mWPenalty, decoder.mLmScale);
+          decoder.mWPenalty, decoder.mMPenalty, decoder.mLmScale);
           
       // we are not needing the lattice anymore, so free it from memory
       lattice.Clear();
@@ -783,7 +809,7 @@ int main(int argc, char *argv[])
       
       WriteSTKNetwork(lfp, tmp_net, out_net_fmt, 
           feature_repo.CurrentHeader().mSamplePeriod, label_file, out_MLF,
-          decoder.mWPenalty, decoder.mLmScale);
+          decoder.mWPenalty, decoder.mMPenalty, decoder.mLmScale);
     }
 
     CloseOutputLabelFile(lfp, out_MLF);

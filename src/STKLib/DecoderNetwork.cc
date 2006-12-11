@@ -1687,11 +1687,24 @@ namespace STK
             if(k < orig_nlinks) 
             {
               // Link which is to be created already exists. Its duplication must be avoided.
+              if (backnode->rpLinks()[k].Like() >  
+                 p_node->rpLinks()[i].Like() + p_node->rpBackLinks()[j].Like())
+              {
+                backnode->rpLinks()[k].SetLmLike(backnode->rpLinks()[k].LmLike());
+                backnode->rpLinks()[k].SetAcousticLike(backnode->rpLinks()[k].AcousticLike());
+              }
+              else
+              {
+                backnode->rpLinks()[k].SetLmLike(p_node->rpLinks()[i].LmLike() + p_node->rpBackLinks()[j].LmLike());
+                backnode->rpLinks()[k].SetAcousticLike( p_node->rpLinks()[i].AcousticLike() + p_node->rpBackLinks()[j].AcousticLike());
+              }
+              /*
               backnode->rpLinks()[k].SetLmLike(HIGHER_OF(backnode->rpLinks()[k].LmLike(), 
                                              p_node->rpLinks()[i].LmLike() + p_node->rpBackLinks()[j].LmLike()));
 
               backnode->rpLinks()[k].SetAcousticLike(HIGHER_OF(backnode->rpLinks()[k].AcousticLike(), 
                                              p_node->rpLinks()[i].AcousticLike() + p_node->rpBackLinks()[j].AcousticLike()));
+                                             */
             } 
             else 
             {
@@ -1717,14 +1730,31 @@ namespace STK
           {
             for(k = 0; k < orig_nbacklinks && forwnode->rpBackLinks()[k].pNode() != p_node->rpBackLinks()[i].pNode(); k++);
 
-            if (k < orig_nbacklinks) {
+            if (k < orig_nbacklinks) 
+            {
+              if (forwnode->rpBackLinks()[k].Like() > 
+                p_node->rpBackLinks()[i].Like() + p_node->rpLinks()[j].Like())
+              {
+                forwnode->rpBackLinks()[k].SetLmLike(forwnode->rpBackLinks()[k].LmLike()); 
+                forwnode->rpBackLinks()[k].SetAcousticLike(forwnode->rpBackLinks()[k].AcousticLike()); 
+              }
+              else
+              {
+                forwnode->rpBackLinks()[k].SetLmLike(p_node->rpBackLinks()[i].LmLike() + p_node->rpLinks()[j].LmLike());
+                forwnode->rpBackLinks()[k].SetAcousticLike(p_node->rpBackLinks()[i].AcousticLike() + p_node->rpLinks()[j].AcousticLike());
+              }
+
               // Link which is to be created already exists. Its duplication must be avoided.
+              /*
               forwnode->rpBackLinks()[k].SetLmLike(HIGHER_OF(forwnode->rpBackLinks()[k].LmLike(), 
                                                       p_node->rpBackLinks()[i].LmLike() + p_node->rpLinks()[j].LmLike()));
 
               forwnode->rpBackLinks()[k].SetAcousticLike(HIGHER_OF(forwnode->rpBackLinks()[k].AcousticLike(), 
                                                       p_node->rpBackLinks()[i].AcousticLike() + p_node->rpLinks()[j].AcousticLike()));
-            } else {
+                                                      */
+            } 
+            else 
+            {
               forwnode->rpBackLinks()[forwnode->rNBackLinks()].SetNode(p_node->rpBackLinks()[i].pNode());
 
               forwnode->rpBackLinks()[forwnode->rNBackLinks()].SetLmLike(

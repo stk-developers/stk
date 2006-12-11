@@ -318,10 +318,12 @@ namespace STK
     (*OutputProbability) (State *state, FLOAT *observation, Decoder *network);
 
     int     
-    (*PassTokenInNetwork)(Token* pFrom, Token* pTo, FLOAT addLogLike, FLOAT acousticLike);
+    (*PassTokenInNetwork)(Token* pFrom, Token* pTo, FLOAT addLogLike, 
+        FLOAT acousticLike, FLOAT totalPenalty);
 
     int     
-    (*PassTokenInModel)  (Token* pFrom, Token* pTo, FLOAT addLogLike, FLOAT acousticLike);
+    (*PassTokenInModel)  (Token* pFrom, Token* pTo, FLOAT addLogLike, 
+        FLOAT acousticLike, FLOAT totalPenalty);
     
     // decoding functions ......................................................
     void              
@@ -333,26 +335,14 @@ namespace STK
     FLOAT             
     ViterbiDone(Label** pLabels, Lattice* pNetwork = NULL);
     
-    //FLOAT             
-    //ViterbiDone(Label** pLabels, Node ** pLattice = NULL);
-    
-    FLOAT 
-    MCEReest(FLOAT* pObsMx, FLOAT * pObsMx2, int nFrames, FLOAT weight, 
-        FLOAT sigSlope);
     
     FLOAT 
     MCEReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, 
         int nFrames, FLOAT weight, FLOAT sigSlope);
             
-    FLOAT 
-    ViterbiReest(FLOAT* pObsMx, FLOAT* pObsMx2, int nFrames, FLOAT weight);
-    
     FLOAT
     ViterbiReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, int nFrames, FLOAT weight);
     
-    FLOAT
-    BaumWelchReest(FLOAT* pObsMx, FLOAT* pObsMx2, int nFrames, FLOAT weight);
-
     FLOAT
     BaumWelchReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, int nFrames, FLOAT weight);
 
@@ -514,6 +504,9 @@ namespace STK
     void 
     AddAlternativeHypothesis(WordLinkRecord* pWlr, LikeType like, 
         LikeType acousticLike);
+
+    void
+    Penalize(LikeType penalty);
   };
   // class Token 
   //***************************************************************************
@@ -658,25 +651,17 @@ namespace STK
   FromObservationAtStateId(State* state, FLOAT* obs, Decoder* network);
 
 
-#ifdef USE_OLD_TOKEN_PASSING
   int               
-  PassTokenMaxForLattices(Token* from, Token* to, FLOAT addLogLike);
+  PassTokenMaxForLattices(Token* from, Token* to, FLOAT addLogLike, 
+      FLOAT acousticLike, FLOAT totalPenalty);
 
   int               
-  PassTokenMax(Token* from, Token* to, FLOAT addLogLike);
+  PassTokenMax(Token* from, Token* to, FLOAT addLogLike, FLOAT acousticLike, 
+      FLOAT totalPenalty);
 
   int               
-  PassTokenSum(Token* from, Token* to, FLOAT addLogLike);
-#else
-  int               
-  PassTokenMaxForLattices(Token* from, Token* to, FLOAT addLogLike, FLOAT acousticLike);
-
-  int               
-  PassTokenMax(Token* from, Token* to, FLOAT addLogLike, FLOAT acousticLike);
-
-  int               
-  PassTokenSum(Token* from, Token* to, FLOAT addLogLike, FLOAT acousticLike);
-#endif
+  PassTokenSum(Token* from, Token* to, FLOAT addLogLike, FLOAT acousticLike, 
+      FLOAT totalPenalty);
 
 
   WordLinkRecord*  
