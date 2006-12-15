@@ -219,23 +219,35 @@ namespace STK
   Decoder::
   HasCycle() 
   {
-    NetworkType::NodeType* node;
+    NetworkType::NodeType* node, * prev_node = NULL;
     
     HasCycleCounter++;
     
     if (!test_for_cycle) 
       return 0;
       
-    for (node = mpActiveNodes; node != NULL; node = node->mpAnr->mpNextActiveNode) 
+    for (node = mpActiveNodes; node != NULL; prev_node = node, node = node->mpAnr->mpNextActiveNode) 
     {
       int     i;
       int     n_links = InForwardPass() ? node->rNLinks() : node->rNBackLinks();
       NetworkType::LinkType*   links   = InForwardPass() ? node->rpLinks() : node->rpBackLinks();
       
+      if(node->mpAnr == NULL)
+      {
+        printf("List of active nodes contains node with mpAnr == NULL\n");
+        return 1;
+      }
+      
+      if(prev_node != node->mpAnr->mpPrevActiveNode)
+      {
+        printf("Inconsistency in mpNextActiveNode and mpPrevActiveNode pointers\n");
+        return 2;
+      }
+      
       if (node->mAux2 == HasCycleCounter) 
       {
         printf("Cycle in list of active nodes\n");
-        return 1;
+        return 3;
       }
       
       node->mAux2 = HasCycleCounter;
@@ -249,10 +261,32 @@ namespace STK
           printf("Active node %d listed after his non-model succesor %d\n",
                 (int) (node - rNetwork().pFirst()), (int) (links[i].pNode() - rNetwork().pFirst()));
   
-          return 2;
+          return 4;
         }
       }
     }
+    
+    for (prev_node = NULL, node = mpActiveModels; node != NULL; prev_node = node, node = node->mpAnr->mpNextActiveModel)
+    {
+      if(node->mpAnr == NULL)
+      {
+        printf("List of active MODELS contains node with mpAnr == NULL\n");
+        return 5;
+      }
+      
+      if(prev_node != node->mpAnr->mpPrevActiveModel)
+      {
+        printf("Inconsistency in mpNextActiveModel and mpPrevActiveModel pointers\n");
+        return 6;
+      }
+      
+      if (node->mAux2 != HasCycleCounter) 
+      {
+        printf("Active Model is not in the list of active nodes\n");
+        return 7;
+      }
+    } 
+
     return 0;
   }
   
@@ -494,7 +528,6 @@ namespace STK
     }
     
     assert(!HasCycle());
-    assert(AllWordSuccessorsAreActive());
   }
   // DeactivateWordNodesLeadingFrom(NetworkType::NodeType* pNode)
   //***************************************************************************
@@ -547,6 +580,7 @@ namespace STK
     pNode->mpAnr = NULL;
   
     assert(!HasCycle());
+    assert(AllWordSuccessorsAreActive());
   }
   //***************************************************************************
   
@@ -1857,6 +1891,12 @@ namespace STK
     {
       p_node->mpAnr->mpPrevActiveNode->mpAnr->mpNextActiveNode = p_node->mpAnr->mpNextActiveNode;
     }
+    
+    if (p_node->mpAnr->mpNextActiveNode) 
+    {
+      p_node->mpAnr->mpNextActiveNode->mpAnr->mpPrevActiveNode = p_node->mpAnr->mpPrevActiveNode;
+    }
+    
     delete p_node->mpAnr;
     p_node->mpAnr = NULL;    
   } 
