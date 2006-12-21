@@ -14,7 +14,6 @@
 
 #include <sstream>
 
-#define INIT_NODE_HASH_SIZE 1000
 
 // CODE
 //
@@ -28,55 +27,6 @@ namespace STK
   //###########################################################################
   
   
-  //***************************************************************************
-  //***************************************************************************
-  DecoderNetwork::NodeType*
-  find_or_create_node(struct MyHSearchData *node_hash, const char *node_id, DecoderNetwork::NodeType** last)
-  // Auxiliary function used by ReadHTKLattice_new. (Optionally initialize
-  // uninitialized node_hash) Search for node record at key node_id. If found,
-  // pointer to this record is returned, otherwise new node record is allocated
-  // with type set to NT_UNDEF and entered to has at key node_id and pointer
-  // to this new record is returned.
-  {
-    DecoderNetwork::NodeType*   p_node;
-    ENTRY   e = {0}; //{0} is just to make compiler happy
-    ENTRY*  ep;
-  
-    if (node_hash->mTabSize == 0 && !my_hcreate_r(INIT_NODE_HASH_SIZE, node_hash))
-      Error("Insufficient memory");
-    
-    e.key = const_cast<char *>(node_id);
-    my_hsearch_r(e, FIND, &ep, node_hash);
-  
-    if (ep != NULL) 
-      return (DecoderNetwork::NodeType*) ep->data;  
-  
-    p_node = (DecoderNetwork::NodeType*) calloc(1, sizeof(DecoderNetwork::NodeType));
-    
-    if (p_node == NULL) 
-      Error("Insufficient memory");
-  
-    p_node->rNLinks()     = 0;
-    p_node->rpLinks()     = NULL;
-    p_node->rNBackLinks() = 0;
-    p_node->rpBackLinks() = NULL;
-    p_node->mType       = NT_WORD;
-    p_node->SetStart(UNDEF_TIME);
-    p_node->SetStop(UNDEF_TIME);
-    p_node->mpPronun    = NULL;
-    p_node->mpBackNext  = *last;
-    p_node->mPhoneAccuracy = 1.0;
-    
-    *last  = p_node;
-    e.key  = strdup(node_id);
-    e.data = p_node;
-  
-    if (e.key == NULL || !my_hsearch_r(e, ENTER, &ep, node_hash))
-      Error("Insufficient memory");
-    
-    return p_node;
-  } // find_or_create_node(...)
-
   
   //###########################################################################
   //###########################################################################

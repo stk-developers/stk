@@ -1,10 +1,10 @@
 #include <cstdlib>
+#include "Net.h"
 
 #define SIGNIFICANT_PROB_DIFFERENCE (0.01)
 
 namespace STK
 {
-  
   //***************************************************************************
   //***************************************************************************
   template<typename _NodeContent, 
@@ -18,13 +18,18 @@ namespace STK
       if (IsEmpty()) 
         return;
 
+      NodeContainer::clear();
+
+      return;
+        
+      /*
       if (!mCompactRepresentation)
       {
         NodeContainer::clear();
       }
       else
       {
-        NodeBasic<NodeBasicContent, _LinkContent, LinkArray>*  p_node(pFirst());
+        NodeBasic<NodeBasicContent, _LinkContent, LinkArray>*  p_node = reinterpret_cast<NodeBasic<NodeBasicContent, _LinkContent, LinkArray>* >(pFirst()) ;
         NodeBasic<NodeBasicContent, _LinkContent, LinkArray>*  p_tmp_node;
 
         for(p_tmp_node =  reinterpret_cast<NodeBasic<NodeBasicContent, _LinkContent, LinkArray>* >(p_node); 
@@ -36,8 +41,7 @@ namespace STK
         
         free(p_node);
       }
-
-      NodeContainer::mpFirst = NULL;
+      */
     }
 
 
@@ -52,11 +56,11 @@ namespace STK
     Network<_NodeContent, _LinkContent, _StorageType, _LinkContainer>::
     Reverse()
     {
-      NodeType*  node;
-      NodeType*  p_first(NodeContainer::mpFirst);
-      NodeType*  p_last(NodeContainer::mpLast);
+      Node*  node;
+      Node*  p_first = pFirst();
+      Node*  p_last = pLast();
       
-      for (node = NodeContainer::mpFirst; node != NULL; node = node->mpBackNext) 
+      for (node = p_first; node != NULL; node = node->mpBackNext) 
       {
         LinkType*  links   = node->rpLinks();
         int         nlinks  = node->NLinks();
@@ -65,15 +69,14 @@ namespace STK
         node->rNLinks()       = node->rNBackLinks();
         node->rpBackLinks()   = links;
         node->rNBackLinks()   = nlinks;
-        NodeType*  next     = node->mpNext;
+        Node*  next     = node->mpNext;
         node->mpNext        = node->mpBackNext;
         node->mpBackNext    = next;
         node->mAux          = -node->mAux;
         p_last              = node;
       }
 
-      NodeContainer::mpFirst = p_last;
-      NodeContainer::mpLast  = p_first;
+      this->splice(p_last, p_first);
 
       return *this;
     }
@@ -91,8 +94,8 @@ namespace STK
     {
       size_t    i;
       size_t    j;
-      NodeType* p_node;
-      NodeType* p_lastnode;
+      Node* p_node;
+      Node* p_lastnode;
 
       // Sort nodes in topological order
       // printf("Sorting nodes...\n");
@@ -101,7 +104,7 @@ namespace STK
       {
         for (i = 0; i < p_node->NLinks(); i++) 
         {
-          NodeType* p_link_node = p_node->rpLinks()[i].pNode();
+          Node* p_link_node = p_node->rpLinks()[i].pNode();
           
           if (p_link_node->mAux == 0) 
           {
@@ -188,7 +191,7 @@ namespace STK
            template<class> class _LinkContainer>
     void
     Network<_NodeContent, _LinkContent, _StorageType, _LinkContainer>::
-    IsolateNode(NodeType* pNode)
+    IsolateNode(Node* pNode)
     {
       if (pNode->rpLinks())
       {
@@ -238,12 +241,12 @@ namespace STK
            template<class> class _LinkContainer>
     typename Network<_NodeContent, _LinkContent, _StorageType, _LinkContainer>:: iterator
     Network<_NodeContent, _LinkContent, _StorageType, _LinkContainer>::
-    RemoveNode(NodeType* pNode)
+    RemoveNode(Node* pNode)
     {
       IsolateNode(pNode);
       return erase(iterator(pNode));
     }
-  // RemoveNode(NodeType* pNode);
+  // RemoveNode(Node* pNode);
   //**************************************************************************
 
 
@@ -260,7 +263,7 @@ namespace STK
       IsolateNode(iNode);
       return erase(iNode);
     }
-  // RemoveNode(NodeType* pNode);
+  // RemoveNode(Node* pNode);
   //**************************************************************************
 
 
@@ -272,9 +275,9 @@ namespace STK
            template<class> class _LinkContainer>
     void
     Network<_NodeContent, _LinkContent, _StorageType, _LinkContainer>::
-    PruneNode(NodeType* pNode)
+    PruneNode(iterator pNode)
     {
-      NodeType* p_aux_node;
+      Node* p_aux_node;
       LinkType* p_aux_link;
 
       // Check whether I am the only successor or predecessor. If yes, 
@@ -295,7 +298,7 @@ namespace STK
             // Detach the link first, so no recursive pruning goes back
             p_aux_link->Detach();
 
-            PruneNode(p_aux_node);
+            PruneNode(iterator(p_aux_node));
           }
           else
           {
@@ -319,7 +322,7 @@ namespace STK
             // Detach the link first, so no recursive pruning goes back
             p_aux_link->Detach();
 
-            PruneNode(p_aux_node);
+            PruneNode(iterator(p_aux_node));
           }
           else
           {
@@ -328,9 +331,9 @@ namespace STK
         }
       }
 
-      erase(iterator(pNode));
+      NodeContainer::erase(pNode);
     }
-  // RemoveNode(NodeType* pNode);
+  // RemoveNode(Node* pNode);
   //**************************************************************************
 
 
@@ -365,17 +368,61 @@ namespace STK
     {
       _Content* p_tmp;
 
-      while (mpFirst != NULL)
+      while (mpPtr != NULL)
       {
-        p_tmp = mpFirst->mpNext;
-        delete mpFirst;
-        mpFirst = p_tmp;
+        p_tmp = mpPtr->mpNext;
+        delete mpPtr;
+        mpPtr = p_tmp;
       }
       mpLast = NULL;
     }
   //**************************************************************************
 
+
+  //**************************************************************************
+  //**************************************************************************
+  template<typename _Content>
+    void
+    ListStorage<_Content>::
+    splice(_Content* pFrom, _Content* pTo)
+    {
+      // TODO: don't forget to change when fixing List
+      mpPtr = pFrom;
+      mpLast  = pTo;
+    }
+  //**************************************************************************
   
+
+  //**************************************************************************
+  //**************************************************************************
+  template<typename _Content>
+    void
+    ListStorage<_Content>::
+    splice(iterator pos, _Content* pFrom, _Content* pTo)
+    {
+      _Content* p_aux = (pos == end()) 
+                      ? mpLast 
+                      : pos.mpPtr->mpBackNext;
+
+      // TODO: don't forget to change when fixing List
+
+      pTo->mpNext = pos.mpPtr;
+
+      if (pos == end())
+        pFrom->mpBackNext=mpLast;
+      else
+        pFrom->mpBackNext = pos.mpPtr->mpBackNext;
+        
+
+      if (pos != end())
+        pos.mpPtr->mpBackNext = pTo;
+
+      p_aux->mpNext = pTo;
+    }
+  //**************************************************************************
+
+  //**************************************************************************
+  //**************************************************************************
   template<class _LinkContent>
     void
     LinkArray<_LinkContent>::
@@ -407,5 +454,51 @@ namespace STK
       mSize = last_free;
     }
 
+
+  template< typename                _NodeContent, 
+            typename                _LinkContent, 
+            template<class> class   _LinkContainer>
+    void
+    Node<_NodeContent, _LinkContent, _LinkContainer>::
+    DeleteLink(LinkType* pLink)
+    {
+      Node* p_node = pLink->pNode();
+      LinkType* p_back_link = p_node->pFindBackLink(this);
+
+      assert (NULL != p_back_link);
+
+      ptrdiff_t offset = p_back_link - p_node->rpBackLinks();
+
+      memmove(p_back_link, p_back_link + 1, (p_node->NBackLinks() - offset - 1) * sizeof(LinkType)); 
+      p_node->rNLinks()--;
+
+      offset = pLink - rpLinks();
+
+      memmove(pLink, pLink + 1, (NLinks() - offset) * sizeof(LinkType));
+      --rNLinks();
+    }
+  
+  template< typename                _NodeContent, 
+            typename                _LinkContent, 
+            template<class> class   _LinkContainer>
+    void
+    Node<_NodeContent, _LinkContent, _LinkContainer>::
+    DeleteBackLink(LinkType* pLink)
+    {
+      Node* p_back_node = pLink->pNode();
+      LinkType* p_back_link = p_back_node->pFindLink(this);
+
+      assert (NULL != p_back_link);
+
+      ptrdiff_t offset = p_back_link - p_back_node->rpLinks();
+
+      memmove(p_back_link, p_back_link + 1, (p_back_node->NLinks() - offset - 1) * sizeof(LinkType)); 
+      p_back_node->rNLinks()--;
+
+      offset = pLink - rpBackLinks();
+
+      memmove(pLink, pLink + 1, (NBackLinks() - offset) * sizeof(LinkType));
+      rNBackLinks() --;
+    }
 } // namespace STK
 

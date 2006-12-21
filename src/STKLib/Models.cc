@@ -2615,7 +2615,7 @@ namespace STK
     // find best input mixture
     for (i = 0; i < state_from->mNMixtures; i++)
     {
-      g_like = ::DiagCGaussianDensity(state_from->mpMixture[i].mpEstimates, 
+      g_like = Decoder<DecoderNetwork>::DiagCGaussianDensity(state_from->mpMixture[i].mpEstimates, 
         pInputVector, NULL) + state_from->mpMixture[i].mWeight;
         
       if (g_like > max_g_like)

@@ -101,13 +101,9 @@ int main(int argc, char *argv[])
   ModelSet        hset;
   FILE *          sfp;
   FILE *          ilfp;
-#ifndef USE_NEW_MATRIX  
-  FLOAT *         obsMx     = NULL;
-  FLOAT *         obsMx_out = NULL;
-#else
+
   Matrix<FLOAT>   feature_matrix;
   Matrix<FLOAT>   feature_matrix_out;
-#endif
 
   FLOAT *         obs_out   = NULL;
   HtkHeader       header, 
@@ -195,7 +191,9 @@ int main(int argc, char *argv[])
   }
   i = ParseOptions(argc, argv, optionStr, SNAME, &cfgHash);
 //  htk_compat   = GetParamBool(&cfgHash,SNAME":HTKCOMPAT",       FALSE);
-  for (; i < argc; i++) {
+
+  for (; i < argc; i++) 
+  {
     last_file = AddFileElem(last_file, argv[i]);
     nfeature_files++;
   }
@@ -393,17 +391,10 @@ int main(int argc, char *argv[])
     if (cmn_mask) process_mask(lgcl_fn, cmn_mask, cmn_file);
     if (cvn_mask) process_mask(lgcl_fn, cvn_mask, cvn_file);
 
-#ifndef USE_NEW_MATRIX  
-    obsMx = ReadHTKFeatures(phys_fn, swap_features,
-                            startFrmExt, endFrmExt, target_kind,
-                            derivOrder, derivWinLengths, &header,
-                            cmn_path, cvn_path, cvg_file, &rhfbuff);
-#else
     ReadHTKFeatures(phys_fn, swap_features,
                     startFrmExt, endFrmExt, target_kind,
                     derivOrder, derivWinLengths, &header,
                     cmn_path, cvn_path, cvg_file, &rhfbuff,feature_matrix);
-#endif
 
     if ((size_t) hset.mInputVectorSize != header.mSampleSize / sizeof(float)) 
     {
@@ -419,18 +410,11 @@ int main(int argc, char *argv[])
       if (cmn_mask_out) process_mask(file_name->logical, cmn_mask_out, cmn_file_out);
       if (cvn_mask_out) process_mask(file_name->logical, cvn_mask_out, cvn_file_out);
       
-#ifndef USE_NEW_MATRIX  
-      obsMx_out = ReadHTKFeatures(file_name->mpPhysical, swap_features_out,
-                                  startFrmExt_out, endFrmExt_out, target_kind_out,
-                                  derivOrder_out, derivWinLengths_out, &header_out,
-                                  cmn_path_out, cvn_path_out, cvg_file_out, &rhfbuff_out);
-#else
       ReadHTKFeatures(file_name->mpPhysical, swap_features_out,
                       startFrmExt_out, endFrmExt_out, target_kind_out,
                       derivOrder_out, derivWinLengths_out, &header_out,
                       cmn_path_out, cvn_path_out, cvg_file_out, &rhfbuff_out,
                       feature_matrix_out);
-#endif
 
       if (n_frames != header_out.mNSamples) 
       {
@@ -460,11 +444,8 @@ int main(int argc, char *argv[])
     for (i = 0; i < header.mNSamples; i++, time++) 
     {
       size_t j;
-#ifndef USE_NEW_MATRIX  
-      FLOAT *obs = obsMx + i * hset.mInputVectorSize;
-#else
       FLOAT* obs = feature_matrix[i];
-#endif
+
       //Get next NN input vector by propagating vector from feature file
       //through NNet_input transformation.
       obs = XformPass(NNet_input, obs, time, FORWARD);
@@ -482,38 +463,31 @@ int main(int argc, char *argv[])
       else 
       {
         //Get NN output example vector from obsMx_out matrix
-#ifndef USE_NEW_MATRIX  
-        obs_out = obsMx_out + (time-1) * NNet_instance->OutSize();
-#else
         obs_out = feature_matrix_out[time-1];
-#endif
       }
       
       ///***********************************************************************
       /// For EACH NEW VECTOR - give it to SNet
-      prog_obj->NewVector(obs, obs_out, NNet_input->OutSize(), NNet_instance->OutSize(), 
-                         ((i+1) == header.mNSamples && (outlabel_map ? file_name->mpNext : file_name->mpNext->mpNext) == NULL));
+      prog_obj->NewVector(obs, obs_out, NNet_input->OutSize(), 
+          NNet_instance->OutSize(), ((i+1) == header.mNSamples && (outlabel_map 
+              ? file_name->mpNext 
+              : file_name->mpNext->mpNext) == NULL));
+
     // this returns true, if last vector
     ///*************************************************************************
     }
 
     totFrames  += n_frames;
     //TraceLog("[%d frames]", n_frames);
-#ifndef USE_NEW_MATRIX  
-    free(obsMx);
-#endif
     
-    if (!outlabel_map) {
-#ifndef USE_NEW_MATRIX  
-      free(obsMx_out);
-#endif
-    } else {
+    if (outlabel_map)
+    {
       ReleaseLabels(labels);
     }
   }
   // MAIN FILE LOOP END
 
-///************************************************************************************************     
+  ///***************************************************************************     
   /// DELETE SNET
   delete prog_obj;  
   std::cout << "SNet is Deleted... debug message\n" << std::flush;
@@ -545,7 +519,8 @@ int main(int argc, char *argv[])
     free(derivWinLengths_out);
   }
   
-  while (feature_files) {
+  while (feature_files) 
+  {
     file_name = feature_files;
     feature_files = feature_files->mpNext;
     free(file_name);

@@ -119,7 +119,7 @@ int main(int argc, char* argv[])
   ModelSet                        hset;
   ModelSet*                       hset_alig  = NULL;
   ModelSet*                       hset_prior = NULL;
-  Decoder                         decoder;
+  Decoder<DecoderNetwork>         decoder;
 
   FeatureRepository               feature_repo;
 
@@ -565,8 +565,8 @@ int main(int argc, char* argv[])
 
   if (network_file) 
   { // Unsupervised training
-    Decoder::NetworkType::NodeType*   p_node = NULL;
-    Decoder::NetworkType              my_net(p_node);
+    Decoder<DecoderNetwork>::NetworkType::Node*   p_node = NULL;
+    Decoder<DecoderNetwork>::NetworkType              my_net(p_node);
     IStkStream                        input_stream;    
     
     input_stream.open(network_file, ios::in, transc_filter ? transc_filter : "");
@@ -800,8 +800,8 @@ int main(int argc, char* argv[])
       
       if (!network_file) 
       {
-        Decoder::NetworkType::NodeType* p_node = NULL;
-        Decoder::NetworkType            my_net(p_node);
+        Decoder<DecoderNetwork>::NetworkType::Node* p_node = NULL;
+        Decoder<DecoderNetwork>::NetworkType            my_net(p_node);
 
         strcpy(label_file, feature_repo.Current().Logical().c_str());
         

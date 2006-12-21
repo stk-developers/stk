@@ -32,7 +32,19 @@ namespace STK
     INT_16    mSampleSize;
     UINT_16   mSampleKind;
   };
-  
+
+
+  /** 
+   * @brief Extension of the HTK header
+   */
+  struct HtkHeaderExt
+  {
+    INT_32 mHeaderSize;
+    INT_32 mVersion;
+    INT_32 mSampSize;
+  };  
+
+
   struct RHFBuffer
   {
     char*     mpLastFileName;

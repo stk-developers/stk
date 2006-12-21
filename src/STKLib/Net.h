@@ -21,29 +21,23 @@
 namespace STK
 {
 
-  class FWBWR;
-  class NodeBasicContent;
-  
-
-
-
   //############################################################################
   //############################################################################
   // Class list (overview)
 
-  template< typename _NodeContent, 
+  template< typename                  _NodeContent, 
             typename _LinkContent, 
             template<class> class     _LinkContainer > 
     class Link;
 
 
-  template< typename _NodeContent, 
+  template< typename                  _NodeContent, 
             typename _LinkContent, 
             template<class> class     _LinkContainer > 
     class NodeBasic;
 
 
-  template< typename _NodeContent, 
+  template< typename                  _NodeContent, 
             typename _LinkContent, 
             template<class> class     _LinkContainer > 
     class Node;
@@ -56,6 +50,7 @@ namespace STK
     class Network;
 
 
+
   //############################################################################
   //############################################################################
   // CLASS DECLARATIONS
@@ -65,13 +60,13 @@ namespace STK
 
   /** *************************************************************************
    ** *************************************************************************
-   * @brief Node iterator class (REGULAR_COMPACT specialization)
+   * @brief Array iterator class
    */
   template<class _LinkType>
-    class LinkIterator
+    class ArrayIterator
     {
     public:
-      typedef LinkIterator<_LinkType>           _Self;
+      typedef ArrayIterator<_LinkType>           _Self;
       typedef _LinkType                         LinkType;
 
       typedef std::bidirectional_iterator_tag   iterator_category;
@@ -85,11 +80,11 @@ namespace STK
 
     public:
       /// default constructor
-      LinkIterator() 
+      ArrayIterator() 
       { }
 
       /// copy constructor
-      LinkIterator(value_type *pPtr) : mpPtr(pPtr)
+      ArrayIterator(value_type *pPtr) : mpPtr(pPtr)
       { }
 
 
@@ -154,7 +149,28 @@ namespace STK
         return (!(mpPtr == rRight.mpPtr));
       }
 
+      // Random access iterator requirements
+      reference
+      operator[](const difference_type& n) const
+      { return mpPtr[n]; }
 
+      ArrayIterator&
+      operator+=(const difference_type& n)
+      { mpPtr += n; return *this; }
+
+      ArrayIterator
+      operator+(const difference_type& n) const
+      { return ArrayIterator(mpPtr + n); }
+
+      ArrayIterator&
+      operator-=(const difference_type& n)
+      { mpPtr -= n; return *this; }
+
+      ArrayIterator
+      operator-(const difference_type& n) const
+      { return ArrayIterator(mpPtr - n); }
+
+        
       pointer mpPtr; // pointer to container value type
 
     };
@@ -162,30 +178,34 @@ namespace STK
   //   class NodeIterator<_NodeType, NETWORK_COMPACT> 
   //****************************************************************************
 
-  template<class _LinkContent>
-    class LinkArray
+
+
+  //****************************************************************************
+  //****************************************************************************
+  template<class _Content>
+    class Array
     {
     public:
-      typedef  _LinkContent                 value_type;
+      typedef  _Content                     value_type;
       typedef value_type &                  reference;
       typedef const value_type &            const_reference;
-      typedef LinkIterator<_LinkContent>    iterator;
+      typedef ArrayIterator<_Content>       iterator;
       typedef const iterator                const_iterator;
       typedef ptrdiff_t                     difference_type;
       typedef int                           size_type;
 
       // CONSTRUCTORS AND DESTRUCTORS ..........................................
-      LinkArray() 
+      Array() 
       : mpPtr(NULL), mSize(0)
       { }
 
-      LinkArray(size_type size)
+      Array(size_type size)
       { 
         if (NULL == (mpPtr = (value_type*) calloc(size, sizeof(value_type))))
           Error("Cannot allocate memory");
       }
 
-      ~LinkArray()
+      ~Array()
       {
         if (NULL != mpPtr)
           free(mpPtr);
@@ -219,7 +239,14 @@ namespace STK
        */
       iterator
       begin()
-      { return iterator(&mpPtr[0]); }
+      { return iterator(mpPtr); }
+
+      /** 
+       * @brief Returns an iterator pointing to the begining of the array
+       */
+      const_iterator
+      begin() const
+      { return iterator(mpPtr); }
 
       /** 
        * @brief Returns an iterator pointing past the end of the array
@@ -227,6 +254,60 @@ namespace STK
       iterator
       end()
       { return iterator(&mpPtr[mSize]); }
+
+      /** 
+       * @brief Returns an iterator pointing past the end of the array
+       */
+      const_iterator
+      end() const
+      { return iterator(&mpPtr[mSize]); }
+
+      // element access
+      /**
+       *  Returns a read/write reference to the data at the first
+       *  element of the %list.
+       */
+      reference
+      front()
+      { return *begin(); }
+
+      /**
+       *  Returns a read-only (constant) reference to the data at the first
+       *  element of the %list.
+       */
+      const_reference
+      front() const
+      { return *begin(); }
+
+      /**
+       *  Returns a read/write reference to the data at the last element
+       *  of the %list.
+       */
+      reference
+      back()
+      { 
+        iterator i_tmp = end();
+        
+        return *(--i_tmp);
+      }
+
+      /**
+       *  Returns a read-only (constant) reference to the data at the last
+       *  element of the %list.
+       */
+      const_reference
+      back() const
+      { 
+        iterator i_tmp = end();
+        
+        return *(--i_tmp);
+      }
+
+      iterator
+      erase(iterator pos)
+      {
+        assert(false);
+      }
 
       
       /** 
@@ -242,6 +323,93 @@ namespace STK
         mSize = 0;
       }
 
+
+      // element access
+      /**
+       *  @brief  Subscript access to the data contained in the %vector.
+       *  @param n The index of the element for which data should be
+       *  accessed.
+       *  @return  Read/write reference to data.
+       *
+       *  This operator allows for easy, array-style, data access.
+       *  Note that data access with this operator is unchecked and
+       *  out_of_range lookups are not defined. (For checked lookups
+       *  see at().)
+       */
+      reference
+      operator[](size_type n)
+      { return *(begin() + n); }
+
+      /**
+       *  @brief  Subscript access to the data contained in the %vector.
+       *  @param n The index of the element for which data should be
+       *  accessed.
+       *  @return  Read-only (constant) reference to data.
+       *
+       *  This operator allows for easy, array-style, data access.
+       *  Note that data access with this operator is unchecked and
+       *  out_of_range lookups are not defined. (For checked lookups
+       *  see at().)
+       */
+      const_reference
+      operator[](size_type n) const
+      { return *(begin() + n); }
+
+      /** 
+       * @brief Splices the original array given by pointers with this
+       * 
+       * @param pFrom 
+       * @param pTo 
+       *
+       * Basically this method takes over controll of the original array
+       * given by pFrom. This method is temorary only. In future, we want real
+       * iterators to be used
+       */
+      void
+      splice(_Content* pFrom, _Content* pTo)
+      {
+        mpPtr = pFrom;
+        mSize = size_type(pTo - pFrom ) + 1;
+      }
+
+
+    public:
+
+      value_type*  mpPtr;
+      size_type    mSize;
+    };
+
+
+  /** 
+   * @brief 
+   */
+  template<class _LinkContent>
+    class LinkArray : public STK::Array<_LinkContent>
+    {
+    public:
+      typedef  _LinkContent                 value_type;
+      typedef value_type &                  reference;
+      typedef const value_type &            const_reference;
+      typedef ArrayIterator<_LinkContent>   iterator;
+      typedef const iterator                const_iterator;
+      typedef ptrdiff_t                     difference_type;
+      typedef int                           size_type;
+
+      using STK::Array<_LinkContent>::mSize;
+      using STK::Array<_LinkContent>::mpPtr;
+
+      // CONSTRUCTORS AND DESTRUCTORS ..........................................
+
+      LinkArray() : STK::Array<_LinkContent>() 
+      { }
+
+      LinkArray(size_type size) : STK::Array<_LinkContent>(size) 
+      { }
+
+      ~LinkArray()
+      { }
+
+
       /** 
        * @brief Defragments the storage space. 
        *
@@ -251,11 +419,6 @@ namespace STK
        */
       void
       defragment();
-
-    public:
-
-      value_type*  mpPtr;
-      size_type    mSize;
     };
   
 
@@ -264,21 +427,22 @@ namespace STK
    ** **************************************************************************
    *  @brief Network link representation class
    */
-  template<class _NodeContent, typename _LinkContent, 
-    template<class> class _LinkContainer>
+  template< typename                _NodeType, 
+            typename                _LinkContent, 
+            template<class> class   _LinkContainer>
     class Link 
     : public _LinkContent
     {
     public:
       typedef FLOAT                     LikeType;
-      typedef Node<_NodeContent, _LinkContent, _LinkContainer>   NodeType;
+      typedef _NodeType              Node;
 
       // Constructors and destructor ...........................................
       Link() 
       : _LinkContent(), mpNode(NULL)
       { }
 
-      Link(NodeType* pNode)
+      Link(Node* pNode)
       : _LinkContent(), mpNode(pNode)
       { }
 
@@ -287,12 +451,12 @@ namespace STK
 
 
       // Accessors ............................................................
-      NodeType*
+      Node*
       pNode() const
       { return mpNode; }
 
       void
-      SetNode(NodeType* pNode)
+      SetNode(Node* pNode)
       { mpNode = pNode; }
 
       /** 
@@ -308,15 +472,12 @@ namespace STK
 
 
     private:
-      NodeType *    mpNode;
+      Node *    mpNode;
 
     }; 
   // Link
   //****************************************************************************
 
-
-
-   
 
   /** *************************************************************************
    ** *************************************************************************
@@ -328,13 +489,15 @@ namespace STK
     class NodeBasic : public _NodeContent
     {
     public:
-      typedef Link<_NodeContent, _LinkContent, _LinkContainer>      LinkType;
-      typedef Node<_NodeContent, _LinkContent, _LinkContainer>      NodeType;
+      typedef _NodeContent                                          NodeContent;
+      typedef NodeBasic<_NodeContent, _LinkContent, _LinkContainer> Node;
+      typedef Node                                                  Self;
+      typedef Link<Node, _LinkContent, _LinkContainer>              LinkType;
       typedef _LinkContainer<LinkType>                              LinkContainer;
 
 
       NodeBasic() 
-      : _NodeContent(), mLinks() {}
+      : NodeContent(), mLinks() {}
 
 
       // TODO: This will be somehow replaced
@@ -356,7 +519,7 @@ namespace STK
 
       int
       NBackLinks() const
-      { return 0; }
+      { return -1; }
 
 
       /** 
@@ -392,7 +555,118 @@ namespace STK
        * @param pNode 
        */
       LinkType*
-      pFindLink(const NodeType* pNode)
+      pFindLink(const Node* pNode)
+      {
+        LinkType* p_link;
+
+        for (size_t i(0); i < NLinks(); i++)
+        {
+          p_link = &( rpLinks()[i] );
+
+          if (p_link->pNode() == pNode)
+            return p_link;
+        }
+
+        return NULL;
+      }
+      
+      /** 
+       * @brief Gives access to the forward links container
+       * 
+       * @return 
+       */
+      LinkContainer&
+      Links() 
+      { return mLinks; }
+
+    public:
+      LinkContainer       mLinks;
+    }; 
+  // class BasicNode
+  //****************************************************************************
+  
+
+
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Network node representation class
+   */   
+  template<typename _Derivate>
+    class NodeBase
+    {
+    public:
+      typedef typename _Derivate::LinkContainer LinkContainer;
+
+
+    public:
+    };
+  
+
+
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Network node representation class
+   */   
+  template< typename                _NodeContent, 
+            typename                _LinkContent, 
+            template<class> class   _LinkContainer>
+    class Node
+    //: public NodeBasic<_NodeContent, _LinkContent, _LinkContainer>
+    //: public _NodeContent
+    {
+    public:
+      typedef _NodeContent                                    NodeContent;
+      typedef long long                                       TimingType;
+      typedef Node                                            Self;
+      typedef Link<Node, _LinkContent, _LinkContainer>        LinkType;
+      typedef _LinkContainer<LinkType>                        LinkContainer;
+      typedef ptrdiff_t                                       difference_type;
+      //NodeBase<Node<_NodeContent, _LinkContent, _LinkContainer> > NodeBase;
+
+      Node() : NodeContent()
+      { }
+
+      ~Node()
+      { }
+
+
+      // TODO: This will be somehow replaced
+      LinkType*&
+      rpLinks() 
+      { return mLinks.mpPtr; }
+
+      typename LinkContainer::size_type&
+      rNLinks() 
+      { return mLinks.mSize; }
+
+      const typename LinkContainer::size_type&
+      NLinks() const
+      { return mLinks.mSize; }
+
+      /** 
+       * @brief Returns number of nodes that I really point to
+       */
+      int
+      NSuccessors()
+      {
+        int s(0);
+
+        for (size_t i(0); i < NLinks(); i++)
+        {
+          if (! rpLinks()[i].PointsNowhere())
+            ++s;
+        }
+
+        return s;
+      }
+
+      /** 
+       * @brief Finds a link to a given node
+       * 
+       * @param pNode 
+       */
+      LinkType*
+      pFindLink(const Node* pNode)
       {
         LinkType* p_link;
 
@@ -407,7 +681,6 @@ namespace STK
         return NULL;
       }
 
-      
       /** 
        * @brief Gives access to the forward links container
        * 
@@ -417,42 +690,6 @@ namespace STK
       Links() 
       { return mLinks; }
 
-
-      LinkContainer       mLinks;
-    }; 
-  // class BasicNode
-  //****************************************************************************
-  
-
-
-
-
-  /** *************************************************************************
-   ** *************************************************************************
-   *  @brief Network node representation class
-   */   
-  template< typename                _NodeContent, 
-            typename                _LinkContent, 
-            template<class> class   _LinkContainer>
-    class Node
-    : public NodeBasic<_NodeContent, _LinkContent, _LinkContainer>
-    {
-    public:
-      typedef long long  TimingType;
-      typedef Link<_NodeContent, _LinkContent, _LinkContainer> LinkType;
-      typedef Node<_NodeContent, _LinkContent, _LinkContainer> NodeType;
-      typedef ptrdiff_t                        difference_type;
-      typedef _LinkContainer<LinkType>          LinkContainer;
-
-
-      Node*         mpNext;
-      Node*         mpBackNext;
-
-    private:
-      LinkContainer     mBackLinks;
-     
-    public:
-      int           mAux;
 
 
       LinkType*&
@@ -474,7 +711,6 @@ namespace STK
 
       /** 
        * @brief Returns number of nodes that I really point to
-       * 
        */
       int
       NPredecessors()
@@ -488,6 +724,27 @@ namespace STK
         }
 
         return s;
+      }
+
+      /** 
+       * @brief Finds a link to a given node
+       * 
+       * @param pNode 
+       */
+      LinkType*
+      pFindBackLink(const Node* pNode)
+      {
+        LinkType* p_link;
+
+        for (size_t i(0); i < NBackLinks(); i++)
+        {
+          p_link = &( rpBackLinks()[i] );
+
+          if (p_link->pNode() == pNode)
+            return p_link;
+        }
+
+        return NULL;
       }
 
 
@@ -546,61 +803,19 @@ namespace STK
       void
       RemoveLink(LinkType* pLink);
 
-      void
-      Init()
-      { mStart = mStop = UNDEF_TIME; }
 
-      //time range when model can be active - apply only for model type
-      void
-      SetStart(const TimingType& start)
-      { mStart = start; }
+      NodeContent&
+      Content() const
+      { return mC; }
 
-      void
-      SetStop(const TimingType& stop)
-      { mStop = stop; }
+    public:
+      LinkContainer     mLinks;
+      LinkContainer     mBackLinks;
+      Node*             mpNext;
+      Node*             mpBackNext;
+      int               mAux;
 
-      const TimingType&
-      Start() const
-      { return mStart; }
-
-      const TimingType&
-      Stop() const
-      { return mStop; }
-
-
-      FLOAT         mPhoneAccuracy;
-    
-#   ifndef EXPANDNET_ONLY
-      Hmm*               mpHmmToUpdate;
-      FWBWR*             mpAlphaBetaList;
-      FWBWR*             mpAlphaBetaListReverse;
-#   endif        
-
-      /** 
-       * @brief Finds a link to a given node
-       * 
-       * @param pNode 
-       */
-      LinkType*
-      pFindBackLink(const NodeType* pNode)
-      {
-        LinkType* p_link;
-
-        for (size_t i(0); i < NBackLinks(); i++)
-        {
-          p_link = &( rpBackLinks()[i] );
-
-          if (p_link->pNode() == pNode)
-            return p_link;
-        }
-
-        return NULL;
-      }
-
-    private:
-      TimingType     mStart;
-      TimingType     mStop;
-      
+      NodeContent       mC;
     }; 
   // class Node
   //****************************************************************************
@@ -835,20 +1050,28 @@ namespace STK
 
 
       ListStorage()
-      : mpFirst(NULL), mpLast(NULL)
+      : mpPtr(NULL), mpLast(NULL)
       { }
 
       ListStorage(pointer pInit)
-      : mpFirst(pInit), mpLast(NULL)
+      : mpPtr(pInit), mpLast(NULL)
       { }
 
       iterator 
       begin()
-      { return mpFirst; }
+      { return mpPtr; }
+
+      const_iterator 
+      begin() const
+      { return mpPtr; }
 
       iterator
       end()
       { return iterator(NULL); }
+
+      const_iterator
+      end() const
+      { return const_iterator(NULL); }
 
       // element access
       /**
@@ -890,7 +1113,7 @@ namespace STK
 
       bool
       empty() const
-      { return NULL == mpFirst; }
+      { return NULL == mpPtr; }
 
       iterator
       erase(iterator pos);
@@ -898,8 +1121,14 @@ namespace STK
       void
       clear();
 
+      void
+      splice(_Content* pFrom, _Content* pTo);
+
+      void
+      splice(iterator pos, _Content* pFrom, _Content* pTo);
+
     protected:
-      _Content*     mpFirst;   ///< self descriptive
+      _Content*     mpPtr;   ///< self descriptive
       _Content*     mpLast;    ///< self descriptive
         
     };
@@ -908,83 +1137,141 @@ namespace STK
 
 
   template<typename _Content>
-    class ArrayStorage
+    class NodeArray : public STK::Array<_Content>
     {
     public:
+      /*
       typedef NodeArrayIterator<_Content>           iterator;
       typedef const iterator                                    const_iterator;
+      */
       typedef _Content                                          value_type;
+      typedef typename STK::Array<_Content>::iterator                    iterator;
+      typedef typename STK::Array<_Content>::const_iterator const_iterator;
       typedef typename iterator::pointer                        pointer;
       typedef typename iterator::const_pointer                  const_pointer;
       typedef typename iterator::reference                      reference;
       typedef typename iterator::const_reference                const_reference;
 
-      ArrayStorage()
-      : mpFirst(NULL), mNElements(0), mpLast(NULL)
+
+      NodeArray() 
+      : STK::Array<_Content>(), mpLast(NULL)
       { }
 
-      ArrayStorage(pointer pInit)
-      : mpFirst(pInit), mpLast(NULL)
+      NodeArray(pointer pInit)
+      : STK::Array<_Content>(),  mpLast(NULL)
       { }
 
-      iterator 
-      begin()
-      { return mpFirst; }
-
-      iterator
-      end()
-      { return iterator(NULL); }
-
-      // element access
-      /**
-       *  Returns a read/write reference to the data at the first
-       *  element of the %list.
-       */
-      reference
-      front()
-      { return *begin(); }
-
-      /**
-       *  Returns a read-only (constant) reference to the data at the first
-       *  element of the %list.
-       */
-      const_reference
-      front() const
-      { return *begin(); }
-
-      /**
-       *  Returns a read/write reference to the data at the last element
-       *  of the %list.
-       */
-      reference
-      back()
-      { 
-        return *mpLast;
-      }
-
-      /**
-       *  Returns a read-only (constant) reference to the data at the last
-       *  element of the %list.
-       */
-      const_reference
-      back() const
-      { 
-        return *mpLast;
-      }
-
-
-      bool
-      empty() const
-      { return !mNElements; }
 
     protected:
-      _Content*     mpFirst;   ///< self descriptive
-      size_t        mNElements;
       _Content*     mpLast;    ///< self descriptive
         
     };
   // StorageList : public Storage<_Content>
   //****************************************************************************
+
+
+  template <typename _Network, typename _LinkContainer>
+    class NodeLinkContainer 
+    : public _LinkContainer
+    {
+    public:
+      typedef _Network                                          Network;
+
+
+      Network*      mpNetwork;
+    };
+
+
+  /** **************************************************************************
+   ** **************************************************************************
+   * @brief BidirectionalNodeIterator represents a more sophisticated type of
+   *        network iterator, which not only iterates linearily through the 
+   *        network nodes, but also offers movements through their links
+   *        in both directions
+   */
+  template <typename _Network>
+    class BidirectionalNodeIterator 
+    : public _Network::iterator
+    {
+    public:
+      typedef BidirectionalNodeIterator<_Network>               Self;
+      typedef _Network                                          Network;
+      typedef typename Network::LinkContainer                   LinkContainer;
+      typedef typename Network::iterator                        iterator;
+
+
+      // Constructors .........................................................
+      BidirectionalNodeIterator() 
+      : _Network::iterator()
+      { }
+
+      BidirectionalNodeIterator(iterator iter, Network* pNetwork) 
+      : _Network::iterator(iter), mpNetwork(pNetwork)
+      { }
+
+
+      // Accessors ............................................................
+      LinkContainer&
+      OutLinks()
+      { return mpNetwork->LinksFrom(static_cast<iterator>(*this)) ; }
+
+      LinkContainer&
+      InLinks()
+      { return mpNetwork->LinksTo(static_cast<iterator>(*this)) ; }
+
+
+    protected:
+      // we need to have a refference to the parrent network
+      Network*    mpNetwork;
+
+    };
+
+
+
+  /** **************************************************************************
+   ** **************************************************************************
+   * @brief BidirectionalNodeIterator represents a more sophisticated type of
+   *        network iterator, which not only iterates linearily through the 
+   *        network nodes, but also offers movements through their links
+   *        in both directions
+   */
+  template <typename _Network>
+    class BidirectionalLinkIterator 
+    : public _Network::link_terator
+    {
+    public:
+      typedef BidirectionalLinkIterator<_Network>               Self;
+      typedef BidirectionalNodeIterator<_Network>               NodeIterator;
+      typedef _Network                                          Network;
+      typedef typename Network::iterator                        node_iterator;
+      typedef typename Network::link_iterator                   link_iterator;
+
+
+      // Constructors .........................................................
+      BidirectionalLinkIterator() 
+      : _Network::iterator()
+      { }
+
+      BidirectionalLinkIterator(link_iterator iter, Network* pNetwork) 
+      : _Network::link_iterator(iter), mpNetwork(pNetwork)
+      { }
+
+
+      // Accessors ............................................................
+      NodeIterator
+      OutNode()
+      { return mpNetwork->NodeFrom(static_cast<link_iterator>(*this)) ; }
+
+      NodeIterator
+      InNode()
+      { return mpNetwork->NodeTo(static_cast<link_iterator>(*this)) ; }
+
+
+    protected:
+      // we need to have a refference to the parrent network
+      Network*    mpNetwork;
+
+    };
 
 
 
@@ -1003,23 +1290,28 @@ namespace STK
     : public _NodeContainer< Node<_NodeContent, _LinkContent, _LinkContainer> >
     {
     public:
-      typedef Node<_NodeContent, _LinkContent, _LinkContainer>     NodeType;
-      typedef Link<_NodeContent, _LinkContent, _LinkContainer>     LinkType;
-      typedef _NodeContainer<NodeType>                      NodeContainer;
+      typedef Network<_NodeContent, _LinkContent, _NodeContainer, _LinkContainer>
+                                                                Self;
+      typedef Node<_NodeContent, _LinkContent, _LinkContainer>  Node;
+      typedef Link<Node, _LinkContent, _LinkContainer>          LinkType;
 
-      typedef typename NodeContainer::iterator             iterator;
-      typedef const iterator  const_iterator;
 
+      typedef typename Node::NodeContent                        NodeContent;
+      typedef _LinkContent                                      LinkContent;
+
+      typedef _NodeContainer<Node>                              NodeContainer;
+      typedef _LinkContainer<LinkType>                          LinkContainer;
+
+      typedef typename NodeContainer::iterator                  iterator;
+      typedef const iterator                                    const_iterator;
+
+      typedef typename LinkContainer::iterator                  link_iterator;
+      typedef const link_iterator                               const_link_iterator;
+
+      typedef BidirectionalNodeIterator<Self>                   Iterator;
 
 
     public:
-
-      /*
-      using NodeContainer::end;
-      using NodeContainer::empty;
-      using NodeContainer::front;
-      using NodeContainer::back;
-      */
 
       // Construcotrs ..........................................................
       Network() 
@@ -1031,7 +1323,7 @@ namespace STK
        * 
        * In this case, no deallocation will take place when destructor is called
        */
-      Network(NodeType* pNode) 
+      Network(Node* pNode) 
       : NodeContainer(pNode), mCompactRepresentation(false),
         mIsExternal(true) 
       { }
@@ -1041,6 +1333,44 @@ namespace STK
       { 
         if (!mIsExternal)
           Clear(); 
+      }
+
+
+      Iterator
+      Begin()
+      { return Iterator(NodeContainer::begin(), this); }
+
+      Iterator
+      End()
+      { return Iterator(NodeContainer::end(), this); }
+
+
+      LinkContainer&
+      LinksFrom(iterator iNode)
+      { return iNode->Links(); }
+
+      const LinkContainer&
+      LinksFrom(iterator iNode) const
+      { return iNode->Links(); }
+
+
+      LinkContainer&
+      LinksTo(iterator iNode)
+      { return iNode->BackLinks(); }
+
+      const LinkContainer&
+      LinksTo(iterator iNode) const
+      { return iNode->BackLinks(); }
+
+
+      Iterator
+      NodeFrom(link_iterator iLink)
+      { return Iterator(iterator(iLink->pNode()), this); }
+
+      Iterator
+      NodeTo(link_iterator iLink)
+      { // TODO: Implement this
+        assert(false); 
       }
 
       const bool
@@ -1057,45 +1387,42 @@ namespace STK
 
 
       // accessors ............................................................. 
-      NodeType*
+      Node*
       pFirst()
       { 
-        return NodeContainer::mpFirst; 
+        return &(NodeContainer::front()); 
       }
 
-      NodeType*
+      Node*
       pLast()
       { 
-        return NodeContainer::mpLast; 
+        //return NodeContainer::mpLast; 
+        return &(NodeContainer::back()); 
       }
 
-      const NodeType*
+
+      const Node*
       pFirst() const
       { 
-        return NodeContainer::mpFirst; 
+        return &(NodeContainer::front()); 
       }
 
 
-      NodeType*
-      SetFirst(NodeType* pFirst)
+      Node*
+      SetFirst(Node* pFirst)
       { 
         // we don't want any memory leaks
         assert(IsEmpty());
 
-        NodeContainer::mpFirst     = pFirst; 
+        NodeContainer::mpPtr     = pFirst; 
         mIsExternal = true;
       }
 
-      NodeType*
-      SetLast(NodeType* pLast)
+      Node*
+      SetLast(Node* pLast)
       { 
-        // we don't want any memory leaks
-        //assert(IsEmpty());
-
-        NodeContainer::mpLast = pLast; 
-        //mIsExternal = true;
+        NodeContainer::mpLast     = pLast; 
       }
-
 
 
       // helping functions
@@ -1105,7 +1432,7 @@ namespace STK
       { return this->empty(); }
 
       void
-      PruneNode(NodeType* pNode);
+      PruneNode(iterator pNode);
 
       /** 
        * @brief Safely remove node
@@ -1128,7 +1455,7 @@ namespace STK
        * consistency
        */
       iterator
-      RemoveNode(NodeType* pNode);
+      RemoveNode(Node* pNode);
 
 
       /** 
@@ -1146,7 +1473,7 @@ namespace STK
        * @param pNode 
        */
       void
-      IsolateNode(NodeType* pNode);
+      IsolateNode(Node* pNode);
 
       
       /** 
@@ -1172,52 +1499,6 @@ namespace STK
     }; // class Network
 
 
-
-  template< typename                _NodeContent, 
-            typename                _LinkContent, 
-            template<class> class   _LinkContainer>
-    void
-    Node<_NodeContent, _LinkContent, _LinkContainer>::
-    DeleteLink(LinkType* pLink)
-    {
-      NodeType* p_node = pLink->pNode();
-      LinkType* p_back_link = p_node->pFindBackLink(this);
-
-      assert (NULL != p_back_link);
-
-      ptrdiff_t offset = p_back_link - p_node->rpBackLinks();
-
-      memmove(p_back_link, p_back_link + 1, (p_node->NBackLinks() - offset - 1) * sizeof(LinkType)); 
-      p_node->rNLinks()--;
-
-      offset = pLink - NodeBasic<_NodeContent, _LinkContent, _LinkContainer>::rpLinks();
-
-      memmove(pLink, pLink + 1, (NodeBasic<_NodeContent, _LinkContent, _LinkContainer>::NLinks() - offset) * sizeof(LinkType));
-      NodeBasic<_NodeContent, _LinkContent, _LinkContainer>::rNLinks() --;
-    }
-  
-  template< typename                _NodeContent, 
-            typename                _LinkContent, 
-            template<class> class   _LinkContainer>
-    void
-    Node<_NodeContent, _LinkContent, _LinkContainer>::
-    DeleteBackLink(LinkType* pLink)
-    {
-      NodeType* p_back_node = pLink->pNode();
-      LinkType* p_back_link = p_back_node->pFindLink(this);
-
-      assert (NULL != p_back_link);
-
-      ptrdiff_t offset = p_back_link - p_back_node->rpLinks();
-
-      memmove(p_back_link, p_back_link + 1, (p_back_node->NLinks() - offset - 1) * sizeof(LinkType)); 
-      p_back_node->rNLinks()--;
-
-      offset = pLink - rpBackLinks();
-
-      memmove(pLink, pLink + 1, (NBackLinks() - offset) * sizeof(LinkType));
-      rNBackLinks() --;
-    }
   
 }; // namespace STK
 

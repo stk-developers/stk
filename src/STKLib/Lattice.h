@@ -16,7 +16,7 @@
 //# STK includes                                                             ##
 //#############################################################################
 #include "Net.h"
-#include "Decoder.h"
+#include "DecoderNetwork.h"
 
 
 //#############################################################################
@@ -29,7 +29,6 @@
 
 namespace STK
 {
-
   /** 
    * @brief 
    */
@@ -42,8 +41,8 @@ namespace STK
      * @param pWlr pointer to the "ending" node of the word link record
      * network
      */
-    void
-    BuildFromWlr(WordLinkRecord* pWlr);
+    //void
+    ////BuildFromWlr(WordLinkRecord* pWlr);
         
 
 
@@ -65,12 +64,12 @@ namespace STK
 
 
   private:
-    static void 
-    AllocateNodesForWordLinkRecords(WordLinkRecord* pWlr, 
-        NodeType*& rpNode);
+    //static void 
+    //AllocateNodesForWordLinkRecords(WordLinkRecord* pWlr, 
+    //    NodeType*& rpNode);
 
-    static void 
-    EstablishLinks(WordLinkRecord* pWlr);
+    //static void 
+    //EstablishLinks(WordLinkRecord* pWlr);
   }; 
   // class Lattice
   //***************************************************************************

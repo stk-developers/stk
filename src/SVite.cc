@@ -130,10 +130,14 @@ char *optionStr =
 " -V n   PRINTVERSION=TRUE"
 " -X r   SOURCETRANSCEXT";
 
-int main(int argc, char *argv[]) 
-{
+
+
   ModelSet                      hset;
-  Decoder                       decoder;
+  Decoder<DecoderNetwork>        decoder;
+  Decoder<_CompactDecoderNetwork> compact_decoder;
+
+  Decoder<DecoderNetwork>*       p_decoder;
+
   FILE *                        lfp = NULL;
   FILE *                        ilfp = NULL;
   
@@ -144,7 +148,7 @@ int main(int argc, char *argv[])
   int                           i;
   int                           fcnt = 0;
   Label *                       labels;
-  Decoder::NetworkType::NodeType*  pLattice;
+
   Lattice                       lattice;
   char                          line[1024];
   char                          label_file[1024];
@@ -155,9 +159,107 @@ int main(int argc, char *argv[])
   MyHSearchData                 dictHash;
   MyHSearchData                 cfgHash;
   
-  FileListElem *                feature_files = NULL;
-  FileListElem *                file_name = NULL;
-  FileListElem **               last_file = &feature_files;
+  int                           alignment = (AlignmentType) WORD_ALIGNMENT;
+
+  double                        word_penalty;
+  double                        model_penalty;
+  double                        grammar_scale;
+  double                        transp_scale;
+  double                        outprb_scale;
+  double                        pronun_scale;
+  double                        occprb_scale;
+  double                        state_pruning;
+  double                        stprn_step;
+  double                        stprn_limit;  
+         
+  const char*                   hmm_dir;
+  const char*                   hmm_ext;
+  const char*                   out_lbl_dir;
+  const char*                   out_lbl_ext;
+  const char*                   in_lbl_dir;
+  const char*                   in_lbl_ext;
+  const char*                   out_MLF;
+  const char*                   in_MLF;
+  const char*                   network_file;
+  const char*                   hmm_list;
+  const char*                   dictionary;
+        char*                   script;
+        char*                   mmf;
+  const char*                   label_filter;
+  const char*                   net_filter;
+  const char*                   label_ofilter;
+  const char*                   net_ofilter;
+        char*                   cmn_path;
+        char*                   cmn_file;
+  const char*                   cmn_mask;
+        char*                   cvn_path;
+        char*                   cvn_file;
+  const char*                   cvn_mask;
+  const char*                   cvg_file;
+  const char*                   mmf_dir;
+  const char*                   mmf_mask;
+              
+  const char*                   lat_ext;
+  bool                          lat_is_incomplete;
+
+  int                           trace_flag;
+  int                           targetKind;
+  int                           derivOrder;
+  int*                          derivWinLengths;
+  int                           startFrmExt;
+  int                           endFrmExt;
+  bool                          baum_welch;
+  bool                          swap_features;
+  bool                          htk_compat;
+  bool                          compactNetworkRepresentation = false;
+  enum TranscriptionFormat {TF_HTK, TF_STK, TF_CSTK} in_transc_fmt, out_transc_fmt;
+  int                           notInDictAction = WORD_NOT_IN_DIC_UNSET;
+  
+  ExpansionOptions              expOptions  = {0};
+  ExpansionOptions              emptyExpOpts= {0}; 
+                                
+  STKNetworkOutputFormat        in_net_fmt  = {0};
+  STKNetworkOutputFormat        out_net_fmt = {0};
+  LabelFormat                   out_lbl_fmt = {0};
+  LabelFormat                   in_lbl_fmt  = {0};
+
+  bool  print_all_options; 
+
+
+
+
+int main(int argc, char *argv[]) 
+{
+                                emptyExpOpts.mStrictTiming   = true;
+                                emptyExpOpts.mNoOptimization = true;
+                                emptyExpOpts.mNoWordExpansion= true;
+  /*
+  ModelSet                      hset;
+  Decoder<DecoderNetwork>        decoder;
+  Decoder<_CompactDecoderNetwork> compact_decoder;
+
+  Decoder<DecoderNetwork>*       p_decoder;
+
+  FILE *                        lfp = NULL;
+  FILE *                        ilfp = NULL;
+  
+  Matrix<FLOAT>                 feature_matrix;
+  FeatureRepository             feature_repo;
+
+  FLOAT                         like;
+  int                           i;
+  int                           fcnt = 0;
+  Label *                       labels;
+
+  Lattice                       lattice;
+  char                          line[1024];
+  char                          label_file[1024];
+  const char *                  cchrptr;
+  
+  MyHSearchData                 nonCDphHash;
+  MyHSearchData                 phoneHash;
+  MyHSearchData                 dictHash;
+  MyHSearchData                 cfgHash;
   
   int                           alignment = (AlignmentType) WORD_ALIGNMENT;
 
@@ -227,6 +329,7 @@ int main(int argc, char *argv[])
   LabelFormat                   in_lbl_fmt  = {0};
 
   bool  print_all_options; 
+  */
   
   in_lbl_fmt.TIMES_OFF = 1;
 
@@ -487,12 +590,60 @@ int main(int argc, char *argv[])
     }
     out_lbl_fmt.WORDS_OFF = 1;
   }
-  
 
+
+  if (!compactNetworkRepresentation)
+    p_decoder = &decoder;
+  else
+    p_decoder = reinterpret_cast<Decoder<DecoderNetwork>* > (&compact_decoder);
+
+  
+  /*
+  IStkStream                      input_stream;    
+  input_stream.open(network_file, ios::in, transc_filter ? transc_filter : "");
+  
+  if (!input_stream.good())
+    Error("Cannot open network file: %s", network_file);
+  
+  ilfp = input_stream.file();
+
+  ReadSTKNetwork(
+      ilfp, 
+      &dictHash,
+      &phoneHash, 
+      notInDictAction, 
+      in_lbl_fmt,
+      feature_repo.CurrentHeader().mSamplePeriod, 
+      network_file, 
+      NULL,
+      true,
+      compact_decoder.rNetwork());
+
+  input_stream.close();
+
+  OStkStream output_stream;
+  output_stream.open("test_output.net");
+
+  if (!output_stream.good())
+    Error("Cannot open test output");
+   
+  WriteSTKNetwork(output_stream.file(), compact_decoder.rNetwork(), out_net_fmt, 
+      feature_repo.CurrentHeader().mSamplePeriod, "test_label", "test_mlf.mlf",
+      0.0, 0.0, 1.0);
+  
+  output_stream.close();
+  compact_decoder.Clear();
+
+  /*
+  if (!compactNetworkRepresentation)
+    SViteApp< Decoder<DecoderNetwork> >();
+  else
+    SViteApp< Decoder<_CompactDecoderNetwork> >();
+    */
+
+  
   if (network_file) 
   { // Unsupervised training
-    Decoder::NetworkType::NodeType* p_node = NULL;
-    Decoder::NetworkType            my_net(p_node);
     IStkStream                      input_stream;    
     
     input_stream.open(network_file, ios::in, transc_filter ? transc_filter : "");
@@ -519,18 +670,11 @@ int main(int argc, char *argv[])
           NULL, 
           NULL);
               
-      //my_net.BuildFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
       decoder.rNetwork().BuildFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
               
       ReleaseLabels(labels);
 
       if (!compactNetworkRepresentation)
-        // my_net.ExpansionsAndOptimizations(
-        //     expOptions, 
-        //     in_net_fmt, 
-        //     &dictHash,
-        //     &nonCDphHash, 
-        //     &phoneHash);
         decoder.rNetwork().ExpansionsAndOptimizations(
             expOptions, 
             in_net_fmt, 
@@ -543,53 +687,52 @@ int main(int argc, char *argv[])
       //:TODO:
       // header.mSamplePeriod not initialized yet... 
 
-      // ReadSTKNetwork(
-      //   ilfp, 
-      //   &dictHash,
-      //   &phoneHash, 
-      //   notInDictAction, 
-      //   in_lbl_fmt,
-      //   feature_repo.CurrentHeader().mSamplePeriod, 
-      //   network_file, 
-      //   NULL,
-      //   compactNetworkRepresentation,
-      //   my_net);
+      if (compactNetworkRepresentation)
+      {
+        ReadSTKNetwork(
+          ilfp, 
+          &dictHash,
+          &phoneHash, 
+          notInDictAction, 
+          in_lbl_fmt,
+          feature_repo.CurrentHeader().mSamplePeriod, 
+          network_file, 
+          NULL,
+          compactNetworkRepresentation,
+          compact_decoder.rNetwork());
+      }
+      else
+      {
+        ReadSTKNetwork(
+          ilfp, 
+          &dictHash,
+          &phoneHash, 
+          notInDictAction, 
+          in_lbl_fmt,
+          feature_repo.CurrentHeader().mSamplePeriod, 
+          network_file, 
+          NULL,
+          compactNetworkRepresentation,
+          decoder.rNetwork());
 
-      ReadSTKNetwork(
-        ilfp, 
-        &dictHash,
-        &phoneHash, 
-        notInDictAction, 
-        in_lbl_fmt,
-        feature_repo.CurrentHeader().mSamplePeriod, 
-        network_file, 
-        NULL,
-        compactNetworkRepresentation,
-        decoder.rNetwork());
-
-      // my_net.ExpansionsAndOptimizations(
-      //   expOptions, 
-      //   in_net_fmt, 
-      //   &dictHash,
-      //   &nonCDphHash, 
-      //   &phoneHash);
-
-      decoder.rNetwork().ExpansionsAndOptimizations(
-        expOptions, 
-        in_net_fmt, 
-        &dictHash,
-        &nonCDphHash, 
-        &phoneHash);
+        decoder.rNetwork().ExpansionsAndOptimizations(
+          expOptions, 
+          in_net_fmt, 
+          &dictHash,
+          &nonCDphHash, 
+          &phoneHash);
+      }
     }
     else 
     {
       Error("Too bad. What did you do ?!?");
     }
 
-    // p_node = my_net.pFirst();
-                                      
-    //decoder.Init(p_node, &hset, NULL, compactNetworkRepresentation);
-    decoder.Init(&hset, NULL, compactNetworkRepresentation);
+    if (compactNetworkRepresentation)
+      compact_decoder.Init(&hset, NULL, compactNetworkRepresentation);
+    else
+      decoder.Init(&hset, NULL, compactNetworkRepresentation);
+
   } 
   else 
   {
@@ -637,10 +780,6 @@ int main(int argc, char *argv[])
     // read the network file if given ..........................................
     if (!network_file) 
     {
-      Decoder::NetworkType::NodeType* p_node = NULL;
-      Decoder::NetworkType            my_net(p_node);
-      
-
       // construct the name
       strcpy(label_file, feature_repo.Current().Logical().c_str());
 
@@ -657,7 +796,7 @@ int main(int argc, char *argv[])
             dictionary ? UL_ERROR : UL_INSERT, in_lbl_fmt,
             feature_repo.CurrentHeader().mSamplePeriod, label_file, in_MLF, NULL);
 
-        my_net.BuildFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
+        decoder.rNetwork().BuildFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
 
         ReleaseLabels(labels);
       } 
@@ -665,9 +804,19 @@ int main(int argc, char *argv[])
       {
         if (trace_flag & 2)
           TraceLog("Recognition network: Loading \"%s\"", label_file);
-        ReadSTKNetwork(ilfp, &dictHash, &phoneHash, notInDictAction,
-            in_lbl_fmt, feature_repo.CurrentHeader().mSamplePeriod, label_file,
-            in_MLF, compactNetworkRepresentation,  my_net);
+
+        if (!compactNetworkRepresentation)
+        {
+          ReadSTKNetwork(ilfp, &dictHash, &phoneHash, notInDictAction,
+              in_lbl_fmt, feature_repo.CurrentHeader().mSamplePeriod, label_file,
+              in_MLF, compactNetworkRepresentation,  decoder.rNetwork());
+        }
+        else
+        {
+          ReadSTKNetwork(ilfp, &dictHash, &phoneHash, notInDictAction,
+              in_lbl_fmt, feature_repo.CurrentHeader().mSamplePeriod, label_file,
+              in_MLF, compactNetworkRepresentation,  compact_decoder.rNetwork());
+        }
       } 
       else 
       {
@@ -679,36 +828,40 @@ int main(int argc, char *argv[])
       {
         if (trace_flag & 2)
           TraceLog("Recognition network: Performing expansions and optimizations");
-        my_net.ExpansionsAndOptimizations(expOptions, in_net_fmt, &dictHash,
-            &nonCDphHash, &phoneHash);
-      }
 
-      p_node = my_net.pFirst();
-      decoder.Init(p_node, &hset, NULL, false);
+        decoder.rNetwork().ExpansionsAndOptimizations(expOptions, in_net_fmt, &dictHash,
+            &nonCDphHash, &phoneHash);
+
+        decoder.Init(&hset, NULL, false);
+      }
+      else
+      {
+        compact_decoder.Init(&hset, NULL, true);
+      }
 
       CloseInputLabelFile(ilfp, in_MLF);
     }
 
-    decoder.mWPenalty     = word_penalty;
-    decoder.mMPenalty     = model_penalty;
-    decoder.mLmScale      = grammar_scale;
-    decoder.mPronScale    = pronun_scale;
-    decoder.mTranScale    = transp_scale;
-    decoder.mOutpScale    = outprb_scale;
-    decoder.mOcpScale     = occprb_scale;
-    decoder.mAlignment     = alignment;
-    decoder.mPruningThresh = state_pruning > 0.0 ? state_pruning : -LOG_0;
-    decoder.mLatticeGeneration = (lat_ext != NULL);
+    p_decoder->mWPenalty     = word_penalty;
+    p_decoder->mMPenalty     = model_penalty;
+    p_decoder->mLmScale      = grammar_scale;
+    p_decoder->mPronScale    = pronun_scale;
+    p_decoder->mTranScale    = transp_scale;
+    p_decoder->mOutpScale    = outprb_scale;
+    p_decoder->mOcpScale     = occprb_scale;
+    p_decoder->mAlignment     = alignment;
+    p_decoder->mPruningThresh = state_pruning > 0.0 ? state_pruning : -LOG_0;
+    p_decoder->mLatticeGeneration = (lat_ext != NULL);
 
-    if(decoder.mLatticeGeneration)
+    if(p_decoder->mLatticeGeneration)
     {
-      decoder.mAlignment = WORD_ALIGNMENT | MODEL_ALIGNMENT;
+      p_decoder->mAlignment = WORD_ALIGNMENT | MODEL_ALIGNMENT;
     }
     else
     {
-      if (alignment & STATE_ALIGNMENT && out_lbl_fmt.MODEL_OFF) decoder.mAlignment &= ~MODEL_ALIGNMENT;
-      if (alignment & MODEL_ALIGNMENT && out_lbl_fmt.WORDS_OFF) decoder.mAlignment &= ~WORD_ALIGNMENT;
-      if (alignment & STATE_ALIGNMENT && out_lbl_fmt.FRAME_SCR) decoder.mAlignment |=  FRAME_ALIGNMENT;
+      if (alignment & STATE_ALIGNMENT && out_lbl_fmt.MODEL_OFF) p_decoder->mAlignment &= ~MODEL_ALIGNMENT;
+      if (alignment & MODEL_ALIGNMENT && out_lbl_fmt.WORDS_OFF) p_decoder->mAlignment &= ~WORD_ALIGNMENT;
+      if (alignment & STATE_ALIGNMENT && out_lbl_fmt.FRAME_SCR) p_decoder->mAlignment |=  FRAME_ALIGNMENT;
     }
 
     fflush(stdout);
@@ -717,32 +870,59 @@ int main(int argc, char *argv[])
 
     for (;;) 
     {
-      decoder.ViterbiInit();
-      decoder.PassTokenInNetwork = decoder.mLatticeGeneration ? &PassTokenMaxForLattices :
-                               baum_welch             ? &PassTokenSum : &PassTokenMax;
-                               
-      decoder.PassTokenInModel   = baum_welch ? &PassTokenSum : &PassTokenMax;
-
-      for (i = 0; i < feature_matrix.Rows(); i++) 
+      if (!compactNetworkRepresentation)
       {
-        decoder.ViterbiStep(feature_matrix[i]);
+        decoder.ViterbiInit();
+
+        decoder.PassTokenInNetwork = 
+          decoder.mLatticeGeneration ? &Decoder<DecoderNetwork>::PassTokenMaxForLattices :
+          baum_welch                 ? &Decoder<DecoderNetwork>::PassTokenSum 
+                                     : &Decoder<DecoderNetwork>::PassTokenMax;
+                                 
+        decoder.PassTokenInModel   = baum_welch ? &Decoder<DecoderNetwork>::PassTokenSum 
+                                                : &Decoder<DecoderNetwork>::PassTokenMax;
+
+        for (i = 0; i < feature_matrix.Rows(); i++) 
+        {
+          decoder.ViterbiStep(feature_matrix[i]);
+        }
+        
+        like = decoder.ViterbiDone(&labels, &lattice);
       }
-      
-      like = decoder.ViterbiDone(&labels, &lattice);
+      else
+      {
+        compact_decoder.ViterbiInit();
+
+        compact_decoder.PassTokenInNetwork = 
+          compact_decoder.mLatticeGeneration ? &Decoder<_CompactDecoderNetwork>::PassTokenMaxForLattices :
+          baum_welch                 ? &Decoder<_CompactDecoderNetwork>::PassTokenSum 
+                                     : &Decoder<_CompactDecoderNetwork>::PassTokenMax;
+                                 
+        compact_decoder.PassTokenInModel   = baum_welch ? &Decoder<_CompactDecoderNetwork>::PassTokenSum 
+                                                : &Decoder<_CompactDecoderNetwork>::PassTokenMax;
+
+        for (i = 0; i < feature_matrix.Rows(); i++) 
+        {
+          compact_decoder.ViterbiStep(feature_matrix[i]);
+        }
+        
+        like = compact_decoder.ViterbiDone(&labels, &lattice);
+      }
+
 
       if (labels) 
         break;
 
-      if (decoder.mPruningThresh <= LOG_MIN 
+      if (p_decoder->mPruningThresh <= LOG_MIN 
       || (stprn_step <= 0.0) 
-      || ((decoder.mPruningThresh += stprn_step) > stprn_limit)) 
+      || ((p_decoder->mPruningThresh += stprn_step) > stprn_limit)) 
       {
         Warning("No tokens survived");
         break;
       }
 
       Warning("No tokens survived, trying pruning threshold: %.2f", 
-          decoder.mPruningThresh);
+          p_decoder->mPruningThresh);
     }
 
     if (trace_flag & 1 && labels) 
@@ -750,10 +930,9 @@ int main(int argc, char *argv[])
       Label* label;
       int    n_frames = feature_matrix.Rows() - hset.mTotalDelay;
 
-      for (label = labels; 
-          label->mpNextLevel != NULL;
-          label = label->mpNextLevel)
-      { /* do nothing */ }
+      for (label = labels; label->mpNextLevel != NULL; 
+           label = label->mpNextLevel)
+      {  }
 
       for (; label != NULL; label = label->mpNext) 
       {
@@ -792,7 +971,7 @@ int main(int argc, char *argv[])
     {
       WriteSTKNetwork(lfp, lattice, out_net_fmt, 
           feature_repo.CurrentHeader().mSamplePeriod, label_file, out_MLF,
-          decoder.mWPenalty, decoder.mMPenalty, decoder.mLmScale);
+          (&decoder)->mWPenalty, p_decoder->mMPenalty, p_decoder->mLmScale);
           
       // we are not needing the lattice anymore, so free it from memory
       lattice.Clear();
@@ -804,12 +983,13 @@ int main(int argc, char *argv[])
     } 
     else 
     {
+      // create temporary linear network from labels, just to store it
       DecoderNetwork tmp_net(labels, 
           alignment & (MODEL_ALIGNMENT|STATE_ALIGNMENT) ? NT_MODEL : NT_WORD);
       
       WriteSTKNetwork(lfp, tmp_net, out_net_fmt, 
           feature_repo.CurrentHeader().mSamplePeriod, label_file, out_MLF,
-          decoder.mWPenalty, decoder.mMPenalty, decoder.mLmScale);
+          p_decoder->mWPenalty, p_decoder->mMPenalty, p_decoder->mLmScale);
     }
 
     CloseOutputLabelFile(lfp, out_MLF);
@@ -817,7 +997,10 @@ int main(int argc, char *argv[])
 
     if (!network_file) 
     {
-      decoder.Clear();
+      if (compactNetworkRepresentation)
+        decoder.Clear();
+      else
+        compact_decoder.Clear();
     }
   } // while (!feature_repo.EndOfList())
 
@@ -825,9 +1008,12 @@ int main(int argc, char *argv[])
   // clean up ..................................................................
   if (network_file) 
   {
-    decoder.Clear();
+    if (compactNetworkRepresentation)
+      decoder.Clear();
+    else
+      compact_decoder.Clear();
   }
-  
+
   hset.Release();
   
   // my_hdestroy_r(&labelHash,   0);
@@ -840,12 +1026,6 @@ int main(int argc, char *argv[])
   
   my_hdestroy_r(&cfgHash, 1);
 
-  while (feature_files) 
-  {
-    file_name     = feature_files;
-    feature_files = feature_files->mpNext;
-    free(file_name);
-  }
   //my_hdestroy_r(&cfgHash, 0);
 
   return 0;

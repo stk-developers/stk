@@ -1,14 +1,65 @@
 
-/** @file Net_IO.tcc
+/** @file DecoderNetwork_IO.tcc
  *  This is an internal header file, included by other library headers.
  *  You should not attempt to use it directly.
  */
 
 #include <sstream>
 
+#define INIT_NODE_HASH_SIZE 1000
 
 namespace STK
 {
+  //***************************************************************************
+  //***************************************************************************
+  template <typename _NodeType>
+    _NodeType*
+    find_or_create_node(struct MyHSearchData *node_hash, const char *node_id, _NodeType** last)
+    // Auxiliary function used by ReadHTKLattice_new. (Optionally initialize
+    // uninitialized node_hash) Search for node record at key node_id. If found,
+    // pointer to this record is returned, otherwise new node record is allocated
+    // with type set to NT_UNDEF and entered to has at key node_id and pointer
+    // to this new record is returned.
+    {
+      _NodeType*   p_node;
+      ENTRY   e = {0}; //{0} is just to make compiler happy
+      ENTRY*  ep;
+    
+      if (node_hash->mTabSize == 0 && !my_hcreate_r(INIT_NODE_HASH_SIZE, node_hash))
+        Error("Insufficient memory");
+      
+      e.key = const_cast<char *>(node_id);
+      my_hsearch_r(e, FIND, &ep, node_hash);
+    
+      if (ep != NULL) 
+        return (_NodeType*) ep->data;  
+    
+      p_node = (_NodeType*) calloc(1, sizeof(_NodeType));
+      
+      if (p_node == NULL) 
+        Error("Insufficient memory");
+    
+      p_node->rNLinks()     = 0;
+      p_node->rpLinks()     = NULL;
+      p_node->rNBackLinks() = 0;
+      p_node->rpBackLinks() = NULL;
+      p_node->mC.mType       = NT_WORD;
+      p_node->mC.SetStart(UNDEF_TIME);
+      p_node->mC.SetStop(UNDEF_TIME);
+      p_node->mC.mpPronun    = NULL;
+      p_node->mpBackNext  = *last;
+      p_node->mC.SetPhoneAccuracy(1.0);
+      
+      *last  = p_node;
+      e.key  = strdup(node_id);
+      e.data = p_node;
+    
+      if (e.key == NULL || !my_hsearch_r(e, ENTER, &ep, node_hash))
+        Error("Insufficient memory");
+      
+      return p_node;
+    } // find_or_create_node(...)
+
 
   //****************************************************************************
   //****************************************************************************
@@ -27,9 +78,8 @@ namespace STK
       _NetworkType&             rNetwork)
     {
       // to make it easier, we define local typedefs
-      typedef typename _NetworkType::NodeType    _node_type;
+      typedef typename _NetworkType::Node    _node_type;
       typedef typename _NetworkType::LinkType    _link_type;
-      
 
 
       _node_type*      p_node;
@@ -51,9 +101,6 @@ namespace STK
       MyHSearchData node_hash = {0};
       struct ReadlineData   rld       = {0};
       
-      NodeBasic<NodeBasicContent, LinkContent, LinkArray>*
-        first_basic;
-    
       for (;;) 
       {
         do 
@@ -115,11 +162,13 @@ namespace STK
             if (!*chptr || !strcmp(chptr, "I")) {
               if (compactRepresentation)
               {
-                p_node = reinterpret_cast<_node_type *>
-                  (&first_basic[getInteger(valptr, &chptr, file_name, line_no)]);
+                p_node = (&first[getInteger(valptr, &chptr, file_name, line_no)]);
 
-                if (p_node->mType == NT_UNDEF)
-                  p_node->mType = NT_WORD;
+                //p_node = reinterpret_cast<_node_type *>
+                  //(&first_basic[getInteger(valptr, &chptr, file_name, line_no)]);
+
+                if (p_node->mC.mType == NT_UNDEF)
+                  p_node->mC.mType = NT_WORD;
               }
               else
               {
@@ -128,6 +177,7 @@ namespace STK
                 }
                 p_node = find_or_create_node(&node_hash, valptr, &last);
               }
+
               word     = NULL;
               pron_var = 1;
               state    = NODE_DEF;
@@ -151,9 +201,11 @@ namespace STK
                   Error("Redefinition of N= (NODES=) is not allowed in "
                         "CSTK format (%s:%d)", 
                         file_name, line_no);
-                  
-                first = reinterpret_cast<_node_type *> (first_basic = new
-                    NodeBasic<NodeBasicContent, LinkContent, LinkArray>[nnodes]);
+
+                if (NULL == (first = (_node_type *) malloc(sizeof(_node_type) * nnodes)))
+                  Error("Insufficient memory");
+
+                last  = &first[nnodes - 1];
               }
               else if (node_hash.mTabSize == 0 && !my_hcreate_r(nnodes, &node_hash)) 
               {
@@ -183,12 +235,12 @@ namespace STK
               if (*colonptr == ',') {
                 if (colonptr != valptr) {
                   *colonptr = ' ';
-                  p_node->SetStart(100 * (long long) (0.5 + 1e5 *
+                  p_node->mC.SetStart(100 * (long long) (0.5 + 1e5 *
                                 getFloat(valptr, &chptr, file_name, line_no)));
                 }
                 valptr = colonptr+1;
               }
-              p_node->SetStop(100 * (long long) (0.5 + 1e5 *
+              p_node->mC.SetStop(100 * (long long) (0.5 + 1e5 *
                           getFloat(valptr, &chptr, file_name, line_no)));
             } else if (!strcmp(chptr, "var") || !strcmp(chptr, "v")) {
               pron_var = getInteger(valptr, &chptr, file_name, line_no);
@@ -196,7 +248,7 @@ namespace STK
                 Error("Invalid pronunciation variant (%s:%d)", file_name, line_no);
               }
             } else if (!strcmp(chptr, "p") && !(compactRepresentation)) {
-              p_node->mPhoneAccuracy = getFloat(valptr, &chptr, file_name, line_no);
+              p_node->mC.SetPhoneAccuracy(getFloat(valptr, &chptr, file_name, line_no));
             } else if (!strcmp(chptr, "flag") || !strcmp(chptr, "f")) {
               if (getHTKstr(valptr, &chptr)) {
                 Error("%s (%s:%d)", chptr, file_name, line_no);
@@ -204,8 +256,8 @@ namespace STK
               for (; *valptr; valptr++) {
                 switch (toupper(*valptr)) {
                   case 'K':
-                  case 'F':  p_node->mType |= NT_STICKY; break;
-                  case 'T':  p_node->mType |= NT_TRUE;   break;
+                  case 'F':  p_node->mC.mType |= NT_STICKY; break;
+                  case 'T':  p_node->mC.mType |= NT_TRUE;   break;
                   default:
                     Error("Invalid flag '%c' (%s:%d)", *valptr, file_name, line_no);
                 }
@@ -249,8 +301,8 @@ namespace STK
                   }
                 }
               }
-              p_node->mType &= ~(NT_MODEL | NT_PHONE);
-              p_node->mType |= NT_WORD;
+              p_node->mC.mType &= ~(NT_MODEL | NT_PHONE);
+              p_node->mC.mType |= NT_WORD;
             } else if (!strcmp(chptr, "MODEL") || !strcmp(chptr, "M")) {
               ENTRY e = {0}; //{0} is just to make compiler happy
               ENTRY *ep;
@@ -269,9 +321,9 @@ namespace STK
                 }
                 ep->data = e.data;
               }
-              p_node->mpName = (char *) ep->data;
-              p_node->mType &= ~NT_WORD;
-              p_node->mType |= NT_PHONE;
+              p_node->mC.mpName = (char *) ep->data;
+              p_node->mC.mType &= ~NT_WORD;
+              p_node->mC.mType |= NT_PHONE;
             } else if (*chptr=='\0' || !strcmp(chptr,"END") || !strcmp(chptr,"E")) {
               state = ARC_DEF;
             } else if (getHTKstr(valptr, &chptr)) { // Skip unknown term
@@ -280,7 +332,7 @@ namespace STK
             if (state == ARC_DEF || *chptr == '\0') {
               // Node definition is over. For NT_WORD, select right pronun according to
               // word and pron_var; and continue with parsing the arc definition below
-              if (p_node->mType & NT_WORD && word != NULL) {
+              if (p_node->mC.mType & NT_WORD && word != NULL) {
                 if (word->npronuns < pron_var) {
                   // Word does not have so many pronuns; add new empty pronuns...
                   if (notInDict & PRON_NOT_IN_DIC_ERROR && word->npronuns != 0) {
@@ -305,7 +357,7 @@ namespace STK
                   }
                   word->npronuns = pron_var;
                 }
-                p_node->mpPronun = word->pronuns[pron_var-1];
+                p_node->mC.mpPronun = word->pronuns[pron_var-1];
               }
 
               if (state == ARC_DEF) 
@@ -363,11 +415,12 @@ namespace STK
             if (!*chptr || !strcmp(chptr, "END") || !strcmp(chptr, "E")) {
               if (compactRepresentation)
               {
-                 enode = reinterpret_cast<_node_type *>
-                   (&first_basic[getInteger(valptr, &chptr, file_name, line_no)]);
+                 enode = &first[getInteger(valptr, &chptr, file_name, line_no)];
+                 //enode = reinterpret_cast<_node_type *>
+                 //  (&first_basic[getInteger(valptr, &chptr, file_name, line_no)]);
 
-                 if (enode->mType == NT_UNDEF)
-                   enode->mType = NT_WORD;
+                 if (enode->mC.mType == NT_UNDEF)
+                   enode->mC.mType = NT_WORD;
               }
               else
               {
@@ -451,15 +504,15 @@ namespace STK
     
                 //Use special type to mark nodes inserted by d=..., they will need
                 //special treatment. Later, they will become ordinary NT_PHONE nodes
-                tnode->mType      = NT_PHONE | NT_MODEL;
+                tnode->mC.mType      = NT_PHONE | NT_MODEL;
                 tnode->rNLinks()    = tnode->rNBackLinks() = 1;
                 tnode->rpLinks()[0].Init();
                 tnode->mpBackNext  = enode->mpBackNext;
                 enode->mpBackNext  = tnode;
-                tnode->mPhoneAccuracy = 1.0;
+                tnode->mC.SetPhoneAccuracy(1.0);
                 //Store phone durations now. Will be replaced by absolute times below.
-                tnode->SetStart(time != -FLT_MAX ? 100 * (long long) (0.5 + 1e5 * time) : UNDEF_TIME);
-                tnode->SetStop(UNDEF_TIME);
+                tnode->mC.SetStart(time != -FLT_MAX ? 100 * (long long) (0.5 + 1e5 * time) : UNDEF_TIME);
+                tnode->mC.SetStop(UNDEF_TIME);
                 e.key  = name;
                 e.data = NULL;
                 my_hsearch_r(e, FIND, &ep, phone_hash);
@@ -475,7 +528,7 @@ namespace STK
                   ep->data = e.data;
                 }
                                                    
-                tnode->mpName = (char *) ep->data;
+                tnode->mC.mpName = (char *) ep->data;
                 last->rpLinks()[last->rNLinks()-1].SetNode(tnode);
                 last->rpLinks()[last->rNLinks()-1].SetLmLike(0.0);
                 last->rpLinks()[last->rNLinks()-1].SetAcousticLike(0.0);
@@ -501,15 +554,15 @@ namespace STK
           
         for(i = 0; i < nnodes; i++)
         {
-          if (first_basic[i].mType == NT_UNDEF)
+          if (first[i].mC.mType == NT_UNDEF)
             Error("Node %d not defined in network file (%s)", i, file_name);
           
-          for (int j = 0; j < first_basic[i].rNLinks(); j++)
-            if (first_basic[i].rpLinks()[j].pNode() == first_basic)
+          for (int j = 0; j < first[i].rNLinks(); j++)
+            if (first[i].rpLinks()[j].pNode() == first)
               Error("Node 0 must be the initial network node (%s)", file_name);
         }
         
-        if (first_basic[nnodes-1].rNLinks() != 0)
+        if (first[nnodes-1].rNLinks() != 0)
           Error("Node with the highest id (%d) must be the final network node (%s)",
                 nnodes-1, file_name);
       }
@@ -573,36 +626,36 @@ namespace STK
         for (p_node = lnode; p_node != NULL; fnode = p_node, p_node = p_node->mpBackNext) 
         {
           //If only stop time is specified, set start time to lowest predecessor stop time
-          if (p_node->Start() == UNDEF_TIME && p_node->Stop() != UNDEF_TIME) 
+          if (p_node->mC.Start() == UNDEF_TIME && p_node->mC.Stop() != UNDEF_TIME) 
           {
             int i;
             for (i = 0; i < p_node->rNBackLinks(); i++) {
               _node_type *backnode = p_node->rpBackLinks()[i].pNode();
               // skip nodes inserted by d=...
-              while (backnode->mType == (NT_PHONE | NT_MODEL)) {
+              while (backnode->mC.mType == (NT_PHONE | NT_MODEL)) {
                 assert(backnode->rNBackLinks() == 1);
                 backnode = backnode->rpBackLinks()[0].pNode();
               }
-              if (backnode->Stop() != UNDEF_TIME) {
-                p_node->SetStart(p_node->Start() == UNDEF_TIME
-                              ?          backnode->Stop()
-                              : LOWER_OF(backnode->Stop(), p_node->Start()));
+              if (backnode->mC.Stop() != UNDEF_TIME) {
+                p_node->mC.SetStart(p_node->mC.Start() == UNDEF_TIME
+                              ?          backnode->mC.Stop()
+                              : LOWER_OF(backnode->mC.Stop(), p_node->mC.Start()));
               }
             }
 
-            if (p_node->Start() == UNDEF_TIME) 
-              p_node->SetStart(0);
+            if (p_node->mC.Start() == UNDEF_TIME) 
+              p_node->mC.SetStart(0);
           }
           //For model nodes defined by d=... (NT_PHONE | NT_MODEL), p_node->Start() contains
           //only phone durations. Absolute times must be computed derived starting from
           //the end time of the node to which arc with d=... definition points.
-          if (p_node->mType == (NT_PHONE | NT_MODEL)) {
+          if (p_node->mC.mType == (NT_PHONE | NT_MODEL)) {
             assert(p_node->rNLinks() == 1);
-            p_node->SetStop(p_node->rpLinks()[0].pNode()->mType == (NT_PHONE | NT_MODEL)
-                        && p_node->Start() != UNDEF_TIME
-                        ? p_node->rpLinks()[0].pNode()->Start() : p_node->rpLinks()[0].pNode()->Stop());
-            p_node->SetStart(p_node->Start() != UNDEF_TIME && p_node->Stop() != UNDEF_TIME
-                          ? p_node->Stop() - p_node->Start() : p_node->rpLinks()[0].pNode()->Start());
+            p_node->mC.SetStop(p_node->rpLinks()[0].pNode()->mC.mType == (NT_PHONE | NT_MODEL)
+                        && p_node->mC.Start() != UNDEF_TIME
+                        ? p_node->rpLinks()[0].pNode()->mC.Start() : p_node->rpLinks()[0].pNode()->mC.Stop());
+            p_node->mC.SetStart(p_node->mC.Start() != UNDEF_TIME && p_node->mC.Stop() != UNDEF_TIME
+                          ? p_node->mC.Stop() - p_node->mC.Start() : p_node->rpLinks()[0].pNode()->mC.Start());
           }
         }
         
@@ -627,33 +680,33 @@ namespace STK
         
         for (p_node = first; p_node != NULL; p_node = p_node->mpNext) 
         {
-          if (p_node->mType == (NT_PHONE | NT_MODEL)) 
+          if (p_node->mC.mType == (NT_PHONE | NT_MODEL)) 
           {
-            p_node->mType = NT_PHONE;
+            p_node->mC.mType = NT_PHONE;
           }
           
-          if (p_node->Start() != UNDEF_TIME) 
+          if (p_node->mC.Start() != UNDEF_TIME) 
           {
-            p_node->SetStart((p_node->Start() - labelFormat.left_extent) / sampPeriod);
+            p_node->mC.SetStart((p_node->mC.Start() - labelFormat.left_extent) / sampPeriod);
           }
           
-          if (p_node->Stop()  != UNDEF_TIME) 
+          if (p_node->mC.Stop()  != UNDEF_TIME) 
           {
-            p_node->SetStop((p_node->Stop() + labelFormat.right_extent) / sampPeriod);
+            p_node->mC.SetStop((p_node->mC.Stop() + labelFormat.right_extent) / sampPeriod);
           }
         }
 
-        if (first->mpPronun != NULL) 
+        if (first->mC.mpPronun != NULL) 
         {
           p_node = (_node_type *) calloc(1, sizeof(_node_type));
           if (p_node == NULL) Error("Insufficient memory");
           p_node->mpNext       = first;
           p_node->mpBackNext   = NULL;
           first->mpBackNext  = p_node;
-          p_node->mType       = NT_WORD;
-          p_node->mpPronun     = NULL;
-          p_node->SetStart(UNDEF_TIME);
-          p_node->SetStop(UNDEF_TIME);
+          p_node->mC.mType       = NT_WORD;
+          p_node->mC.mpPronun     = NULL;
+          p_node->mC.SetStart(UNDEF_TIME);
+          p_node->mC.SetStop(UNDEF_TIME);
           p_node->rNBackLinks() = 0;
           p_node->rpBackLinks()  = NULL;
           p_node->rNLinks()     = 1;
@@ -669,17 +722,17 @@ namespace STK
           first = p_node;
         }
 
-        if (last->mpPronun != NULL) 
+        if (last->mC.mpPronun != NULL) 
         {
           p_node = (_node_type *) calloc(1, sizeof(_node_type));
           if (p_node == NULL) Error("Insufficient memory");
           last->mpNext      = p_node;
           p_node->mpNext      = NULL;
           p_node->mpBackNext  = last;
-          p_node->mType      = NT_WORD;
-          p_node->mpPronun    = NULL;
-          p_node->SetStart(UNDEF_TIME);
-          p_node->SetStop(UNDEF_TIME);
+          p_node->mC.mType      = NT_WORD;
+          p_node->mC.mpPronun    = NULL;
+          p_node->mC.SetStart(UNDEF_TIME);
+          p_node->mC.SetStop(UNDEF_TIME);
           p_node->rNLinks()    = 0;
           p_node->rpLinks()     = NULL;
           last->rNLinks() = 1;
@@ -696,9 +749,8 @@ namespace STK
         }
       }
 
-      // return first;
-      rNetwork.SetFirst(first);
-      rNetwork.SetLast(last);
+      // take over the original list
+      rNetwork.splice(first, last);
     }           
     // Node *ReadSTKNetwork(...)
     //**************************************************************************
@@ -721,7 +773,7 @@ namespace STK
     {
       // to make it easier, we define local typedefs
       typedef          _NetworkType              _network_type;
-      typedef typename _NetworkType::NodeType    _node_type;
+      typedef typename _NetworkType::Node    _node_type;
       typedef typename _NetworkType::LinkType    _link_type;
       
 
@@ -778,7 +830,7 @@ namespace STK
         if ((nodes[i] = (_node_type *) calloc(1, sizeof(_node_type))) == NULL) {
           Error("Insufficient memory");
         }
-        nodes[i]->mType = NT_UNDEF;
+        nodes[i]->mC.mType = NT_UNDEF;
       }
 
       for (i=0; i < numOfNodes; i++) 
@@ -809,14 +861,14 @@ namespace STK
         }
         node = nodes[nodeId];
     
-        if (node->mType != NT_UNDEF)
+        if (node->mC.mType != NT_UNDEF)
           Error("Redefinition of node %d in file %s", nodeId, file_name);
         
         if (toupper(nodeType) != nodeType) {
           nodeType = toupper(nodeType);
-          node->mType = 0;
+          node->mC.mType = 0;
         } else {
-          node->mType = NT_TRUE;
+          node->mC.mType = NT_TRUE;
         }
         if (nodeType != 'M' && nodeType != 'W' && nodeType != 'N' &&
           nodeType != 'S' && nodeType != 'K' && nodeType != 'F') {
@@ -825,9 +877,9 @@ namespace STK
                 "W - word, N - null, S - subnet, K - keyword, F - filler",
                 nodeId, file_name);
         }
-        node->SetStart(UNDEF_TIME); 
-        node->SetStop (UNDEF_TIME);
-        node->mPhoneAccuracy = 1.0;
+        node->mC.SetStart(UNDEF_TIME); 
+        node->mC.SetStop (UNDEF_TIME);
+        node->mC.SetPhoneAccuracy(1.0);
     //    node->mAux = *totalNumOfNodes;
     //    ++*totalNumOfNodes;
     
@@ -857,7 +909,7 @@ namespace STK
         {
           ENTRY e, *ep;
 
-          node->mType |= NT_PHONE;
+          node->mC.mType |= NT_PHONE;
           e.key  = wordOrModelName;
           e.data = NULL;
 
@@ -872,14 +924,14 @@ namespace STK
             }
             ep->data = e.data;
           }
-          node->mpName = (char *) ep->data;
+          node->mC.mpName = (char *) ep->data;
           fscanf(lfp, " {%lf}", &pronunProb);
           // We are not interested in PhoneAccuracy
         } else {
-          node->mType |= NT_WORD;
+          node->mC.mType |= NT_WORD;
     
           if (nodeType == 'K' || nodeType == 'F') {
-          node->mType |= NT_STICKY;
+          node->mC.mType |= NT_STICKY;
           nodeType = nodeType == 'K' ? 'W' : 'N';
           }
           if (nodeType == 'W') {
@@ -922,9 +974,9 @@ namespace STK
                     "Word %s does not have pronunciation varian %d",
                     nodeId, file_name, word->mpName, pronunVar+1);
             }
-            node->mpPronun = word ? word->pronuns[pronunVar] : NULL;
+            node->mC.mpPronun = word ? word->pronuns[pronunVar] : NULL;
           } else {
-            node->mpPronun = NULL;
+            node->mC.mpPronun = NULL;
           }
         }
 
@@ -934,9 +986,9 @@ namespace STK
           && !(labelFormat.TIMES_OFF)) 
           {
             long center_shift = labelFormat.CENTRE_TM ? sampPeriod / 2 : 0;
-            node->SetStart((start - center_shift - labelFormat.left_extent)  
+            node->mC.SetStart((start - center_shift - labelFormat.left_extent)  
                 / sampPeriod);
-            node->SetStop((stop  + center_shift + labelFormat.right_extent) 
+            node->mC.SetStop((stop  + center_shift + labelFormat.right_extent) 
                 / sampPeriod);
           }
         }
@@ -1005,8 +1057,8 @@ namespace STK
       if (nodes[0]->rNBackLinks() != 0 || nodes[numOfNodes-1]->rNLinks() != 0) {
         Error("Network contain no start node or no final node (%s)", file_name);
       }
-      if (!(nodes[0]           ->mType & NT_WORD) || nodes[0]           ->mpPronun != NULL ||
-        !(nodes[numOfNodes-1]->mType & NT_WORD) || nodes[numOfNodes-1]->mpPronun != NULL) {
+      if (!(nodes[0]           ->mC.mType & NT_WORD) || nodes[0]           ->mC.mpPronun != NULL ||
+        !(nodes[numOfNodes-1]->mC.mType & NT_WORD) || nodes[numOfNodes-1]->mC.mpPronun != NULL) {
         Error("Start node and final node must be Null nodes (%s)", file_name);
       }
       for (i = 0; i < numOfNodes-1; i++) {
@@ -1048,6 +1100,8 @@ namespace STK
                 file_name, in_MLF);
         }
       }
+
+      
     }
     // ReadSTKNetworkInOldFormat(
     //**************************************************************************
@@ -1071,17 +1125,16 @@ namespace STK
     {
       int                                     n;
       int                                     l=0;
-      typename _NetworkType::iterator         p_node;
+      typename _NetworkType::Iterator         p_node;
       float                                   lm_scale(lmScale);
 
     
       // use the mAux field to index the nodes
-      for (n = 0, p_node = rNetwork.begin(); p_node != rNetwork.end(); ++p_node)
+      for (n = 0, p_node = rNetwork.Begin(); p_node != rNetwork.End(); ++p_node)
       {
         typename _NetworkType::iterator         tmp_node(p_node);
         ++tmp_node;
-        if ((tmp_node != rNetwork.end() && p_node->NSuccessors() < 1)
-        ||  (p_node != rNetwork.begin() && p_node->NPredecessors() < 1))
+        if (tmp_node != rNetwork.End() && p_node->NSuccessors() < 1)
         {
           continue;
         }
@@ -1092,13 +1145,12 @@ namespace STK
       
       fprintf(pFp,"N=%d L=%d\n", n, l);
 
-      for (p_node = rNetwork.begin(); p_node != rNetwork.end(); ++p_node)
+      for (p_node = rNetwork.Begin(); p_node != rNetwork.End(); ++p_node)
       {
         typename _NetworkType::iterator         tmp_node(p_node);
         ++tmp_node;
         
-        if ((tmp_node != rNetwork.end() && p_node->NSuccessors() < 1)
-        ||  (p_node != rNetwork.begin() && p_node->NPredecessors() < 1))
+        if (tmp_node != rNetwork.End() && p_node->NSuccessors() < 1)
         {
           continue;
         }
@@ -1109,46 +1161,46 @@ namespace STK
         if (format.mBase62Labels) fprintBase62(pFp, p_node->mAux);
         else                      fprintf(pFp,"%d", p_node->mAux);
     
-        if (!format.mNoTimes && p_node->Stop() != UNDEF_TIME) 
+        if (!format.mNoTimes && p_node->mC.Stop() != UNDEF_TIME) 
         {
           fputs(" t=", pFp);
     
-          if (p_node->Start() != UNDEF_TIME && format.mStartTimes) {
-            fprintf(pFp,"%g,", p_node->Start() * 1.0e-7 * sampPeriod);
+          if (p_node->mC.Start() != UNDEF_TIME && format.mStartTimes) {
+            fprintf(pFp,"%g,", p_node->mC.Start() * 1.0e-7 * sampPeriod);
           }
-          fprintf(  pFp,"%g",  p_node->Stop()  * 1.0e-7 * sampPeriod);
+          fprintf(  pFp,"%g",  p_node->mC.Stop()  * 1.0e-7 * sampPeriod);
         }
 
-        if (!(p_node->mType & NT_WORD && p_node->mpPronun == NULL)
+        if (!(p_node->mC.mType & NT_WORD && p_node->mC.mpPronun == NULL)
           || !format.mNoDefaults) 
         {
           putc(' ', pFp);
-          putc(p_node->mType & NT_WORD   ? 'W' :
-               p_node->mType & NT_SUBNET ? 'S' :
+          putc(p_node->mC.mType & NT_WORD   ? 'W' :
+               p_node->mC.mType & NT_SUBNET ? 'S' :
                                            'M', pFp); // NT_MODEL, NT_PHONE
           putc('=', pFp);
-          fprintHTKstr(pFp, p_node->mType & NT_MODEL  ? p_node->mpHmm->mpMacro->mpName   :
-                            p_node->mType & NT_WORD   ? (!p_node->mpPronun ? "!NULL" :
-                                                      p_node->mpPronun->mpWord->mpName) :
-                                                      p_node->mpName); // NT_PHONE (NT_SUBNET)
+          fprintHTKstr(pFp, p_node->mC.mType & NT_MODEL  ? p_node->mC.mpHmm->mpMacro->mpName   :
+                            p_node->mC.mType & NT_WORD   ? (!p_node->mC.mpPronun ? "!NULL" :
+                                                      p_node->mC.mpPronun->mpWord->mpName) :
+                                                      p_node->mC.mpName); // NT_PHONE (NT_SUBNET)
         }
 
-        if (!format.mNoPronunVars && p_node->mType & NT_WORD
-        && p_node->mpPronun != NULL && p_node->mpPronun->mpWord->npronuns > 1
-        && (p_node->mpPronun->variant_no > 1 || !format.mNoDefaults))
+        if (!format.mNoPronunVars && p_node->mC.mType & NT_WORD
+        && p_node->mC.mpPronun != NULL && p_node->mC.mpPronun->mpWord->npronuns > 1
+        && (p_node->mC.mpPronun->variant_no > 1 || !format.mNoDefaults))
         {
-          fprintf(pFp," v=%d", p_node->mpPronun->variant_no);
+          fprintf(pFp," v=%d", p_node->mC.mpPronun->variant_no);
         }
 
-        if (p_node->mType & NT_TRUE || p_node->mType & NT_STICKY) 
+        if (p_node->mC.mType & NT_TRUE || p_node->mC.mType & NT_STICKY) 
         {
           fputs(" f=", pFp);
-          if (p_node->mType & NT_TRUE)   putc('T', pFp);
-          if (p_node->mType & NT_STICKY) putc('K', pFp);
+          if (p_node->mC.mType & NT_TRUE)   putc('T', pFp);
+          if (p_node->mC.mType & NT_STICKY) putc('K', pFp);
         }
 
-        if (p_node->mType & NT_PHONE && p_node->mPhoneAccuracy != 1.0) {
-          fprintf(pFp," p="FLOAT_FMT, p_node->mPhoneAccuracy);
+        if (p_node->mC.mType & NT_PHONE && p_node->mC.PhoneAccuracy() != 1.0) {
+          fprintf(pFp," p="FLOAT_FMT, p_node->mC.PhoneAccuracy());
         }
 
         if (!format.mArcDefsToEnd) 
@@ -1169,11 +1221,11 @@ namespace STK
             
             FLOAT lm_score;
 
-            if      (p_node->rpLinks()[j].pNode()->mType & NT_MODEL)
+            if      (p_node->rpLinks()[j].pNode()->mC.mType & NT_MODEL)
               lm_score = (p_node->rpLinks()[j].LmLike() - modelPenalty) / lm_scale; 
 
-            else if (p_node->rpLinks()[j].pNode()->mType & NT_WORD 
-            &&       p_node->rpLinks()[j].pNode()->mpPronun != NULL)
+            else if (p_node->rpLinks()[j].pNode()->mC.mType & NT_WORD 
+            &&       p_node->rpLinks()[j].pNode()->mC.mpPronun != NULL)
               lm_score = (p_node->rpLinks()[j].LmLike() - wordPenalty) / lm_scale; 
 
             else   
@@ -1205,7 +1257,7 @@ namespace STK
       if (format.mArcDefsToEnd) 
       {
         l = 0;
-        for (p_node = rNetwork.begin(); p_node != rNetwork.end(); p_node++) 
+        for (p_node = rNetwork.Begin(); p_node != rNetwork.End(); p_node++) 
         {
           if (p_node->NSuccessors() < 1)
             continue;
@@ -1231,11 +1283,13 @@ namespace STK
             
             FLOAT lm_score;
 
-            if      (p_node->rpLinks()[j].pNode()->mType & NT_MODEL)
+            if      (p_node->rpLinks()[j].pNode()->mC.mType & NT_MODEL)
               lm_score = (p_node->rpLinks()[j].LmLike() - modelPenalty) / lm_scale; 
-            else if (p_node->rpLinks()[j].pNode()->mType & NT_WORD 
-            &&       p_node->rpLinks()[j].pNode()->mpPronun != NULL)
+
+            else if (p_node->rpLinks()[j].pNode()->mC.mType & NT_WORD 
+            &&       p_node->rpLinks()[j].pNode()->mC.mpPronun != NULL)
               lm_score = (p_node->rpLinks()[j].LmLike() - wordPenalty) / lm_scale; 
+
             else   
               lm_score = p_node->rpLinks()[j].LmLike() / lm_scale; 
 
@@ -1279,16 +1333,15 @@ namespace STK
     {
       // to make it easier, we define local typedefs
       typedef          _NetworkType              _network_type;
-      typedef typename _NetworkType::NodeType    _node_type;
+      typedef typename _NetworkType::Node    _node_type;
       typedef typename _NetworkType::LinkType    _link_type;
 
 
       int   i;
 
       typename _NetworkType::iterator         p_node;
-      _node_type* node;
     
-      for (i = 0, p_node = rNetwork.begin(); p_node != rNetwork.end(); 
+      for (i = 0, p_node = rNetwork.Begin(); p_node != rNetwork.End(); 
            ++p_node, ++i)  
       {
         p_node->mAux = i;
@@ -1296,64 +1349,64 @@ namespace STK
 
       fprintf(pFp,"NUMNODES: %d\n", i);
 
-      for (i = 0, p_node = rNetwork.begin(); p_node != rNetwork.end(); 
+      for (i = 0, p_node = rNetwork.Begin(); p_node != rNetwork.End(); 
           ++p_node, ++i) 
       {
         int j;
-        int type = p_node->mType & NT_MODEL       ? 'M'  :
-                   p_node->mType & NT_PHONE       ? 'M'  :
-                   p_node->mType & NT_SUBNET      ? 'S'  :
-                   p_node->mType & NT_WORD        ?
-                    (p_node->mpPronun == NULL     ?
-                       (p_node->mType & NT_STICKY ? 'F'  :
+        int type = p_node->mC.mType & NT_MODEL       ? 'M'  :
+                   p_node->mC.mType & NT_PHONE       ? 'M'  :
+                   p_node->mC.mType & NT_SUBNET      ? 'S'  :
+                   p_node->mC.mType & NT_WORD        ?
+                    (p_node->mC.mpPronun == NULL     ?
+                       (p_node->mC.mType & NT_STICKY ? 'F'  :
                                                     'N') :
-                       (p_node->mType & NT_STICKY ? 'K'  :
+                       (p_node->mC.mType & NT_STICKY ? 'K'  :
                                                     'W')):
                                                     '?';
-        if (!(p_node->mType & NT_TRUE)) 
+        if (!(p_node->mC.mType & NT_TRUE)) 
         {
           type = tolower(type);
         }
 
         fprintf(pFp,"%d\t%c %s",
                 i, type,
-                p_node->mType & NT_MODEL   ? p_node->mpHmm->mpMacro->mpName :
-                p_node->mType & NT_PHONE   ? p_node->mpName :
-                p_node->mType & NT_SUBNET  ? p_node->mpName :
-                p_node->mType & NT_WORD    ?
-                  (p_node->mpPronun == NULL ? "-" :
-                                          p_node->mpPronun->mpWord->mpName):
+                p_node->mC.mType & NT_MODEL   ? p_node->mC.mpHmm->mpMacro->mpName :
+                p_node->mC.mType & NT_PHONE   ? p_node->mC.mpName :
+                p_node->mC.mType & NT_SUBNET  ? p_node->mC.mpName :
+                p_node->mC.mType & NT_WORD    ?
+                  (p_node->mC.mpPronun == NULL ? "-" :
+                                          p_node->mC.mpPronun->mpWord->mpName):
                                           "?");
-        if (p_node->mType & NT_WORD && p_node->mpPronun) 
+        if (p_node->mC.mType & NT_WORD && p_node->mC.mpPronun) 
         {
-          if (p_node->mpPronun->mpWord->mpName != p_node->mpPronun->outSymbol) 
+          if (p_node->mC.mpPronun->mpWord->mpName != p_node->mC.mpPronun->outSymbol) 
           {
-            fprintf(pFp," [%s]", p_node->mpPronun->outSymbol);
+            fprintf(pFp," [%s]", p_node->mC.mpPronun->outSymbol);
           }
 
-          if (p_node->mpPronun->prob != 0.0 
-          ||  p_node->mpPronun->mpWord->npronuns > 1) 
+          if (p_node->mC.mpPronun->prob != 0.0 
+          ||  p_node->mC.mpPronun->mpWord->npronuns > 1) 
           {
             fprintf(pFp," {%d "FLOAT_FMT"}",
-                    p_node->mpPronun->variant_no,
-                    p_node->mpPronun->prob);
+                    p_node->mC.mpPronun->variant_no,
+                    p_node->mC.mpPronun->prob);
           }
         }
 
-        if (p_node->mType & NT_PHONE && p_node->mPhoneAccuracy != 1.0) 
+        if (p_node->mC.mType & NT_PHONE && p_node->mC.PhoneAccuracy() != 1.0) 
         {
-          fprintf(pFp," {"FLOAT_FMT"}", p_node->mPhoneAccuracy);
+          fprintf(pFp," {"FLOAT_FMT"}", p_node->mC.PhoneAccuracy());
         }
 
         if (!(labelFormat.TIMES_OFF) &&
-          p_node->Start() != UNDEF_TIME && p_node->Stop() != UNDEF_TIME) 
+          p_node->mC.Start() != UNDEF_TIME && p_node->mC.Stop() != UNDEF_TIME) 
         {
           int ctm = labelFormat.CENTRE_TM;
           fprintf   (pFp," (");
-          fprintf_ll(pFp, sampPeriod * (2 * p_node->Start() + ctm) / 2 
+          fprintf_ll(pFp, sampPeriod * (2 * p_node->mC.Start() + ctm) / 2 
               - labelFormat.left_extent);
           fprintf   (pFp," ");
-          fprintf_ll(pFp, sampPeriod * (2 * p_node->Stop() - ctm)  / 2 
+          fprintf_ll(pFp, sampPeriod * (2 * p_node->mC.Stop() - ctm)  / 2 
               + labelFormat.right_extent);
           fprintf   (pFp,")");
         }
@@ -1392,7 +1445,7 @@ namespace STK
     {
       int                         n;
       int                         l=0;
-      typename _NetworkType::NodeType*         p_node;
+      typename _NetworkType::Node*         p_node;
 
     
       for (n = 0, p_node = rNetwork.pFirst(); p_node != NULL; p_node = p_node->mpNext, n++)  

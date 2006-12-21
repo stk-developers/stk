@@ -17,10 +17,11 @@ namespace STK
     
   //***************************************************************************
   //***************************************************************************
+  /*
   void 
   Lattice::
   AllocateNodesForWordLinkRecords(WordLinkRecord* pWlr, 
-      NodeType*& rpNode)
+      Node*& rpNode)
   {
     // mAux had been initialized to zero. Now, it is used to count how many
     // successors has been already processed. 
@@ -30,8 +31,8 @@ namespace STK
       
     // All successors has been already processed, so make new lattice node
     // corresponding to pWlr and initialize it according to pWlr->pNode().
-    Lattice::NodeType* pNode = 
-      (Lattice::NodeType *) calloc(1, sizeof(Lattice::NodeType));
+    Lattice::Node* pNode = 
+      (Lattice::Node *) calloc(1, sizeof(Lattice::Node));
 
     if (pNode == NULL) 
       Error("Insufficient memory");
@@ -100,6 +101,7 @@ namespace STK
       }
     }
   }
+  */
   // MakeLatticeNodesForWordLinkRecords(WordLinkRecord* pWlr, Node*& rpNode)
   //***************************************************************************
 
@@ -107,6 +109,7 @@ namespace STK
 
   //***************************************************************************
   //***************************************************************************
+    /*
   void 
   Lattice::
   EstablishLinks(WordLinkRecord* pWlr)
@@ -180,17 +183,18 @@ namespace STK
   Lattice::
   BuildFromWlr(WordLinkRecord* pWlr)
   {
-    AllocateNodesForWordLinkRecords(pWlr, mpFirst);
+    AllocateNodesForWordLinkRecords(pWlr, mpPtr);
     EstablishLinks(pWlr);
 
-    NodeType* p_node;
+    Node* p_node;
 
-    for (p_node = mpFirst; NULL != p_node && NULL != p_node->mpNext;
+    for (p_node = mpPtr; NULL != p_node && NULL != p_node->mpNext;
          p_node = p_node->mpNext)
     { }
 
     mpLast = p_node;
   }
+  */
   // BuildFromWlr(const WordLinkRecord* pWlr);
   // ************************************************************************
 
@@ -201,7 +205,7 @@ namespace STK
   Lattice::
   ForwardBackward()
   {
-    NodeType*  p_start_node;
+    Node*  p_start_node;
     bool       viterbi = true;
     FLOAT      score(0.0);
 
@@ -213,13 +217,13 @@ namespace STK
     // Clear all records
     for (i_node = begin(); i_node != end(); ++i_node)
     {
-      i_node->mpAlphaBeta = new AlphaBeta();
-      i_node->mpAlphaBeta->mAlpha = LOG_0;
-      i_node->mpAlphaBeta->mBeta = LOG_0;
+      i_node->mC.mpAlphaBeta = new AlphaBeta();
+      i_node->mC.mpAlphaBeta->mAlpha = LOG_0;
+      i_node->mC.mpAlphaBeta->mBeta = LOG_0;
       i_node->mAux  = 0;
     }
 
-    begin()->mpAlphaBeta->mAlpha = 0.0;
+    begin()->mC.mpAlphaBeta->mAlpha = 0.0;
 
     // forward direction
     for (i_node = begin(); i_node != end(); ++i_node)
@@ -227,25 +231,25 @@ namespace STK
       for (size_t i = 0; i < i_node->NLinks(); i++)
       {
         LinkType* p_link     (&(i_node->rpLinks()[i]));
-        NodeType* p_end_node (p_link->pNode());
+        Node* p_end_node (p_link->pNode());
 
-        score = i_node->mpAlphaBeta->mAlpha + p_link->Like();
+        score = i_node->mC.mpAlphaBeta->mAlpha + p_link->Like();
 
         
         if (viterbi)
         {
-          if (score > p_end_node->mpAlphaBeta->mAlpha)
-            p_end_node->mpAlphaBeta->mAlpha = score;
+          if (score > p_end_node->mC.mpAlphaBeta->mAlpha)
+            p_end_node->mC.mpAlphaBeta->mAlpha = score;
         }
         else
         {
-          p_end_node->mpAlphaBeta->mAlpha = LogAdd(
-              p_end_node->mpAlphaBeta->mAlpha, score);
+          p_end_node->mC.mpAlphaBeta->mAlpha = LogAdd(
+              p_end_node->mC.mpAlphaBeta->mAlpha, score);
         }
       }
     }
 
-    pLast()->mpAlphaBeta->mBeta  = 0.0;
+    pLast()->mC.mpAlphaBeta->mBeta  = 0.0;
 
     // backward direction
     for (i_node = i_rbegin; i_node != i_rend; --i_node)
@@ -253,19 +257,19 @@ namespace STK
       for (size_t i = 0; i < i_node->NBackLinks(); i++)
       {
         LinkType* p_link     (&(i_node->rpBackLinks()[i]));
-        NodeType* p_end_node (p_link->pNode());
+        Node* p_end_node (p_link->pNode());
 
-        score = i_node->mpAlphaBeta->mBeta + p_link->Like();
+        score = i_node->mC.mpAlphaBeta->mBeta + p_link->Like();
         
         if (viterbi)
         {
-          if (score > p_end_node->mpAlphaBeta->mBeta)
-            p_end_node->mpAlphaBeta->mBeta = score;
+          if (score > p_end_node->mC.mpAlphaBeta->mBeta)
+            p_end_node->mC.mpAlphaBeta->mBeta = score;
         }
         else
         {
-          p_end_node->mpAlphaBeta->mBeta = LogAdd(
-              p_end_node->mpAlphaBeta->mBeta, score);
+          p_end_node->mC.mpAlphaBeta->mBeta = LogAdd(
+              p_end_node->mC.mpAlphaBeta->mBeta, score);
         }
       }
     }
@@ -283,10 +287,10 @@ namespace STK
   Lattice::
   PosteriorPrune(const FLOAT& thresh)
   {
-    assert(NULL != pLast()->mpAlphaBeta);
+    assert(NULL != pLast()->mC.mpAlphaBeta);
 
-    FLOAT      end_alpha = pLast()->mpAlphaBeta->mAlpha;
-    FLOAT      start_beta = begin()->mpAlphaBeta->mBeta;
+    FLOAT      end_alpha = pLast()->mC.mpAlphaBeta->mAlpha;
+    FLOAT      start_beta = begin()->mC.mpAlphaBeta->mBeta;
 
 
     iterator   i_node(begin());
@@ -308,7 +312,7 @@ namespace STK
       {
         LinkType* p_link = &(i_node->rpLinks()[i]);
         iterator  p_end_node(p_link->pNode());
-        FLOAT     score = i_node->mpAlphaBeta->mAlpha + p_end_node->mpAlphaBeta->mBeta 
+        FLOAT     score = i_node->mC.mpAlphaBeta->mAlpha + p_end_node->mC.mpAlphaBeta->mBeta 
               + p_link->Like() + thresh;
 
         if (score < end_alpha || score < start_beta)

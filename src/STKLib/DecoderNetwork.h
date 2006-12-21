@@ -17,9 +17,13 @@
 
 namespace STK
 {
+  template<typename _NodeType>
+    class ActiveNodeRecord;
 
-  class ActiveNodeRecord;
+
   class AlphaBeta;
+  class DecoderNetwork;
+  class LinkContent;
 
   /** **************************************************************************
    ** **************************************************************************
@@ -83,7 +87,7 @@ namespace STK
     NT_TRUE   = 0x40,
     NT_LATTIMAGIC = 0x80   // this flag is set only for lattices
                            // When set, model nodes act as word nodes
-  }; // NodeType
+  }; // NodeKind
 
 
   enum NotInDictActionType
@@ -95,82 +99,228 @@ namespace STK
   }; // NotInDictActionType;
 
 
-  struct NodeBasicContent
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Alpha and Beta pair for forward/backward propagation
+   */
+  struct AlphaBeta
   {
-    NodeBasicContent() : mpName(NULL), mType(NT_UNDEF), mpAnr(NULL)
+    typedef  FLOAT   LikeType;
+
+    AlphaBeta() : mAlpha(LOG_0), mBeta(LOG_0)
     {}
 
-    ~NodeBasicContent()
-    { 
-      if (NULL != mpAlphaBeta);
-        //delete mpAlphaBeta;
-    }
+    ~AlphaBeta()
+    {}
 
-    union 
-    {
-      char*         mpName;
-      Hmm*          mpHmm;
-      Pronun*       mpPronun;
-    };
-  
-    int             mType;
+    LikeType             mAlpha;
+    LikeType             mBeta;
+  };
     
+  
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Alpha and Beta pair for forward/backward propagation augmented
+   *  with accuracies for MPE training
+   */
+  struct AlphaBetaMPE : public AlphaBeta
+  {
+    FloatInLog        mAlphaAccuracy;
+    FloatInLog        mBetaAccuracy;
+  };
+  
+  
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Forward-Backward record
+   */
+  struct FWBWR 
+  {
+    FWBWR*            mpNext;
+    int               mTime;
+    AlphaBetaMPE      mpState[1];
+  };
+  
+  
+
+  /** *************************************************************************
+   ** *************************************************************************
+   * @brief 
+   */
+  //template <typename _Parent>
+    class NodeBasicContent
+    {
+    public:
+      typedef       long long  TimingType;
+      typedef ActiveNodeRecord< Node<NodeBasicContent, LinkContent, LinkArray> > ActiveNodeRecord;
+
+      NodeBasicContent() : mpName(NULL), mType(NT_UNDEF)//, mpAnr(NULL)
+      {}
+
+      ~NodeBasicContent()
+      { 
+        if (NULL != mpAlphaBeta);
+          //delete mpAlphaBeta;
+      }
+
+
+      //time range when model can be active - apply only for model type
+      void
+      SetStart(const TimingType& start)
+      {}
+
+      void
+      SetStop(const TimingType& stop)
+      {}
+
+      TimingType
+      Start() const
+      { return 0; }
+
+      TimingType
+      Stop() const
+      { return 0; }
+
+      void
+      SetPhoneAccuracy(FLOAT pAcc)
+      {  }
+
+      FLOAT
+      PhoneAccuracy() const
+      { return 1.0; }
+
+      Hmm*&
+      rpHmmToUpdate()
+      { assert(false); }
+
+      FWBWR*&
+      rpAlphaBetaList()
+      { assert(false); }
+    
+      FWBWR*&
+      rpAlphaBetaListReverse()
+      { assert(false); }
+
+    public:
+      union 
+      {
+        char*         mpName;
+        Hmm*          mpHmm;
+        Pronun*       mpPronun;
+      };
+    
+      int             mType;
+      
 #   ifndef NDEBUG
-    //id of first emiting state - apply only for model type
-    int           mEmittingStateId;
-    int           mAux2;
+      //id of first emiting state - apply only for model type
+      int           mEmittingStateId;
+      int           mAux2;
 #   endif
 #   ifndef EXPANDNET_ONLY    
-    union
-    {
-      ActiveNodeRecord* mpAnr;
-      AlphaBeta*        mpAlphaBeta;
-    };
+      union
+      {
+        ActiveNodeRecord*          mpAnr;
+        AlphaBeta*                 mpAlphaBeta;
+      };
 #   endif
-  };
+    };
 
-  class NodeContent : public NodeBasicContent
-  {
-    typedef       long long  TimingType;
+
+  /** *************************************************************************
+   ** *************************************************************************
+   * @brief 
+   */
+  //template <typename _Parent>
+    class NodeContent 
+    //: public NodeBasicContent<_Parent>
+    {
+    public:
+      typedef       long long  TimingType;
+      typedef ActiveNodeRecord<Node<NodeContent, LinkContent, LinkArray> > ActiveNodeRecord;
+
+
+      void
+      Init()
+      { mStart = mStop = UNDEF_TIME; }
+
+      //time range when model can be active - apply only for model type
+      void
+      SetStart(const TimingType& start)
+      { mStart = start; }
+
+      void
+      SetStop(const TimingType& stop)
+      { mStop = stop; }
+
+      TimingType
+      Start() const
+      { return mStart; }
+
+      TimingType
+      Stop() const
+      { return mStop; }
+
+      void
+      SetPhoneAccuracy(FLOAT pAcc)
+      { mPhoneAccuracy = pAcc; }
+
+      FLOAT
+      PhoneAccuracy() const
+      { return mPhoneAccuracy; }
+
+
+      Hmm*&
+      rpHmmToUpdate()
+      { return mpHmmToUpdate; }
+
+      FWBWR*&
+      rpAlphaBetaList()
+      { return mpAlphaBetaList; }
     
-    int           mAux;
+      FWBWR*&
+      rpAlphaBetaListReverse()
+      { return mpAlphaBetaListReverse; }
 
-    void
-    Init()
-    { mStart = mStop = UNDEF_TIME; }
+    public:
+#   ifndef EXPANDNET_ONLY    
+      union 
+      {
+        char*         mpName;
+        Hmm*          mpHmm;
+        Pronun*       mpPronun;
+      };
+    
+      int             mType;
+      
+#   ifndef NDEBUG
+      //id of first emiting state - apply only for model type
+      int           mEmittingStateId;
+      int           mAux2;
+#   endif
+      union
+      {
+        ActiveNodeRecord*          mpAnr;
+        AlphaBeta*                 mpAlphaBeta;
+      };
+#   endif
 
-    //time range when model can be active - apply only for model type
-    void
-    SetStart(const TimingType& start)
-    { mStart = start; }
-
-    void
-    SetStop(const TimingType& stop)
-    { mStop = stop; }
-
-    const TimingType&
-    Start() const
-    { return mStart; }
-
-    const TimingType&
-    Stop() const
-    { return mStop; }
-
-
-    FLOAT         mPhoneAccuracy;
-  
+    protected:
 #   ifndef EXPANDNET_ONLY
-    Hmm*               mpHmmToUpdate;
-    FWBWR*             mpAlphaBetaList;
-    FWBWR*             mpAlphaBetaListReverse;
-#   endif        
+      Hmm*               mpHmmToUpdate;
+      FWBWR*             mpAlphaBetaList;
+      FWBWR*             mpAlphaBetaListReverse;
+#   endif
 
-  protected:
-    TimingType     mStart;
-    TimingType     mStop;
-  };
+      FLOAT          mPhoneAccuracy;
+      TimingType     mStart;
+      TimingType     mStop;
+    };
 
 
+  /** *************************************************************************
+   ** *************************************************************************
+   * @brief 
+   */
   class LinkContent
   {
   public:
@@ -246,33 +396,32 @@ namespace STK
 
 
 
-
   //###########################################################################
   //###########################################################################
   // Explicit instantiation of the network types used in decoder
   //###########################################################################
   //###########################################################################
   
-  template 
-    class Network<NodeBasicContent, LinkContent, ListStorage, LinkArray>;
+  typedef Node<NodeContent, LinkContent, LinkArray>             DecoderNode;
+  typedef Link<DecoderNode, LinkContent, LinkArray>             DecoderLink;
 
-  typedef Network<NodeBasicContent, LinkContent, ListStorage, LinkArray>
+  typedef Node<NodeBasicContent, LinkContent, LinkArray>        CompactDecoderNode;
+  typedef Link<CompactDecoderNode, LinkContent, LinkArray>      CompactDecoderLink;
+
+  template 
+    class Network<NodeContent, LinkContent, ListStorage, LinkArray>;
+
+  typedef Network<NodeContent, LinkContent, ListStorage, LinkArray>
     _DecoderNetwork;
+
+
+  template 
+    class Network<NodeBasicContent, LinkContent, NodeArray, LinkArray>;
+
+  typedef Network<NodeBasicContent, LinkContent, NodeArray, LinkArray>
+    _CompactDecoderNetwork;
   
 
-  /** 
-   * @brief Various network properties
-   */
-  struct DecoderNetworkProps
-  {
-    FLOAT                       mWPenalty;  
-    FLOAT                       mMPenalty;
-    FLOAT                       mPronScale;
-    FLOAT                       mLmScale;
-    FLOAT                       mTranScale;
-    FLOAT                       mOutpScale;
-    FLOAT                       mOcpScale;
-  };
 
 
   /** *************************************************************************
@@ -283,6 +432,8 @@ namespace STK
   : public _DecoderNetwork 
   {
   public:
+
+
     static int 
     lnkcmp(const void *a, const void *b);
 
@@ -297,7 +448,7 @@ namespace STK
      * 
      * In this case, no deallocation will take place when destructor is called
      */
-    DecoderNetwork(NodeType* pNode) 
+    DecoderNetwork(Node* pNode) 
     : _DecoderNetwork(pNode)
     { }
 
@@ -471,11 +622,11 @@ namespace STK
 
     
   
-  void FreeNetwork(DecoderNetwork::NodeType *node, bool compactRepresentation = false);
+  void FreeNetwork(DecoderNetwork::Node *node, bool compactRepresentation = false);
   
 
-  DecoderNetwork::NodeType* 
-  find_or_create_node(struct MyHSearchData *node_hash, const char *node_id, DecoderNetwork::NodeType **last);
+  //DecoderNetwork::Node* 
+  //find_or_create_node(struct MyHSearchData *node_hash, const char *node_id, DecoderNetwork::Node **last);
 
   
 

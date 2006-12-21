@@ -20,6 +20,7 @@
 #include "dict.h"
 #include "Net.h"
 #include "DecoderNetwork.h"
+#include "Lattice.h"
 
 
 #include <list>
@@ -40,11 +41,19 @@ namespace STK
   //###########################################################################
   //###########################################################################
   class Cache;
-  class WordLinkRecord;
-  class Decoder;
-  class ActiveNodeRecord;
-  class Token;
   class Lattice;
+
+  template<typename _NodeType>
+    class WordLinkRecord;
+
+  template<typename _NodeType>
+    class ActiveNodeRecord;
+
+  template<typename _NetworkType>
+    class Decoder;
+
+  template<typename _NodeType>
+    class Token;
   
   //###########################################################################
   //###########################################################################
@@ -118,298 +127,334 @@ namespace STK
    ** *************************************************************************
    *  @brief Decoder representation
    */
-  class Decoder 
-  {
-  public:
-    typedef DecoderNetwork  NetworkType;
-
-  private:
-    /**
-     * @brief Forward-Backward method return type
-     */
-    struct FWBWRet 
+  template <typename _NetworkType>
+    class Decoder 
     {
-      double          totLike;            ///< total likelihood
-      FloatInLog      avgAccuracy;        ///< average accuracy
-    }; // struct FWBWRet
+    public:
 
-    
-    /**
-     * @brief Sorts nodes in this network
-     */
-//    void 
-//    SortNodes();
-    
-    /**
-     * @brief Checks for a cyclic structure in network
-     */
-    int 
-    HasCycle();
-    
+      typedef _NetworkType                            NetworkType;
+      typedef typename NetworkType::Node          NetworkNode;
+      typedef STK::WordLinkRecord<NetworkNode>        WordLinkRecord;
+      typedef STK::Token<NetworkNode>                 Token;
+      typedef typename STK::ActiveNodeRecord<NetworkNode> 
+                                                      ActiveNodeRecord;
+    private:
+      /**
+       * @brief Forward-Backward method return type
+       */
+      struct FWBWRet 
+      {
+        double          totLike;            ///< total likelihood
+        FloatInLog      avgAccuracy;        ///< average accuracy
+      }; // struct FWBWRet
 
-    /** 
-     * @brief State reestimation procedure
-     * 
-     * @param pNode 
-     * @param stateIndex 
-     * @param logPriorProb 
-     * @param updateDir 
-     * @param obs 
-     * @param obs2 
-     */
-    void 
-    ReestState(NetworkType::NodeType  *    pNode,
-               int       stateIndex, 
-               FLOAT     logPriorProb, 
-               FLOAT     updateDir,
-               FLOAT *   obs, 
-               FLOAT *   obs2);
       
-    /**
-     * @brief  Computes likelihood using the forward/backward algorithm
-     * @param  pObsMx 
-     * @param  nFrames number of frames to use
-     * @return @c FWBWRet structure containing total likelihood and average
-     *         accuracy
-     */
-    Decoder::FWBWRet
-    ForwardBackward(FLOAT* pObsMx, int nFrames);
-    
-    Decoder::FWBWRet
-    ForwardBackward(const Matrix<FLOAT>& rFeatureMatrix, size_t nFrames);
-    
-    
-    /**
-     * @brief Frees 
-     */
-    void 
-    FreeFWBWRecords();
-  
-    /**
-     * @brief Returns true if propagation is forward
-     */
-    const bool
-    InForwardPass() const {return mPropagDir == FORWARD;}
-    
-    NetworkType::NodeType*
-    pActivateWordNodesLeadingFrom(NetworkType::NodeType* pNode);
-    
-    void
-    ActivateNode(NetworkType::NodeType* pNode);
+      /**
+       * @brief Sorts nodes in this network
+       */
+  //    void 
+  //    SortNodes();
+      
+      /**
+       * @brief Checks for a cyclic structure in network
+       */
+      int 
+      HasCycle();
+      
 
-    void
-    ActivateModel(NetworkType::NodeType* pNode);
-
-    void
-    DeactivateModel(NetworkType::NodeType* pNode);
-    
-    void
-    DeactivateWordNodesLeadingFrom(NetworkType::NodeType* pNode);
-    
-    void 
-    MarkWordNodesLeadingFrom(NetworkType::NodeType* node);
-    
-    bool
-    AllWordSuccessorsAreActive();
-    
-    void
-    GenerateToken(NetworkType::NodeType* pNode);
-  
-    void 
-    TokenPropagationInit();
-    
-    void 
-    TokenPropagationInNetwork();
-
-    void
-    TokenPropagationInModels(FLOAT* observation);
+      /** 
+       * @brief State reestimation procedure
+       * 
+       * @param pNode 
+       * @param stateIndex 
+       * @param logPriorProb 
+       * @param updateDir 
+       * @param obs 
+       * @param obs2 
+       */
+      void 
+      ReestState(NetworkNode  *    pNode,
+                 int       stateIndex, 
+                 FLOAT     logPriorProb, 
+                 FLOAT     updateDir,
+                 FLOAT *   obs, 
+                 FLOAT *   obs2);
         
-    void 
-    TokenPropagationDone();
-
-    FLOAT 
-    DiagCGaussianDensity(const Mixture* mix, const FLOAT* pObs);
-  
-    FLOAT 
-    DiagCGaussianMixtureDensity(State* pState, FLOAT* pObs);
+      /**
+       * @brief  Computes likelihood using the forward/backward algorithm
+       * @param  pObsMx 
+       * @param  nFrames number of frames to use
+       * @return @c FWBWRet structure containing total likelihood and average
+       *         accuracy
+       */
+      FWBWRet
+      ForwardBackward(FLOAT* pObsMx, int nFrames);
+      
+      FWBWRet
+      ForwardBackward(const Matrix<FLOAT>& rFeatureMatrix, size_t nFrames);
+      
+      
+      /**
+       * @brief Frees 
+       */
+      void 
+      FreeFWBWRecords();
     
-    FLOAT 
-    FromObservationAtStateId(State* pState, FLOAT* pObs);
+      /**
+       * @brief Returns true if propagation is forward
+       */
+      const bool
+      InForwardPass() const {return mPropagDir == FORWARD;}
+      
+      NetworkNode*
+      pActivateWordNodesLeadingFrom(NetworkNode* pNode);
+      
+      void
+      ActivateNode(NetworkNode* pNode);
 
-    void 
-    AddLinkToLattice(NetworkType::NodeType* from, NetworkType::NodeType* to, 
-        FLOAT lmLike);
+      void
+      ActivateModel(NetworkNode* pNode);
 
-    int  
-    BackwardPruning(int time, NetworkType::NodeType* pNode, int state);
+      void
+      DeactivateModel(NetworkNode* pNode);
+      
+      void
+      DeactivateWordNodesLeadingFrom(NetworkNode* pNode);
+      
+      void 
+      MarkWordNodesLeadingFrom(NetworkNode* node);
+      
+      bool
+      AllWordSuccessorsAreActive();
+      
+      void
+      GenerateToken(NetworkNode* pNode);
     
-    void 
-    WriteAlpha(int time, NetworkType::NodeType* pNode, int state, Token *token);
+      void 
+      TokenPropagationInit();
+      
+      void 
+      TokenPropagationInNetwork();
+
+      void
+      TokenPropagationInModels(FLOAT* observation);
+          
+      void 
+      TokenPropagationDone();
+
+      void 
+      AddLinkToLattice(NetworkNode* from, NetworkNode* to, 
+          FLOAT lmLike);
+
+      int  
+      BackwardPruning(int time, NetworkNode* pNode, int state);
+      
+      void 
+      WriteAlpha(int time, NetworkNode* pNode, int state, Token *token);
+      
+      void 
+      WriteBeta(int time, NetworkNode* pNode, int state, Token *token);
+
+      WordLinkRecord*
+      TimePruning(int frame_delay);
+
+
+      void
+      Wlr2Lattice(WordLinkRecord* pWlr, STK::Lattice& rLattice);
+
+      static void 
+      Wlr2Lattice_AllocateNodes(WordLinkRecord* pWlr, 
+          typename STK::Lattice::Node*& rpNode);
+
+      static void 
+      Wlr2Lattice_EstablishLinks(WordLinkRecord* pWlr);
+
+    public:
+
+      // the constructor .........................................................
+      Decoder()
+      { mpNetwork = new NetworkType(); }
+
+      // the destructor ..........................................................
+      ~Decoder()
+      { delete mpNetwork; }
+
+      
+      // init and release operators ..............................................
+      /**
+       * @brief Initializes the network
+       * @param net 
+       * @param first 
+       * @param hmms 
+       * @param hmmsToUptade 
+       */
+      void 
+      Init(ModelSet* pHmms, ModelSet* pHmmsToUpdate, 
+          bool compactRepresentation = false);
+      
+      /**
+       * @brief Initializes the network
+       * @param net 
+       * @param first 
+       * @param hmms 
+       * @param hmmsToUptade 
+       */
+      void 
+      Init(typename NetworkType::Node* pFirstNode, ModelSet* pHmms, 
+          ModelSet* pHmmsToUpdate, bool compactRepresentation = false);
+      
+      /**
+       * @brief Releases memory occupied by the network resources
+       */
+      void 
+      Clear();
+
+
+      // accessors ...............................................................
+      NetworkType&
+      rNetwork()
+      { return *mpNetwork; }
+      
+
+      NetworkNode*
+      pFirst() 
+      { return mpNetwork->pFirst(); }
+
+      NetworkNode*
+      pLast()
+      { return mpNetwork->pLast(); }
+
+
+      
+      const NetworkType&
+      Net() const
+      { return *mpNetwork; }
+
+
+      FLOAT   
+      (*OutputProbability) (State *state, FLOAT *observation, Decoder *network);
+
+      int     
+      (*PassTokenInNetwork)(Token* pFrom, Token* pTo, FLOAT addLogLike, 
+          FLOAT acousticLike);
+
+      int     
+      (*PassTokenInModel)  (Token* pFrom, Token* pTo, FLOAT addLogLike, 
+          FLOAT acousticLike);
+      
+      // decoding functions ......................................................
+      void              
+      ViterbiInit();  
+      
+      void              
+      ViterbiStep(FLOAT* pObservation);
+      
+      FLOAT             
+      ViterbiDone(Label** pLabels, Lattice* pNetwork = NULL);
+      
+      
+      FLOAT 
+      MCEReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, 
+          int nFrames, FLOAT weight, FLOAT sigSlope);
+              
+      FLOAT
+      ViterbiReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, int nFrames, FLOAT weight);
+      
+      FLOAT
+      BaumWelchReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, int nFrames, FLOAT weight);
+
+
+
+      static int               
+      PassTokenMaxForLattices(Token* from, Token* to, FLOAT addLogLike, 
+          FLOAT acousticLike);
+
+      static int               
+      PassTokenMax(Token* from, Token* to, FLOAT addLogLike, FLOAT acousticLike);
+
+      static int               
+      PassTokenSum(Token* from, Token* to, FLOAT addLogLike, FLOAT acousticLike);
+
+
+      static void              
+      KillToken(Token* token);
     
-    void 
-    WriteBeta(int time, NetworkType::NodeType* pNode, int state, Token *token);
+      static FLOAT             
+      DiagCGaussianDensity(const Mixture* mix, const FLOAT* pObs, Decoder* net);
 
-    WordLinkRecord*
-    TimePruning(int frame_delay);
+      static FLOAT             
+      DiagCGaussianMixtureDensity(State* state, FLOAT* obs, Decoder* network);
 
-  public:
+      static FLOAT             
+      FromObservationAtStateId(State* state, FLOAT* obs, Decoder* network);
 
-    // the constructor .........................................................
-    Decoder()
-    { mpNetwork = new NetworkType(); }
 
-    // the destructor ..........................................................
-    ~Decoder()
-    { delete mpNetwork; }
+    private:
+      /** 
+       * @brief Maps network phone nodes to hmm models in physical memory
+       * 
+       * @param pHmms self descriptive
+       * @param pHmmsToUpdate self descriptive
+       * @param maxStatesInModel self descriptive
+       * 
+       * @return Pointer to the last node in the mNetwork node set
+       */
+      NetworkNode* 
+      PhoneNodesToModelNodes(ModelSet * pHmms, ModelSet *pHmmsToUpdate, 
+          int& maxStatesInModel);
 
+
+    public:
+      // public atributes ........................................................
+      NetworkType*                mpNetwork;
+       
+      NetworkNode*     mpActiveModels;
+      NetworkNode*     mpActiveNodes;
+      int                         mActiveTokens;
+                              
+      int                         mNumberOfNetStates; // Not used for anything important
+      Token*                      mpAuxTokens;
+      Cache*                      mpOutPCache;
+      Cache*                      mpMixPCache;
     
-    // init and release operators ..............................................
-    /**
-     * @brief Initializes the network
-     * @param net 
-     * @param first 
-     * @param hmms 
-     * @param hmmsToUptade 
-     */
-    void 
-    Init(ModelSet* pHmms, ModelSet* pHmmsToUpdate, 
-        bool compactRepresentation = false);
-    
-    /**
-     * @brief Initializes the network
-     * @param net 
-     * @param first 
-     * @param hmms 
-     * @param hmmsToUptade 
-     */
-    void 
-    Init(NetworkType::NodeType* pFirstNode, ModelSet* pHmms, 
-        ModelSet* pHmmsToUpdate, bool compactRepresentation = false);
-    
-    /**
-     * @brief Releases memory occupied by the network resources
-     */
-    void 
-    Clear();
-
-
-    // accessors ...............................................................
-    NetworkType&
-    rNetwork()
-    { return *mpNetwork; }
-    
-
-    NetworkType::NodeType*
-    pFirst() 
-    { return mpNetwork->pFirst(); }
-
-    NetworkType::NodeType*
-    pLast()
-    { return mpNetwork->pLast(); }
-
-
-    
-    const NetworkType&
-    Net() const
-    { return *mpNetwork; }
-
-
-    FLOAT   
-    (*OutputProbability) (State *state, FLOAT *observation, Decoder *network);
-
-    int     
-    (*PassTokenInNetwork)(Token* pFrom, Token* pTo, FLOAT addLogLike, 
-        FLOAT acousticLike, FLOAT totalPenalty);
-
-    int     
-    (*PassTokenInModel)  (Token* pFrom, Token* pTo, FLOAT addLogLike, 
-        FLOAT acousticLike, FLOAT totalPenalty);
-    
-    // decoding functions ......................................................
-    void              
-    ViterbiInit();  
-    
-    void              
-    ViterbiStep(FLOAT* pObservation);
-    
-    FLOAT             
-    ViterbiDone(Label** pLabels, Lattice* pNetwork = NULL);
-    
-    
-    FLOAT 
-    MCEReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, 
-        int nFrames, FLOAT weight, FLOAT sigSlope);
-            
-    FLOAT
-    ViterbiReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, int nFrames, FLOAT weight);
-    
-    FLOAT
-    BaumWelchReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, int nFrames, FLOAT weight);
-
-
-    // public atributes ........................................................
-    NetworkType*                mpNetwork;
-     
-    NetworkType::NodeType*     mpActiveModels;
-    NetworkType::NodeType*     mpActiveNodes;
-    int                         mActiveTokens;
-                            
-    int                         mNumberOfNetStates; // Not used for anything important
-    Token*                      mpAuxTokens;
-    Cache*                      mpOutPCache;
-    Cache*                      mpMixPCache;
-  
-    long                        mTime;
-    Token*                      mpBestToken;
-    NetworkType::NodeType*     mpBestNode;
-    
-    // Passing parameters
-    State*                      mpThreshState;
-    FLOAT                       mBeamThresh;
-    FLOAT                       mWordThresh;
-                                
-    FLOAT                       mWPenalty;  
-    FLOAT                       mMPenalty;
-    FLOAT                       mPronScale;
-    FLOAT                       mLmScale;
-    FLOAT                       mTranScale;
-    FLOAT                       mOutpScale;
-    FLOAT                       mOcpScale;
-    FLOAT                       mPruningThresh;
-    SearchPathsType             mSearchPaths;
-
-    bool                        mLatticeGeneration;
-    bool                        mCompactRepresentation;
-
-    bool                        mContinuousTokenGeneration;
-    bool                        mKeepExitToken;    
-    //    MyHSearchData               mLatticeNodeHash;
-    //    Node *                      mpLatticeLastNode;
-
+      long                        mTime;
+      Token*                      mpBestToken;
+      NetworkNode*     mpBestNode;
+      
+      // Passing parameters
+      State*                      mpThreshState;
+      FLOAT                       mBeamThresh;
+      FLOAT                       mWordThresh;
                                   
-    PropagDirectionType         mPropagDir;
-    int                         mAlignment;
-    int                         mCollectAlphaBeta;
-    
-    //  int                         mmi_den_pass;
-    AccumType                   mAccumType;
-    ModelSet*                   mpModelSet;
-    ModelSet*                   mpModelSetToUpdate;
+      FLOAT                       mWPenalty;  
+      FLOAT                       mMPenalty;
+      FLOAT                       mPronScale;
+      FLOAT                       mLmScale;
+      FLOAT                       mTranScale;
+      FLOAT                       mOutpScale;
+      FLOAT                       mOcpScale;
+      FLOAT                       mPruningThresh;
+      SearchPathsType             mSearchPaths;
 
-  private:
-    /** 
-     * @brief Maps network phone nodes to hmm models in physical memory
-     * 
-     * @param pHmms self descriptive
-     * @param pHmmsToUpdate self descriptive
-     * @param maxStatesInModel self descriptive
-     * 
-     * @return Pointer to the last node in the mNetwork node set
-     */
-    NetworkType::NodeType* 
-    PhoneNodesToModelNodes(ModelSet * pHmms, ModelSet *pHmmsToUpdate, 
-        int& maxStatesInModel);
-  }; // class Decoder
+      bool                        mLatticeGeneration;
+      bool                        mCompactRepresentation;
+
+      bool                        mContinuousTokenGeneration;
+      bool                        mKeepExitToken;    
+      //    MyHSearchData               mLatticeNodeHash;
+      //    Node *                      mpLatticeLastNode;
+
+                                    
+      PropagDirectionType         mPropagDir;
+      int                         mAlignment;
+      int                         mCollectAlphaBeta;
+      
+      //  int                         mmi_den_pass;
+      AccumType                   mAccumType;
+      ModelSet*                   mpModelSet;
+      ModelSet*                   mpModelSetToUpdate;
+
+    }; // class Decoder
   //***************************************************************************
   //***************************************************************************
   
@@ -424,11 +469,13 @@ namespace STK
    *  In fact, I would be happy if this class dissappeared or was somehow
    *  integreted to WordLinkRecord itself.
    */
+  template<typename _Wlr>
   class WlrReference
   {
   public:
     typedef double           LikeType;
 
+    typedef _Wlr             WordLinkRecord;
 
     WordLinkRecord*          mpWlr;            ///< Associated word link record
     LikeType                 mLike;            ///< Total likelihood
@@ -450,64 +497,69 @@ namespace STK
   /** 
    * @brief Data structure used for alternative hpothesis list
    */
-  typedef std::list<WlrReference>   AltHypList;
+  //typedef std::list<WlrReference>   AltHypList;
 
 
   /** *************************************************************************
    ** *************************************************************************
    *  @brief Token representation
    */
-  class Token 
-  {
-  public:
-    /// Token's likelihood precision type
-    typedef double                            LikeType;
-    typedef Node<NodeBasicContent, LinkContent, LinkArray>  NodeType;
+  template <typename _NodeType>
+    class Token 
+    {
+    public:
+      /// Token's likelihood precision type
+      typedef double                            LikeType;
+      //typedef Node<NodeContent, LinkContent, LinkArray>  Node;
+      typedef _NodeType  Node;
+      typedef STK::WordLinkRecord<Node>     WordLinkRecord;
+      typedef STK::WlrReference<WordLinkRecord>           WlrReference;
+      typedef std::list<WlrReference >    AltHypList;
 
-    LikeType                mLike;            ///< Total likelihood
-    LikeType                mAcousticLike;    ///< Acoustic likelihood
-    FloatInLog              mAccuracy;        ///< Accuracy
+      LikeType                mLike;            ///< Total likelihood
+      LikeType                mAcousticLike;    ///< Acoustic likelihood
+      FloatInLog              mAccuracy;        ///< Accuracy
 
 #   ifdef bordel_staff
-    WordLinkRecord*         mpTWlr;
-    FLOAT                   mBestLike;
+      WordLinkRecord*         mpTWlr;
+      FLOAT                   mBestLike;
 #   endif
 
-    WordLinkRecord*         mpWlr;            ///< Associated word link record
-    AltHypList*             mpAltHyps;        ///< Associated alternative hypotheses
+      WordLinkRecord*         mpWlr;            ///< Associated word link record
+      AltHypList*             mpAltHyps;        ///< Associated alternative hypotheses
+      
     
-  
-    /**
-     * @brief Returns true if token is active
-     */
-    Token() : mLike(LOG_0), mpWlr(NULL), mpAltHyps(NULL), mpTWlr(NULL) {}
-     
-    inline const bool
-    IsActive() const 
-    { return mLike > LOG_MIN; }
-    
-    /**
-     * @brief Returns pointer to an array of this token's labels
-     */
-    Label*
-    pGetLabels();
-    
-    NodeType*
-    pGetLattice();
-    
-    void
-    AddWordLinkRecord(NodeType* pNode, int stateIdx, int time);
-    
-    void 
-    AddAlternativeHypothesis(WordLinkRecord* pWlr);
-    
-    void 
-    AddAlternativeHypothesis(WordLinkRecord* pWlr, LikeType like, 
-        LikeType acousticLike);
+      /**
+       * @brief Returns true if token is active
+       */
+      Token() : mLike(LOG_0), mpWlr(NULL), mpAltHyps(NULL), mpTWlr(NULL) {}
+       
+      inline const bool
+      IsActive() const 
+      { return mLike > LOG_MIN; }
+      
+      /**
+       * @brief Returns pointer to an array of this token's labels
+       */
+      Label*
+      pGetLabels();
+      
+      Node*
+      pGetLattice();
+      
+      void
+      AddWordLinkRecord(Node* pNode, int stateIdx, int time);
+      
+      void 
+      AddAlternativeHypothesis(WordLinkRecord* pWlr);
+      
+      void 
+      AddAlternativeHypothesis(WordLinkRecord* pWlr, LikeType like, 
+          LikeType acousticLike);
 
-    void
-    Penalize(LikeType penalty);
-  };
+      void
+      Penalize(LikeType penalty);
+    };
   // class Token 
   //***************************************************************************
   
@@ -516,13 +568,17 @@ namespace STK
    ** *************************************************************************
    * @brief 
    */
+  template <typename _NodeType>
   class WordLinkRecord 
   {
   public:
     typedef double     LikeType;
-    typedef Node<NodeBasicContent, LinkContent, LinkArray>  NodeType;
+    //typedef Node<NodeContent, LinkContent, LinkArray>  Node;
+    typedef _NodeType  Node;
+    typedef WordLinkRecord Self;
+    typedef std::list<WlrReference<Self> >   AltHypList;
 
-    NodeType*          mpNode;
+    Node*          mpNode;
     int                mStateIdx;
     int                mAux;             
     LikeType           mLike;
@@ -537,7 +593,7 @@ namespace STK
     bool               mIsFreed;
   #endif
 
-    NodeType*
+    Node*
     pNode() const
     { return mpNode; }
   }; 
@@ -554,135 +610,75 @@ namespace STK
    * it is necessary that each node keeps a record of its tokens. 
    * ActiveNodeRecord serves as a token pool.
    */
-  class ActiveNodeRecord
-  {
-  public:
-    typedef Node<NodeBasicContent, LinkContent, LinkArray>  NodeType;
-
-
-    NodeType*             mpNode;
-    NodeType*             mpNextActiveModel;
-    NodeType*             mpPrevActiveModel;
-    NodeType*             mpNextActiveNode;
-    NodeType*             mpPrevActiveNode;
-    
-    bool                  mIsActiveModel;
-    int                   mActiveNodeFlag;
-    int                   mAux;
-
-    Token*                mpExitToken;
-    Token*                mpTokens;
-
-
-    ActiveNodeRecord(NodeType* pNode) : mpNode(pNode), mIsActiveModel(false), mActiveNodeFlag(0)
+  template<typename _NodeType>
+    class ActiveNodeRecord
     {
-      int numOfTokens = mpNode->mType & NT_MODEL ? mpNode->mpHmm->mNStates : 1;
-      mpTokens        = new Token[numOfTokens];
-      mpExitToken     = &mpTokens[numOfTokens-1];
-    }
-    
-    ~ActiveNodeRecord() 
-    { delete [] mpTokens; }
-  };
+    public:
+      typedef _NodeType                                       Node;
+      typedef STK::Token<Node>                            Token;     
+
+
+      ActiveNodeRecord(Node* pNode) : mpNode(pNode), mIsActiveModel(false), mActiveNodeFlag(0)
+      {
+        int numOfTokens = mpNode->mC.mType & NT_MODEL ? mpNode->mC.mpHmm->mNStates : 1;
+        mpTokens        = new Token[numOfTokens];
+        mpExitToken     = &mpTokens[numOfTokens-1];
+      }
+      
+      ~ActiveNodeRecord() 
+      { delete [] mpTokens; }
+
+
+
+
+      Node*             mpNode;
+      Node*             mpNextActiveModel;
+      Node*             mpPrevActiveModel;
+      Node*             mpNextActiveNode;
+      Node*             mpPrevActiveNode;
+      
+      bool                  mIsActiveModel;
+      int                   mActiveNodeFlag;
+      int                   mAux;
+
+      Token*                mpExitToken;
+      Token*                mpTokens;
+
+
+    };
   // class ActiveNodeRecord
   //***************************************************************************
 
 
-
-  /** *************************************************************************
-   ** *************************************************************************
-   *  @brief Alpha and Beta pair for forward/backward propagation
-   */
-  struct AlphaBeta
-  {
-    typedef  FLOAT   LikeType;
-
-    AlphaBeta() : mAlpha(LOG_0), mBeta(LOG_0)
-    {}
-
-    ~AlphaBeta()
-    {}
-
-    LikeType             mAlpha;
-    LikeType             mBeta;
-  };
-    
   
-  /** *************************************************************************
-   ** *************************************************************************
-   *  @brief Alpha and Beta pair for forward/backward propagation augmented
-   *  with accuracies for MPE training
-   */
-  struct AlphaBetaMPE : public AlphaBeta
-  {
-    FloatInLog        mAlphaAccuracy;
-    FloatInLog        mBetaAccuracy;
-  };
-  
-  
-  /** *************************************************************************
-   ** *************************************************************************
-   *  @brief Forward-Backward record
-   */
-  struct FWBWR 
-  {
-    FWBWR*            mpNext;
-    int               mTime;
-    AlphaBetaMPE      mpState[1];
-  };
-  
-  
-  
-  
-  void              
-  KillToken(Token* token);
   
   void
   FindNBestMixtures(State* pState, FLOAT* pObs, NBestRecord* pNBest, 
       size_t nBest, int time);
 
-  FLOAT             
-  DiagCGaussianDensity(const Mixture* mix, const FLOAT* pObs, Decoder* net);
-
-  FLOAT             
-  DiagCGaussianMixtureDensity(State* state, FLOAT* obs, Decoder* network);
-
-  FLOAT             
-  FromObservationAtStateId(State* state, FLOAT* obs, Decoder* network);
-
-
-  int               
-  PassTokenMaxForLattices(Token* from, Token* to, FLOAT addLogLike, 
-      FLOAT acousticLike, FLOAT totalPenalty);
-
-  int               
-  PassTokenMax(Token* from, Token* to, FLOAT addLogLike, FLOAT acousticLike, 
-      FLOAT totalPenalty);
-
-  int               
-  PassTokenSum(Token* from, Token* to, FLOAT addLogLike, FLOAT acousticLike, 
-      FLOAT totalPenalty);
-
-
-  WordLinkRecord*  
-  TimePruning(Decoder* pNetwork, int frameDelay);
+  template<typename _NetworkType>
+    WordLinkRecord<typename _NetworkType::Node> *  
+    TimePruning(Decoder<_NetworkType>* pNetwork, int frameDelay);
   
   void 
-  LoadRecognitionNetwork(
-      char*         netFileName,
-      ModelSet*     hmms,
-      Decoder*      net);
+  UpdateXformInstanceStatCaches(XformInstance* xformInstance, FLOAT* pObservation, int time);
+
+
+  FLOAT 
+  compute_diag_c_gaussian_density(
+    const FLOAT*  pObs, 
+    const FLOAT   gConst,
+    const FLOAT*  pMean,
+    const FLOAT*  pVar,
+    const size_t  vSize);
   
-  void 
-  ReadRecognitionNetwork(
-      FILE*         fp,
-      ModelSet*     hmms,
-      Decoder*      network,
-      LabelFormat   labelFormat,
-      long          sampPeriod,
-      const char*   file_name,
-      const char*   in_MLF);
-  
+
+  template<typename _NodeType>
+    void 
+    FreeWordLinkRecords(WordLinkRecord<_NodeType>* wlr);
+
+
+  /*
   FLOAT*
   StateOccupationProbability(
       Decoder*      network,
@@ -691,31 +687,11 @@ namespace STK
       int           nFrames,
       FLOAT**       outProbOrMahDist,
       int           getMahalDist);
-    
-  /*
-  FLOAT MCEReest(
-    Decoder *     net,
-    FLOAT *       obsMx,
-    FLOAT *       obsMx2,
-    int           nFrames,
-    FLOAT         weight,
-    FLOAT         sigSlope);
-  
-  FLOAT BaumWelchReest(
-    Decoder *     net,
-    FLOAT *       obsMx,
-    FLOAT *       obsMx2,
-    int           nFrames,
-    FLOAT         weight);
-  
-  FLOAT ViterbiReest(
-    Decoder *     net,
-    FLOAT *       observationMx,
-    FLOAT *       observationMx2,
-    int           nFrames,
-    FLOAT         weight);
   */
+    
 }; // namespace STK
+
+#include "Decoder.tcc"
 
 #endif  // #ifndef STK_Decoder_h
   

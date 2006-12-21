@@ -215,6 +215,12 @@ namespace STK
     CurrentHeader() const 
     { return mHeader; }
 
+    /** 
+     * @brief Returns a refference to the current file header
+     */
+    const HtkHeaderExt&
+    CurrentHeaderExt() const 
+    { return mHeaderExt; }
 
     /**
      * @brief Returns the current file details
@@ -326,6 +332,7 @@ namespace STK
       
     // stores feature file's HTK header
     HtkHeader                   mHeader;
+    HtkHeaderExt                mHeaderExt;
 
 
     // this group of variables serve for working withthe same physical
