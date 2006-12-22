@@ -249,7 +249,7 @@ int main(int argc, char *argv[])
   {
     for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) {
       if ((sfp = my_fopen(script, "rt", gpScriptFilter)) == NULL) {
-        Error("Cannot open script file %s", optarg);
+        Error("Cannot open script file %s", script);
       }
       while (fscanf(sfp, "%s", line) == 1) {
         last_file = AddFileElem(last_file, line);

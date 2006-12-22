@@ -202,7 +202,12 @@ namespace STK
                         "CSTK format (%s:%d)", 
                         file_name, line_no);
 
-                if (NULL == (first = (_node_type *) malloc(sizeof(_node_type) * nnodes)))
+                // TODO: !!! first was allocated by malloc, so elements were not initialized
+                // e.g. "if (p_node->mC.mType == NT_UNDEF)" above relied on uninitialized mType.
+                // calloc initialize all the allocated memory by zero, however, this shuld not be
+                // final solution!!!
+                
+                if (NULL == (first = (_node_type *) calloc(sizeof(_node_type), nnodes)))
                   Error("Insufficient memory");
 
                 last  = &first[nnodes - 1];

@@ -69,7 +69,7 @@ namespace STK
 
 
 
-
+/*
 #if ENABLE_SSE
 # define OPTIMIZE_GAUSSIAN_COMPUTATION      
 #endif
@@ -149,7 +149,7 @@ namespace STK
     return m_like;
   } // compute_diag_c_gaussian_density(...)
   //***************************************************************************
-  
+*/  
 
       
 #ifdef DEBUG_MSGS

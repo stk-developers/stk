@@ -664,13 +664,13 @@ namespace STK
   UpdateXformInstanceStatCaches(XformInstance* xformInstance, FLOAT* pObservation, int time);
 
 
-  FLOAT 
+/*  FLOAT 
   compute_diag_c_gaussian_density(
     const FLOAT*  pObs, 
     const FLOAT   gConst,
     const FLOAT*  pMean,
     const FLOAT*  pVar,
-    const size_t  vSize);
+    const size_t  vSize); */
   
 
   template<typename _NodeType>

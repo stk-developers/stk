@@ -59,6 +59,7 @@ SVite: -w (without para does not switch on -G STH)
 In common.C: fstat(fileno(fp), &sb) does not work with 64bit architecture
 SERest.c triers to update varFloorXFORMNAME macros, which results in vector on NaNs and screw up the flooring
 Extension after -z option is ignored, -y is used instead. But is not it actually better?
+To solve how to control and perform input/output network optimizations.
 
 To finish new SKT networks
 - Expanded network cannot hold information about word output symbols and

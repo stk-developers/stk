@@ -971,7 +971,7 @@ int main(int argc, char *argv[])
     {
       WriteSTKNetwork(lfp, lattice, out_net_fmt, 
           feature_repo.CurrentHeader().mSamplePeriod, label_file, out_MLF,
-          (&decoder)->mWPenalty, p_decoder->mMPenalty, p_decoder->mLmScale);
+          p_decoder->mWPenalty, p_decoder->mMPenalty, p_decoder->mLmScale);
           
       // we are not needing the lattice anymore, so free it from memory
       lattice.Clear();

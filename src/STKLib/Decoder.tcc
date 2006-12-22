@@ -3,6 +3,14 @@
 namespace STK
 {
 
+  FLOAT 
+  compute_diag_c_gaussian_density(
+    const FLOAT*  pObs, 
+    const FLOAT   gConst,
+    const FLOAT*  pMean,
+    const FLOAT*  pVar,
+    const size_t  vSize);
+
   //***************************************************************************
   //***************************************************************************
   template<typename _NetworkType>
@@ -903,7 +911,7 @@ namespace STK
 
   
   //***************************************************************************
-  //***************************************************************************
+  //*************************************************************************** 
   template<typename _NetworkType>
     FLOAT 
     Decoder<_NetworkType>::
@@ -3008,7 +3016,7 @@ namespace STK
     Wlr2Lattice(WordLinkRecord* pWlr, Lattice& rLattice)
     {
       
-      Lattice::Node* p_first;
+      Lattice::Node* p_first = NULL;
       
       Wlr2Lattice_AllocateNodes(pWlr, p_first);
       Wlr2Lattice_EstablishLinks(pWlr);
@@ -3190,5 +3198,87 @@ namespace STK
     }
   // EstablishLinks(WordLinkRecord* pWlr)
   //***************************************************************************
-      
+  
+
+#if ENABLE_SSE
+# define OPTIMIZE_GAUSSIAN_COMPUTATION      
+#endif
+
+  //***************************************************************************
+  //***************************************************************************
+  // The function does the gaussian dist exponent operations.
+  // It is declared inline as it is called from one place only
+  inline FLOAT 
+  compute_diag_c_gaussian_density(
+    const FLOAT*  pObs, 
+    const FLOAT   gConst,
+    const FLOAT*  pMean,
+    const FLOAT*  pVar,
+    const size_t  vSize)
+  {
+#ifdef __GNUC__
+    FLOAT m_like __attribute__ ((aligned (16))) = 0.0;
+#else
+    FLOAT m_like = 0.0;
+#endif
+    size_t j;
+
+#if defined(OPTIMIZE_GAUSSIAN_COMPUTATION) && defined(__GNUC__ )
+// THE PIECE OF CODE IN THIS "IF" BRANCH IS THE SSE OPTIMIZED
+// WAY OF COMPUTING MULTI GAUSSIAN DENSITY. IT ASSUMES THAT 
+// ALL POINTERS ARE 16-BYTES ALIGNED (SSE REQUIREMENT)
+
+#  if !DOUBLEPRECISION
+    // this is a stric optimization
+    f4vector        l = {{0.0F}}; 
+    const f4vector* o = reinterpret_cast<const f4vector*>(pObs); 
+    const f4vector* m = reinterpret_cast<const f4vector*>(pMean);
+    const f4vector* v = reinterpret_cast<const f4vector*>(pVar);
+    
+    l.f[0] = l.f[1] = l.f[2] = l.f[3] = 0.0F;
+
+    for (j = 0; j < vSize; j += 4) 
+    {
+      l.v += SQR(o->v - m->v) * v->v;
+      o++;
+      m++;
+      v++;
+    }
+    
+    m_like = l.f[0] + l.f[1] + l.f[2] + l.f[3];
+#  else
+    // this is a stric optimization
+    d2vector        l = {{0.0F}}; 
+    const d2vector* o = reinterpret_cast<const d2vector*>(pObs); 
+    const d2vector* m = reinterpret_cast<const d2vector*>(pMean);
+    const d2vector* v = reinterpret_cast<const d2vector*>(pVar);
+    
+    l.f[0] = l.f[1] = 0.0;
+
+    for (j = 0; j < vSize; j += 2) 
+    {
+      l.v += SQR(o->v - m->v) * v->v;
+      o++;
+      m++;
+      v++;
+    }
+    
+    m_like = l.f[0] + l.f[1];
+#  endif // DOUBLEPRECISION
+    
+#else
+// NO OPTIMIZATION IS PERFORMED IN THIS PIECE OF CODE
+    // the original loop
+    for (j = 0; j < vSize; j++) 
+    {                   
+      m_like += SQR(pObs[j] - pMean[j]) * pVar[j];
+    }
+#endif
+    
+    m_like = -0.5 * (gConst + m_like);
+    return m_like;
+  } // compute_diag_c_gaussian_density(...)
+  //***************************************************************************
+
 }
+
