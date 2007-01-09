@@ -23,9 +23,16 @@ else
   LIBGETOPT =
 endif
 
+if WANT_HSEARCH_R_O
+  LIBHSEARCH_R = -lhsearch_r
+else 
+  LIBHSEARCH_R = 
+endif
+
+
 # These are the common libraries needed by all programs
-COMMONLDFLAGS = -pthread
-COMMONLIBS    = ./STKLib/libSTKLib.a $(LIBGETOPT)
+COMMONLDFLAGS = -pthread -L$(top_builddir)/lib
+COMMONLIBS    = ./STKLib/libSTKLib.a $(LIBGETOPT) $(LIBHSEARCH_R) 
 
 AM_LDFLAGS  = $(COMMONLDFLAGS) 
 LDADD       = $(COMMONLIBS) 
