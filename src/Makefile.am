@@ -1,7 +1,15 @@
 
 MAINTAINERCLEANFILES = Makefile.in
 
-SUBDIRS = STKLib SNetLib .
+if USE_SNET
+  SNETLIBF = SNetLib
+	SNETF    = SNet
+else
+  SNETLIBF = 
+	SNETF    = 
+endif
+
+SUBDIRS = STKLib $(SNETLIBF) .
 
 if WANT_GNUSEARCH_H
   HSEARCH_R_INC_DIR = -I$(top_srcdir)/lib
@@ -29,7 +37,7 @@ INCLUDES    = $(ATLASINCLUDEDIR) -I. -I$(top_builddir) -I$(top_srcdir) \
 
 
 # These are the programs that we want to build in this directory
-bin_PROGRAMS = SExpand SERest SVite SNet SFeaCat SLRatio SResults SRover
+bin_PROGRAMS = SExpand SERest SVite $(SNETF) SFeaCat SLRatio SResults SRover
 
 
 # Specifications
@@ -42,6 +50,8 @@ SResults_SOURCES  = SResults.cc
 SRover_SOURCES    = SRover.cc
 
 # SNet is kind of special. It needs some files in the SNet source. This will probably change and separate SNetLib will be built
-SNet_SOURCES      = SNet.cc 
-SNet_LDFLAGS      = $(COMMONLDFLAGS) -pthread
-SNet_LDADD        = $(COMMONLIBS) ./SNetLib/libSNet.a
+if USE_SNET
+	SNet_SOURCES      = SNet.cc 
+	SNet_LDFLAGS      = $(COMMONLDFLAGS) -pthread
+	SNet_LDADD        = $(COMMONLIBS) ./SNetLib/libSNet.a
+endif

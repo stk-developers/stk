@@ -59,10 +59,19 @@ AC_STRUCT_TM
 AC_FUNC_MALLOC
 AC_FUNC_REALLOC
 AC_FUNC_STRTOD
-AC_CHECK_FUNCS([gethostbyname gettimeofday inet_ntoa memmove memset socket sqrt strchr strdup strerror strrchr strspn strstr strtol strtoull], 
+AC_CHECK_FUNCS([memmove memset sqrt strchr strdup strerror strrchr strspn strstr strtol strtoull], 
                [], 
                [AC_MSG_FAILURE([])]
               )
+
+# these funcs are SNet only...
+use_snet=yes
+
+AC_CHECK_FUNCS([gethostbyname socket gettimeofday inet_ntoa], 
+               [],
+               [use_snet=no
+                break])
+AM_CONDITIONAL([USE_SNET], [test "$use_snet" != "no"]) 
 
 
 ################################################################################
@@ -97,7 +106,9 @@ AC_CHECK_FUNCS([hsearch_r hcreate_r hdestroy_r],
       usemy_hsearch_r_obj=no
      ], [#include <search.h>])
   ],
-  [usemy_hsearch_r_inc=yes
+  [AC_DEFINE(HAVE_REENTRANT_SEARCH, [0], 
+                [don't use internal reentran version of search_h])
+   usemy_hsearch_r_inc=yes
    usemy_hsearch_r_obj=yes
    break
   ])
@@ -156,7 +167,7 @@ AC_ARG_WITH([atlas-include-dir],
             [AS_HELP_STRING([--with-atlas-include-dir],
               [specify the atlas header files location])
             ],
-            [AC_SUBST([ATLASINCLUDEDIR], ["-I$withval/include"])
+            [AC_SUBST([ATLASINCLUDEDIR], ["-I$withval"])
              echo ATLAS: adding $ATLASINCLUDEDIR to the include search path
              AC_SUBST([CFLAGS],["$ATLASINCLUDEDIR $CFLAGS"])
              AC_SUBST([CXXFLAGS],["$ATLASINCLUDEDIR $CXXFLAGS"])
@@ -167,7 +178,7 @@ AC_ARG_WITH([atlas-lib-dir],
             [AS_HELP_STRING([--with-atlas-lib-dir],
               [specify the atlas libdir location])
             ],
-            [AC_SUBST([ATLASLIBDIR], ["-L$withval/lib"])
+            [AC_SUBST([ATLASLIBDIR], ["-L$withval"])
              echo ATLAS: adding $ATLASLIBDIR to the library search path
              AC_SUBST([LDFLAGS],["$ATLASLIBDIR $LDFLAGS"])
             ], 
