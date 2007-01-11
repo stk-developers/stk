@@ -22,7 +22,7 @@
 #ifndef _SEARCH_H
 #define	_SEARCH_H 1
 
-#include <features.h>
+#include "gnufeatures.h"
 
 #define __need_size_t
 #include <stddef.h>

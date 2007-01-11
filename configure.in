@@ -56,8 +56,8 @@ AC_HEADER_TIME
 AC_STRUCT_TM
 
 # Checks for library functions.
-AC_FUNC_MALLOC
-AC_FUNC_REALLOC
+# AC_FUNC_MALLOC
+# AC_FUNC_REALLOC
 AC_FUNC_STRTOD
 AC_CHECK_FUNCS([memmove memset sqrt strchr strdup strerror strrchr strspn strstr strtol strtoull], 
                [], 

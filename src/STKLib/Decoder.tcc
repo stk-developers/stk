@@ -1724,7 +1724,7 @@ namespace STK
                 assert(links[i].pNode()->mC.mpAnr != NULL);
 
 #ifdef TRACE_TOKENS
-                printf("Node %d -> Node %d ", p_node->mC.mAux, links[i].pNode()->mC.mAux);
+                printf("Node %d -> Node %d ", p_node->mC.mpAnr->mAux, links[i].pNode()->mC.mpAnr->mAux);
 #endif
 
                 // Current lattice generation algorithm expect that word link record is created for all tokens leaving
@@ -1905,7 +1905,7 @@ namespace STK
                 p_hmm->mpTransition->mpMatrixO[from * p_hmm->mNStates + to] * mTranScale;
     
 #ifdef TRACE_TOKENS
-              printf("Model %d State %d -> State %d ",  p_node->mC.mAux, (int) i, (int) j);
+              printf("Model %d State %d -> State %d ",  p_node->mC.mpAnr->mAux, (int) i, (int) j);
 #endif
 
               if (PassTokenInModel(&mpAuxTokens[i], &p_node->mC.mpAnr->mpTokens[j], 
@@ -2001,7 +2001,7 @@ namespace STK
               FLOAT trans_prob = p_hmm->mpTransition->mpMatrixO[from * p_hmm->mNStates + to] *
                 mTranScale;
 #ifdef TRACE_TOKENS
-              printf("Model %d State %d -> Exit State ",  p_node->mC.mAux, (int) i);
+              printf("Model %d State %d -> Exit State ",  p_node->mC.mpAnr->mAux, (int) i);
 #endif
               if (PassTokenInModel(&p_node->mC.mpAnr->mpTokens[i],
                                    &p_node->mC.mpAnr->mpTokens[p_hmm->mNStates - 1],

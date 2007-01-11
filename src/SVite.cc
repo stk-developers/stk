@@ -923,6 +923,8 @@ int main(int argc, char *argv[])
 
       Warning("No tokens survived, trying pruning threshold: %.2f", 
           p_decoder->mPruningThresh);
+
+      lattice.Clear();
     }
 
     if (trace_flag & 1 && labels) 

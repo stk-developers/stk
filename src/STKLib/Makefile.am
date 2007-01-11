@@ -1,7 +1,7 @@
 MAINTAINERCLEANFILES = Makefile.in
 
 if WANT_GNUSEARCH_H
-  HSEARCH_R_INC_DIR = -I$(top_srcdir)/lib
+  HSEARCH_R_INC_DIR = -idirafter $(top_srcdir)/lib
 else
   HSEARCH_R_INC_DIR = 
 endif

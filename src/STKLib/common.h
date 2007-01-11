@@ -61,7 +61,7 @@
 #endif /* !DIR_SEPARATOR_CHAR */
 
 
-#if !HAVE_REENTRANT_SEARCH
+#if !HAVE_REENTRANT_SEARCH || !HAVE_SEARCH_H
 #  include <gnusearch.h>
 #else
 #  include <search.h>

@@ -288,7 +288,7 @@
 /* This is here only because every header file already includes this one.  */
 #ifndef __ASSEMBLER__
 # ifndef _SYS_CDEFS_H
-#  include <sys/cdefs.h>
+#  include <sys/gnucdefs.h>
 # endif
 
 /* If we don't have __REDIRECT, prototypes will be missing if
@@ -311,7 +311,7 @@
    Get the definitions of all the appropriate `__stub_FUNCTION' symbols.
    <gnu/stubs.h> contains `#define __stub_FUNCTION' when FUNCTION is a stub
    that will always return failure (and set errno to ENOSYS).  */
-#include <gnu/stubs.h>
+#include <gnu/gnustubs.h>
 
 
 #endif	/* features.h  */
