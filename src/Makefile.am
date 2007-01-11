@@ -29,6 +29,14 @@ else
   LIBHSEARCH_R = 
 endif
 
+if ENABLE_SSE
+  SSE_FLAGS = -msse -msse2 -mmmx -mfpmath=sse
+else
+  SSE_FLAGS =
+endif
+
+AM_CXXFLAGS = $(CXXFLAGS) $(SSE_FLAGS)
+AM_CFLAGS   = $(CFLAGS) $(SSE_FLAGS)
 
 # These are the common libraries needed by all programs
 COMMONLDFLAGS = -pthread -L$(top_builddir)/lib

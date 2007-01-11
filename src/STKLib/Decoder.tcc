@@ -1,5 +1,8 @@
 #include "Lattice.h"
 
+
+
+
 namespace STK
 {
 
@@ -3239,7 +3242,12 @@ namespace STK
 
     for (j = 0; j < vSize; j += 4) 
     {
-      l.v += SQR(o->v - m->v) * v->v;
+      //l.v += SQR(o->v - m->v) * v->v;
+      v4sf tmp;
+      tmp = __builtin_ia32_subps(o->v, m->v);
+      tmp = __builtin_ia32_mulps(tmp,  tmp);
+      tmp = __builtin_ia32_mulps(tmp,  v->v);
+      l.v = __builtin_ia32_addps(tmp,  l.v);
       o++;
       m++;
       v++;
