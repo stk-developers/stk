@@ -1488,7 +1488,7 @@ namespace STK
   //  LatticeLocalOptimization_BackwardPass(Node *pFirstNode, int strictTiming)
   //***************************************************************************
 
-
+/*
   void 
   FreeNetwork(DecoderNetwork::Node * pNode, bool compactRepresentation) 
   {
@@ -1513,7 +1513,7 @@ namespace STK
       free(pNode);
     }
   }
-
+*/
 
   
 

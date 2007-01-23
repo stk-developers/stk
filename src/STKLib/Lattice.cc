@@ -279,6 +279,20 @@ namespace STK
   // ForwardBackward()
   // ************************************************************************
 
+  // ************************************************************************
+  // ************************************************************************
+  FLOAT
+  Lattice::
+  FreePosteriors()
+  {
+    for (iterator i_node = begin(); i_node != end(); ++i_node)
+    {
+      delete i_node->mC.mpAlphaBeta;
+    }
+  }
+  // FreePosteriors()
+  // ************************************************************************
+
 
 
   // ************************************************************************
@@ -303,6 +317,7 @@ namespace STK
       if (i_node != begin() && i_node != i_rbegin 
       &&  0 == i_node->NPredecessors())
       {
+        delete i_node->mC.mpAlphaBeta;
         i_node = RemoveNode(i_node);
         continue;
       }
@@ -323,6 +338,7 @@ namespace STK
 
       if (i_node != begin() && i_node != i_rbegin && i_node->NSuccessors() == 0)
       {
+        delete i_node->mC.mpAlphaBeta;
         i_node = RemoveNode(i_node);
       }
       else
@@ -338,6 +354,7 @@ namespace STK
       if (i_node != begin() && i_node != i_rbegin 
       && (i_node->NSuccessors() == 0))
       {
+        delete i_node->mC.mpAlphaBeta;
         i_node = RemoveNode(i_node);
       }
       else

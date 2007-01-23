@@ -565,8 +565,8 @@ int main(int argc, char* argv[])
 
   if (network_file) 
   { // Unsupervised training
-    Decoder<DecoderNetwork>::NetworkType::Node*   p_node = NULL;
-    Decoder<DecoderNetwork>::NetworkType              my_net(p_node);
+//    Decoder<DecoderNetwork>::NetworkType::Node*   p_node = NULL;
+//    Decoder<DecoderNetwork>::NetworkType              my_net(p_node);
     IStkStream                        input_stream;    
     
     input_stream.open(network_file, ios::in, transc_filter ? transc_filter : "");
@@ -590,26 +590,41 @@ int main(int argc, char* argv[])
           NULL, 
           NULL);
           
-      my_net.BuildFromLabels( labels, dictionary ? NT_WORD : NT_PHONE);
+//      my_net.BuildFromLabels( labels, dictionary ? NT_WORD : NT_PHONE);
+      decoder.rNetwork().BuildFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
+
           
       ReleaseLabels(labels);
     }
     else if (in_transc_fmt == TF_STK) 
     {
-      ReadSTKNetwork( ilfp, &dictHash, &phoneHash, notInDictAction, in_lbl_fmt,
-         feature_repo.CurrentHeader().mSamplePeriod, network_file, NULL,
-         false, my_net);
+      ReadSTKNetwork(
+        ilfp, 
+        &dictHash,
+        &phoneHash, 
+        notInDictAction, 
+        in_lbl_fmt,
+        feature_repo.CurrentHeader().mSamplePeriod, 
+        network_file, 
+        NULL,
+        false,
+        decoder.rNetwork());
     }
     else 
     {
       Error("Too bad. What did you do ?!?");
     }
                                 
-    my_net.ExpansionsAndOptimizations(expOptions, in_net_fmt, &dictHash,
-        &nonCDphHash, &phoneHash);
+    decoder.rNetwork().ExpansionsAndOptimizations(
+      expOptions, 
+      in_net_fmt, 
+      &dictHash,
+      &nonCDphHash, 
+      &phoneHash);
                                       
-    p_node = my_net.pFirst();
-    decoder.Init(p_node, hset_alig, &hset);
+//    p_node = my_net.pFirst();
+//    decoder.Init(p_node, hset_alig, &hset);
+    decoder.Init(hset_alig, &hset/*, compactNetworkRepresentation*/);
     
     min_examples = 0;
   } 
@@ -800,8 +815,8 @@ int main(int argc, char* argv[])
       
       if (!network_file) 
       {
-        Decoder<DecoderNetwork>::NetworkType::Node* p_node = NULL;
-        Decoder<DecoderNetwork>::NetworkType            my_net(p_node);
+//        Decoder<DecoderNetwork>::NetworkType::Node* p_node = NULL;
+//        Decoder<DecoderNetwork>::NetworkType            my_net(p_node);
 
         strcpy(label_file, feature_repo.Current().Logical().c_str());
         
@@ -824,8 +839,9 @@ int main(int argc, char* argv[])
               src_mlf, 
               NULL);
               
-          my_net.BuildFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
-              
+//          my_net.BuildFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
+          decoder.rNetwork().BuildFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
+
           ReleaseLabels(labels);
         } 
         else if (in_transc_fmt == TF_STK) 
@@ -838,18 +854,27 @@ int main(int argc, char* argv[])
               in_lbl_fmt,
               feature_repo.CurrentHeader().mSamplePeriod, 
               label_file, 
-              src_mlf, false, my_net);
+              src_mlf, false, decoder.rNetwork());
         } 
         else 
         {
           Error("Too bad. What did you do ?!?");
         }
 
-        my_net.ExpansionsAndOptimizations(expOptions, in_net_fmt, 
-            &dictHash, &nonCDphHash, &phoneHash);
+        decoder.rNetwork().ExpansionsAndOptimizations(
+          expOptions,
+          in_net_fmt,
+          &dictHash,
+          &nonCDphHash,
+          &phoneHash);
+            
+//        my_net.ExpansionsAndOptimizations(expOptions, in_net_fmt, 
+//            &dictHash, &nonCDphHash, &phoneHash);
 
-        p_node = my_net.pFirst();
-        decoder.Init(p_node, hset_alig, &hset);
+//        p_node = my_net.pFirst();
+//        decoder.Init(p_node, hset_alig, &hset);
+
+        decoder.Init(hset_alig, &hset/*, compactNetworkRepresentation*/);
 
         CloseInputLabelFile(ilfp, src_mlf);
       }

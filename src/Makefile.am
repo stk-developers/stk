@@ -63,6 +63,7 @@ SFeaCat_SOURCES   = SFeaCat.cc
 SLRatio_SOURCES   = SLRatio.cc
 SResults_SOURCES  = SResults.cc
 SRover_SOURCES    = SRover.cc
+SWEChCoFast_SOURCES = SWEChCoFast.cc
 
 # SNet is kind of special. It needs some files in the SNet source. This will probably change and separate SNetLib will be built
 if USE_SNET

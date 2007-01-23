@@ -575,6 +575,8 @@ using namespace STK;
 
   void
   print_registered_parameters();
+  
+  int breakpoint(); // Empty function, just for debuging purposes
 
   
 //}; //namespace STK

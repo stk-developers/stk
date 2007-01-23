@@ -49,7 +49,6 @@
 // we will be using the STK namespace ..........................................
 using namespace STK;
 
-
 //******************************************************************************
 //******************************************************************************
 void usage(char *progname)
@@ -75,7 +74,7 @@ void usage(char *progname)
 " -r f       Pronunciation prob scale factor                 1.0\n"
 " -s f       Grammar scale factor                            1.0\n"
 " -t f [i l] Set pruning to f [inc limit]                    Off\n"
-////"  -u i    set pruning max active                          0\n"
+" -u i       set pruning max active                          0\n"
 //"  -v f    Set word end pruning threshold                  0.0\n"
 " -w [f]     Recognise from network                          Off\n"
 " -x s       Extension for hmm files                         None\n"
@@ -115,6 +114,7 @@ char *optionStr =
 " -r r   PRONUNSCALE"
 " -s r   LMSCALE"
 " -t ror PRUNING PRUNINGINC PRUNINGMAX"
+" -u r   MAXACTIVEPRUNING"
 " -w o   RECOGNET"
 " -x r   SOURCEMODELEXT"
 " -y r   TARGETTRANSCEXT"
@@ -198,16 +198,14 @@ char *optionStr =
   const char*                   cvg_file;
   const char*                   mmf_dir;
   const char*                   mmf_mask;
-              
   const char*                   lat_ext;
-  bool                          lat_is_incomplete;
-
   int                           trace_flag;
   int                           targetKind;
   int                           derivOrder;
   int*                          derivWinLengths;
   int                           startFrmExt;
   int                           endFrmExt;
+  int                           max_active;
   bool                          baum_welch;
   bool                          swap_features;
   bool                          htk_compat;
@@ -300,10 +298,7 @@ int main(int argc, char *argv[])
   const char*                   cvg_file;
   const char*                   mmf_dir;
   const char*                   mmf_mask;
-              
   const char*                   lat_ext;
-  bool                          lat_is_incomplete;
-
   int                           trace_flag;
   int                           targetKind;
   int                           derivOrder;
@@ -392,10 +387,10 @@ int main(int argc, char *argv[])
   baum_welch   = GetParamBool(&cfgHash,SNAME":EVALUATION",      false);
   swap_features=!GetParamBool(&cfgHash,SNAME":NATURALREADORDER",isBigEndian());
   gpFilterWldcrd= GetParamStr(&cfgHash,SNAME":HFILTERWILDCARD", "$");
-  gpScriptFilter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",   NULL);
-  gpParmFilter  = GetParamStr(&cfgHash, SNAME":HPARMFILTER",     NULL);
+  gpScriptFilter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",  NULL);
+  gpParmFilter  = GetParamStr(&cfgHash, SNAME":HPARMFILTER",    NULL);
   gpHListFilter = GetParamStr(&cfgHash,SNAME":HMMLISTFILTER",   NULL);
-  gpMmfFilter   = GetParamStr(&cfgHash, SNAME":HMMDEFFILTER",    NULL);
+  gpMmfFilter   = GetParamStr(&cfgHash, SNAME":HMMDEFFILTER",   NULL);
   label_filter = GetParamStr(&cfgHash, SNAME":HLABELFILTER",    NULL);
   net_filter   = GetParamStr(&cfgHash, SNAME":HNETFILTER",      NULL);
   dict_filter  = GetParamStr(&cfgHash, SNAME":HDICTFILTER",     NULL);
@@ -422,6 +417,7 @@ int main(int argc, char *argv[])
   state_pruning= GetParamFlt(&cfgHash, SNAME":PRUNING",         0.0);
   stprn_step   = GetParamFlt(&cfgHash, SNAME":PRUNINGINC",      0.0);
   stprn_limit  = GetParamFlt(&cfgHash, SNAME":PRUNINGMAX",      0.0);
+  max_active   = GetParamInt(&cfgHash, SNAME":MAXACTIVEPRUNING",0);
   trace_flag   = GetParamInt(&cfgHash, SNAME":TRACE",           0);
   script =(char*)GetParamStr(&cfgHash, SNAME":SCRIPT",          NULL);
   mmf    =(char*)GetParamStr(&cfgHash, SNAME":SOURCEMMF",       NULL);
@@ -430,7 +426,6 @@ int main(int argc, char *argv[])
   mmf_mask     = GetParamStr(&cfgHash, SNAME":MMFMASK",         NULL);
 
   lat_ext      = GetParamStr(&cfgHash, SNAME":LATTICEEXT",      NULL);
-  lat_is_incomplete = GetParamBool(&cfgHash,SNAME":INCOMPLETELATTICE",      false);
   print_all_options = GetParamBool(&cfgHash,SNAME":PRINTALLOPTIONS", false);
   cchrptr      = GetParamStr(&cfgHash, SNAME":LABELFORMATING",  "");
 
@@ -729,9 +724,9 @@ int main(int argc, char *argv[])
     }
 
     if (compactNetworkRepresentation)
-      compact_decoder.Init(&hset, NULL, compactNetworkRepresentation);
+      compact_decoder.Init(&hset, NULL/*, compactNetworkRepresentation*/);
     else
-      decoder.Init(&hset, NULL, compactNetworkRepresentation);
+      decoder.Init(&hset, NULL/*, compactNetworkRepresentation*/);
 
   } 
   else 
@@ -832,26 +827,28 @@ int main(int argc, char *argv[])
         decoder.rNetwork().ExpansionsAndOptimizations(expOptions, in_net_fmt, &dictHash,
             &nonCDphHash, &phoneHash);
 
-        decoder.Init(&hset, NULL, false);
+        decoder.Init(&hset, NULL/*, false*/);
       }
       else
       {
-        compact_decoder.Init(&hset, NULL, true);
+        compact_decoder.Init(&hset, NULL/*, true*/);
       }
 
       CloseInputLabelFile(ilfp, in_MLF);
     }
 
-    p_decoder->mWPenalty     = word_penalty;
-    p_decoder->mMPenalty     = model_penalty;
-    p_decoder->mLmScale      = grammar_scale;
-    p_decoder->mPronScale    = pronun_scale;
-    p_decoder->mTranScale    = transp_scale;
-    p_decoder->mOutpScale    = outprb_scale;
-    p_decoder->mOcpScale     = occprb_scale;
-    p_decoder->mAlignment     = alignment;
-    p_decoder->mPruningThresh = state_pruning > 0.0 ? state_pruning : -LOG_0;
+    p_decoder->mWPenalty          = word_penalty;
+    p_decoder->mMPenalty          = model_penalty;
+    p_decoder->mLmScale           = grammar_scale;
+    p_decoder->mPronScale         = pronun_scale;
+    p_decoder->mTranScale         = transp_scale;
+    p_decoder->mOutpScale         = outprb_scale;
+    p_decoder->mOcpScale          = occprb_scale;
+    p_decoder->mAlignment         = alignment;
+    p_decoder->mPruningThresh     = state_pruning > 0.0 ? state_pruning : -LOG_0;
+    p_decoder->mMaxActiveModels   = max_active;
     p_decoder->mLatticeGeneration = (lat_ext != NULL);
+    
 
     if(p_decoder->mLatticeGeneration)
     {
@@ -958,6 +955,8 @@ int main(int argc, char *argv[])
       if (trace_flag & 2)
         TraceLog("Lattice: Performing posterior pruning...");
       lattice.PosteriorPrune(state_pruning > 0.0 ? state_pruning : -LOG_0);
+      lattice.FreePosteriors();
+
 
       if (trace_flag & 2)
         TraceLog("Lattice: Performing optimizations (second pass)...");
@@ -1010,7 +1009,7 @@ int main(int argc, char *argv[])
   // clean up ..................................................................
   if (network_file) 
   {
-    if (compactNetworkRepresentation)
+    if (!compactNetworkRepresentation)
       decoder.Clear();
     else
       compact_decoder.Clear();

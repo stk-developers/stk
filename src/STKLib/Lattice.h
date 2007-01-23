@@ -53,6 +53,15 @@ namespace STK
      */
     FLOAT
     ForwardBackward();
+    
+    /** 
+     * @brief Free records with posterior probabilities
+     * 
+     * @return 
+     */
+    FLOAT
+    Lattice::
+    FreePosteriors();
 
     /** 
      * @brief Prunes the lattice based on the posterior probabilities

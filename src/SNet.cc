@@ -402,7 +402,7 @@ int main(int argc, char *argv[])
             header.mSampleSize/sizeof(float), phys_fn, hset.mInputVectorSize);
     }
 
-    n_frames = header.mNSamples - NNet_input->mTotalDelay;
+    n_frames = header.mNSamples - (NNet_input ? NNet_input->mTotalDelay : 0);
 
     if (!outlabel_map) 
     { // If output examples are given by features
@@ -438,7 +438,7 @@ int main(int argc, char *argv[])
     time = 1;
     
     if (NNet_input) 
-      time -= NNet_input->mTotalDelay;
+      time -= (NNet_input ? NNet_input->mTotalDelay : 0);
     
     // Loop over all feature frames.
     for (i = 0; i < header.mNSamples; i++, time++) 
@@ -468,7 +468,7 @@ int main(int argc, char *argv[])
       
       ///***********************************************************************
       /// For EACH NEW VECTOR - give it to SNet
-      prog_obj->NewVector(obs, obs_out, NNet_input->OutSize(), 
+      prog_obj->NewVector(obs, obs_out, (NNet_input ? NNet_input->OutSize() : hset.mInputVectorSize), 
           NNet_instance->OutSize(), ((i+1) == header.mNSamples && (outlabel_map 
               ? file_name->mpNext 
               : file_name->mpNext->mpNext) == NULL));

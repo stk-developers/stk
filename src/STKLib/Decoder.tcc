@@ -761,16 +761,16 @@ namespace STK
 
   //***************************************************************************
   //***************************************************************************
-  template<typename _NetworkType>
+/*  template<typename _NetworkType>
     void
     Decoder<_NetworkType>:: 
-    Init(typename NetworkType::Node* pFirstNode, ModelSet* pHmms, ModelSet* pHmmsToUpdate, 
-      bool compactRepresentation) 
+    Init(typename NetworkType::Node* pFirstNode, ModelSet* pHmms, ModelSet* pHmmsToUpdate//, bool compactRepresentation
+    ) 
     {
       int                       maxStatesInModel;
       typename NetworkType::Node*   p_last_node;
 
-      mCompactRepresentation = compactRepresentation;
+//      mCompactRepresentation = compactRepresentation;
       rNetwork().SetFirst(pFirstNode);
     
       p_last_node = PhoneNodesToModelNodes(pHmms, pHmmsToUpdate, maxStatesInModel);
@@ -819,7 +819,7 @@ namespace STK
       mSearchPaths        = SP_ALL;
 
       mKeepExitToken      = false;
-    }
+    }*/
   //***************************************************************************
 
 
@@ -829,11 +829,11 @@ namespace STK
   template<typename _NetworkType>
     void
     Decoder<_NetworkType>:: 
-    Init(ModelSet* pHmms, ModelSet* pHmmsToUpdate, bool compactRepresentation) 
+    Init(ModelSet* pHmms, ModelSet* pHmmsToUpdate/*, bool compactRepresentation*/) 
     {
       int                       maxStatesInModel;
 
-      mCompactRepresentation = compactRepresentation;
+//      mCompactRepresentation = compactRepresentation;
       PhoneNodesToModelNodes(pHmms, pHmmsToUpdate, maxStatesInModel);
     
       // Need to contain at least 2 states for propper token passing
@@ -1235,13 +1235,16 @@ namespace STK
       mWordThresh = LOG_MIN;
       mpActiveModels = NULL;
       mpActiveNodes = NULL;
-      mActiveTokens = 0;
-      //  mTime = 0;
+      mNActiveTokensForUtterance = 0;
+      mNActiveModelsForUtterance = 0;
+      
+      if (0 < mMaxActiveModels)
+        mActiveModelsBestLikes.reserve(3*mMaxActiveModels/2);
     
       if (mCollectAlphaBeta && InForwardPass()) 
       {
-        if (mCompactRepresentation)
-          Error("Fatal: CSTK format used for forward-backward");
+//        if (mCompactRepresentation)
+//          Error("Fatal: CSTK format used for forward-backward");
           
         for (i_node = rNetwork().begin(); i_node != rNetwork().end(); ++i_node) 
         {
@@ -1255,8 +1258,8 @@ namespace STK
       // Needed to load last FWBWRs to mpAlphaBetaList
       if (mCollectAlphaBeta && !InForwardPass()) 
       {
-        if (mCompactRepresentation)
-          Error("Fatal: CSTK format used for forward-backward");
+//        if (mCompactRepresentation)
+//          Error("Fatal: CSTK format used for forward-backward");
 
         for (i_node = rNetwork().begin(); i_node != rNetwork().end(); ++i_node) 
         {
@@ -1580,6 +1583,9 @@ namespace STK
           level[li]->mStart = 0;
       }
       
+      if (level[0]) level[0]->mpNextLevel = level[1];
+      if (level[1]) level[1]->mpNextLevel = level[2];
+      
       return level[0] ? level[0] : level[1] ? level[1] : level[2];
     }
 
@@ -1703,8 +1709,8 @@ namespace STK
               FLOAT lm_like       = (links[i].LmLike() - acoustic_like) * mLmScale;
               
               if (p_node->mC.mpAnr->mpExitToken->mLike + lm_like > mBeamThresh 
-                  && (mCompactRepresentation
-                  ||((/*links[i].pNode()->mC.Start() == UNDEF_TIME ||*/
+                  && (//mCompactRepresentation ||
+                     ((/*links[i].pNode()->mC.Start() == UNDEF_TIME ||*/
                         links[i].pNode()->mC.Start() <= mTime) 
                   
                   && (  links[i].pNode()->mC.Stop()  == UNDEF_TIME        
@@ -1825,14 +1831,14 @@ namespace STK
       //  FLOAT                 threshOutProb = LOG_0;
     
       mpBestToken = NULL;
+      mNActiveTokensForObservation = 0;
+      mNActiveModelsForObservation = 0;
       /*  if (mpThreshState) {
         threshOutProb = OutputProbability(mpThreshState, pObservation, net);
       } */
     
-      int xxx = 0;
       for (p_node = mpActiveModels; p_node != NULL; p_node = p_next_active) 
       {
-        ++xxx;
         // Store pointer to mpNextActiveModel here, because p_node->mC.mpAnr can be dealocated in this block
         p_next_active = p_node->mC.mpAnr->mpNextActiveModel;
         
@@ -1842,8 +1848,8 @@ namespace STK
         assert(p_node->mC.mpAnr);
         p_hmm = p_node->mC.mpHmm;
         
-        if (!mCompactRepresentation && (
-            (/*p_node->Start() != UNDEF_TIME &&*/p_node->mC.Start() >= mTime)
+        if (//!mCompactRepresentation && 
+            ((/*p_node->Start() != UNDEF_TIME &&*/p_node->mC.Start() >= mTime)
             ||  (  p_node->mC.Stop()  != UNDEF_TIME &&  p_node->mC.Stop()  <  mTime)
             ||  mSearchPaths == SP_TRUE_ONLY && !(p_node->mC.mType & NT_TRUE)))
         {
@@ -1880,6 +1886,7 @@ namespace STK
         }
     
         bool keep_model_active = false;
+        p_node->mC.mpAnr->mpBestToken = NULL;
     
         assert(!p_node->mC.mpAnr->mpTokens[p_hmm->mNStates-1].IsActive());
     
@@ -1956,9 +1963,15 @@ namespace STK
                   mTime-1);            
             }
     
-            mActiveTokens++;
             keep_model_active = true;
+            mNActiveTokensForObservation++;
             assert(p_node->mC.mpAnr->mIsActiveModel);
+            
+            if (NULL == p_node->mC.mpAnr->mpBestToken
+            ||  p_node->mC.mpAnr->mpBestToken->mLike < p_node->mC.mpAnr->mpTokens[j].mLike)
+            {
+              p_node->mC.mpAnr->mpBestToken = &p_node->mC.mpAnr->mpTokens[j];
+            }
           } 
           else 
           {
@@ -1972,20 +1985,37 @@ namespace STK
           KillToken(&mpAuxTokens[i]);
         }
     
-        if (!keep_model_active) 
-          DeactivateModel(p_node);
-    
-        state_idx = (InForwardPass() ? p_hmm->mNStates - 1 : 0);
-    
-        if (!keep_model_active ||
-          (mCollectAlphaBeta && !InForwardPass() &&
-            BackwardPruning(mTime-1, p_node, state_idx))) 
+        if (!keep_model_active)
         {
-          // backward pruning after forward pass
+          DeactivateModel(p_node);
           continue;
-          //KillToken(&p_node->mC.mpTokens[p_hmm->mNStates - 1]);
+        }
+        
+        mNActiveModelsForObservation++;
+        if (NULL == mpBestToken || mpBestToken->mLike < p_node->mC.mpAnr->mpBestToken->mLike) 
+        {
+          mpBestToken = p_node->mC.mpAnr->mpBestToken;
+          mpBestNode  = p_node;
+        }
+        
+        // Store likelihoods of best tokens of all active models to allow for
+        // pruning (see begining of ), where only n-best models are kept active
+        if (0 < mMaxActiveModels)
+          mActiveModelsBestLikes.push_back(p_node->mC.mpAnr->mpBestToken->mLike);
+
+    
+        if (mCollectAlphaBeta && !InForwardPass() &&
+            BackwardPruning(mTime-1, p_node, 0))
+        {
+          // according to backward prunning (after forward pass) we should not
+          // propagate token to first model's state, so we stop dealing with
+          // the curent model here. The code below, must deal only with the problems
+          // related to propagating token to last/first non-emiting state (in the
+          // case of forward/backward propagation).
+          continue;
         }
     
+        // Propagate tokens form emmiting states to last/first non-emiting state        
         for (i = 1; i < p_hmm->mNStates-1; i++) 
         {
           from = InForwardPass() ? i : 0;
@@ -1993,12 +2023,6 @@ namespace STK
     
           if (p_node->mC.mpAnr->mpTokens[i].IsActive()) 
           {
-            if (!mpBestToken || mpBestToken->mLike < p_node->mC.mpAnr->mpTokens[i].mLike) 
-            {
-              mpBestToken = &p_node->mC.mpAnr->mpTokens[i];
-              mpBestNode  = p_node;
-            }
-    
             if (p_hmm->mpTransition->mpMatrixO[from * p_hmm->mNStates + to] > LOG_MIN) 
             {
               FLOAT trans_prob = p_hmm->mpTransition->mpMatrixO[from * p_hmm->mNStates + to] *
@@ -2028,7 +2052,6 @@ namespace STK
               FIL_Add(p_node->mC.mpAnr->mpTokens[p_hmm->mNStates - 1].mAccuracy, fil_lmpa);
           }
     
-      //    ActivateNode(net, p_node);
           if (mAlignment & STATE_ALIGNMENT) 
           {
             p_node->mC.mpAnr->mpTokens[p_hmm->mNStates - 1].AddWordLinkRecord(
@@ -2039,6 +2062,37 @@ namespace STK
         }
       }
       assert(!HasCycle());
+      
+      mNActiveTokensForUtterance += mNActiveTokensForObservation;
+      mNActiveModelsForUtterance += mNActiveModelsForObservation;
+      
+      // Do pruning, where only mMaxActiveModels models with the highest
+      // likelihood tokens are left active.
+      if (0 < mMaxActiveModels && mActiveModelsBestLikes.size() > mMaxActiveModels)
+      {
+        assert(mActiveModelsBestLikes.size() == mNActiveModelsForObservation);
+
+        // Find n-th best likelihood in the vector
+        nth_element(mActiveModelsBestLikes.begin(),
+                    mActiveModelsBestLikes.end() - mMaxActiveModels,
+                    mActiveModelsBestLikes.end());
+                    
+        FLOAT pruning_threshold = *(mActiveModelsBestLikes.end() - mMaxActiveModels);
+                        
+        for (p_node = mpActiveModels; p_node != NULL; p_node = p_next_active)
+        {
+          p_next_active = p_node->mC.mpAnr->mpNextActiveModel;
+          
+          if(p_node->mC.mpAnr->mpBestToken->mLike < pruning_threshold)
+          {
+            for (i = 1; i < p_node->mC.mpHmm->mNStates; i++)
+              KillToken(&p_node->mC.mpAnr->mpTokens[i]);
+          
+            DeactivateModel(p_node);
+          }
+        }
+      }
+      mActiveModelsBestLikes.clear();    
     }
   // TokenPropagationInModels(FLOAT* pObservation)
   //***************************************************************************
@@ -2127,8 +2181,8 @@ namespace STK
       typename NetworkType::iterator p_node;
       typename NetworkType::iterator p_last_node;
     
-      if (pHmmsToUpdate == NULL) 
-        pHmmsToUpdate = pHmms;
+//      if (pHmmsToUpdate == NULL) 
+//        pHmmsToUpdate = pHmms;
 
       mNumberOfNetStates = 0;
       maxStatesInModel   = 0;
@@ -2157,7 +2211,7 @@ namespace STK
           }
           p_node->mC.mpHmm =  (Hmm *) macro->mpData;
           
-          if (!mCompactRepresentation) 
+          if (NULL != pHmmsToUpdate) 
           {
             if (pHmmsToUpdate != pHmms) 
             {

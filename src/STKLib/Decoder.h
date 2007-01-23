@@ -24,6 +24,7 @@
 
 
 #include <list>
+#include <vector>
 
 //#define DEBUG_MSGS
 //#define TRACE_TOKENS
@@ -133,7 +134,7 @@ namespace STK
     public:
 
       typedef _NetworkType                            NetworkType;
-      typedef typename NetworkType::Node          NetworkNode;
+      typedef typename NetworkType::Node              NetworkNode;
       typedef STK::WordLinkRecord<NetworkNode>        WordLinkRecord;
       typedef STK::Token<NetworkNode>                 Token;
       typedef typename STK::ActiveNodeRecord<NetworkNode> 
@@ -268,6 +269,8 @@ namespace STK
 
       static void 
       Wlr2Lattice_EstablishLinks(WordLinkRecord* pWlr);
+      
+      std::vector<FLOAT> mActiveModelsBestLikes;
 
     public:
 
@@ -289,19 +292,19 @@ namespace STK
        * @param hmmsToUptade 
        */
       void 
-      Init(ModelSet* pHmms, ModelSet* pHmmsToUpdate, 
-          bool compactRepresentation = false);
+      Init(ModelSet* pHmms, ModelSet* pHmmsToUpdate/*, bool compactRepresentation = false*/);
       
-      /**
-       * @brief Initializes the network
-       * @param net 
-       * @param first 
-       * @param hmms 
-       * @param hmmsToUptade 
-       */
-      void 
-      Init(typename NetworkType::Node* pFirstNode, ModelSet* pHmms, 
-          ModelSet* pHmmsToUpdate, bool compactRepresentation = false);
+//      /**
+//       * @brief Initializes the network
+//       * @param net 
+//       * @param first 
+//       * @param hmms 
+//       * @param hmmsToUptade 
+//       */
+//
+//      void 
+//      Init(typename NetworkType::Node* pFirstNode, ModelSet* pHmms, 
+//          ModelSet* pHmmsToUpdate/*, bool compactRepresentation = false*/);
       
       /**
        * @brief Releases memory occupied by the network resources
@@ -408,9 +411,13 @@ namespace STK
       // public atributes ........................................................
       NetworkType*                mpNetwork;
        
-      NetworkNode*     mpActiveModels;
-      NetworkNode*     mpActiveNodes;
-      int                         mActiveTokens;
+      NetworkNode*                mpActiveModels;
+      NetworkNode*                mpActiveNodes;
+      
+      int                         mNActiveTokensForUtterance;
+      int                         mNActiveModelsForUtterance;
+      int                         mNActiveTokensForObservation;
+      int                         mNActiveModelsForObservation;
                               
       int                         mNumberOfNetStates; // Not used for anything important
       Token*                      mpAuxTokens;
@@ -419,7 +426,7 @@ namespace STK
     
       long                        mTime;
       Token*                      mpBestToken;
-      NetworkNode*     mpBestNode;
+      NetworkNode*                mpBestNode;
       
       // Passing parameters
       State*                      mpThreshState;
@@ -435,9 +442,10 @@ namespace STK
       FLOAT                       mOcpScale;
       FLOAT                       mPruningThresh;
       SearchPathsType             mSearchPaths;
+      int                         mMaxActiveModels;
 
       bool                        mLatticeGeneration;
-      bool                        mCompactRepresentation;
+//      bool                        mCompactRepresentation;
 
       bool                        mContinuousTokenGeneration;
       bool                        mKeepExitToken;    
@@ -628,23 +636,19 @@ namespace STK
       ~ActiveNodeRecord() 
       { delete [] mpTokens; }
 
-
-
-
       Node*             mpNode;
       Node*             mpNextActiveModel;
       Node*             mpPrevActiveModel;
       Node*             mpNextActiveNode;
       Node*             mpPrevActiveNode;
       
-      bool                  mIsActiveModel;
-      int                   mActiveNodeFlag;
-      int                   mAux;
+      bool              mIsActiveModel;
+      int               mActiveNodeFlag;
+      int               mAux;
 
-      Token*                mpExitToken;
-      Token*                mpTokens;
-
-
+      Token*            mpExitToken;
+      Token*            mpTokens;
+      Token*            mpBestToken;
     };
   // class ActiveNodeRecord
   //***************************************************************************

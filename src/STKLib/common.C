@@ -1884,6 +1884,11 @@ void fast_softmax_vec(double *in, double *out, int size)
   // float_safe_substract(const FLOAT& f1, const FLOAT &f2, int nRounds);
   //****************************************************************************
 
+  int
+  breakpoint()
+  {
+    return 0;
+  }
   
 //}; //namespace STK
     

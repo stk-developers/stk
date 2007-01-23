@@ -31,10 +31,10 @@ namespace STK
     class Link;
 
 
-  template< typename                  _NodeContent, 
-            typename _LinkContent, 
-            template<class> class     _LinkContainer > 
-    class NodeBasic;
+//  template< typename                  _NodeContent, 
+//            typename _LinkContent, 
+//            template<class> class     _LinkContainer > 
+//    class NodeBasic;
 
 
   template< typename                  _NodeContent, 
@@ -486,18 +486,24 @@ namespace STK
   template< typename                    _NodeContent, 
             typename                    _LinkContent, 
             template<class> class       _LinkContainer>
-    class NodeBasic : public _NodeContent
+    class NodeBasic
+    // : public _NodeContent
+
     {
     public:
       typedef _NodeContent                                          NodeContent;
-      typedef NodeBasic<_NodeContent, _LinkContent, _LinkContainer> Node;
-      typedef Node                                                  Self;
-      typedef Link<Node, _LinkContent, _LinkContainer>              LinkType;
+
+      typedef NodeBasic                                             Self;
+      typedef Link<NodeBasic, _LinkContent, _LinkContainer>         LinkType;
       typedef _LinkContainer<LinkType>                              LinkContainer;
+      typedef ptrdiff_t                                             difference_type;
+//      typedef NodeBasic<_NodeContent, _LinkContent, _LinkContainer> Node;
 
+      NodeBasic() : NodeContent(), mLinks() 
+      { }
 
-      NodeBasic() 
-      : NodeContent(), mLinks() {}
+      ~NodeBasic()
+      { }
 
 
       // TODO: This will be somehow replaced
@@ -523,15 +529,7 @@ namespace STK
 
 
       /** 
-       * @brief Returns number of nodes that really point to me
-       * 
-       * In this case, the number is not known so -1 is returned.
-       */
-      int
-      NPredecessors() const
-      { return -1; }
 
-      /** 
        * @brief Returns number of nodes that I really point to
        * 
        */
@@ -550,12 +548,21 @@ namespace STK
       }
 
       /** 
+       * @brief Returns number of nodes that really point to me
+       * 
+       * In this case, the number is not known so -1 is returned.
+       */
+      int
+      NPredecessors() const
+      { return -1; }
+
+      /** 
        * @brief Finds a link to a given node
        * 
        * @param pNode 
        */
       LinkType*
-      pFindLink(const Node* pNode)
+      pFindLink(const NodeBasic* pNode)
       {
         LinkType* p_link;
 
@@ -584,14 +591,14 @@ namespace STK
     }; 
   // class BasicNode
   //****************************************************************************
-  
+
 
 
   /** *************************************************************************
    ** *************************************************************************
    *  @brief Network node representation class
    */   
-  template<typename _Derivate>
+/*  template<typename _Derivate>
     class NodeBase
     {
     public:
@@ -600,7 +607,7 @@ namespace STK
 
     public:
     };
-  
+*/
 
 
   /** *************************************************************************
@@ -616,7 +623,7 @@ namespace STK
     {
     public:
       typedef _NodeContent                                    NodeContent;
-      typedef long long                                       TimingType;
+//      typedef long long                                       TimingType;
       typedef Node                                            Self;
       typedef Link<Node, _LinkContent, _LinkContainer>        LinkType;
       typedef _LinkContainer<LinkType>                        LinkContainer;
@@ -643,6 +650,14 @@ namespace STK
       NLinks() const
       { return mLinks.mSize; }
 
+      LinkType*&
+      rpBackLinks() 
+      { return mBackLinks.mpPtr; }
+
+      int
+      NBackLinks() 
+      { return rNBackLinks(); }
+      
       /** 
        * @brief Returns number of nodes that I really point to
        */
@@ -654,6 +669,23 @@ namespace STK
         for (size_t i(0); i < NLinks(); i++)
         {
           if (! rpLinks()[i].PointsNowhere())
+            ++s;
+        }
+
+        return s;
+      }
+
+      /** 
+       * @brief Returns number of nodes that I really point to
+       */
+      int
+      NPredecessors()
+      {
+        int s(0);
+
+        for (size_t i(0); i < NBackLinks(); i++)
+        {
+          if (! rpBackLinks()[i].PointsNowhere())
             ++s;
         }
 
@@ -681,50 +713,6 @@ namespace STK
         return NULL;
       }
 
-      /** 
-       * @brief Gives access to the forward links container
-       * 
-       * @return 
-       */
-      LinkContainer&
-      Links() 
-      { return mLinks; }
-
-
-
-      LinkType*&
-      rpBackLinks() 
-      { return mBackLinks.mpPtr; }
-
-      LinkContainer&
-      BackLinks()
-      {return mBackLinks; }
-
-
-      typename LinkContainer::size_type&
-      rNBackLinks() 
-      { return mBackLinks.mSize; }
-
-      int
-      NBackLinks() 
-      { return rNBackLinks(); }
-
-      /** 
-       * @brief Returns number of nodes that I really point to
-       */
-      int
-      NPredecessors()
-      {
-        int s(0);
-
-        for (size_t i(0); i < NBackLinks(); i++)
-        {
-          if (! rpBackLinks()[i].PointsNowhere())
-            ++s;
-        }
-
-        return s;
-      }
 
       /** 
        * @brief Finds a link to a given node
@@ -747,6 +735,23 @@ namespace STK
         return NULL;
       }
 
+      /** 
+       * @brief Gives access to the forward links container
+       * 
+       * @return 
+       */
+      LinkContainer&
+      Links() 
+      { return mLinks; }
+
+      LinkContainer&
+      BackLinks()
+      {return mBackLinks; }
+
+
+      typename LinkContainer::size_type&
+      rNBackLinks() 
+      { return mBackLinks.mSize; }
 
       /** 
        * @brief Makes the specified link point nowhere. The target node is
@@ -1145,8 +1150,8 @@ namespace STK
       typedef const iterator                                    const_iterator;
       */
       typedef _Content                                          value_type;
-      typedef typename STK::Array<_Content>::iterator                    iterator;
-      typedef typename STK::Array<_Content>::const_iterator const_iterator;
+      typedef typename STK::Array<_Content>::iterator           iterator;
+      typedef typename STK::Array<_Content>::const_iterator     const_iterator;
       typedef typename iterator::pointer                        pointer;
       typedef typename iterator::const_pointer                  const_pointer;
       typedef typename iterator::reference                      reference;
@@ -1315,7 +1320,7 @@ namespace STK
 
       // Construcotrs ..........................................................
       Network() 
-      : NodeContainer(), mCompactRepresentation(false), mIsExternal(false)
+      : NodeContainer(), /*mCompactRepresentation(false),*/ mIsExternal(false)
       { }
 
       /** 
@@ -1324,7 +1329,7 @@ namespace STK
        * In this case, no deallocation will take place when destructor is called
        */
       Network(Node* pNode) 
-      : NodeContainer(pNode), mCompactRepresentation(false),
+      : NodeContainer(pNode), /*mCompactRepresentation(false),*/
         mIsExternal(true) 
       { }
 
@@ -1373,9 +1378,9 @@ namespace STK
         assert(false); 
       }
 
-      const bool
+/*      const bool
       IsCompact() const
-      { return mCompactRepresentation; }
+      { return mCompactRepresentation; }*/
 
 
       void
@@ -1431,8 +1436,8 @@ namespace STK
       IsEmpty() const
       { return this->empty(); }
 
-      void
-      PruneNode(iterator pNode);
+//      void
+//      PruneNode(iterator pNode);
 
       /** 
        * @brief Safely remove node
@@ -1454,8 +1459,8 @@ namespace STK
        * The function also delete all links and backlinks to preserve network
        * consistency
        */
-      iterator
-      RemoveNode(Node* pNode);
+//      iterator
+//      RemoveNode(Node* pNode);
 
 
       /** 
@@ -1486,7 +1491,7 @@ namespace STK
       SelfLinksToNullNodes();
 
 
-      bool          mCompactRepresentation;
+//      bool          mCompactRepresentation;
 
       Network&
       Reverse();

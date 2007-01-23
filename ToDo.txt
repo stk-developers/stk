@@ -1,4 +1,4 @@
-!!! InputXform -> XformInstance ???
+7!!! InputXform -> XformInstance ???
 !!! Check that numer of states in the two models match
 + NaN appears in models for zero occupation probamilities
 !!! Wierd meaning of macro->occurances for training from network
@@ -60,6 +60,9 @@ In common.C: fstat(fileno(fp), &sb) does not work with 64bit architecture
 SERest.c triers to update varFloorXFORMNAME macros, which results in vector on NaNs and screw up the flooring
 Extension after -z option is ignored, -y is used instead. But is not it actually better?
 To solve how to control and perform input/output network optimizations.
+Currently Multiple-CMLLR cannot be performed as we do not take into account determinants of different xforms in likelihood computation
+For example, DiagCGaussianDensity is now method of decoder. But this function may be usefull also out of decoder context.
+
 
 To finish new SKT networks
 - Expanded network cannot hold information about word output symbols and

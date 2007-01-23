@@ -175,11 +175,11 @@ namespace STK
 
       TimingType
       Start() const
-      { return 0; }
+      { return UNDEF_TIME; }
 
       TimingType
       Stop() const
-      { return 0; }
+      { return UNDEF_TIME; }
 
       void
       SetPhoneAccuracy(FLOAT pAcc)
@@ -405,23 +405,21 @@ namespace STK
   typedef Node<NodeContent, LinkContent, LinkArray>             DecoderNode;
   typedef Link<DecoderNode, LinkContent, LinkArray>             DecoderLink;
 
-  typedef Node<NodeBasicContent, LinkContent, LinkArray>        CompactDecoderNode;
+  typedef Node<NodeBasicContent, LinkContent, LinkArray>    CompactDecoderNode;
   typedef Link<CompactDecoderNode, LinkContent, LinkArray>      CompactDecoderLink;
-
-  template 
-    class Network<NodeContent, LinkContent, ListStorage, LinkArray>;
-
-  typedef Network<NodeContent, LinkContent, ListStorage, LinkArray>
-    _DecoderNetwork;
-
 
   template 
     class Network<NodeBasicContent, LinkContent, NodeArray, LinkArray>;
 
   typedef Network<NodeBasicContent, LinkContent, NodeArray, LinkArray>
     _CompactDecoderNetwork;
-  
 
+
+  template 
+    class Network<NodeContent, LinkContent, ListStorage, LinkArray>;
+
+  typedef Network<NodeContent, LinkContent, ListStorage, LinkArray>
+    _DecoderNetwork;
 
 
   /** *************************************************************************
@@ -622,7 +620,7 @@ namespace STK
 
     
   
-  void FreeNetwork(DecoderNetwork::Node *node, bool compactRepresentation = false);
+//  void FreeNetwork(DecoderNetwork::Node *node, bool compactRepresentation = false);
   
 
   //DecoderNetwork::Node* 
