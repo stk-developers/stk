@@ -29,60 +29,7 @@
 
 namespace STK
 {
-  /** 
-   * @brief 
-   */
-  class Lattice : public DecoderNetwork
-  {
-  public:
-    /** 
-     * @brief Builds the lattice from the network of word link records 
-     * 
-     * @param pWlr pointer to the "ending" node of the word link record
-     * network
-     */
-    //void
-    ////BuildFromWlr(WordLinkRecord* pWlr);
-        
-
-
-    /** 
-     * @brief Performs forward-backward to get posterior probabilities
-     * 
-     * @return 
-     */
-    FLOAT
-    ForwardBackward();
-    
-    /** 
-     * @brief Free records with posterior probabilities
-     * 
-     * @return 
-     */
-    FLOAT
-    Lattice::
-    FreePosteriors();
-
-    /** 
-     * @brief Prunes the lattice based on the posterior probabilities
-     * 
-     * @param thresh 
-     */
-    void
-    PosteriorPrune(const FLOAT& thresh);
-
-
-  private:
-    //static void 
-    //AllocateNodesForWordLinkRecords(WordLinkRecord* pWlr, 
-    //    NodeType*& rpNode);
-
-    //static void 
-    //EstablishLinks(WordLinkRecord* pWlr);
-  }; 
-  // class Lattice
-  //***************************************************************************
-
+  typedef DecoderNetwork Lattice;
 };
 // namespace STK
 //*****************************************************************************

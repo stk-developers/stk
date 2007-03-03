@@ -11,6 +11,9 @@
  ***************************************************************************/
 
 #include "Lattice.h"
+#include <algorithm>
+#include <vector>
+#include <list>
 
 namespace STK
 {
@@ -203,7 +206,10 @@ namespace STK
   // ************************************************************************
   FLOAT
   Lattice::
-  ForwardBackward()
+  ForwardBackward(
+    FLOAT wordPenalty,
+    FLOAT modelPenalty,
+    FLOAT lmScale)
   {
     Node*  p_start_node;
     bool       viterbi = true;
@@ -233,8 +239,12 @@ namespace STK
         LinkType* p_link     (&(i_node->rpLinks()[i]));
         Node* p_end_node (p_link->pNode());
 
-        score = i_node->mC.mpAlphaBeta->mAlpha + p_link->Like();
-
+        score = i_node->mC.mpAlphaBeta->mAlpha + p_link->LmLike() * lmScale + p_link->AcousticLike();
+        
+        if (p_end_node->mC.mType & NT_MODEL)
+          score += modelPenalty; 
+        else if (p_end_node->mC.mType & NT_WORD &&  p_end_node->mC.mpPronun != NULL)
+          score += wordPenalty;
         
         if (viterbi)
         {
@@ -259,8 +269,14 @@ namespace STK
         LinkType* p_link     (&(i_node->rpBackLinks()[i]));
         Node* p_end_node (p_link->pNode());
 
-        score = i_node->mC.mpAlphaBeta->mBeta + p_link->Like();
+        score = i_node->mC.mpAlphaBeta->mBeta + p_link->LmLike() * lmScale + p_link->AcousticLike();
         
+        if (i_node->mC.mType & NT_MODEL)
+          score += modelPenalty; 
+        else if (i_node->mC.mType & NT_WORD &&  i_node->mC.mpPronun != NULL)
+          score += wordPenalty;
+
+
         if (viterbi)
         {
           if (score > p_end_node->mC.mpAlphaBeta->mBeta)
@@ -299,7 +315,11 @@ namespace STK
   // ************************************************************************
   void
   Lattice::
-  PosteriorPrune(const FLOAT& thresh)
+  PosteriorPrune(
+    const FLOAT& thresh,
+    FLOAT wordPenalty,
+    FLOAT modelPenalty,
+    FLOAT lmScale)
   {
     assert(NULL != pLast()->mC.mpAlphaBeta);
 
@@ -328,9 +348,15 @@ namespace STK
         LinkType* p_link = &(i_node->rpLinks()[i]);
         iterator  p_end_node(p_link->pNode());
         FLOAT     score = i_node->mC.mpAlphaBeta->mAlpha + p_end_node->mC.mpAlphaBeta->mBeta 
-              + p_link->Like() + thresh;
+                  + p_link->LmLike() * lmScale + p_link->AcousticLike()
+                  + thresh;
 
-        if (score < end_alpha || score < start_beta)
+        if (p_end_node->mC.mType & NT_MODEL)
+          score += modelPenalty; 
+        else if (p_end_node->mC.mType & NT_WORD &&  p_end_node->mC.mpPronun != NULL)
+          score += wordPenalty;
+
+        if (score < end_alpha && score < start_beta)
         {
           i_node->DetachLink(p_link);
         }
@@ -366,6 +392,148 @@ namespace STK
   };
   // PosteriorPruning()
   // ************************************************************************
+
+  static 
+  bool 
+  cmpNodesByTimes(Lattice::value_type *a, Lattice::value_type *b) 
+  {
+     return a->mC.Start() < b->mC.Start();
+  }  
+
+    struct ActiveLinkRecord 
+    {
+      ActiveLinkRecord(Lattice::value_type *pn, Lattice::LinkType *pl, TimingType s, FLOAT l) : mpNode(pn), mpLink(pl), mStop(s), mLike(l) {}
+      Lattice::value_type *mpNode;
+      Lattice::LinkType   *mpLink;
+      TimingType  mStop;
+      FLOAT       mLike;
+      bool operator < (const ActiveLinkRecord &b) const { return mLike > b.mLike; }
+    };
+
+
+  // ************************************************************************
+  // ************************************************************************
+  void
+  Lattice::
+  DensityPrune(
+    const int maxDensity,
+    FLOAT wordPenalty,
+    FLOAT modelPenalty,
+    FLOAT lmScale)
+  {
+
+    assert(NULL != pLast()->mC.mpAlphaBeta);
+    
+    TimingType current_time = -1;
+
+    FLOAT      end_alpha = pLast()->mC.mpAlphaBeta->mAlpha;
+    FLOAT      start_beta = begin()->mC.mpAlphaBeta->mBeta;
+
+    std::vector<value_type *> nodes_by_time(this->size());
+    
+    
+    std::vector<ActiveLinkRecord> active_links;
+    
+    
+    for(iterator   i_node = begin(); i_node != end(); i_node++)
+      nodes_by_time.push_back(& *i_node);
+    
+    std::sort(nodes_by_time.begin(), nodes_by_time.end(), cmpNodesByTimes);
+    
+    for(std::vector<value_type *>::iterator i_pnode = nodes_by_time.begin(); 
+        i_pnode != nodes_by_time.end();
+        i_pnode++)
+    {
+      if(current_time < (*i_pnode)->mC.Start())
+      {
+        std::vector<ActiveLinkRecord>::iterator i_alr;
+        
+        if(active_links.size() > maxDensity)
+        {
+          nth_element(active_links.begin(), active_links.end(), active_links.begin() + maxDensity);
+
+          for(i_alr = active_links.begin() + maxDensity; i_alr != active_links.end(); i_alr++)
+            i_alr->mpNode->DetachLink(i_alr->mpLink);
+          
+          active_links.erase(active_links.begin() + maxDensity, active_links.end());
+        }
+        
+        current_time = (*i_pnode)->mC.Start();
+        
+        for (i_alr = active_links.begin(); i_alr != active_links.end(); i_alr++)
+          if (i_alr->mStop < current_time)
+          {
+            std::swap(*i_alr, *(active_links.end()-1));
+            active_links.pop_back();
+          }
+      }
+      
+      for (size_t i = 0; i < (*i_pnode)->NLinks(); ++i)
+      {    
+        LinkType* p_link = &((*i_pnode)->rpLinks()[i]);
+        if((*i_pnode)->mC.Start() != p_link->pNode()->mC.Start())
+        {
+          ActiveLinkRecord tmpRec(*i_pnode, p_link,
+                                  p_link->pNode()->mC.Start(),
+                                  (*i_pnode)->mC.mpAlphaBeta->mAlpha 
+                                  + p_link->pNode()->mC.mpAlphaBeta->mBeta 
+                                  + p_link->LmLike() * lmScale 
+                                  + p_link->AcousticLike());
+                                  
+          active_links.push_back(tmpRec);
+        }
+      }
+    }
+
+    iterator i_node(begin());
+    iterator i_rbegin(pLast());
+    iterator i_rend(begin()); --i_rend;
+
+    while (i_node != end())
+    {
+      // Prune the node if it has no predecessors
+      if (i_node != begin() 
+      && i_node != i_rbegin 
+      &&  0 == i_node->NPredecessors())
+      {
+        delete i_node->mC.mpAlphaBeta;
+        i_node = RemoveNode(i_node);
+        continue;
+      }
+
+      if (i_node != begin() 
+      && i_node != i_rbegin 
+      && i_node->NSuccessors() == 0)
+      {
+        delete i_node->mC.mpAlphaBeta;
+        i_node = RemoveNode(i_node);
+        continue;
+      }
+
+      ++i_node;
+    }
+
+    // In the forward pass, we might have left some nodes with no successors.
+    // It is now time to remove those
+    for (i_node = i_rbegin; i_node != i_rend; --i_node)
+    {
+      if (i_node != begin() 
+      && i_node != i_rbegin 
+      && (i_node->NSuccessors() == 0))
+      {
+        delete i_node->mC.mpAlphaBeta;
+        i_node = RemoveNode(i_node);
+      }
+      else
+      {
+        i_node->Links().defragment();
+        i_node->BackLinks().defragment();
+      }
+    }
+  };
+  // DensityPrune()
+  // ************************************************************************
+
 
 };
 // namespace STK

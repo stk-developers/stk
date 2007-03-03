@@ -259,8 +259,12 @@ using namespace STK;
 //namespace STK
 //{
   /// This type will be used for flag passing
-  typedef unsigned int    FlagType;
+  typedef unsigned int  FlagType;
+
   
+  /// Type for representing node's start and stop times
+  typedef long long  TimingType;
+
   
   /** **************************************************************************
    ** **************************************************************************

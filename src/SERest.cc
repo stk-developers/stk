@@ -145,10 +145,10 @@ int main(int argc, char* argv[])
   FLOAT                           totLogPosterior = 0;
   int                             totFrames       = 0;
 
-  FileListElem*                   feature_files = NULL;
-  int                             nfeature_files = 0;
-  FileListElem*                   file_name = NULL;
-  FileListElem**                  last_file = &feature_files;
+//  FileListElem*                   feature_files = NULL;
+//  int                             nfeature_files = 0;
+//  FileListElem*                   file_name = NULL;
+//  FileListElem**                  last_file = &feature_files;
 
   int                             update_mask = 0;
 
@@ -169,6 +169,7 @@ int main(int argc, char* argv[])
   double                          h_constant;
   double                          I_smoothing;
   double                          MAP_tau;
+  double                          min_occup;
         
   const char*                     cchrptr;
   const char*                     src_hmm_list;
@@ -230,6 +231,8 @@ int main(int argc, char* argv[])
   int                             end_frm_ext;
   int                             start_frm_ext_alig;
   int                             end_frm_ext_alig;
+  int                             max_active;
+  int                             min_active;
   bool                            viterbiTrain;
   bool                            xfStatsBin;
   bool                            hmms_binary;
@@ -239,6 +242,8 @@ int main(int argc, char* argv[])
   bool                            swap_features;
   bool                            swap_features_alig;
   bool                            htk_compat;
+  bool                            J_smoothing;
+  double                          I_max_occup;;
   
   AccumType                       accum_type;
   
@@ -246,7 +251,7 @@ int main(int argc, char* argv[])
   Matrix<FLOAT>*                  feature_matrix_alig = NULL;
   
   
-  enum Update_Type {UT_ML=0, UT_MMI, UT_MPE} update_type;
+  enum UpdateType update_type;
   enum Update_Mode {UM_UPDATE=1, UM_DUMP=2, UM_BOTH=UM_UPDATE|UM_DUMP} update_mode;
   enum TranscriptionFormat {TF_HTK, TF_STK, TF_ERR} in_transc_fmt;
   int notInDictAction = (NotInDictActionType) WORD_NOT_IN_DIC_UNSET;
@@ -353,6 +358,8 @@ int main(int argc, char* argv[])
   state_pruning= GetParamFlt(&cfgHash, SNAME":PRUNING",         0.0);
   stprn_step   = GetParamFlt(&cfgHash, SNAME":PRUNINGINC",      0.0);
   stprn_limit  = GetParamFlt(&cfgHash, SNAME":PRUNINGMAX",      0.0);
+  max_active   = GetParamInt(&cfgHash, SNAME":MAXACTIVEMODELS", 0);
+  min_active   = GetParamInt(&cfgHash, SNAME":MINACTIVEMODELS", 0);
   trace_flag   = GetParamInt(&cfgHash, SNAME":TRACE",           0);
   stat_file    = GetParamStr(&cfgHash, SNAME":SAVESTATS",       NULL);
   min_examples = GetParamInt(&cfgHash, SNAME":MINEGS",          3);
@@ -394,14 +401,17 @@ int main(int argc, char* argv[])
   accum_type   = (AccumType) GetParamEnum(&cfgHash,SNAME":ACCUMULATORTYPE", AT_ML,
                               "ML",AT_ML,"MPE", AT_MPE, "MMI", AT_MMI,"MCE",AT_MCE,"MFE",AT_MFE, NULL);
 
-  update_type   = (Update_Type) GetParamEnum(&cfgHash,SNAME":UPDATETYPE",   UT_ML,
-                              "ML",UT_ML,"MPE",UT_MPE,"MMI",UT_MMI, NULL);
+  update_type   = (UpdateType) GetParamEnum(&cfgHash,SNAME":UPDATETYPE",   UT_ML,
+                              "ML",UT_ML,"MPE",UT_EBW,"MMI",UT_TwoAccumSetEBW, NULL);
 
   sig_slope    = GetParamFlt(&cfgHash, SNAME":MCESIGSLOPE",    -1.0); // -1.0 ~ off
   E_constant   = GetParamFlt(&cfgHash, SNAME":EBWCONSTANTE",    2.0);
   h_constant   = GetParamFlt(&cfgHash, SNAME":EBWCONSTANTH",    2.0);
-  I_smoothing  = GetParamFlt(&cfgHash, SNAME":ISMOOTHING",      200);
+  I_smoothing  = GetParamFlt(&cfgHash, SNAME":ISMOOTHING",      200.0);
+  J_smoothing  = GetParamBool(&cfgHash,SNAME":JSMOOTHING",      false);
   MAP_tau      = GetParamFlt(&cfgHash, SNAME":MAPTAU",          update_type == UT_ML ? 10 : 0);
+  min_occup    = GetParamFlt(&cfgHash, SNAME":MINOCC",          0.0);
+  I_max_occup  = GetParamFlt(&cfgHash, SNAME":IMAXOCCUP",       -1.0);
 
   in_transc_fmt= (TranscriptionFormat) GetParamEnum(&cfgHash,SNAME":SOURCETRANSCFMT",
                               !network_file && htk_compat ? TF_HTK : TF_STK,
@@ -519,16 +529,13 @@ int main(int argc, char* argv[])
   if (parallel_mode == 0) 
     one_pass_reest = 0;
 
-  if ((nfeature_files & 1) && one_pass_reest) 
+  if ((feature_repo.QueueSize() & 1) && one_pass_reest) 
     Error("Single pass re-estimation requires even number (two sets) of feature files");
 
-//  char *ut_str = (char*) (update_type == UT_MMI ? "MMI" :
-//                 update_type == UT_MPE ? "MPE" : "Chosen type of ");
-
-  if (parallel_mode == -1 &&  update_type == UT_MMI)
+  if (parallel_mode == -1 &&  update_type == UT_TwoAccumSetEBW)
     Error("MMI update is not possible without using parallel mode");
     
-  if ((nfeature_files & 1) && update_type == UT_MMI && parallel_mode == 0)
+  if ((feature_repo.QueueSize() & 1) && update_type == UT_TwoAccumSetEBW && parallel_mode == 0)
     Error("MMI update requires even number (two sets) of accumulator files");
     
   if (src_hmm_list) 
@@ -635,11 +642,14 @@ int main(int argc, char* argv[])
   
   //
     
-  hset.mMmiUpdate           = update_type;
+  hset.mUpdateType          = update_type;
   hset.mMinVariance         = min_variance;    ///< global minimum variance floor
   hset.MMI_E                = E_constant;
   hset.MMI_h                = h_constant;
   hset.MMI_tauI             = I_smoothing;
+  hset.JSmoothing           = J_smoothing;
+  hset.mISmoothingMaxOccup  = I_max_occup;
+  hset.mMinOccupation       = min_occup;
   hset.mMapTau              = MAP_tau;
   hset.mGaussLvl2ModelReest = alg_mixtures;
   hset.mMinOccurances       = min_examples;
@@ -665,7 +675,7 @@ int main(int argc, char* argv[])
 
     if (trace_flag & 1) 
     {
-      if (one_pass_reest || (parallel_mode == 0 && update_type == UT_MMI)) 
+      if (one_pass_reest || (0 == parallel_mode && UT_TwoAccumSetEBW == update_type)) 
       {
 
         // get the name of the following feature file
@@ -698,7 +708,7 @@ int main(int argc, char* argv[])
       if (trace_flag & 1)
         TraceLog("[%d frames] %f", S, P/S);
 
-      if (update_type == UT_MMI) 
+      if (UT_TwoAccumSetEBW == update_type) 
       {
         // Second set of accums is for compeating models
         feature_repo.MoveNext();
@@ -879,15 +889,17 @@ int main(int argc, char* argv[])
         CloseInputLabelFile(ilfp, src_mlf);
       }
       
-      decoder.mWPenalty     = word_penalty;
-      decoder.mMPenalty     = model_penalty;
-      decoder.mLmScale      = grammar_scale;
-      decoder.mPronScale    = pronun_scale;
-      decoder.mTranScale    = transp_scale;
-      decoder.mOutpScale    = outprb_scale;
-      decoder.mOcpScale     = occprb_scale;
-      decoder.mPruningThresh= state_pruning > 0.0 ? state_pruning : -LOG_0;
-      decoder.mAccumType    = accum_type;
+      decoder.mWPenalty        = word_penalty;
+      decoder.mMPenalty        = model_penalty;
+      decoder.mLmScale         = grammar_scale;
+      decoder.mPronScale       = pronun_scale;
+      decoder.mTranScale       = transp_scale;
+      decoder.mOutpScale       = outprb_scale;
+      decoder.mOcpScale        = occprb_scale;
+      decoder.mPruningThresh   = state_pruning > 0.0 ? state_pruning : -LOG_0;
+      decoder.mMaxActiveModels = max_active;
+      decoder.mMinActiveModels = min_active;
+      decoder.mAccumType       = accum_type;
       
       double prn_step   = stprn_step;
       double prn_limit  = stprn_limit;
@@ -956,7 +968,9 @@ int main(int argc, char* argv[])
         totFrames  += n_frames;
         totLogLike += P;
         if (trace_flag & 1) 
-          TraceLog("[%d frames] %f", n_frames, P/n_frames);
+          TraceLog("[%d frames] %f (Act: %f/%f)", n_frames, P/n_frames,
+                   (float) decoder.mNActiveModelsForUtterance / n_frames, 
+                   (float) decoder.mNActiveTokensForUtterance / n_frames);
       }
       
       feature_matrix.Destroy();
@@ -985,7 +999,7 @@ int main(int argc, char* argv[])
     TraceLog("Total number of frames: %d\nTotal log likelihood: %e",
               totFrames, totLogLike);
     
-    if (parallel_mode == 0 && update_type == UT_MMI) 
+    if (0 == parallel_mode && UT_TwoAccumSetEBW == update_type)
       TraceLog("Total log posterior: %e", totLogPosterior);
   }
   

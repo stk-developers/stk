@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
   char line[1024];
   char label_file[1024];
   MyHSearchData phoneHash, dictHash = {0};
-  MyHSearchData triphHash, nonCDphHash, cfgHash ;
+  MyHSearchData triphHash, nonCDphHash, silHash, cfgHash ;
 
   FileListElem *feature_files=NULL;
   int nfeature_files = 0;
@@ -116,6 +116,10 @@ int main(int argc, char *argv[])
 
   FILE *out_MLF_fp          = NULL;
   FILE *in_MLF_fp           = NULL;
+  double     poster_prune;
+  double     grammar_scale;
+  double     word_penalty;
+  double     model_penalty;
   const char *cchrptr;
   const char *in_MLF_fn;
   const char *in_lbl_dir;
@@ -129,6 +133,7 @@ int main(int argc, char *argv[])
   const char *net_filter;
   char *script;
   char *ci_phn;
+  char *sil_phn;
   char *tee_phn;
   int trace_flag       =  0;
   int fcnt             = 0;
@@ -139,16 +144,18 @@ int main(int argc, char *argv[])
   int notInDictAction = 0;
   ExpansionOptions expOptions = {0};
   STKNetworkOutputFormat out_net_fmt = {0};
+  PhoneCorrectnessApproximationType corr_approx;
   LabelFormat out_lbl_fmt = {0};
   LabelFormat in_lbl_fmt = {0};
 
   if (argc == 1) usage(argv[0]);
 
   if (!my_hcreate_r(10,   &nonCDphHash)
-  || !my_hcreate_r(100,  &dictHash)
-  || !my_hcreate_r(100,  &phoneHash)
-  || !my_hcreate_r(1000, &triphHash)
-  || !my_hcreate_r(100,  &cfgHash)) {
+  ||  !my_hcreate_r(10,   &silHash)
+  ||  !my_hcreate_r(100,  &dictHash)
+  ||  !my_hcreate_r(100,  &phoneHash)
+  ||  !my_hcreate_r(1000, &triphHash)
+  ||  !my_hcreate_r(100,  &cfgHash)) {
 
   }
   i = ParseOptions(argc, argv, optionStr, SNAME, &cfgHash);
@@ -165,6 +172,8 @@ int main(int argc, char *argv[])
                = GetParamBool(&cfgHash,SNAME":EXACTTIMEMERGE",  false);
   expOptions.mNoOptimization
                =!GetParamBool(&cfgHash,SNAME":MINIMIZENET",     true);
+  expOptions.mRemoveNulls
+               = GetParamBool(&cfgHash,SNAME":REMOVENULLNODES", false);
   expOptions.mRemoveWordsNodes
                = GetParamBool(&cfgHash,SNAME":REMEXPWRDNODES",  false);
   in_lbl_fmt.left_extent  = -100 * (long long) (0.5 + 1e5 *
@@ -173,12 +182,13 @@ int main(int argc, char *argv[])
                  GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0));
   label_filter = GetParamStr(&cfgHash, SNAME":HLABELFILTER",    NULL);
   gpFilterWldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
-  gpScriptFilter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",   NULL);
+  gpScriptFilter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",  NULL);
   net_filter   = GetParamStr(&cfgHash, SNAME":HNETFILTER",      NULL);
   dict_filter  = GetParamStr(&cfgHash, SNAME":HDICTFILTER",     NULL);
 //label_ofilter= GetParamStr(&cfgHash, SNAME":HLABELOFILTER",   NULL);
   transc_ofilter=GetParamStr(&cfgHash, SNAME":HNETOFILTER",     NULL);
   dictionary   = GetParamStr(&cfgHash, SNAME":SOURCEDICT",      NULL);
+//  hmm_list     = GetParamStr(&cfgHash, SNAME":SOURCEHMMLIST",   NULL);
   in_MLF_fn    = GetParamStr(&cfgHash, SNAME":SOURCEMLF",       NULL);
   in_lbl_dir   = GetParamStr(&cfgHash, SNAME":SOURCETRANSCDIR", NULL);
   in_lbl_ext   = GetParamStr(&cfgHash, SNAME":SOURCETRANSCEXT", NULL);
@@ -187,9 +197,15 @@ int main(int argc, char *argv[])
   out_lbl_ext  = GetParamStr(&cfgHash, SNAME":TARGETTRANSCEXT", "net");
   trace_flag   = GetParamInt(&cfgHash, SNAME":TRACE",           0);
   cd_list_file = GetParamStr(&cfgHash, SNAME":TARGETHMMLIST",   NULL);
-  ci_phn =(char*)GetParamStr(&cfgHash, SNAME":CIMODEL",        NULL);
-  tee_phn=(char*)GetParamStr(&cfgHash, SNAME":TEEMODEL",       NULL);
+  ci_phn =(char*)GetParamStr(&cfgHash, SNAME":CIMODEL",         NULL);
+  tee_phn=(char*)GetParamStr(&cfgHash, SNAME":TEEMODEL",        NULL);
+  sil_phn=(char*)GetParamStr(&cfgHash, SNAME":SILMODEL",        NULL);
   script =(char*)GetParamStr(&cfgHash, SNAME":SCRIPT",          NULL);
+  poster_prune = GetParamFlt(&cfgHash, SNAME":POSTERIORPRUNING",0.0);
+  grammar_scale= GetParamFlt(&cfgHash, SNAME":LMSCALE",         1.0);
+  word_penalty = GetParamFlt(&cfgHash, SNAME":WORDPENALTY",     0.0);
+  model_penalty= GetParamFlt(&cfgHash, SNAME":MODELPENALTY",    0.0);
+  
   expOptions.mTraceFlag = trace_flag;
 
   bool print_all_options = GetParamBool(&cfgHash,SNAME":PRINTALLOPTIONS", false);
@@ -227,6 +243,9 @@ int main(int argc, char *argv[])
 
   out_transc_fmt= (TranscriptionFormat) GetParamEnum(&cfgHash,SNAME":TARGETTRANSCFMT", TF_STK,
                               "STK", TF_STK, "net", TF_NOF, NULL);
+
+  corr_approx = (PhoneCorrectnessApproximationType) GetParamEnum(&cfgHash,SNAME":MPECORAPPROX", MPE_ApproximateAccuracy,
+                              "APPROXACC", MPE_ApproximateAccuracy, "FRAMEACC", MPE_FrameAccuracy, "FRAMEERR", MPE_FrameError, NULL);
 
   if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", false)) {
     PrintConfig(&cfgHash);
@@ -269,6 +288,18 @@ int main(int argc, char *argv[])
       if ((e.key = strdup(ci_phn)) == NULL) Error("Insufficient memory");
       e.data = (void *) 0;
       my_hsearch_r(e, ENTER, &ep, &nonCDphHash);
+    }
+  }
+
+  if (NULL != sil_phn)
+  {
+    for ( sil_phn=strtok(sil_phn, ",");  sil_phn != NULL; sil_phn=strtok(NULL, ",")) 
+    {
+      e.key = sil_phn;
+      my_hsearch_r(e, FIND, &ep, &silHash);
+      if (ep != NULL) continue;
+      if ((e.key = strdup(sil_phn)) == NULL) Error("Insufficient memory");
+      my_hsearch_r(e, ENTER, &ep, &silHash);
     }
   }
   
@@ -331,7 +362,7 @@ int main(int argc, char *argv[])
     for (;;) 
     { //in cases of MLF or MNF, we must process all records
       DecoderNetwork::Node*    p_node = NULL;
-      DecoderNetwork               my_net(p_node);
+      DecoderNetwork           my_net(p_node);
 
       if (in_transc_fmt == TF_MLF
       ||  in_transc_fmt == TF_MNF
@@ -371,12 +402,24 @@ int main(int argc, char *argv[])
       }
 
       CloseInputLabelFile(in_MLF_fp, in_MLF_fn);
+      
+      if(poster_prune > 0.0)
+      {
+      
+        // Just to ensure topological ordering
+        //my_net.SelfLinksToNullNodes(); // not sure wheather needed
+        my_net.TopologicalSort();
+
+        my_net.ForwardBackward(word_penalty, model_penalty, grammar_scale);
+        my_net.PosteriorPrune(poster_prune, word_penalty, model_penalty, grammar_scale);
+        my_net.FreePosteriors();
+      }
 
       my_net.ExpansionsAndOptimizations(expOptions, out_net_fmt, &dictHash, 
           &nonCDphHash, &triphHash);
 
       if (out_net_fmt.mAproxAccuracy)
-        my_net.ComputeAproximatePhoneAccuracy(0);
+        my_net.ComputePhoneCorrectnes(corr_approx, &silHash);
 
       out_MLF_fp = OpenOutputLabelFile(label_file, out_lbl_dir, out_lbl_ext,
                                       out_MLF_fp, out_MLF_fn);
@@ -427,11 +470,19 @@ int main(int argc, char *argv[])
     fclose(fp);
   }
   my_hdestroy_r(&phoneHash, 1);
+  my_hdestroy_r(&triphHash, 0);
   my_hdestroy_r(&nonCDphHash, 0);
   FreeDictionary(&dictHash);
   
   for (size_t i = 0; i < cfgHash.mNEntries; i++) 
     free(cfgHash.mpEntry[i]->data);
+
+  while (feature_files) {
+    file_name = feature_files;
+    feature_files = feature_files->mpNext;
+    free(file_name);
+  }
+
   
   my_hdestroy_r(&cfgHash, 1);
   return 0;

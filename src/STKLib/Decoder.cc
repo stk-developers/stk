@@ -66,7 +66,7 @@ namespace STK
 #endif
   
   
-
+int nbest_lattices = -1;
 
 
 /*

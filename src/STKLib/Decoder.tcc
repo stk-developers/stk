@@ -576,6 +576,13 @@ namespace STK
     }
   //***************************************************************************
 
+  extern int nbest_lattices;
+
+  template<typename _Wlr> 
+  bool operator < (class WlrReference<_Wlr>& a, class WlrReference<_Wlr>& b)
+  {
+    return a.mLike < b.mLike;
+  }
 
   //***************************************************************************
   //***************************************************************************
@@ -592,8 +599,21 @@ namespace STK
       
       assert(pWlr != NULL);
 
-      mpAltHyps->push_back(tmp_wlr_ref);
-      pWlr->mNReferences++;
+      if(nbest_lattices > 1 && mpAltHyps->size() == nbest_lattices-1) // We do not want to keep more than nbest_lattices-1 alternative hyphotesis
+      {
+        typename AltHypList::iterator i = min_element(mpAltHyps->begin(), mpAltHyps->end());
+        if(*i < tmp_wlr_ref)
+        {
+          FreeWordLinkRecords(i->mpWlr);
+          pWlr->mNReferences++;
+          *i = tmp_wlr_ref;
+        }
+      }
+      else
+      {
+        mpAltHyps->push_back(tmp_wlr_ref);
+        pWlr->mNReferences++;
+      }
     }
   // Token::AddAlternativeHypothesis(...)
   //***************************************************************************
@@ -757,72 +777,6 @@ namespace STK
 #endif
       return ret;
     }
-  
-
-  //***************************************************************************
-  //***************************************************************************
-/*  template<typename _NetworkType>
-    void
-    Decoder<_NetworkType>:: 
-    Init(typename NetworkType::Node* pFirstNode, ModelSet* pHmms, ModelSet* pHmmsToUpdate//, bool compactRepresentation
-    ) 
-    {
-      int                       maxStatesInModel;
-      typename NetworkType::Node*   p_last_node;
-
-//      mCompactRepresentation = compactRepresentation;
-      rNetwork().SetFirst(pFirstNode);
-    
-      p_last_node = PhoneNodesToModelNodes(pHmms, pHmmsToUpdate, maxStatesInModel);
-      rNetwork().splice(pFirstNode, p_last_node);
-    
-      // Need to contain at least 2 states for propper token passing
-      if (maxStatesInModel < 2)
-      {
-        Error("The network does not contain any model "
-              "(possibly no dictionary suplied for word-based network)");
-      }
-
-      mpAuxTokens = new Token[maxStatesInModel-1];
-      mpOutPCache = (Cache*) malloc(pHmms->mNStates      * sizeof(Cache));
-      mpMixPCache = (Cache*) malloc(pHmms->mNMixtures    * sizeof(Cache));
-      
-      if (mpOutPCache == NULL || mpMixPCache == NULL) 
-      {
-        Error("Insufficient memory");
-      }
-    
-      mWPenalty          = 0.0;
-      mMPenalty          = 0.0;
-      mPronScale         = 1.0;
-      mTranScale         = 1.0;
-      mOutpScale         = 1.0;
-      mOcpScale          = 1.0;
-      mLmScale           = 1.0;
-      mLatticeGeneration = false;
-      
-      OutputProbability =
-        pHmms->mOutPdfKind == KID_DiagC     ? &DiagCGaussianMixtureDensity :
-        pHmms->mOutPdfKind == KID_PDFObsVec ? &FromObservationAtStateId    : NULL;
-      
-      PassTokenInNetwork  = &Decoder::PassTokenMax;
-      PassTokenInModel    = &PassTokenMax;
-      
-      mPropagDir          = FORWARD;
-      mAlignment          = WORD_ALIGNMENT;
-      mpThreshState       = NULL;
-      mPruningThresh      = -LOG_0;
-      mpModelSet          = pHmms;
-      mpModelSetToUpdate  = pHmmsToUpdate;
-      mCollectAlphaBeta   = 0;
-      mAccumType          = AT_ML;            
-      mSearchPaths        = SP_ALL;
-
-      mKeepExitToken      = false;
-    }*/
-  //***************************************************************************
-
-
 
   //***************************************************************************
   //***************************************************************************
@@ -872,6 +826,9 @@ namespace STK
       mAlignment          = WORD_ALIGNMENT;
       mpThreshState       = NULL;
       mPruningThresh      = -LOG_0;
+      mMaxThreshold       = -LOG_0;
+      mMaxActiveModels    = 0;
+      mMinActiveModels    = 0;
       mpModelSet          = pHmms;
       mpModelSetToUpdate  = pHmmsToUpdate;
       mCollectAlphaBeta   = 0;
@@ -1117,6 +1074,15 @@ namespace STK
           mnacc[vec_size] += Lqjmt; //norms for mean
           vmacc[vec_size] += Lqjmt; //norms for variance
           
+  //      if (mmi_den_pass) {
+  //        state2->mpMixture[m].mWeightAccumDen += Lqjmt;
+  //      } else {
+          state2->mpMixture[m].mWeightAccum     += Lqjmt; //  Update weight accum
+  //      }
+    
+          if (Lqjmt < 0)
+            state2->mpMixture[m].mWeightAccumDen -= Lqjmt;
+
           // collect statistics for cluster weight vectors 
           if (mpModelSetToUpdate->mUpdateMask & UM_CWEIGHTS
           && (0 < mix->mpMean->mCwvAccum.Cols()))
@@ -1144,16 +1110,7 @@ namespace STK
               mix->mPartialAccumGd += Lqjmt;
             } 
           }
-          
-  //      if (mmi_den_pass) {
-  //        state2->mpMixture[m].mWeightAccumDen += Lqjmt;
-  //      } else {
-          state2->mpMixture[m].mWeightAccum     += Lqjmt; //  Update weight accum
-  //      }
-    
-          if (Lqjmt < 0)
-            state2->mpMixture[m].mWeightAccumDen -= Lqjmt;
-    
+      
           if (ixf == NULL || ixf->mNumberOfXformStatCaches == 0) 
             continue;
     
@@ -1598,10 +1555,10 @@ namespace STK
     Decoder<_NetworkType>::
     TokenPropagationInNetwork()
     {
-      typename NetworkType::Node*   p_node;
-      typename NetworkType::LinkType*   links;
-      int                       i;
-      int                       n_links;
+      typename NetworkType::Node*     p_node;
+      typename NetworkType::LinkType* links;
+      int                             i;
+      int                             n_links;
     
       // Beam pruning is not active in backward pass. First, it is not necessary
       // since only token that fit into the forward pass beam are allowed (backward
@@ -1614,7 +1571,7 @@ namespace STK
       mBeamThresh = InForwardPass() && // <--' mpBestToken &&
                     mpBestToken &&
                     mpBestToken->mLike - mPruningThresh > LOG_MIN
-                    ? mpBestToken->mLike - mPruningThresh 
+                    ? LOWER_OF(mpBestToken->mLike - mPruningThresh, mMaxThreshold)
                     : LOG_MIN;
     
       p_node = InForwardPass() ? rNetwork().pLast() : rNetwork().pFirst();
@@ -2000,7 +1957,7 @@ namespace STK
         
         // Store likelihoods of best tokens of all active models to allow for
         // pruning (see begining of ), where only n-best models are kept active
-        if (0 < mMaxActiveModels)
+        if (0 < mMaxActiveModels || 0 < mMinActiveModels)
           mActiveModelsBestLikes.push_back(p_node->mC.mpAnr->mpBestToken->mLike);
 
     
@@ -2062,7 +2019,7 @@ namespace STK
         }
       }
       assert(!HasCycle());
-      
+//printf("%d: %d\n", mTime, mNActiveModelsForObservation);
       mNActiveTokensForUtterance += mNActiveTokensForObservation;
       mNActiveModelsForUtterance += mNActiveModelsForObservation;
       
@@ -2092,6 +2049,26 @@ namespace STK
           }
         }
       }
+      
+      mMaxThreshold = -LOG_0;
+      
+      if (0 < mMinActiveModels)
+      {
+        assert(mActiveModelsBestLikes.size() == mNActiveModelsForObservation);
+
+        if(mActiveModelsBestLikes.size() < mMinActiveModels)
+          mMaxThreshold = LOG_MIN;
+        else
+        {
+          // Find n-th best likelihood in the vector
+          nth_element(mActiveModelsBestLikes.begin(),
+                      mActiveModelsBestLikes.end() - mMinActiveModels,
+                      mActiveModelsBestLikes.end());
+                    
+          mMaxThreshold = *(mActiveModelsBestLikes.end() - mMinActiveModels);
+        }
+      }
+      
       mActiveModelsBestLikes.clear();    
     }
   // TokenPropagationInModels(FLOAT* pObservation)
@@ -2128,6 +2105,14 @@ namespace STK
         DeactivateModel(mpActiveModels);
       }
       
+//#ifndef NDEBUG
+      for (typename NetworkType::iterator i_node = rNetwork().begin(); i_node != rNetwork().end(); ++i_node)
+      {
+        delete i_node->mC.mpAnr;
+        i_node->mC.mpAnr = NULL;
+        assert(i_node->mC.mpAnr == NULL);
+      }
+//#endif      
   //    if(mLatticeGeneration)
   //      my_hdestroy_r(&mLatticeNodeHash, 1);
   //
@@ -2392,8 +2377,6 @@ namespace STK
         hmms->UpdateStacks(rFeatureMatrix[i], mTime, FORWARD);
       }
     
-      // tady nekde je chyba
-      // !!!!
       TokenPropagationInit();
     
       for (i = hmms->mTotalDelay; 
@@ -2461,7 +2444,6 @@ namespace STK
         ret.totLike = LOG_0;
         return ret;
       }
-    
       ret.totLike = HIGHER_OF(ret.totLike, rNetwork().pFirst()->mC.mpAnr->mpExitToken->mLike); //  totalLikelihood;
       // Backward pass P can differ from forward pass P because of the precision
       // problems. Take the higher one to decrease the possibility of getting
@@ -2951,6 +2933,13 @@ namespace STK
     
                 assert(i_node->mC.rpAlphaBetaListReverse()->mTime == mTime);
     
+/*printf("AB: time: %d node: %s state: %d alpha: %9g beta: %9g P: %9g occup: %9g\n",
+       mTime,
+       i_node->mC.mpHmm->mpMacro->mpName, j, 
+       i_node->mC.rpAlphaBetaListReverse()->mpState[j].mAlpha,
+       i_node->mC.rpAlphaBetaListReverse()->mpState[j].mBeta, P,
+       st[j].mAlpha + st[j].mBeta - P);*/
+
   //            if (!mmi_den_pass) {
                 for (i = 0; i < Nq - 1; i++) 
                 {

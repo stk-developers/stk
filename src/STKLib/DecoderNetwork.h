@@ -63,6 +63,7 @@ namespace STK
   public:
     unsigned mNoOptimization    : 1;
     unsigned mNoWordExpansion   : 1;
+    unsigned mRemoveNulls       : 1;
     unsigned mRespectPronunVar  : 1;
     unsigned mRemoveWordsNodes  : 1;
     unsigned mCDPhoneExpansion  : 1;
@@ -98,14 +99,21 @@ namespace STK
     PRON_NOT_IN_DIC_ERROR = 4
   }; // NotInDictActionType;
 
-
+  enum PhoneCorrectnessApproximationType
+  {
+    MPE_ApproximateAccuracy,
+//    MPE_ApproximateError,
+    MPE_FrameAccuracy,
+    MPE_FrameError
+  };
+  
   /** *************************************************************************
    ** *************************************************************************
    *  @brief Alpha and Beta pair for forward/backward propagation
    */
   struct AlphaBeta
   {
-    typedef  FLOAT   LikeType;
+    typedef  FLOAT   LinkType;
 
     AlphaBeta() : mAlpha(LOG_0), mBeta(LOG_0)
     {}
@@ -113,8 +121,8 @@ namespace STK
     ~AlphaBeta()
     {}
 
-    LikeType             mAlpha;
-    LikeType             mBeta;
+    LinkType             mAlpha;
+    LinkType             mBeta;
   };
     
   
@@ -533,14 +541,56 @@ namespace STK
      * than three successors
      */
     int
-    RemoveRedundantNullNodes();
+    RemoveRedundantNullNodes(bool removeAllNullNodes);
 
     void 
     SelfLinksToNullNodes();
 
     void 
-    ComputeAproximatePhoneAccuracy(int type);
+    ComputePhoneCorrectnes(PhoneCorrectnessApproximationType approxType, MyHSearchData *silencePhones);
+//    ComputeApproximatePhoneAccuracy(int type);
+    
+    /** 
+     * @brief Performs forward-backward to get posterior probabilities
+     * 
+     * @return 
+     */
+    FLOAT
+    ForwardBackward(
+      FLOAT wordPenalty = 0.0,
+      FLOAT modelPenalty = 0.0 ,
+      FLOAT lmScale = 1.0);
 
+    
+    /** 
+     * @brief Free records with posterior probabilities
+     * 
+     * @return 
+     */
+    FLOAT
+    FreePosteriors();
+
+    /** 
+     * @brief Prunes the lattice based on the posterior probabilities
+     * 
+     * @param thresh 
+     */
+    void
+    PosteriorPrune(
+      const FLOAT& thresh,
+      FLOAT wordPenalty = 0.0,
+      FLOAT modelPenalty = 0.0,
+      FLOAT lmScale = 1.0);
+
+    void
+    DensityPrune(
+      const int maxDensity,
+      FLOAT wordPenalty,
+      FLOAT modelPenalty,
+      FLOAT lmScale);
+    
+    void 
+    TopologicalSort();
 
   private:
 

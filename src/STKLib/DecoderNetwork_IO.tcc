@@ -624,6 +624,7 @@ namespace STK
             _node_type* p_forwnode = p_node->rpLinks()[i].pNode();
             p_forwnode->rpBackLinks()[p_forwnode->rNBackLinks()].SetNode(p_node);
             p_forwnode->rpBackLinks()[p_forwnode->rNBackLinks()].SetLmLike(p_node->rpLinks()[i].LmLike());
+            p_forwnode->rpBackLinks()[p_forwnode->rNBackLinks()].SetAcousticLike(p_node->rpLinks()[i].AcousticLike());
             ++p_forwnode->rNBackLinks();
           }
         }
@@ -1083,6 +1084,7 @@ namespace STK
 
           forwNode->rpBackLinks()[forwNode->rNBackLinks()].SetNode(nodes[i]);
           forwNode->rpBackLinks()[forwNode->rNBackLinks()].SetLmLike(nodes[i]->rpLinks()[j].LmLike());
+          forwNode->rpBackLinks()[forwNode->rNBackLinks()].SetAcousticLike(nodes[i]->rpLinks()[j].AcousticLike());
           forwNode->rNBackLinks()++;
         }
       }

@@ -950,7 +950,7 @@ namespace STK
       ret->mPartialAccumK.Init(ret->mpMean->mClusterMatrixT.Cols());
       
       // for discriminative training
-      if (mMmiUpdate == 2 || mMmiUpdate == -2)
+      if (UT_EBW == mUpdateType)
       {
         ret->mPartialAccumGd = 0.0;
         ret->mAccumGd.Init(ret->mpMean->mClusterMatrixT.Rows(),

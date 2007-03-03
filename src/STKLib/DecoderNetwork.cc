@@ -4,95 +4,21 @@
 
 namespace STK
 {
-  //***************************************************************************
-  //***************************************************************************
-  struct CorrPhnRec 
-  {
-    DecoderNetwork::Node*   mpNode;
-    long long                   maxStopTimeTillNow;
-    int                         mId;
-  };
-  //***************************************************************************
   
 
 
   //***************************************************************************
   //***************************************************************************
-  int nbacklinkscmp(const void *a, const void *b) 
-  {
-    return (*(DecoderNetwork::Node **) a)->rNBackLinks() 
-         - (*(DecoderNetwork::Node **) b)->rNBackLinks();
-  }
+//  int nbacklinkscmp(const void *a, const void *b) 
+//  {
+//    return (*(DecoderNetwork::Node **) a)->rNBackLinks() 
+//         - (*(DecoderNetwork::Node **) b)->rNBackLinks();
+//  }
   
   
   
-  //***************************************************************************
-  //***************************************************************************
-  static int 
-  cmp_starts(const void *a, const void *b)
-  {
-    long long diff = ((CorrPhnRec *) a)->mpNode->mC.Start()
-                   - ((CorrPhnRec *) b)->mpNode->mC.Start();
-  
-    if (diff != 0)
-      return diff;
-  
-    return ((CorrPhnRec *) a)->mpNode->mC.Stop()
-         - ((CorrPhnRec *) b)->mpNode->mC.Stop();
-  }
   //***************************************************************************
 
-  
-  //***************************************************************************
-  //***************************************************************************
-  static int 
-  cmp_maxstop(const void *key, const void *elem)
-  {
-    CorrPhnRec *corr_phn = (CorrPhnRec *) elem;
-  
-    if (((DecoderNetwork::Node *) key)->mC.Start() < 
-          corr_phn->maxStopTimeTillNow) 
-    {
-      if (corr_phn->mId == 0 || // first fiead in the array
-        ((DecoderNetwork::Node *) key)->mC.Start() >= 
-         (corr_phn-1)->maxStopTimeTillNow)
-      {
-          return  0;
-      }
-      else 
-      {
-        return -1;
-      }
-    } 
-    else 
-    { 
-      return  1;
-    }
-  }
-  
-
-  //***************************************************************************
-  //***************************************************************************
-  // Check whether strings a and b represents the same monophone
-  int SamePhoneme(char *a, char *b)
-  {
-    char *  chptr;
-    size_t  len;
-  
-    chptr = strrchr(a, '-');
-    if (chptr) a = chptr+1;
-    len = strcspn(a, "+");
-  
-    chptr = strrchr(b, '-');
-    
-    if (chptr) 
-      b = chptr+1;
-      
-    if (strcspn(b, "+") != len) 
-      return 0;
-  
-    return strncmp(a, b, len) == 0;
-  }
   
 
   //***************************************************************************
@@ -841,7 +767,8 @@ namespace STK
       if (expOptions.mNoWordExpansion  && !expOptions.mCDPhoneExpansion &&
           expOptions.mNoOptimization   && !rFormat.mNoLMLikes &&
           !rFormat.mNoTimes        && !rFormat.mNoWordNodes &&
-          !rFormat.mNoModelNodes   && !rFormat.mNoPronunVars) 
+          !rFormat.mNoModelNodes   && !rFormat.mNoPronunVars && 
+          !expOptions.mRemoveNulls) 
       {
         return;
       }
@@ -871,7 +798,7 @@ namespace STK
         LatticeLocalOptimization(expOptions.mStrictTiming, expOptions.mTraceFlag);
       }
 
-      RemoveRedundantNullNodes();
+      RemoveRedundantNullNodes(expOptions.mRemoveNulls == 1);
     } 
   // void NetworkExpansionsAndOptimizations( )
   //****************************************************************************
@@ -932,24 +859,14 @@ namespace STK
   //***************************************************************************
     void 
     DecoderNetwork::
-    LatticeLocalOptimization(int strictTiming, int trace_flag)
+    TopologicalSort()
     {
       Node *    node;
       Node *    lastnode;
-      int            i;
-      int            j;
-      int            unreachable = 0;
-      
-      // For each node, sort links by pointer value to allow
-      // for easy comparison whether two nodes have the same set of links
-      for (node = pFirst(); node != NULL; node = node->mpNext)  
-      {
-        node->mAux = 0;
-        node->mpBackNext = node->mpNext;
-        qsort(node->rpLinks(), node->NLinks(), sizeof(LinkType), lnkcmp);
-        qsort(node->rpBackLinks(), node->rNBackLinks(), sizeof(LinkType), lnkcmp);
-      }
-    
+      int       i;
+      int       j;
+      int       unreachable = 0;
+
       // Sort nodes in topological order
       // printf("Sorting nodes...\n");
       pFirst()->mAux = 1;
@@ -1039,6 +956,28 @@ namespace STK
       {
         node->mpNext->mpBackNext = node;
       }
+    }
+
+  //***************************************************************************
+  //***************************************************************************
+    void 
+    DecoderNetwork::
+    LatticeLocalOptimization(int strictTiming, int trace_flag)
+    {
+      Node *    node;
+      int       i;
+      
+      // For each node, sort links by pointer value to allow
+      // for easy comparison whether two nodes have the same set of links
+      for (node = pFirst(); node != NULL; node = node->mpNext)  
+      {
+        node->mAux = 0;
+        node->mpBackNext = node->mpNext;
+        qsort(node->rpLinks(), node->NLinks(), sizeof(LinkType), lnkcmp);
+        qsort(node->rpBackLinks(), node->rNBackLinks(), sizeof(LinkType), lnkcmp);
+      }
+    
+      TopologicalSort();
       
       for (i=1, node=pFirst(); node != NULL; node = node->mpNext, i++) 
       {
@@ -1359,12 +1298,12 @@ namespace STK
             
             inode->mC.mType |= jnode->mC.mType & NT_TRUE;
             
-            // free(jnode->rpLinks());
-            // free(jnode->rpBackLinks());
-            // free(jnode);
-            jnode.mpPtr->mpNext = NULL;
-            jnode.mpPtr->mpBackNext = NULL;
-            erase(jnode);
+            free(jnode->rpLinks());
+            free(jnode->rpBackLinks());
+            free(jnode.mpPtr);
+//            jnode.mpPtr->mpNext = NULL;
+//            jnode.mpPtr->mpBackNext = NULL;
+//            erase(jnode);
 
             --j; // Process j-th node again
                  // there is new shifted node on this index
@@ -1378,18 +1317,92 @@ namespace STK
   //  LatticeLocalOptimization_ForwardPass(Node* pFirstNode, int strictTiming)
   //****************************************************************************
 
+  //***************************************************************************
+  //***************************************************************************
+  struct CorrPhnRec 
+  {
+    DecoderNetwork::Node*   mpNode;
+    TimingType              maxStopTimeTillNow;
+    int                     mId;
+  };
+
+  //***************************************************************************
+  //***************************************************************************
+  static int 
+  cmp_starts(const void *a, const void *b)
+  {
+    TimingType diff = ((CorrPhnRec *) a)->mpNode->mC.Start()
+                    - ((CorrPhnRec *) b)->mpNode->mC.Start();
+  
+    if (diff != 0)
+      return diff;
+  
+    return ((CorrPhnRec *) a)->mpNode->mC.Stop()
+         - ((CorrPhnRec *) b)->mpNode->mC.Stop();
+  }
+
+  //***************************************************************************
+  //***************************************************************************
+  static int 
+  cmp_overlapped(const void *key, const void *elem)
+  {
+    CorrPhnRec *corr_phn = (CorrPhnRec *) elem;
+  
+    if (((DecoderNetwork::Node *) key)->mC.Start() >=
+          corr_phn->maxStopTimeTillNow) 
+    {
+      return 1;
+    }
+    if (corr_phn->mId == 0 || // first element in the array
+      ((DecoderNetwork::Node *) key)->mC.Start() >= 
+       (corr_phn-1)->maxStopTimeTillNow)
+    {
+      return  0;
+    }
+    else 
+    {
+      return -1;
+    }
+  }
+  
+  //***************************************************************************
+  //***************************************************************************
+  // Check whether strings a and b represents the same monophone
+  int SamePhoneme(char *a, char *b)
+  {
+    char *  chptr;
+    size_t  len;
+  
+    chptr = strrchr(a, '-');
+    if (chptr) a = chptr+1;
+    len = strcspn(a, "+");
+  
+    chptr = strrchr(b, '-');
+    
+    if (chptr) 
+      b = chptr+1;
+      
+    if (strcspn(b, "+") != len) 
+      return 0;
+  
+    return strncmp(a, b, len) == 0;
+  }
+
 
   //***************************************************************************
   //***************************************************************************
   void 
   DecoderNetwork::
-  ComputeAproximatePhoneAccuracy(int type)
+  ComputePhoneCorrectnes(PhoneCorrectnessApproximationType approxType, MyHSearchData *silencePhones)
   {
-    Node*    node;
+//    Node*    node;
     CorrPhnRec*  corr_phn;
-    CorrPhnRec*  overlaped;
+    CorrPhnRec*  overlapped;
     int          ncorr_phns = 0, i = 0;
-    long long    maxStopTime;
+    TimingType   maxStopTime;
+    ENTRY        e; // = {0}; //{0} is just to make compiler happy
+    ENTRY*       ep;
+
   
     iterator     p_node;
 
@@ -1432,42 +1445,81 @@ namespace STK
       if (!(p_node->mC.mType & NT_PHONE)) 
         continue;
   
-      if (p_node->mC.Stop()  <= p_node->mC.Start() ||
-        !strcmp(p_node->mC.mpName, "sil") ||
-        !strcmp(p_node->mC.mpName, "sp")) 
-      {
-        //!!! List of ignored phonemes should be provided by some switch !!!
+      
+      if (p_node->mC.Stop()  <= p_node->mC.Start())
+      {    
         p_node->mC.SetPhoneAccuracy(0.0);
-      } 
-      else 
-      {
+        continue;
+      }
+
+      e.key = p_node->mC.mpName;
+      my_hsearch_r(e, FIND, &ep, silencePhones);
+      if (ep != NULL) { // Silence phone
+        //!!! List of ignored phonemes should be provided by some switch !!!
+        if(approxType == MPE_FrameError) {
+          // Silences are not considered as incorect
+          p_node->mC.SetPhoneAccuracy((p_node->mC.Stop() - p_node->mC.Start()) / 100000.0);
+        } else {      // MPE_ApproximateAccuracy, MFPE_FrameAccuracy
+          p_node->mC.SetPhoneAccuracy(0.0);
+        }
+        continue;    
+      }
+      
+      if(approxType == MPE_ApproximateAccuracy) {
         p_node->mC.SetPhoneAccuracy(-1.0);
-        overlaped = (CorrPhnRec*) bsearch(&(*p_node), corr_phn, ncorr_phns,
-            sizeof(CorrPhnRec), cmp_maxstop);
+      } else { // MPE_FrameAccuracy, MFPE_FrameError
+        p_node->mC.SetPhoneAccuracy(0.0);
+      }
+        
+      // Find first overlapping reference phone
+      overlapped = (CorrPhnRec*) bsearch(&(*p_node), corr_phn, ncorr_phns,
+                                         sizeof(CorrPhnRec), cmp_overlapped);
   
-        if (overlaped) 
+      if (overlapped) 
+      {
+        TimingType maxCorrectPhoneStopTimeTillNow = p_node->mC.Start();
+        
+        // Go over all reference phones that overlap with curent phone 'p_node'
+        for (; overlapped < corr_phn + ncorr_phns &&
+             overlapped->mpNode->mC.Start() < p_node->mC.Stop(); overlapped++) 
         {
-          for (; overlaped < corr_phn + ncorr_phns &&
-                overlaped->mpNode->mC.Start() < node->mC.Stop(); overlaped++) 
-          {
-            if (overlaped->mpNode->mC.Stop()  <= overlaped->mpNode->mC.Start() ||
-              overlaped->mpNode->mC.Stop()  <= node->mC.Start()) 
-            {
-              continue;
+          if (overlapped->mpNode->mC.Stop()  <= overlapped->mpNode->mC.Start() 
+          ||  overlapped->mpNode->mC.Stop()  <= p_node->mC.Start()) {
+            continue;
+          }
+          if(approxType == MPE_ApproximateAccuracy) {
+            p_node->mC.SetPhoneAccuracy(
+              HIGHER_OF(p_node->mC.PhoneAccuracy(), 
+                        (SamePhoneme(overlapped->mpNode->mC.mpName, p_node->mC.mpName) + 1.0) 
+                        * (LOWER_OF(overlapped->mpNode->mC.Stop(), p_node->mC.Stop()) 
+                           -  HIGHER_OF(overlapped->mpNode->mC.Start(), p_node->mC.Start())) 
+                        / (overlapped->mpNode->mC.Stop() - overlapped->mpNode->mC.Start()) - 1.0));
+  
+            if (p_node->mC.PhoneAccuracy() >= 1.0) {
+              break;
             }
-  
-            p_node->mC.SetPhoneAccuracy(HIGHER_OF(p_node->mC.PhoneAccuracy(), 
-                  (SamePhoneme(overlaped->mpNode->mC.mpName, p_node->mC.mpName) + 1.0) * 
-                  (LOWER_OF(overlaped->mpNode->mC.Stop(), p_node->mC.Stop()) - 
-                   HIGHER_OF(overlaped->mpNode->mC.Start(), p_node->mC.Start())) / 
-                  (overlaped->mpNode->mC.Stop() - overlaped->mpNode->mC.Start()) - 1.0));
-  
-            if (p_node->mC.PhoneAccuracy() >= 1.0) break;
+          } else { // MPE_FrameAccuracy, MFPE_FrameError
+            if(SamePhoneme(overlapped->mpNode->mC.mpName, p_node->mC.mpName)) {
+              FLOAT startingPhoneAccuracu = p_node->mC.PhoneAccuracy();
+              
+              p_node->mC.SetPhoneAccuracy(p_node->mC.PhoneAccuracy()
+                                          + (LOWER_OF(overlapped->mpNode->mC.Stop(), p_node->mC.Stop())
+                                             - HIGHER_OF(overlapped->mpNode->mC.Start(), maxCorrectPhoneStopTimeTillNow)) / 100000.0);
+
+              maxCorrectPhoneStopTimeTillNow = HIGHER_OF(maxCorrectPhoneStopTimeTillNow, 
+                                                           overlapped->mpNode->mC.Stop());
+
+              assert((p_node->mC.PhoneAccuracy() - startingPhoneAccuracu) <= (overlapped->mpNode->mC.Stop() - overlapped->mpNode->mC.Start())/ 100000.0);
+              assert( p_node->mC.PhoneAccuracy()                          <= (            p_node->mC.Stop() -             p_node->mC.Start())/ 100000.0);
+              
+              if(maxCorrectPhoneStopTimeTillNow >= p_node->mC.Stop()) {
+                break;
+              }
+            }
           }
         }
       }
     }
-
     delete []  corr_phn;
   }  
 
@@ -1613,7 +1665,7 @@ namespace STK
   // successors
   int 
   DecoderNetwork::
-  RemoveRedundantNullNodes()
+  RemoveRedundantNullNodes(bool removeAllNullNodes)
   {
     Node *    p_node;
     Node *    tnode;
@@ -1631,10 +1683,12 @@ namespace STK
 
     for (p_node = pFirst(); p_node != NULL; p_node = p_node->mpNext) 
     {
-      if (p_node->mC.mType & NT_WORD && p_node->mC.mpPronun == NULL &&
-          p_node->rNLinks() != 0 && p_node->rNBackLinks() != 0  &&
-         (p_node->rNLinks() == 1 || p_node->rNBackLinks() == 1 ||
-         (p_node->rNLinks() == 2 && p_node->rNBackLinks() == 2))) 
+      if (p_node->mC.mType & NT_WORD && p_node->mC.mpPronun == NULL
+      &&  p_node->rNLinks() != 0 && p_node->rNBackLinks() != 0
+      &&  (removeAllNullNodes
+          ||  p_node->rNLinks() == 1 
+          ||  p_node->rNBackLinks() == 1 
+          || (p_node->rNLinks() == 2 && p_node->rNBackLinks() == 2)))
       {
   
       node_removed = 1;

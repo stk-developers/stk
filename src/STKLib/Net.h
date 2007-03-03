@@ -1052,6 +1052,7 @@ namespace STK
       typedef typename iterator::const_pointer                  const_pointer;
       typedef typename iterator::reference                      reference;
       typedef typename iterator::const_reference                const_reference;
+      typedef int                                               size_type;
 
 
       ListStorage()
@@ -1125,6 +1126,11 @@ namespace STK
 
       void
       clear();
+
+      /// Returns number of elements
+      size_type
+      size() const
+      { int sz = 0; for(iterator i = begin(); i != end(); i++) sz++; return sz; }
 
       void
       splice(_Content* pFrom, _Content* pTo);

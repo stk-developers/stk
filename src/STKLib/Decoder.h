@@ -42,7 +42,7 @@ namespace STK
   //###########################################################################
   //###########################################################################
   class Cache;
-  class Lattice;
+//  class Lattice;
 
   template<typename _NodeType>
     class WordLinkRecord;
@@ -431,6 +431,7 @@ namespace STK
       // Passing parameters
       State*                      mpThreshState;
       FLOAT                       mBeamThresh;
+      FLOAT                       mMaxThreshold;
       FLOAT                       mWordThresh;
                                   
       FLOAT                       mWPenalty;  
@@ -443,6 +444,7 @@ namespace STK
       FLOAT                       mPruningThresh;
       SearchPathsType             mSearchPaths;
       int                         mMaxActiveModels;
+      int                         mMinActiveModels;
 
       bool                        mLatticeGeneration;
 //      bool                        mCompactRepresentation;

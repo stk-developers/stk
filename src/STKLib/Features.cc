@@ -75,8 +75,9 @@ namespace STK
         // read all lines and parse them
         while (!l_stream.eof())
         {
-          getline(l_stream, line);
-          Trim(line);
+          l_stream >> line;
+//          getline(l_stream, line);
+//          Trim(line);
 
           if (!line.empty())
             // we can push_back a std::string as new FileListElem object

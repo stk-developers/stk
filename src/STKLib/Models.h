@@ -112,8 +112,8 @@ namespace STK
   
   /// model set flags
   //@{  
-  const FlagType MODEL_SET_WITH_ACCUM   = 1; ///< The set should allocate space for
-                                             ///< accumulators 
+  const FlagType MODEL_SET_WITH_ACCUM         = 1; ///< The set should allocate space for accumulators 
+  const FlagType MODEL_SET_WITH_TWO_ACCUM_SET = 2; ///< The set should allocate space for two sets of accumulators (UT_TwoAccumSetEBW)
   //@}
   
   
@@ -207,6 +207,13 @@ namespace STK
     UM_XFORM      = 64,
     UM_MAP        = 128,
     UM_CWEIGHTS   = 256
+  };
+  
+  enum UpdateType 
+  {
+    UT_ML=0,
+    UT_TwoAccumSetEBW,
+    UT_EBW
   };
   
   enum KeywordID
@@ -334,7 +341,7 @@ namespace STK
     int                       mParamKind;
     size_t                    mNMixtures;
     size_t                    mNStates;
-    bool                      mAllocAccums;
+    int                       mAllocAccums;
     int                       mTotalDelay;
     bool                      mAllMixuresUpdatableFromStatAccums;
     bool                      mIsHTKCopatible;         ///< Models use no extension with respecto to HTK
@@ -353,12 +360,16 @@ namespace STK
     MakeXformCommand*         mpXformToUpdate;
     size_t                    mNumberOfXformsToUpdate;
     int                       mGaussLvl2ModelReest;
-    int                       mMmiUpdate;
+    UpdateType                mUpdateType;
+    bool                      mISmoothAfterD;
+    bool                      JSmoothing;
     bool                      mSaveGlobOpts;
     FLOAT                     MMI_E;
     FLOAT                     MMI_h;
     FLOAT                     MMI_tauI;
     FLOAT                     mMapTau;
+    FLOAT                     mMinOccupation;
+    FLOAT                     mISmoothingMaxOccup;
     
     BiasXform**               mpClusterWeightVectors;
     int                       mNClusterWeightVectors;
@@ -685,7 +696,6 @@ namespace STK
     void
     AttachPriors(HMMSetNodeName nodeName, State * pPriorState);
     
-    void
     /**
      * @brief Performs desired @c action on the HMM's data which are chosen by @mask
      * @param mask bit mask of flags that tells which data to process by @c action
@@ -693,6 +703,7 @@ namespace STK
      * @param action routine to apply on pUserData
      * @param pUserData the data to process by @c action
      */
+    void
     Scan( int             mask,
           HMMSetNodeName  nodeNameBuffer,
           ScanAction      action, 
@@ -761,11 +772,11 @@ namespace STK
     void
     ComputeGConst();
     
-    void
     /**
      * @brief Updates the object from the accumulators
      * @param rModelSet ModelSet object which holds the accumulator configuration
      */
+    void
     UpdateFromAccums(const ModelSet * pModelSet);
     
     /**
@@ -792,7 +803,6 @@ namespace STK
     Mixture&
     ResetClusterWeightVectorsAccums();
         
-    void
     /**
      * @brief Performs desired @c action on the HMM's data which are chosen by @mask
      * @param mask bit mask of flags that tells which data to process by @c action
@@ -800,6 +810,7 @@ namespace STK
      * @param action routine to apply on pUserData
      * @param pUserData the data to process by @c action
      */
+    void
     Scan( int             mask,
           HMMSetNodeName  nodeNameBuffer,
           ScanAction      action, 
@@ -814,6 +825,15 @@ namespace STK
      */
     void
     UpdateClusterParametersFromAccums(const ModelSet * pModelSet);
+    
+    /**
+     * @brief Change accumulators according to I-smoothing making use of prior model
+     * @param numPlusDenNorm sum of numerator and denominator norms
+     * @param pModelSet
+     */
+    void
+    ISmoothing(FLOAT numPlusDenNorm, const ModelSet * pModelSet);
+
   };
 
   
@@ -842,7 +862,7 @@ namespace STK
      * @param vectorSize Mean vector size
      * @param allocateAccums if true, memory for accumulators is allocated
      */
-    Mean(size_t vectorSize, bool allocateAccums);
+    Mean(size_t vectorSize, int allocateAccums);
     
     /// The destructor
     virtual
@@ -916,7 +936,7 @@ namespace STK
      * @param vectorSize Mean vector size
      * @param allocateAccums if true, memory for accumulators is allocated
      */
-    Variance(size_t vectorSize, bool allocateAccums);
+    Variance(size_t vectorSize, int allocateAccums);
     
     /// The destructor
     virtual
@@ -978,7 +998,7 @@ namespace STK
      * @param nStates Number of states
      * @param allocateAccums if true, memory for accumulators is allocated
      */
-    Transition(size_t nStates, bool allocateAccums);
+    Transition(size_t nStates, int allocateAccums);
     
     /// The destructor
     virtual

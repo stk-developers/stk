@@ -114,7 +114,7 @@ char *optionStr =
 " -r r   PRONUNSCALE"
 " -s r   LMSCALE"
 " -t ror PRUNING PRUNINGINC PRUNINGMAX"
-" -u r   MAXACTIVEPRUNING"
+" -u r   MAXACTIVEMODELS"
 " -w o   RECOGNET"
 " -x r   SOURCEMODELEXT"
 " -y r   TARGETTRANSCEXT"
@@ -170,7 +170,8 @@ char *optionStr =
   double                        occprb_scale;
   double                        state_pruning;
   double                        stprn_step;
-  double                        stprn_limit;  
+  double                        stprn_limit;
+  double                        poster_prune;
          
   const char*                   hmm_dir;
   const char*                   hmm_ext;
@@ -206,6 +207,7 @@ char *optionStr =
   int                           startFrmExt;
   int                           endFrmExt;
   int                           max_active;
+  int                           min_active;
   bool                          baum_welch;
   bool                          swap_features;
   bool                          htk_compat;
@@ -417,13 +419,19 @@ int main(int argc, char *argv[])
   state_pruning= GetParamFlt(&cfgHash, SNAME":PRUNING",         0.0);
   stprn_step   = GetParamFlt(&cfgHash, SNAME":PRUNINGINC",      0.0);
   stprn_limit  = GetParamFlt(&cfgHash, SNAME":PRUNINGMAX",      0.0);
-  max_active   = GetParamInt(&cfgHash, SNAME":MAXACTIVEPRUNING",0);
+  poster_prune = GetParamFlt(&cfgHash, SNAME":POSTERIORPRUNING",0.0);
+  max_active   = GetParamInt(&cfgHash, SNAME":MAXACTIVEMODELS", 0);
+  min_active   = GetParamInt(&cfgHash, SNAME":MINACTIVEMODELS", 0);
   trace_flag   = GetParamInt(&cfgHash, SNAME":TRACE",           0);
   script =(char*)GetParamStr(&cfgHash, SNAME":SCRIPT",          NULL);
   mmf    =(char*)GetParamStr(&cfgHash, SNAME":SOURCEMMF",       NULL);
   
   mmf_dir      = GetParamStr(&cfgHash, SNAME":MMFDIR",          ".");
   mmf_mask     = GetParamStr(&cfgHash, SNAME":MMFMASK",         NULL);
+
+  extern int STK::nbest_lattices;
+  STK::nbest_lattices = GetParamInt(&cfgHash, SNAME":NBEST",    0);
+
 
   lat_ext      = GetParamStr(&cfgHash, SNAME":LATTICEEXT",      NULL);
   print_all_options = GetParamBool(&cfgHash,SNAME":PRINTALLOPTIONS", false);
@@ -847,6 +855,7 @@ int main(int argc, char *argv[])
     p_decoder->mAlignment         = alignment;
     p_decoder->mPruningThresh     = state_pruning > 0.0 ? state_pruning : -LOG_0;
     p_decoder->mMaxActiveModels   = max_active;
+    p_decoder->mMinActiveModels   = min_active;
     p_decoder->mLatticeGeneration = (lat_ext != NULL);
     
 
@@ -954,7 +963,8 @@ int main(int argc, char *argv[])
       
       if (trace_flag & 2)
         TraceLog("Lattice: Performing posterior pruning...");
-      lattice.PosteriorPrune(state_pruning > 0.0 ? state_pruning : -LOG_0);
+      lattice.PosteriorPrune(poster_prune  > 0.0 ? poster_prune  :
+                             state_pruning > 0.0 ? state_pruning : -LOG_0);
       lattice.FreePosteriors();
 
 
@@ -998,7 +1008,7 @@ int main(int argc, char *argv[])
 
     if (!network_file) 
     {
-      if (compactNetworkRepresentation)
+      if (!compactNetworkRepresentation)
         decoder.Clear();
       else
         compact_decoder.Clear();

@@ -351,17 +351,18 @@ namespace STK
     size_t    i;
     size_t    size    = 0;
     FLOAT*    vector  = NULL;
+    ModelSet  *p_mode_set = reinterpret_cast<ModelSet *>(pUserData);
   
     if (macro_type == mt_mean || macro_type == mt_variance) 
     {
       if (macro_type == mt_mean) {
-        size   = ((Mean *)pData)->VectorSize();
-        vector = ((Mean *)pData)->mpAccums;
-        size   = (size + 1) * 2;
+        size   = reinterpret_cast<Mean *>(pData)->VectorSize();
+        vector = reinterpret_cast<Mean *>(pData)->mpAccums;
+        size   = (size + 1) * p_mode_set->mAllocAccums;     // mAllocAccums == 2 for MMI update
       } else if (macro_type == mt_variance) {
-        size   = ((Variance *)pData)->VectorSize();
-        vector = ((Variance *)pData)->mpAccums;
-        size   = (size * 2 + 1) * 2;
+        size   = reinterpret_cast<Variance *>(pData)->VectorSize();
+        vector = reinterpret_cast<Variance *>(pData)->mpAccums;
+        size   = (size * 2 + 1) * p_mode_set->mAllocAccums; // mAllocAccums == 2 for MMI update
       }
   
       //for (i = 0; i < size; i++) vector[i] = 0;
@@ -382,8 +383,8 @@ namespace STK
     } 
     else if (macro_type == mt_transition) 
     {
-      size   = SQR(((Transition *) pData)->mNStates);
-      vector = ((Transition *) pData)->mpMatrixO + size;
+      size   = SQR(reinterpret_cast<Transition *>(pData)->mNStates);
+      vector =     reinterpret_cast<Transition *>(pData)->mpMatrixO + size;
   
       for (i = 0; i < size; i++) vector[i] = LOG_0;
     }
@@ -1149,6 +1150,43 @@ namespace STK
     return mpVariance;
   } // FloorVariance(...)
   
+  void
+  Mixture::
+  ISmoothing(FLOAT numPlusDenNorm,
+             const ModelSet * pModelSet)
+  {
+    if (!pModelSet->mUpdateMask & UM_MAP)
+      return;
+      
+    if(pModelSet->mISmoothingMaxOccup > 0.0
+    && numPlusDenNorm > pModelSet->mISmoothingMaxOccup)
+    {
+      return;
+    }
+
+    int i;      
+    int vec_size    = mpVariance->VectorSize();
+    FLOAT *var_vec = mpVariance->mpAccums;
+    FLOAT *mean_vec  = mpVariance->mpAccums + 1 * vec_size;
+    FLOAT *norm     = mpVariance->mpAccums + 2 * vec_size;
+
+    FLOAT *var_pri  = mpVariance->mpPrior->mVector.pData();
+    FLOAT *mean_pri = mpMean    ->mpPrior->mVector.pData();
+
+    FLOAT tau = pModelSet->mMapTau;
+
+    if(pModelSet->JSmoothing && numPlusDenNorm > *norm)
+    {
+      tau = tau * fabs(*norm) / numPlusDenNorm;
+    }
+    for (i = 0; i < vec_size; i++) 
+    {
+      mean_vec[i] += tau * mean_pri[i];
+      var_vec[i]  += tau * (1.0/var_pri[i] + SQR(mean_pri[i]));
+    }
+    *norm += tau;
+  }
+  
   //**************************************************************************
   //**************************************************************************
   void 
@@ -1158,7 +1196,7 @@ namespace STK
     double  Djm;
     int     i;
 
-    if (pModelSet->mMmiUpdate == 1 || pModelSet->mMmiUpdate == -1) 
+    if (UT_TwoAccumSetEBW == pModelSet->mUpdateType)
     {
       int vec_size    = mpVariance->VectorSize();
       // old vector
@@ -1178,10 +1216,10 @@ namespace STK
       FLOAT *mac_den  = mac_num + 2 * vec_size + 1;
       FLOAT *nrm_den  = nrm_num + 2 * vec_size + 1;
   
-      FLOAT *var_pri  = mpVariance->mpPrior->mVector.pData();
-      FLOAT *mean_pri = mpMean    ->mpPrior->mVector.pData();
+//      FLOAT *var_pri  = mpVariance->mpPrior->mVector.pData();
+//      FLOAT *mean_pri = mpMean    ->mpPrior->mVector.pData();
 
-      if (pModelSet->mMmiUpdate == 1) 
+      if (!pModelSet->mISmoothAfterD) 
       {
         // Obsolete way of I-smoothing making use of numearator statistics
         for (i = 0; i < vec_size; i++) 
@@ -1192,14 +1230,15 @@ namespace STK
         *nrm_num   += pModelSet->MMI_tauI;
 
         // New way of I-smoothing or general MAP update making use of prior model set
-        if (pModelSet->mUpdateMask & UM_MAP)
+        ISmoothing(*nrm_num + *nrm_den, pModelSet);
+/*        if (pModelSet->mUpdateMask & UM_MAP)
         {
           for (i = 0; i < vec_size; i++) {
             mac_num[i] += pModelSet->mMapTau * mean_pri[i];
-            vac_num[i] += pModelSet->mMapTau * var_pri[i];
+            vac_num[i] += pModelSet->mMapTau * (1.0/var_pri[i] + SQR(mean_pri[i]));
           }
           *nrm_num += pModelSet->mMapTau;
-        }
+        }*/
       }
   
       Djm = 0.0;
@@ -1223,7 +1262,7 @@ namespace STK
   
       Djm = HIGHER_OF(pModelSet->MMI_h * Djm, pModelSet->MMI_E * *nrm_den);
   
-      if (pModelSet->mMmiUpdate == -1) 
+      if (pModelSet->mISmoothAfterD) 
       {
         // Obsolete way of I-smoothing making use of numearator statistics
         for (i = 0; i < vec_size; i++) 
@@ -1234,14 +1273,15 @@ namespace STK
         *nrm_num   += pModelSet->MMI_tauI;
 
         // New way of I-smoothing or general MAP update making use of prior model set
-        if (pModelSet->mUpdateMask & UM_MAP)
+        ISmoothing(*nrm_num + *nrm_den, pModelSet);
+        /*if (pModelSet->mUpdateMask & UM_MAP)
         {
           for (i = 0; i < vec_size; i++) {
             mac_num[i] += pModelSet->mMapTau * mean_pri[i];
-            vac_num[i] += pModelSet->mMapTau * var_pri[i];
+            vac_num[i] += pModelSet->mMapTau * (1.0/var_pri[i] + SQR(mean_pri[i]));
           }
           *nrm_num += pModelSet->mMapTau;
-        }
+        }*/
       }
       
       for (i = 0; i < vec_size; i++) 
@@ -1267,8 +1307,11 @@ namespace STK
     
     // //////////
     // MPE update
-    else if ((pModelSet->mMmiUpdate == 2 || pModelSet->mMmiUpdate == -2) && 0 == mAccumK.Rows()) 
+    else if ((UT_EBW == pModelSet->mUpdateType) && 0 == mAccumK.Rows()) 
     { 
+    
+
+    
       int    vec_size = mpVariance->VectorSize();
       FLOAT* mean_vec = mpMean->mVector.pData();
       FLOAT* var_vec  = mpVariance->mVector.pData();
@@ -1280,23 +1323,38 @@ namespace STK
       FLOAT *mac_mpe  = mpVariance->mpAccums + 1 * vec_size;
       FLOAT *nrm_mpe  = mpVariance->mpAccums + 2 * vec_size;
   
-      FLOAT *var_pri  = mpVariance->mpPrior->mVector.pData();
-      FLOAT *mean_pri = mpMean    ->mpPrior->mVector.pData();
-  
-      if (pModelSet->mMmiUpdate == 2) 
+//      FLOAT *var_pri  = mpVariance->mpPrior->mVector.pData();
+//      FLOAT *mean_pri = mpMean    ->mpPrior->mVector.pData();
+
+      if (*nrm_mpe + 2 * gWeightAccumDen <= pModelSet->mMinOccupation) 
       {
+        if (mpMacro)
+          Warning("Low occupation of '%s', mixture is not updated", mpMacro->mpName);
+        else 
+          Warning("Low occupation of mixture, mixture is not updated");
+        return;
+      }
+  
+      if (!pModelSet->mISmoothAfterD) 
+      {
+        ISmoothing(*nrm_mpe + 2 * gWeightAccumDen, pModelSet);
         // I-smoothing or general MAP update
-        if (pModelSet->mUpdateMask & UM_MAP)
+/*        if (pModelSet->mUpdateMask & UM_MAP)
         {
-//printf("mac_mpe[0]=%f, pModelSet->mMapTau=%f, mean_pri[0]=%f\n", mac_mpe[0], pModelSet->mMapTau, mean_pri[0]);
-//printf("vac_mpe[0]=%f, pModelSet->mMapTau=%f, 1.0/var_pri[0] + SQR(mean_pri[0])=%f\n",  vac_mpe[0], pModelSet->mMapTau, 1.0/var_pri[0] + SQR(mean_pri[0]));
+          FLOAT tau;
+          if(!pModelSet->JSmoothing
+          || (*nrm_mpe + 2 * gWeightAccumDen) <= *nrm_mpe) {
+            tau = pModelSet->mMapTau;
+          } else {
+            tau = pModelSet->mMapTau * *nrm_mpe / (*nrm_mpe + 2 * gWeightAccumDen);
+          }
           for (i = 0; i < vec_size; i++) 
           {
-            mac_mpe[i] += pModelSet->mMapTau * mean_pri[i];
-            vac_mpe[i] += pModelSet->mMapTau * (1.0/var_pri[i] + SQR(mean_pri[i]));
+            mac_mpe[i] += tau * mean_pri[i];
+            vac_mpe[i] += tau * (1.0/var_pri[i] + SQR(mean_pri[i]));
           }
-          *nrm_mpe += pModelSet->mMapTau;
-        }
+          *nrm_mpe += tau;
+        }*/
       }
       
       Djm = 0.0;
@@ -1323,10 +1381,13 @@ namespace STK
       // !!! gWeightAccumDen is passed using quite ugly hack that work
       // !!! only if mixtures are not shared by more states - MUST BE REWRITEN
       Djm = HIGHER_OF(pModelSet->MMI_h * Djm, pModelSet->MMI_E * gWeightAccumDen);
+      //(*nrm_mpe + 2 * gWeightAccumDen)); SERest_altE
   
-      if (pModelSet->mMmiUpdate == -2) 
+      if (pModelSet->mISmoothAfterD) 
       {
+        ISmoothing(*nrm_mpe + 2 * gWeightAccumDen, pModelSet);
         // I-smoothing
+/*
         if (pModelSet->mUpdateMask & UM_MAP)
         {
           for (i = 0; i < vec_size; i++) {
@@ -1334,11 +1395,9 @@ namespace STK
             vac_mpe[i] += pModelSet->mMapTau * (1.0/var_pri[i] + SQR(mean_pri[i]));
           }
           *nrm_mpe += pModelSet->mMapTau;
-        }
+        }*/
       }
   
-//printf("mac_mpe[0]=%f, Djm=%f, mean_vec[0]=%f, *nrm_mpe=%f\n", mac_mpe[0], Djm, mean_vec[0], *nrm_mpe);
-//printf("vac_mpe[0]=%f, var_vec[0]=%f\n", vac_mpe[0], var_vec[0]);
       for (i = 0; i < vec_size; i++) 
       {
         double macn_macd = mac_mpe[i];
@@ -1366,7 +1425,7 @@ namespace STK
       UpdateClusterParametersAccums();
 
       // if discriminative training:
-      if (pModelSet->mMmiUpdate == 2 || pModelSet->mMmiUpdate == -2)
+      if (UT_EBW == pModelSet->mUpdateType)
       {
         FLOAT D       = pModelSet->MMI_E * gWeightAccumDen;
         FLOAT gamma_n = mpVariance->mpAccums[mpVariance->VectorSize()*2] + gWeightAccumDen;
@@ -1569,15 +1628,16 @@ namespace STK
   //**************************************************************************  
   //**************************************************************************  
   Mean::
-  Mean(size_t vectorSize, bool allocateAccums) :
+  Mean(size_t vectorSize, int allocateAccums) :
     mVector(vectorSize)
   {
     size_t accum_size = 0;
     void*  free_vec;
     
-    if (allocateAccums)
+    if (0 < allocateAccums)
     {
-      accum_size = align<16>(((vectorSize + 1) * 2) * sizeof(FLOAT)); // * 2 for MMI accums
+      // allocateAccums == 2 for MMI update
+      accum_size = align<16>(((vectorSize + 1) * allocateAccums) * sizeof(FLOAT)); 
       
       mpAccums = static_cast<FLOAT*>
         (stk_memalign(16, accum_size, &free_vec));
@@ -1729,15 +1789,15 @@ namespace STK
   //**************************************************************************  
   //**************************************************************************  
   Variance::
-  Variance(size_t vectorSize, bool allocateAccums) :
+  Variance(size_t vectorSize, int allocateAccums) :
     mVector(vectorSize)
   {
     void* free_vec;
     
-    if (allocateAccums) 
+    if (0 < allocateAccums) 
     {
-      // * 2 for MMI accums
-      size_t accum_size = align<16>(((2*vectorSize + 1) * 2)*sizeof(FLOAT)); 
+      // allocateAccums == 2 for MMI update
+      size_t accum_size = align<16>(((2*vectorSize + 1) * allocateAccums)*sizeof(FLOAT)); 
           
       mpAccums = static_cast<FLOAT*>
         (stk_memalign(16, accum_size, &free_vec));
@@ -1902,10 +1962,10 @@ namespace STK
   //**************************************************************************  
   //**************************************************************************  
   Transition::
-  Transition(size_t nStates, bool allocateAccums)
+  Transition(size_t nStates, int allocateAccums)
   {
     size_t  alloc_size;
-    alloc_size = allocateAccums ? 2 * SQR(nStates) + nStates: SQR(nStates);
+    alloc_size = 0 < allocateAccums ? 2 * SQR(nStates) + nStates: SQR(nStates);
     
     mpMatrixO = new FLOAT[alloc_size];
     mNStates = nStates;
@@ -1988,18 +2048,23 @@ namespace STK
   State::
   UpdateFromAccums(const ModelSet * pModelSet, const Hmm * pHmm) 
   {
-    size_t i;
+    size_t i, k;
   
     if (mOutPdfKind == KID_DiagC) 
     {
       FLOAT accum_sum = 0;
   
 //    if (hmm_set->mUpdateMask & UM_WEIGHT) {
-      for (i = 0; i < mNMixtures; i++) 
+
+      for (i = 0; i < mNMixtures; i++)
       {
-        if(pModelSet->mMmiUpdate == 2 || pModelSet->mMmiUpdate == -2)
+        if(UT_EBW == pModelSet->mUpdateType)
         {
-          //!!! We do not have mWeightAccum, so priot weights are taken instead.
+          // For MMI update from single combined num-den accumulator, we can use numerator counts.
+          ///accum_sum += mpMixture[i].mWeightAccumDen;
+
+          //... but it does not make sense for MPE (we would have to distinguish MMI and MPE update),
+          //!!! So do not have mWeightAccum and prior weights are taken instead.
           //!!! Anyway, this is something not very nice.
           if(mpPrior->mpMixture[i].mWeight < LOG_MIN)
           {
@@ -2010,7 +2075,17 @@ namespace STK
             mpMixture[i].mWeightAccum = exp(mpPrior->mpMixture[i].mWeight);
           }
         }
-        
+/*
+        // It can be useful to update prior model with -w 0.0, which avoid discarding Gaussians
+        // with with zero (or very low) occupation. This way, we can make sure that the Gaussians
+        // in the prior and the model that is being updated here will match. Now it is the time
+        // to discard such Gaussians that have have LOG_0 (or very low) weight in the prior model.        
+        if(pModelSet->mMapTau > 0.0
+        && (mpPrior->mpMixture[i].mWeight < LOG_MIN 
+           || exp(mpPrior->mpMixture[i].mWeight) < pModelSet->mMinMixWeight)) {
+          mpMixture[i].mWeightAccum = 0.0;
+        }
+*/
         accum_sum += mpMixture[i].mWeightAccum;
       }
 
@@ -2035,7 +2110,7 @@ namespace STK
         // Remove mixtures with low weight
       if (pModelSet->mUpdateMask & UM_WEIGHT) 
       {
-        for (i = 0; i < mNMixtures; i++) 
+        for (i = 0, k = 0; i < mNMixtures; i++, k++) 
         {
           if (mpMixture[i].mWeightAccum / accum_sum < pModelSet->mMinMixWeight) 
           {
@@ -2045,13 +2120,13 @@ namespace STK
               for (j=0; j < pHmm->mNStates && pHmm->mpState[j] != this; j++)
                 ; // find the state number
               Warning("Discarding mixture %d of Hmm %s state %d because of too low mixture weight",
-                      (int) i, pHmm->mpMacro->mpName, (int) j + 1);
+                      (int) k, pHmm->mpMacro->mpName, (int) j + 1);
             } 
             else 
             {
               assert(mpMacro);
               Warning("Discarding mixture %d of state %s because of too low mixture weight",
-                      (int) i, mpMacro->mpName);
+                      (int) k, mpMacro->mpName);
             }
             accum_sum -= mpMixture[i].mWeightAccum;
   
@@ -2904,7 +2979,8 @@ namespace STK
     this->mDurKind              = KID_UNSET;
     this->mNMixtures            = 0;
     this->mNStates              = 0;
-    this->mAllocAccums          = flags & MODEL_SET_WITH_ACCUM ? true : false;
+    this->mAllocAccums          = flags & MODEL_SET_WITH_ACCUM         ? 1 :
+                                  flags & MODEL_SET_WITH_TWO_ACCUM_SET ? 2 : 0;
     this->mTotalDelay           = 0;
     InitLogMath();
   
@@ -2918,11 +2994,15 @@ namespace STK
     this->mpXformToUpdate       = NULL;
     this->mNumberOfXformsToUpdate     = 0;
     this->mGaussLvl2ModelReest  = 0;
-    this->mMmiUpdate            = 0;
+    this->mUpdateType           = UT_ML;
+    this->mISmoothAfterD        = false;
+    this->JSmoothing            = false;
     this->MMI_E                 = 2.0;
     this->MMI_h                 = 2.0;
     this->MMI_tauI              = 100.0;
     this->mMapTau               = 10.0;
+    this->mMinOccupation        = 0.0;
+    this->mISmoothingMaxOccup   = -1.0;
     mpClusterWeightVectors            = NULL;
     mNClusterWeightVectors            = 0;
     mpGw                              = NULL;
@@ -3052,7 +3132,7 @@ namespace STK
     if (mAllocAccums)
     {
       Scan(MTM_STATE | MTM_MEAN | MTM_VARIANCE | MTM_TRANSITION,
-              NULL, ResetAccum, NULL);
+              NULL, ResetAccum, this);
     }
   }; // ResetAccums()
   

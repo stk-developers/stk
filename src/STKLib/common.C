@@ -21,6 +21,7 @@
 #include <ctype.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <errno.h>
 
 #include <stdexcept>
 #include <iostream>
@@ -327,8 +328,8 @@ void fast_softmax_vec(double *in, double *out, int size)
         return  x;
     }
   
-    //return x + log(1.0 + exp(diff));
-    return x + log(1.0 + FAST_EXP(diff));
+    return x + log(1.0 + exp(diff));
+    //return x + log(1.0 + FAST_EXP(diff));
   }
   
   //***************************************************************************
@@ -1266,10 +1267,16 @@ void fast_softmax_vec(double *in, double *out, int size)
       }
     } else if (filter) {
       char *f = expandFilterCommand(filter, file_name);
-  
-      if ((fp = popen(f, *type == 'r' ? "r" : "w")) == NULL) {
-        Error("Cannot popen %s filter '%s'",
-              *type == 'r' ? "input": "output", f);
+      int n_trials = 0;
+
+      while ((fp = popen(f, *type == 'r' ? "r" : "w")) == NULL) {
+        if (++n_trials > 10) {
+          Error("Cannot popen %s filter '%s': %s",
+                *type == 'r' ? "input": "output", f, strerror(errno));
+        }
+        Warning("Cannot popen %s filter '%s: %s'. Trying again ...",
+                *type == 'r' ? "input": "output", f, strerror(errno));
+        sleep(1);
       }
       free(f);
     } else if ((fp = fopen(file_name, type)) == NULL) {
@@ -1289,8 +1296,11 @@ void fast_softmax_vec(double *in, double *out, int size)
     if (fstat(fileno(fp), &sb)) {
       return EOF;
     }
-    if (S_ISFIFO(sb.st_mode)) return pclose(fp);
-    else return fclose(fp);
+    if (S_ISFIFO(sb.st_mode)) {
+      return pclose(fp);
+    } else {
+      return fclose(fp);
+    }
   }
   
   
