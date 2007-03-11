@@ -256,8 +256,6 @@ namespace STK
       void 
       WriteBeta(int time, NetworkNode* pNode, int state, Token *token);
 
-      WordLinkRecord*
-      TimePruning(int frame_delay);
 
 
       void
@@ -355,6 +353,8 @@ namespace STK
       FLOAT             
       ViterbiDone(Label** pLabels, Lattice* pNetwork = NULL);
       
+      WordLinkRecord*
+      TimePruning(int frame_delay);
       
       FLOAT 
       MCEReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, 
