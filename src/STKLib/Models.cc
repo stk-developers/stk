@@ -43,7 +43,7 @@ namespace STK
   };
   
   size_t gFuncTableSize = sizeof(gFuncTable)/sizeof(*gFuncTable);
-  enum StatType {MEAN_STATS, COV_STATS};
+  enum StatType {MEAN_STATS, COV_STATS, CMLLR_STATS};
   
   
   //***************************************************************************
@@ -512,7 +512,9 @@ namespace STK
       if (j == *nxformStatAccums) 
       {
         size_t size = xfsc->mpXform->mInSize; //mean : mean+covariance
-        size = (stat_type == MEAN_STATS) ? size : size+size*(size+1)/2;
+        size = (stat_type == MEAN_STATS) ? size : 
+               (stat_type == COV_STATS)  ? size+size*(size+1)/2
+                                         : 0; // CMLLR_STATS
   
         *xformStatAccum =
           (XformStatAccum *) realloc(*xformStatAccum,
@@ -522,9 +524,13 @@ namespace STK
           Error("Insufficient memory");
   
         xfsa = *xformStatAccum + *nxformStatAccums - 1;
-  
-        if ((xfsa->mpStats = (FLOAT *) malloc(sizeof(FLOAT) * size)) == NULL)
+        
+        if(size == 0) {
+          xfsa->mpStats = NULL;
+        } 
+        else if ((xfsa->mpStats = (FLOAT *) malloc(sizeof(FLOAT) * size)) == NULL) {
           Error("Insufficient memory");
+        }
   
         xfsa->mpXform    = xfsc->mpXform;
         xfsa->mNorm     = 0.0;
@@ -545,6 +551,8 @@ namespace STK
     MacroData       *   pData, 
     void            *   hmm_set)
   {
+  
+    ModelSet *p_hmm_set = reinterpret_cast<ModelSet *>(hmm_set);
     if (macro_type == mt_XformInstance) 
     {
       //Allocate Xform stat caches for XformInstance
@@ -553,9 +561,9 @@ namespace STK
       size_t            i;
       size_t            j;
   
-      for (i=0; i < ((ModelSet *) hmm_set)->mNumberOfXformsToUpdate; i++) 
+      for (i=0; i < p_hmm_set->mNumberOfXformsToUpdate; i++) 
       {
-        Xform *xform = ((ModelSet *) hmm_set)->mpXformToUpdate[i].mpXform;
+        Xform *xform = p_hmm_set->mpXformToUpdate[i].mpXform;
         int instanceContainXfrom = IsXformIn1stLayer(xform, xfi->mpXform);
   
         //Does instance one level up contain cache for this xform
@@ -599,20 +607,17 @@ namespace STK
           xfsc->mpUpperLevelStats = upperLevelStats;
         }
       }
-    } 
-    
-    else if (macro_type == mt_mixture) 
-    {
+    } else if (macro_type == mt_mixture) {
       //Allocate Xform stat accumulators for mean and covariance
   
       Mixture *mix = (Mixture *) pData;
       AllocXformStatAccums(&mix->mpMean->mpXformStatAccum,
                           &mix->mpMean->mNumberOfXformStatAccums,
-                          mix->mpInputXform, MEAN_STATS);
+                          mix->mpInputXform, p_hmm_set->mCmllrStats ? CMLLR_STATS : MEAN_STATS);
   
       AllocXformStatAccums(&mix->mpVariance->mpXformStatAccum,
                           &mix->mpVariance->mNumberOfXformStatAccums,
-                          mix->mpInputXform, COV_STATS);
+                          mix->mpInputXform, p_hmm_set->mCmllrStats ? CMLLR_STATS : COV_STATS);
   
       if (mix->mpInputXform == NULL || mix->mpInputXform->mNumberOfXformStatCaches == 0)
         return;
@@ -623,21 +628,21 @@ namespace STK
       {
         mix->mpVariance->mUpdatableFromStatAccums = false;
         mix->mpMean    ->mUpdatableFromStatAccums = false;
-        ((ModelSet *) hmm_set)->mAllMixuresUpdatableFromStatAccums = false;  
+        p_hmm_set->mAllMixuresUpdatableFromStatAccums = false;  
       } 
       
       else if (mix->mpMean->mNumberOfXformStatAccums != 1) 
       {
         assert(mix->mpMean->mNumberOfXformStatAccums > 1);
         mix->mpMean->mUpdatableFromStatAccums = false;
-        ((ModelSet *) hmm_set)->mAllMixuresUpdatableFromStatAccums = false;
+        p_hmm_set->mAllMixuresUpdatableFromStatAccums = false;
       } 
       
       else if (mix->mpVariance->mNumberOfXformStatAccums != 1) 
       {
         assert(mix->mpVariance->mNumberOfXformStatAccums > 1);
         mix->mpVariance->mUpdatableFromStatAccums = false;
-        ((ModelSet *) hmm_set)->mAllMixuresUpdatableFromStatAccums = false;
+        p_hmm_set->mAllMixuresUpdatableFromStatAccums = false;
       }
     }
   }
@@ -2641,6 +2646,46 @@ namespace STK
     return pOutputVector;
   }; //Evaluate(...)
 
+  //**************************************************************************  
+  //**************************************************************************  
+  // ConstantXform section
+  //**************************************************************************  
+  //**************************************************************************  
+  ConstantXform::
+  ConstantXform(size_t outSize) :
+    mVector(1, outSize)
+  {
+    mInSize       = 0;
+    mOutSize      = outSize;
+    mMemorySize   = 0;
+    mDelay        = 0;
+    mXformType    = XT_CONSTANT;
+  }
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  ConstantXform::
+  ~ConstantXform()
+  {}
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  //virtual 
+  FLOAT *
+  ConstantXform::
+  Evaluate(FLOAT *    pInputVector, 
+           FLOAT *    pOutputVector,
+           char *     pMemory,
+           PropagDirectionType  direction)
+  {
+    size_t i;
+    
+    for (i = 0; i < mOutSize; i++) 
+    {
+      pOutputVector[i] = mVector[0][i];
+    }
+    return pOutputVector;
+  }; //Evaluate(...)
   
   //**************************************************************************  
   //**************************************************************************  
@@ -3397,6 +3442,14 @@ namespace STK
   AllocateAccumulatorsForXformStats() 
   {
     mAllMixuresUpdatableFromStatAccums = true;
+    
+    if(mCmllrStats) {
+      for (int i=0; i < mNumberOfXformsToUpdate; i++) {
+        int size = mpXformToUpdate[i].mpXform->mInSize;
+        mpXformToUpdate[i].mpXform->mpCmllrStats = (FLOAT *) calloc(sizeof(FLOAT), ((size+size*(size+1)/2) * (size-1) + 1));
+      }
+    }
+    
     Scan(MTM_XFORM_INSTANCE | MTM_MIXTURE, NULL,
          AllocateXformStatCachesAndAccums, this);
   }
@@ -3505,10 +3558,79 @@ namespace STK
         Error("Cannot open output file %s", userData.mCovFile.mpOccupN);
       }
   
-      Scan(MTM_MEAN | MTM_VARIANCE, nodeNameBuffer,
-           WriteStatsForXform, &userData);
+      if (!mCmllrStats) {
+        Scan(MTM_MEAN | MTM_VARIANCE, nodeNameBuffer, WriteStatsForXform, &userData);
+      } else {
+        int dim;
+        size_t out_size= userData.mpXform->mOutSize;
+        size_t k_size  = userData.mpXform->mInSize;
+        size_t G_size  = k_size*(k_size+1)/2;
+        size_t stat_size = k_size+G_size;
+        assert(k_size - 1 == out_size);
+        
+        FLOAT norm = userData.mpXform->mpCmllrStats[stat_size * out_size];
+        
+        if (fprintf(userData.mMeanFile.mpOccupP, 
+                    "%s "FLOAT_FMT"\n", 
+                    userData.mpXform->mpMacro->mpName,
+                    (double) norm) < 0) {
+          Error("Cannot write to file: %s", userData.mMeanFile.mpOccupN);
+        }
+        if (fprintf(userData.mCovFile.mpOccupP, 
+                    "%s "FLOAT_FMT"\n", 
+                    userData.mpXform->mpMacro->mpName,
+                    norm) < 0) {
+          Error("Cannot write to file: %s", userData.mCovFile.mpOccupN);
+        }
+
+        for(dim = 0; dim < out_size; dim++) {
+          int cc = 0;
+          FLOAT *out_vec = &userData.mpXform->mpCmllrStats[dim * stat_size];
+          if (binary) {
+            int i;
+            if (!isBigEndian()) {
+              for (i = 0; i < k_size; i++) swapFLOAT(out_vec[i]);
+            }          
+            cc |= (fwrite(out_vec, sizeof(FLOAT), k_size, userData.mMeanFile.mpStatsP) != k_size);
+        
+            if (!isBigEndian()) 
+              for (i = 0; i < k_size; i++) swapFLOAT(out_vec[i]);
+          } else {
+            int j;
+            for (j=0;j<k_size;j++) {
+              cc |= fprintf(userData.mMeanFile.mpStatsP, FLOAT_FMT" ", out_vec[j]) < 0;
+            }
+            cc |= fputs("\n", userData.mMeanFile.mpStatsP) == EOF;
+           }
+          if (cc) {
+            Error("Cannot write to file %s", userData.mMeanFile.mpStatsN);
+          }      
+
+          out_vec = &userData.mpXform->mpCmllrStats[dim * stat_size + k_size];
+          if (binary) {
+            int i;
+            if (!isBigEndian()) for (i = 0; i < G_size; i++) swapFLOAT(out_vec[i]);
+            cc |= fwrite(out_vec, sizeof(FLOAT), G_size, userData.mCovFile.mpStatsP) != G_size;
+            if (!isBigEndian()) for (i = 0; i < G_size; i++) swapFLOAT(out_vec[i]);
+          } else {
+            int k, j;
+            for (k=0; k < k_size; k++) {
+              for (j=0;j<=k;j++) {
+                cc |= fprintf(userData.mCovFile.mpStatsP, FLOAT_FMT" ", out_vec[k*(k+1)/2+j]) < 0;
+              }
+              for (;j<k_size; j++) {
+                cc |= fprintf(userData.mCovFile.mpStatsP, FLOAT_FMT" ", out_vec[j*(j+1)/2+k]) < 0;
+              }
+              cc |= fputs("\n", userData.mCovFile.mpStatsP) == EOF;
+            }
+            cc |= fputs("\n", userData.mCovFile.mpStatsP) == EOF;
+          }
   
-  
+          if (cc) {
+            Error("Cannot write to file %s", userData.mCovFile.mpStatsN);
+          }      
+        }
+      }
       fclose(userData.mMeanFile.mpStatsP); fclose(userData.mMeanFile.mpOccupP);
       fclose(userData.mCovFile.mpStatsP);  fclose(userData.mCovFile.mpOccupP);
       free(userData.mMeanFile.mpStatsN);   free(userData.mMeanFile.mpOccupN);
@@ -3571,88 +3693,90 @@ namespace STK
   
       MakeFileName(fileName, userData.mpXform->mpMacro->mpName, pOutDir, NULL);
       ext = fileName + strlen(fileName);
-      strcpy(ext, ".xms"); userData.mMeanFile.mpStatsN = strdup(fileName);
-      strcpy(ext, ".xmo"); userData.mMeanFile.mpOccupN = strdup(fileName);
-      strcpy(ext, ".xcs"); userData.mCovFile.mpStatsN = strdup(fileName);
-      strcpy(ext, ".xco"); userData.mCovFile.mpOccupN = strdup(fileName);
-  
-      if (userData.mMeanFile.mpStatsN == NULL || userData.mMeanFile.mpOccupN == NULL||
-        userData.mCovFile.mpStatsN  == NULL || userData.mCovFile.mpOccupN  == NULL) 
-      {
-        Error("Insufficient memory");
-      }
-  
-      userData.mMeanFile.mpStatsP = fopen(userData.mMeanFile.mpStatsN, "r");
       
-      if (userData.mMeanFile.mpStatsP == NULL) 
-      {
-        Error("Cannot open input file '%s'", userData.mMeanFile.mpStatsN);
-      }
-  
-      if (binary) 
-      {
-        header.precision = -1;
-        fread(&header, sizeof(header), 1, userData.mMeanFile.mpStatsP);
-        
-        if (!isBigEndian()) 
-          swap2(header.size);
-        
-        if (ferror(userData.mMeanFile.mpStatsP))
+      if(!mCmllrStats) {
+        strcpy(ext, ".xms"); userData.mMeanFile.mpStatsN = strdup(fileName);
+        strcpy(ext, ".xmo"); userData.mMeanFile.mpOccupN = strdup(fileName);
+        strcpy(ext, ".xcs"); userData.mCovFile.mpStatsN = strdup(fileName);
+        strcpy(ext, ".xco"); userData.mCovFile.mpOccupN = strdup(fileName);
+    
+        if (userData.mMeanFile.mpStatsN == NULL || userData.mMeanFile.mpOccupN == NULL||
+          userData.mCovFile.mpStatsN  == NULL || userData.mCovFile.mpOccupN  == NULL) 
         {
-          Error("Cannot read input file '%s'", userData.mMeanFile.mpStatsN);
-        }        
-        else if (header.stats_type                != STATS_MEAN
-             || static_cast<size_t>(header.size)  != userData.mpXform->mInSize
-             || header.precision                  != (sizeof(FLOAT) == sizeof(FLOAT_32)
-                                                     ? PRECISION_FLOAT : PRECISION_DOUBLE))
-        {
-          Error("Invalid header in file '%s'", userData.mMeanFile.mpStatsN);
+          Error("Insufficient memory");
         }
-      }
   
-      userData.mMeanFile.mpOccupP = fopen(userData.mMeanFile.mpOccupN, "r");
-      
-      if (userData.mMeanFile.mpOccupP == NULL) 
-      {
-        Error("Cannot open input file '%s'", userData.mMeanFile.mpOccupN);
-      }
-  
-      userData.mCovFile.mpStatsP = fopen(userData.mCovFile.mpStatsN, "r");
-      if (userData.mCovFile.mpStatsP == NULL) 
-      {
-        Error("Cannot open input file '%s'", userData.mCovFile.mpStatsN);
-      }
-  
-      if (binary) 
-      {
-        header.precision = -1;
-        fread(&header, sizeof(header), 1, userData.mCovFile.mpStatsP);
-        if (!isBigEndian()) swap2(header.size);
-        if (ferror(userData.mCovFile.mpStatsP)) {
-          Error("Cannot read input file '%s'", userData.mCovFile.mpStatsN);
-        } else if (header.stats_type               != STATS_COV_LOW_TRI
-               || static_cast<size_t>(header.size) != userData.mpXform->mInSize
-               || header.precision                 != (sizeof(FLOAT) == sizeof(float)
-                                                     ? PRECISION_FLOAT : PRECISION_DOUBLE))
+        userData.mMeanFile.mpStatsP = fopen(userData.mMeanFile.mpStatsN, "r");
+        
+        if (userData.mMeanFile.mpStatsP == NULL) 
         {
-          Error("Invalid header in file '%s'", userData.mCovFile.mpStatsN);
+          Error("Cannot open input file '%s'", userData.mMeanFile.mpStatsN);
         }
+    
+        if (binary) 
+        {
+          header.precision = -1;
+          fread(&header, sizeof(header), 1, userData.mMeanFile.mpStatsP);
+          
+          if (!isBigEndian()) 
+            swap2(header.size);
+          
+          if (ferror(userData.mMeanFile.mpStatsP))
+          {
+            Error("Cannot read input file '%s'", userData.mMeanFile.mpStatsN);
+          }        
+          else if (header.stats_type                != STATS_MEAN
+               || static_cast<size_t>(header.size)  != userData.mpXform->mInSize
+               || header.precision                  != (sizeof(FLOAT) == sizeof(FLOAT_32)
+                                                       ? PRECISION_FLOAT : PRECISION_DOUBLE))
+          {
+            Error("Invalid header in file '%s'", userData.mMeanFile.mpStatsN);
+          }
+        }
+    
+        userData.mMeanFile.mpOccupP = fopen(userData.mMeanFile.mpOccupN, "r");
+        
+        if (userData.mMeanFile.mpOccupP == NULL) 
+        {
+          Error("Cannot open input file '%s'", userData.mMeanFile.mpOccupN);
+        }
+    
+        userData.mCovFile.mpStatsP = fopen(userData.mCovFile.mpStatsN, "r");
+        if (userData.mCovFile.mpStatsP == NULL) 
+        {
+          Error("Cannot open input file '%s'", userData.mCovFile.mpStatsN);
+        }
+    
+        if (binary) 
+        {
+          header.precision = -1;
+          fread(&header, sizeof(header), 1, userData.mCovFile.mpStatsP);
+          if (!isBigEndian()) swap2(header.size);
+          if (ferror(userData.mCovFile.mpStatsP)) {
+            Error("Cannot read input file '%s'", userData.mCovFile.mpStatsN);
+          } else if (header.stats_type               != STATS_COV_LOW_TRI
+                 || static_cast<size_t>(header.size) != userData.mpXform->mInSize
+                 || header.precision                 != (sizeof(FLOAT) == sizeof(float)
+                                                       ? PRECISION_FLOAT : PRECISION_DOUBLE))
+          {
+            Error("Invalid header in file '%s'", userData.mCovFile.mpStatsN);
+          }
+        }
+    
+        userData.mCovFile.mpOccupP = fopen(userData.mCovFile.mpOccupN, "r");
+        if (userData.mCovFile.mpOccupP == NULL) {
+          Error("Cannot open output file '%s'", userData.mCovFile.mpOccupN);
+        }
+    
+        Scan(MTM_MEAN | MTM_VARIANCE, nodeNameBuffer,
+             ReadStatsForXform, &userData);
+    
+    
+        fclose(userData.mMeanFile.mpStatsP); fclose(userData.mMeanFile.mpOccupP);
+        fclose(userData.mCovFile.mpStatsP);  fclose(userData.mCovFile.mpOccupP);
+        free(userData.mMeanFile.mpStatsN);   free(userData.mMeanFile.mpOccupN);
+        free(userData.mCovFile.mpStatsN);    free(userData.mCovFile.mpOccupN);
       }
-  
-      userData.mCovFile.mpOccupP = fopen(userData.mCovFile.mpOccupN, "r");
-      if (userData.mCovFile.mpOccupP == NULL) {
-        Error("Cannot open output file '%s'", userData.mCovFile.mpOccupN);
-      }
-  
-      Scan(MTM_MEAN | MTM_VARIANCE, nodeNameBuffer,
-           ReadStatsForXform, &userData);
-  
-  
-      fclose(userData.mMeanFile.mpStatsP); fclose(userData.mMeanFile.mpOccupP);
-      fclose(userData.mCovFile.mpStatsP);  fclose(userData.mCovFile.mpOccupP);
-      free(userData.mMeanFile.mpStatsN);   free(userData.mMeanFile.mpOccupN);
-      free(userData.mCovFile.mpStatsN);    free(userData.mCovFile.mpOccupN);
-  
   
       strcpy(ext, ".xfm");
       if ((fp = fopen(fileName, "r")) == NULL) {

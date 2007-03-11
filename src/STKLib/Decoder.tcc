@@ -1115,42 +1115,63 @@ namespace STK
             continue;
     
           UpdateXformInstanceStatCaches(ixf, pObs2, mTime);
-    
+          
           for (i = 0; i < ixf->mNumberOfXformStatCaches; i++) 
           {
             XformStatCache *xfsc = &ixf->mpXformStatCache[i];
             Variance *var  = state2->mpMixture[m].mpEstimates->mpVariance;
             Mean     *mean = state2->mpMixture[m].mpEstimates->mpMean;
     
-            for (j = 0; j < var->mNumberOfXformStatAccums; j++) 
-            {
-              XformStatAccum *xfsa = &var->mpXformStatAccum[j];
-              
-              if (xfsa->mpXform == xfsc->mpXform) 
-              {
-                size_t size = xfsc->mpXform->mInSize;
-                for (k = 0; k < size+size*(size+1)/2; k++) 
-                {
-                  xfsa->mpStats[k] += xfsc->mpStats[k] * Lqjmt;
+            if (!mpModelSetToUpdate->mCmllrStats) { // compute full covariance statistics (for HLDA)
+              for (j = 0; j < var->mNumberOfXformStatAccums; j++) {
+                XformStatAccum *xfsa = &var->mpXformStatAccum[j];
+                if (xfsa->mpXform == xfsc->mpXform) {
+                  size_t size = xfsc->mpXform->mInSize;
+                  for (k = 0; k < size+size*(size+1)/2; k++) {
+                    xfsa->mpStats[k] += xfsc->mpStats[k] * Lqjmt;
+                  }
+                  xfsa->mNorm += xfsc->mNorm * Lqjmt;
+                  break;
                 }
-                xfsa->mNorm += xfsc->mNorm * Lqjmt;
-                break;
               }
-            }
-    
-            for (j = 0; j < mean->mNumberOfXformStatAccums; j++) 
-            {
-              XformStatAccum *xfsa = &mean->mpXformStatAccum[j];
-              
-              if (xfsa->mpXform == xfsc->mpXform) 
-              {
-                size_t size = xfsc->mpXform->mInSize;
-                for (k = 0; k < size; k++) 
-                {
-                  xfsa->mpStats[k] += xfsc->mpStats[k] * Lqjmt;
+              for (j = 0; j < mean->mNumberOfXformStatAccums; j++) {
+                XformStatAccum *xfsa = &mean->mpXformStatAccum[j];                
+                if (xfsa->mpXform == xfsc->mpXform) {
+                  size_t size = xfsc->mpXform->mInSize;
+                  for (k = 0; k < size; k++) {
+                    xfsa->mpStats[k] += xfsc->mpStats[k] * Lqjmt;
+                  }
+                  xfsa->mNorm += xfsc->mNorm * Lqjmt;
+                  break;
                 }
-                xfsa->mNorm += xfsc->mNorm * Lqjmt;
-                break;
+              }
+            } else { // mpModelSet.cmllrStats
+              int outOffset = 0;
+              for (j = 0; j < mean->mNumberOfXformStatAccums; j++) {
+                if (mean->mpXformStatAccum[j].mpXform == xfsc->mpXform)  {
+                  if(xfsc->mpXform->mOutSize != xfsc->mpXform->mInSize - 1) {
+                    Error("Invalid size of CMMLR matrix %s", xfsc->mpXform->mpMacro->mpName);
+                  }
+                  size_t size = xfsc->mpXform->mInSize;
+                  size_t stat_size = size+size*(size+1)/2;
+                  int dim;
+                  
+                  for(dim = 0; dim < size - 1; dim++) {                  
+                    for (k = 0; k < size; k++) {
+                      xfsc->mpXform->mpCmllrStats[stat_size * dim + k]
+                        += xfsc->mpStats[k] * Lqjmt * mean->mVector[dim+outOffset] * var->mVector[dim+outOffset];
+                    }
+                    for (k = size; k < stat_size; k++) {
+                      xfsc->mpXform->mpCmllrStats[stat_size * dim + k]
+                        += xfsc->mpStats[k] * Lqjmt *                                var->mVector[dim+outOffset];
+                    }
+                  }
+                  xfsc->mpXform->mpCmllrStats[stat_size * dim] += xfsc->mNorm * Lqjmt;
+                  break;
+                }
+                outOffset += mean->mpXformStatAccum[j].mpXform->mOutSize;
+                // !!! This is hack to deal with block diaginal CMLLR's
+                // !!! Works only if all block transformatins are listed in 'xormlist' in the correct order
               }
             }
           }
@@ -2185,13 +2206,15 @@ namespace STK
         if (p_node->mC.mType & NT_PHONE)  
         {
           Macro *macro;
+	  char* phone_name;
           p_node->mC.mType &= ~NT_PHONE;
-          p_node->mC.mType |= NT_MODEL;        
-          macro = FindMacro(&pHmms->mHmmHash, p_node->mC.mpName);
+          p_node->mC.mType |= NT_MODEL;
+	  phone_name = p_node->mC.mpName; // mpName is in union -> will be rewritten by mpHmm
+          macro = FindMacro(&pHmms->mHmmHash, phone_name);
       
           if (macro == NULL) 
           {
-            Error("Model %s not defined in %sHMM set", p_node->mC.mpName,
+            Error("Model %s not defined in %sHMM set", phone_name,
                   pHmmsToUpdate != pHmms ? "alignment " : "");
           }
           p_node->mC.mpHmm =  (Hmm *) macro->mpData;
@@ -2200,9 +2223,9 @@ namespace STK
           {
             if (pHmmsToUpdate != pHmms) 
             {
-              macro = FindMacro(&pHmmsToUpdate->mHmmHash, p_node->mC.mpName);
+              macro = FindMacro(&pHmmsToUpdate->mHmmHash, phone_name);
               if (macro == NULL) {
-                Error("Model %s not defined in HMM set", p_node->mC.mpName,
+                Error("Model %s not defined in HMM set", phone_name,
                       pHmmsToUpdate != pHmms ? "" : "target ");
               }
               p_node->mC.rpHmmToUpdate() = (Hmm *) macro->mpData;

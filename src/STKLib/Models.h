@@ -57,6 +57,7 @@ namespace STK
   class LinearXform;
   class MatlabXform;
   class StackingXform;
+  class ConstantXform;
   class XformStatCache;
   class XformStatAccum;
 
@@ -235,7 +236,7 @@ namespace STK
   
     /* Non-HTK keywords */
     KID_FrmExt  =200,KID_PDFObsVec,  KID_ObsCoef,    KID_Input,    KID_NumLayers,
-    KID_NumBlocks,   KID_Layer,      KID_Copy,       KID_Stacking,
+    KID_NumBlocks,   KID_Layer,      KID_Copy,       KID_Stacking, KID_Constant,
   
     /* Numeric functions - FuncXform*/
     KID_Sigmoid,     KID_Log,        KID_Exp,        KID_Sqrt,     KID_SoftMax,
@@ -299,6 +300,7 @@ namespace STK
     BiasXform*      ReadBiasXform     (FILE* fp, Macro* macro);
     FuncXform*      ReadFuncXform     (FILE* fp, Macro* macro, int funcId);
     StackingXform*  ReadStackingXform (FILE* fp, Macro* macro);
+    ConstantXform*  ReadConstantXform (FILE* fp, Macro* macro);
     int             ReadGlobalOptions (FILE* fp);
     
     void   WriteHMM          (FILE* fp, bool binary, Hmm*             hmm);
@@ -317,6 +319,7 @@ namespace STK
     void   WriteFuncXform    (FILE* fp, bool binary,      FuncXform*  xform);
     void   WriteBiasXform    (FILE* fp, bool binary,      BiasXform*  xform);
     void   WriteStackingXform(FILE* fp, bool binary,  StackingXform*  xform);
+    void   WriteConstantXform(FILE* fp, bool binary,  ConstantXform*  xform);
     void   WriteGlobalOptions(FILE* fp, bool binary);  
     
     
@@ -364,6 +367,7 @@ namespace STK
     bool                      mISmoothAfterD;
     bool                      JSmoothing;
     bool                      mSaveGlobOpts;
+    bool                      mCmllrStats; // Collect CMLLR statistics instedad of full covariance statistics
     FLOAT                     MMI_E;
     FLOAT                     MMI_h;
     FLOAT                     MMI_tauI;
@@ -1151,6 +1155,7 @@ namespace STK
     XT_BIAS,
     XT_FUNC,
     XT_STACKING,
+    XT_CONSTANT,
     XT_COMPOSITE,
     XT_FEATURE_MAPPING,
     XT_FRANTA_PRODUCT,
@@ -1170,8 +1175,9 @@ namespace STK
     size_t              mOutSize;
     size_t              mMemorySize;
     int                 mDelay;
+    FLOAT *             mpCmllrStats; // !!! Not very nice to have it here
     
-    Xform() : MacroData() {}
+    Xform() : MacroData(), mpCmllrStats(NULL) {}
     
     virtual 
     ~Xform() {}
@@ -1406,6 +1412,38 @@ namespace STK
              PropagDirectionType  direction);  
   };
   
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Constant Xform representation
+   */
+  class ConstantXform : public Xform 
+  {
+  public:
+    /**
+     * @brief The constructor
+     * @param inSize size of input vector
+     * @param outSize size of output vector
+     */
+    ConstantXform(size_t outSize);
+    
+    virtual
+    ~ConstantXform();
+    
+    Matrix<FLOAT>       mVector;
+  
+    /**
+     * @brief Copy Xform evaluation 
+     * @param pInputVector pointer to the input vector
+     * @param pOutputVector pointer to the output vector
+     * @param pMemory pointer to the extra memory needed by the operation
+     * @param direction propagation direction (forward/backward)
+     */
+    virtual FLOAT* 
+    Evaluate(FLOAT*     pInputVector, 
+             FLOAT*     pOutputVector,
+             char*      pMemory,
+             PropagDirectionType  direction);  
+  };
   
   /** *************************************************************************
    ** *************************************************************************
@@ -1593,6 +1631,7 @@ namespace STK
   public:
     FILE *        mpFp;
     char *        mpFileName;
+    ModelSet *    mpModelSet;
     int           mMmi;
   };
 

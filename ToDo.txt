@@ -57,12 +57,14 @@ CD phone expansion of network with short circuit leads to infinite loop
 HPARM{1,2} in not recognized (only SPARM{1,2})
 SVite: -w (without para does not switch on -G STH)
 In common.C: fstat(fileno(fp), &sb) does not work with 64bit architecture
-SERest.c triers to update varFloorXFORMNAME macros, which results in vector on NaNs and screw up the flooring
+SERest.c tries to update varFloorXFORMNAME macros, which results in vector on NaNs and screw up the flooring
 Extension after -z option is ignored, -y is used instead. But is not it actually better?
 To solve how to control and perform input/output network optimizations.
 Currently Multiple-CMLLR cannot be performed as we do not take into account determinants of different xforms in likelihood computation
 For example, DiagCGaussianDensity is now method of decoder. But this function may be usefull also out of decoder context.
-
+Local optimization before posterior pruning makes statr_beta and end_alpha quite different - probably thanks to weight-pushing.
+Size of accumulators depends on update type -> update type should be specified (and fixed) before HmmSet::Init 
+                                               or we should report error if accums are not allocated properly (may be this isbetter option)
 
 To finish new SKT networks
 - Expanded network cannot hold information about word output symbols and
@@ -77,3 +79,8 @@ TARGETLABEL -> TARGETTRANSCFMT
 PARAM1 -> ALIGN
 PARAM2 -> ''
 MODELMMF -> MMF
+
+Ideas for MPE:
+  num-den + Tau -> num-den + Tau*num-den/num+den)
+  E * den -> E * num+den
+  minocc based on num+den for MPE or num for MMI

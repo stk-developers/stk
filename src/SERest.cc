@@ -217,7 +217,7 @@ int main(int argc, char* argv[])
   const char*                     mmf_mask_alig;
   const char*                     mmf_karkulka;
   bool                            karkulka;
-  
+  bool                            cmllr_stats;  
   int                             trace_flag;
   int                             min_examples;
   int                             parallel_mode;
@@ -368,6 +368,7 @@ int main(int argc, char* argv[])
   min_mix_wght = GetParamFlt(&cfgHash, SNAME":MIXWEIGHTFLOOR",  1.0);
   hmms_binary  = GetParamBool(&cfgHash,SNAME":SAVEBINARY",      false);
   save_glob_opt= GetParamBool(&cfgHash,SNAME":SAVEGLOBOPTS",    true);
+  cmllr_stats  = GetParamBool(&cfgHash,SNAME":CMLLRSTATS",      false);
   script =(char*)GetParamStr(&cfgHash, SNAME":SCRIPT",          NULL);
   src_hmm_list = GetParamStr(&cfgHash, SNAME":SOURCEHMMLIST",   NULL);
   src_hmm_dir  = GetParamStr(&cfgHash, SNAME":SOURCEMODELDIR",  NULL);
@@ -568,6 +569,7 @@ int main(int argc, char* argv[])
   if (xformList != NULL) 
     hset.ReadXformList(xformList);
 
+  hset.mCmllrStats = cmllr_stats;
   hset.AllocateAccumulatorsForXformStats();
 
   if (network_file) 
@@ -1059,7 +1061,9 @@ int main(int argc, char* argv[])
     }
     
     // Required by WriteXformStatsAndRunCommands and UpdateHMMSetFromAccums
-    hset.Scan(MTM_MEAN|MTM_VARIANCE, NULL, NormalizeStatsForXform, 0);
+    if(!hset.mCmllrStats) {
+      hset.Scan(MTM_MEAN|MTM_VARIANCE, NULL, NormalizeStatsForXform, 0);
+    }
 
     if (hset.mUpdateMask & UM_XFSTATS) 
       hset.WriteXformStatsAndRunCommands(trg_hmm_dir, xfStatsBin);
