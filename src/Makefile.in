@@ -14,7 +14,7 @@
 
 @SET_MAKE@
 
-SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFeaCat_SOURCES) $(SLRatio_SOURCES) $(SResults_SOURCES) $(SRover_SOURCES) $(SVite_SOURCES) $(SWE_SOURCES) $(SWEChCoFast_SOURCES)
+SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFeaCat_SOURCES) $(SLRatio_SOURCES) $(SResults_SOURCES) $(SRover_SOURCES) $(SVite_SOURCES)
 
 srcdir = @srcdir@
 top_srcdir = @top_srcdir@
@@ -38,7 +38,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 bin_PROGRAMS = SExpand$(EXEEXT) SERest$(EXEEXT) SVite$(EXEEXT) \
 	SFeaCat$(EXEEXT) SLRatio$(EXEEXT) SResults$(EXEEXT) \
-	SRover$(EXEEXT) SWEChCoFast$(EXEEXT) SWE$(EXEEXT)
+	SRover$(EXEEXT)
 subdir = src
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -82,14 +82,6 @@ am_SVite_OBJECTS = SVite.$(OBJEXT)
 SVite_OBJECTS = $(am_SVite_OBJECTS)
 SVite_LDADD = $(LDADD)
 SVite_DEPENDENCIES = $(am__DEPENDENCIES_2)
-am_SWE_OBJECTS = SWE.$(OBJEXT)
-SWE_OBJECTS = $(am_SWE_OBJECTS)
-SWE_LDADD = $(LDADD)
-SWE_DEPENDENCIES = $(am__DEPENDENCIES_2)
-am_SWEChCoFast_OBJECTS = SWEChCoFast.$(OBJEXT)
-SWEChCoFast_OBJECTS = $(am_SWEChCoFast_OBJECTS)
-SWEChCoFast_LDADD = $(LDADD)
-SWEChCoFast_DEPENDENCIES = $(am__DEPENDENCIES_2)
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
 am__depfiles_maybe = depfiles
@@ -100,10 +92,10 @@ CXXLINK = $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) \
 	-o $@
 SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFeaCat_SOURCES) \
 	$(SLRatio_SOURCES) $(SResults_SOURCES) $(SRover_SOURCES) \
-	$(SVite_SOURCES) $(SWE_SOURCES) $(SWEChCoFast_SOURCES)
+	$(SVite_SOURCES)
 DIST_SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFeaCat_SOURCES) \
 	$(SLRatio_SOURCES) $(SResults_SOURCES) $(SRover_SOURCES) \
-	$(SVite_SOURCES) $(SWE_SOURCES) $(SWEChCoFast_SOURCES)
+	$(SVite_SOURCES)
 RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	html-recursive info-recursive install-data-recursive \
 	install-exec-recursive install-info-recursive \
@@ -148,10 +140,13 @@ INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 LDFLAGS = @LDFLAGS@
 LIBATLAS = @LIBATLAS@
+LIBMATLAB = @LIBMATLAB@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
+MATLABINCLUDEDIR = @MATLABINCLUDEDIR@
+MATLABLIBDIR = @MATLABLIBDIR@
 OBJEXT = @OBJEXT@
 PACKAGE = @PACKAGE@
 PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
@@ -245,8 +240,6 @@ SFeaCat_SOURCES = SFeaCat.cc
 SLRatio_SOURCES = SLRatio.cc
 SResults_SOURCES = SResults.cc
 SRover_SOURCES = SRover.cc
-SWEChCoFast_SOURCES = SWEChCoFast.cc
-SWE_SOURCES = SWE.cc
 all: all-recursive
 
 .SUFFIXES:
@@ -324,12 +317,6 @@ SRover$(EXEEXT): $(SRover_OBJECTS) $(SRover_DEPENDENCIES)
 SVite$(EXEEXT): $(SVite_OBJECTS) $(SVite_DEPENDENCIES) 
 	@rm -f SVite$(EXEEXT)
 	$(CXXLINK) $(SVite_LDFLAGS) $(SVite_OBJECTS) $(SVite_LDADD) $(LIBS)
-SWE$(EXEEXT): $(SWE_OBJECTS) $(SWE_DEPENDENCIES) 
-	@rm -f SWE$(EXEEXT)
-	$(CXXLINK) $(SWE_LDFLAGS) $(SWE_OBJECTS) $(SWE_LDADD) $(LIBS)
-SWEChCoFast$(EXEEXT): $(SWEChCoFast_OBJECTS) $(SWEChCoFast_DEPENDENCIES) 
-	@rm -f SWEChCoFast$(EXEEXT)
-	$(CXXLINK) $(SWEChCoFast_LDFLAGS) $(SWEChCoFast_OBJECTS) $(SWEChCoFast_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -344,8 +331,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SResults.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SRover.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SVite.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SWE.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SWEChCoFast.Po@am__quote@
 
 .cc.o:
 @am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
@@ -624,6 +609,8 @@ uninstall-info: uninstall-info-recursive
 
 @USE_SNET_TRUE@	SNETF    = SNet
 @USE_SNET_FALSE@	SNETF    = 
+# SWEChCoFast_SOURCES = SWEChCoFast.cc
+# SWE_SOURCES       = SWE.cc
 
 # SNet is kind of special. It needs some files in the SNet source. This will probably change and separate SNetLib will be built
 @USE_SNET_TRUE@	SNet_SOURCES      = SNet.cc 

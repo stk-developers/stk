@@ -19,6 +19,7 @@
 #include "STKLib/Decoder.h"
 #include "STKLib/labels.h"
 #include "STKLib/common.h"
+#include "STKLib/Error.h"
 
 #ifndef HAVE_UNISTD_H
 #  include <unistd.h>

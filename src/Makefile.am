@@ -52,7 +52,7 @@ INCLUDES    = $(ATLASINCLUDEDIR) -I. -I$(top_builddir) -I$(top_srcdir) \
 
 
 # These are the programs that we want to build in this directory
-bin_PROGRAMS = SExpand SERest SVite $(SNETF) SFeaCat SLRatio SResults SRover SWEChCoFast SWE
+bin_PROGRAMS = SExpand SERest SVite $(SNETF) SFeaCat SLRatio SResults SRover 
 
 
 # Specifications
@@ -63,8 +63,8 @@ SFeaCat_SOURCES   = SFeaCat.cc
 SLRatio_SOURCES   = SLRatio.cc
 SResults_SOURCES  = SResults.cc
 SRover_SOURCES    = SRover.cc
-SWEChCoFast_SOURCES = SWEChCoFast.cc
-SWE_SOURCES       = SWE.cc
+# SWEChCoFast_SOURCES = SWEChCoFast.cc
+# SWE_SOURCES       = SWE.cc
 
 # SNet is kind of special. It needs some files in the SNet source. This will probably change and separate SNetLib will be built
 if USE_SNET

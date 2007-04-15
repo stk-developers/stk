@@ -21,7 +21,8 @@ endif
 
 
 INCLUDES = -I$(top_builddir) -I$(top_srcdir) \
-            $(HSEARCH_R_INC_DIR) @ATLASINCLUDEDIR@ 
+            $(HSEARCH_R_INC_DIR) @ATLASINCLUDEDIR@  \
+						@MATLABINCLUDEDIR@
 
 lib_LIBRARIES       = libSTKLib.a 
 libSTKLib_a_LIBADD  = $(HSEARCH_R_OBJ)

@@ -313,7 +313,7 @@ ac_includes_default="\
 # include <unistd.h>
 #endif"
 
-ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA CYGPATH_W PACKAGE VERSION ACLOCAL AUTOCONF AUTOMAKE AUTOHEADER MAKEINFO install_sh STRIP ac_ct_STRIP INSTALL_STRIP_PROGRAM mkdir_p AWK SET_MAKE am__leading_dot AMTAR am__tar am__untar RANLIB ac_ct_RANLIB CXX CXXFLAGS LDFLAGS CPPFLAGS ac_ct_CXX EXEEXT OBJEXT DEPDIR am__include am__quote AMDEP_TRUE AMDEP_FALSE AMDEPBACKSLASH CXXDEPMODE am__fastdepCXX_TRUE am__fastdepCXX_FALSE CC CFLAGS ac_ct_CC CCDEPMODE am__fastdepCC_TRUE am__fastdepCC_FALSE CXXCPP EGREP WANT_GETOPT_H_TRUE WANT_GETOPT_H_FALSE WANT_LIBGETOPT_TRUE WANT_LIBGETOPT_FALSE POW_LIB LIBOBJS USE_SNET_TRUE USE_SNET_FALSE REENTRANT_SEARCH_INCLUDE_FLAG REENTRANT_SEARCH_OBJ WANT_GNUSEARCH_H_TRUE WANT_GNUSEARCH_H_FALSE WANT_HSEARCH_R_O_TRUE WANT_HSEARCH_R_O_FALSE ENABLE_SSE_TRUE ENABLE_SSE_FALSE ATLASINCLUDEDIR ATLASLIBDIR LIBATLAS LTLIBOBJS'
+ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA CYGPATH_W PACKAGE VERSION ACLOCAL AUTOCONF AUTOMAKE AUTOHEADER MAKEINFO install_sh STRIP ac_ct_STRIP INSTALL_STRIP_PROGRAM mkdir_p AWK SET_MAKE am__leading_dot AMTAR am__tar am__untar RANLIB ac_ct_RANLIB CXX CXXFLAGS LDFLAGS CPPFLAGS ac_ct_CXX EXEEXT OBJEXT DEPDIR am__include am__quote AMDEP_TRUE AMDEP_FALSE AMDEPBACKSLASH CXXDEPMODE am__fastdepCXX_TRUE am__fastdepCXX_FALSE CC CFLAGS ac_ct_CC CCDEPMODE am__fastdepCC_TRUE am__fastdepCC_FALSE CXXCPP EGREP WANT_GETOPT_H_TRUE WANT_GETOPT_H_FALSE WANT_LIBGETOPT_TRUE WANT_LIBGETOPT_FALSE POW_LIB LIBOBJS USE_SNET_TRUE USE_SNET_FALSE REENTRANT_SEARCH_INCLUDE_FLAG REENTRANT_SEARCH_OBJ WANT_GNUSEARCH_H_TRUE WANT_GNUSEARCH_H_FALSE WANT_HSEARCH_R_O_TRUE WANT_HSEARCH_R_O_FALSE ENABLE_SSE_TRUE ENABLE_SSE_FALSE MATLABINCLUDEDIR MATLABLIBDIR ATLASINCLUDEDIR ATLASLIBDIR LIBATLAS LIBMATLAB LTLIBOBJS'
 ac_subst_files=''
 
 # Initialize some variables set by options.
@@ -871,6 +871,9 @@ Optional Features:
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --with-matlab           add support for the Matlab Engine Library
+                          (experimental)[default=no]
+  --with-matlab-dir       specify the matlab rootdir (experimental)
   --with-atlas            add support for the ATLAS library
                           [default=check]
   --with-atlas-dir        specify the atlas location
@@ -6021,6 +6024,36 @@ fi
 ################################################################################
 # CHECK FOR ATLAS USAGE
 
+# Check whether --with-matlab or --without-matlab was given.
+if test "${with_matlab+set}" = set; then
+  withval="$with_matlab"
+  with_matlab=yes
+else
+  with_matlab=no
+fi;
+
+
+# Check whether --with-matlab-dir or --without-matlab-dir was given.
+if test "${with_matlab_dir+set}" = set; then
+  withval="$with_matlab_dir"
+  MATLABINCLUDEDIR="-I $withval/extern/include -I $withval/simulink/include"
+
+             MATLABLIBDIR="-Wl,-rpath-link,$withval/bin/glnx86 -Wl,-rpath,$withval/bin/glnx86 -L $withval/bin/glnx86"
+
+             echo MATLAB: adding $MATLABLIBDIR to the library search path
+             echo MATLAB: adding $MATLABINCLUDEDIR to the include search path
+             LDFLAGS="$MATLABLIBDIR $LDFLAGS"
+
+             CFLAGS="$MATLABINCLUDEDIR $CFLAGS"
+
+             CXXFLAGS="$MATLABINCLUDEDIR $CXXFLAGS"
+
+
+fi;
+
+################################################################################
+# CHECK FOR ATLAS USAGE
+
 # Check whether --with-atlas or --without-atlas was given.
 if test "${with_atlas+set}" = set; then
   withval="$with_atlas"
@@ -6224,7 +6257,150 @@ fi
 fi
 
 
-LIBS="$LIBATLAS $LIBS"
+LIBMATLAB=
+
+# we choose one func from blas and one from lapack
+if test "x$with_matlab" != "xno"; then
+  echo "$as_me:$LINENO: checking for library containing cblas_sgemm" >&5
+echo $ECHO_N "checking for library containing cblas_sgemm... $ECHO_C" >&6
+if test "${ac_cv_search_cblas_sgemm+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  ac_func_search_save_LIBS=$LIBS
+ac_cv_search_cblas_sgemm=no
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+/* Override any gcc2 internal prototype to avoid an error.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+/* We use char because int might match the return type of a gcc2
+   builtin and then its argument prototype would still apply.  */
+char cblas_sgemm ();
+int
+main ()
+{
+cblas_sgemm ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
+  (eval $ac_link) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_cxx_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest$ac_exeext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_search_cblas_sgemm="none required"
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+fi
+rm -f conftest.err conftest.$ac_objext \
+      conftest$ac_exeext conftest.$ac_ext
+if test "$ac_cv_search_cblas_sgemm" = no; then
+  for ac_lib in cblas lapack atlas; do
+    LIBS="-l$ac_lib -latlas -llapack -lcblas -pthread $ac_func_search_save_LIBS"
+    cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+/* Override any gcc2 internal prototype to avoid an error.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+/* We use char because int might match the return type of a gcc2
+   builtin and then its argument prototype would still apply.  */
+char cblas_sgemm ();
+int
+main ()
+{
+cblas_sgemm ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
+  (eval $ac_link) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_cxx_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest$ac_exeext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_search_cblas_sgemm="-l$ac_lib"
+break
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+fi
+rm -f conftest.err conftest.$ac_objext \
+      conftest$ac_exeext conftest.$ac_ext
+  done
+fi
+LIBS=$ac_func_search_save_LIBS
+fi
+echo "$as_me:$LINENO: result: $ac_cv_search_cblas_sgemm" >&5
+echo "${ECHO_T}$ac_cv_search_cblas_sgemm" >&6
+if test "$ac_cv_search_cblas_sgemm" != no; then
+  test "$ac_cv_search_cblas_sgemm" = "none required" || LIBS="$ac_cv_search_cblas_sgemm $LIBS"
+  LIBATLAS="-llapack -lcblas -latlas"
+
+
+cat >>confdefs.h <<\_ACEOF
+#define MATLAB_ENGINE 1
+_ACEOF
+
+
+fi
+
+       LIBMATLAB="-leng -lmx"
+
+
+fi
+
+
+LIBS="$LIBMATLAB $LIBATLAS $LIBS"
 
 ################################################################################
 # END OF ATLAS CHECK
@@ -6990,9 +7166,12 @@ s,@WANT_HSEARCH_R_O_TRUE@,$WANT_HSEARCH_R_O_TRUE,;t t
 s,@WANT_HSEARCH_R_O_FALSE@,$WANT_HSEARCH_R_O_FALSE,;t t
 s,@ENABLE_SSE_TRUE@,$ENABLE_SSE_TRUE,;t t
 s,@ENABLE_SSE_FALSE@,$ENABLE_SSE_FALSE,;t t
+s,@MATLABINCLUDEDIR@,$MATLABINCLUDEDIR,;t t
+s,@MATLABLIBDIR@,$MATLABLIBDIR,;t t
 s,@ATLASINCLUDEDIR@,$ATLASINCLUDEDIR,;t t
 s,@ATLASLIBDIR@,$ATLASLIBDIR,;t t
 s,@LIBATLAS@,$LIBATLAS,;t t
+s,@LIBMATLAB@,$LIBMATLAB,;t t
 s,@LTLIBOBJS@,$LTLIBOBJS,;t t
 CEOF
 

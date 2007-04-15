@@ -144,6 +144,27 @@ AM_CONDITIONAL([ENABLE_SSE], [test "$enable_sse" != "no"])
 
 ################################################################################ 
 # CHECK FOR ATLAS USAGE 
+AC_ARG_WITH([matlab],   
+            [AS_HELP_STRING([--with-matlab], 
+              [add support for the Matlab Engine Library (experimental)@<:@default=no@:>@])], 
+            [with_matlab=yes], 
+            [with_matlab=no]) 
+
+AC_ARG_WITH([matlab-dir], 
+            [AS_HELP_STRING([--with-matlab-dir], 
+              [specify the matlab rootdir (experimental)]) ], 
+            [AC_SUBST([MATLABINCLUDEDIR], ["-I $withval/extern/include -I $withval/simulink/include"])
+             AC_SUBST([MATLABLIBDIR], ["-Wl,-rpath-link,$withval/bin/glnx86 -Wl,-rpath,$withval/bin/glnx86 -L $withval/bin/glnx86"])
+             echo MATLAB: adding $MATLABLIBDIR to the library search path
+             echo MATLAB: adding $MATLABINCLUDEDIR to the include search path
+             AC_SUBST([LDFLAGS],["$MATLABLIBDIR $LDFLAGS"])
+             AC_SUBST([CFLAGS],["$MATLABINCLUDEDIR $CFLAGS"])
+             AC_SUBST([CXXFLAGS],["$MATLABINCLUDEDIR $CXXFLAGS"])
+            ], 
+            [])
+
+################################################################################ 
+# CHECK FOR ATLAS USAGE 
 AC_ARG_WITH([atlas],   
             [AS_HELP_STRING([--with-atlas], 
               [add support for the ATLAS library @<:@default=check@:>@])], 
@@ -200,7 +221,20 @@ AS_IF([test "x$with_atlas" != "xno"],
                       ],[-latlas -llapack -lcblas -pthread])
       ])
 
-AC_SUBST([LIBS], ["$LIBATLAS $LIBS"])
+LIBMATLAB=
+
+# we choose one func from blas and one from lapack
+AS_IF([test "x$with_matlab" != "xno"],
+      [AC_SEARCH_LIBS([cblas_sgemm], [cblas lapack atlas],
+                      [AC_SUBST([LIBATLAS], ["-llapack -lcblas -latlas"])
+                       AC_DEFINE([MATLAB_ENGINE], [1], 
+                         [Define if we want Matlab Engine Library support])
+                      ],
+                      [],[-latlas -llapack -lcblas -pthread])
+       AC_SUBST([LIBMATLAB], ["-leng -lmx"])
+      ])
+
+AC_SUBST([LIBS], ["$LIBMATLAB $LIBATLAS $LIBS"])
 ################################################################################
 # END OF ATLAS CHECK
 ################################################################################

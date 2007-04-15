@@ -141,6 +141,9 @@
 /* Define to 1 if the system has the type `_Bool'. */
 #undef HAVE__BOOL
 
+/* Define if we want Matlab Engine Library support */
+#undef MATLAB_ENGINE
+
 /* Name of package */
 #undef PACKAGE
 
