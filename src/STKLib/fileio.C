@@ -19,15 +19,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
+//#include <sys/stat.h>
 #include <sys/types.h>
 #include <ctype.h>
 
 #ifndef WIN32
-#include <unistd.h>
+#  include <unistd.h>
 #else
-#include <io.h>
-#include <direct.h>
+#  include <io.h>
+#  include <direct.h>
 #endif
 
 namespace STK
@@ -212,18 +212,14 @@ namespace STK
         *chptr='\0';
       
       if ((access(dir_name, 0) || stat(dir_name, &stat_buff) == -1 ||
-#ifndef _POSIX_SOURCE
-          !(_IFDIR & stat_buff.st_mode))) 
-#else
           !(S_IFDIR & stat_buff.st_mode))) 
-#endif
       {
 #ifndef WIN32
           if (mkdir(dir_name, 0777)) 
-          return -1;
+            return -1;
 #else
           if (mkdir(dir_name)) 
-          return -1;
+            return -1;
 #endif
       }
       

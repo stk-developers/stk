@@ -21,12 +21,13 @@
 #include <ctype.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <errno.h>
 
 #include <stdexcept>
 #include <iostream>
-
 #include <string>
 #include <vector>
+#include <sstream>
 
 static union
 {
@@ -327,8 +328,8 @@ void fast_softmax_vec(double *in, double *out, int size)
         return  x;
     }
   
-    //return x + log(1.0 + exp(diff));
-    return x + log(1.0 + FAST_EXP(diff));
+    return x + log(1.0 + exp(diff));
+    //return x + log(1.0 + FAST_EXP(diff));
   }
   
   //***************************************************************************
@@ -658,6 +659,53 @@ void fast_softmax_vec(double *in, double *out, int size)
     return 0;
   }
   
+  //***************************************************************************
+  //***************************************************************************
+  int skipHTKstr(char *chrptr, char **endPtrOrErrMsg)
+  {
+    char termChar = '\0';
+      
+    while (isspace(*chrptr)) ++chrptr;
+  
+    if (*chrptr == '\'' || *chrptr == '"') {
+      termChar = *chrptr;
+      chrptr++;
+    }
+  
+    for (; *chrptr; chrptr++) {
+      if (*chrptr == '\'' || *chrptr == '"') {
+        if (termChar == *chrptr) {
+          termChar = '\0';
+          chrptr++;
+          break;
+        }
+      }
+  
+      if (isspace(*chrptr) && !termChar) {
+        break;
+      }
+  
+      if (*chrptr == '\\') {
+        ++chrptr;
+        if (*chrptr == '\0' || (*chrptr    >= '0' && *chrptr <= '7' &&
+                               (*++chrptr  <  '0' || *chrptr >  '7' ||
+                                *++chrptr  <  '0' || *chrptr >  '7'))) {
+          *endPtrOrErrMsg = "Invalid escape sequence";
+          return -1;
+        }
+      }
+    }
+  
+    if (termChar) {
+      *endPtrOrErrMsg = "Unterminated quoted string";
+      return -2;
+    }
+
+    while (isspace(*chrptr)) ++chrptr;
+    *endPtrOrErrMsg = chrptr;
+  
+    return 0;
+  }
   
   //***************************************************************************
   //***************************************************************************
@@ -889,6 +937,44 @@ void fast_softmax_vec(double *in, double *out, int size)
     putchar('\n');
   }
   
+  
+  // holds the registered parameters
+  std::vector<ParameterRecord>    gRegisteredParameters;
+
+  //***************************************************************************
+  //***************************************************************************
+  // registers a parameter in a global variable for easy printing
+  void
+  register_parameter(const char* pName, const char* pType, const char* pHelp=NULL)
+  {
+    ParameterRecord new_rec;
+
+    new_rec.mName = (NULL != pName) ? pName : "";
+    new_rec.mType = (NULL != pType) ? pType : "";
+    new_rec.mHelp = (NULL != pHelp) ? pHelp : "";
+
+    gRegisteredParameters.push_back(new_rec);
+  }
+
+
+  //***************************************************************************
+  //***************************************************************************
+  // prints all registered parameters to stdout
+  void
+  print_registered_parameters()
+  {
+    std::vector<ParameterRecord>::iterator it;
+
+    for (it  = gRegisteredParameters.begin(); 
+         it != gRegisteredParameters.end();
+         it++)
+    {
+      std::cout << it->mName << " " << it->mType << " " << it->mHelp 
+        << std::endl;
+    }
+  }
+
+
   //***************************************************************************
   //***************************************************************************
   ENTRY* GetParam(MyHSearchData *pConfigHash, const char *pParamName)
@@ -913,6 +999,8 @@ void fast_softmax_vec(double *in, double *out, int size)
     const char *    pParamName,
     const char *    default_value)
   {
+    register_parameter(pParamName, "string");
+
     ENTRY *ep = GetParam(pConfigHash, pParamName);
     return ep != NULL ? 2 + (char *) ep->data : default_value;
   }
@@ -933,7 +1021,8 @@ void fast_softmax_vec(double *in, double *out, int size)
     }
     return str;
   }
-  
+
+
   //***************************************************************************
   //***************************************************************************
   long 
@@ -943,6 +1032,9 @@ void fast_softmax_vec(double *in, double *out, int size)
     long default_value)
   {
     char *chrptr;
+
+    register_parameter(pParamName, "int");
+
     ENTRY *ep = GetParam(pConfigHash, pParamName);
     if (ep == NULL) return default_value;
   
@@ -963,6 +1055,9 @@ void fast_softmax_vec(double *in, double *out, int size)
     FLOAT             default_value)
   {
     char *chrptr;
+    
+    register_parameter(pParamName, "float");
+
     ENTRY *ep = GetParam(pConfigHash, pParamName);
     if (ep == NULL) return default_value;
   
@@ -982,6 +1077,8 @@ void fast_softmax_vec(double *in, double *out, int size)
     const char *    pParamName,
     bool            default_value)
   {
+    register_parameter(pParamName, "bool");
+
     ENTRY *ep = GetParam(pConfigHash, pParamName);
     if (ep == NULL) return default_value;
   
@@ -1003,7 +1100,11 @@ void fast_softmax_vec(double *in, double *out, int size)
     int             default_value, 
     ...)  
   {
+
+    register_parameter(pParamName, "enum");
+
     ENTRY *ep = GetParam(pConfigHash, pParamName);
+
     if (ep == NULL) return default_value;
   
     const char *val = 2 + (char *) ep->data;
@@ -1019,6 +1120,7 @@ void fast_softmax_vec(double *in, double *out, int size)
       if (!strcmp(val, s)) break;
     }
     va_end(ap);
+
     if (s) return i;
   
     //To report error, create string listing all possible values
@@ -1031,6 +1133,7 @@ void fast_softmax_vec(double *in, double *out, int size)
       if (i < cnt - 2) strcat(s, ", ");
       else if (i == cnt - 2) strcat(s, " or ");
     }
+
     va_end(ap);
     Error("%s expected for %s but found '%s'", s, OptOrParStr(ep),val);
     return 0;
@@ -1164,10 +1267,16 @@ void fast_softmax_vec(double *in, double *out, int size)
       }
     } else if (filter) {
       char *f = expandFilterCommand(filter, file_name);
-  
-      if ((fp = popen(f, *type == 'r' ? "r" : "w")) == NULL) {
-        Error("Cannot popen %s filter '%s'",
-              *type == 'r' ? "input": "output", f);
+      int n_trials = 0;
+
+      while ((fp = popen(f, *type == 'r' ? "r" : "w")) == NULL) {
+        if (++n_trials > 10) {
+          Error("Cannot popen %s filter '%s': %s",
+                *type == 'r' ? "input": "output", f, strerror(errno));
+        }
+        Warning("Cannot popen %s filter '%s: %s'. Trying again ...",
+                *type == 'r' ? "input": "output", f, strerror(errno));
+        sleep(1);
       }
       free(f);
     } else if ((fp = fopen(file_name, type)) == NULL) {
@@ -1187,8 +1296,11 @@ void fast_softmax_vec(double *in, double *out, int size)
     if (fstat(fileno(fp), &sb)) {
       return EOF;
     }
-    if (S_ISFIFO(sb.st_mode)) return pclose(fp);
-    else return fclose(fp);
+    if (S_ISFIFO(sb.st_mode)) {
+      return pclose(fp);
+    } else {
+      return fclose(fp);
+    }
   }
   
   
@@ -1368,12 +1480,23 @@ void fast_softmax_vec(double *in, double *out, int size)
     std::string::size_type  pos;
     
     mLogical = rFileName;
+    mWeight  = 1.0;
     
     // some slash-backslash replacement hack
     for (size_t i = 0; i < mLogical.size(); i++)
       if (mLogical[i] == '\\') 
         mLogical[i] = '/';
         
+    // read sentence weight definition if any ( physical_file.fea[s,e]{weight} )
+    if ((pos = mLogical.find('{')) != std::string::npos)
+    {
+      std::string       tmp_weight(mLogical.begin() + pos + 1, mLogical.end());
+      std::stringstream tmp_ss(tmp_weight);
+
+      tmp_ss >> mWeight;
+      mLogical.erase(pos);
+    }
+
     // look for "=" symbol and if found, split it
     if ((pos = mLogical.find('=')) != std::string::npos)
     {
@@ -1741,5 +1864,41 @@ void fast_softmax_vec(double *in, double *out, int size)
     }
   }
   */
+
+
+  //****************************************************************************
+  //****************************************************************************
+  bool 
+  close_enough(const FLOAT f1, const FLOAT f2, int nRounds)
+  {
+    bool ret_val = (_ABS((f1 - f2) / (f2 == 0.0 ? static_cast<FLOAT>(1.0) : f2))
+        < (static_cast<FLOAT>(nRounds) * EPSILON));
+
+    //if (!ret_val) 
+    //  printf ("f1 = %e, f2 = %e, f1 - f2 = %g  E*nRounds = %e \n", f1, f2, float(f1 - f2), EPSILON * nRounds);
+
+    return ret_val;
+  } 
+  // close_enough(const FLOAT f1, const FLOAT f2, int nRounds)
+  //****************************************************************************
+
+
+
+  //****************************************************************************
+  //****************************************************************************
+  FLOAT 
+  float_safe_substract(const FLOAT& f1, const FLOAT &f2, int nRounds)
+  {
+    return close_enough(f1, f2, nRounds) ? 0.0 : f1 - f2;
+  }
+  // float_safe_substract(const FLOAT& f1, const FLOAT &f2, int nRounds);
+  //****************************************************************************
+
+  int
+  breakpoint()
+  {
+    return 0;
+  }
+  
 //}; //namespace STK
     

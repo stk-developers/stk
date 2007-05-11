@@ -10,7 +10,7 @@
  *                                                                         *
  ***************************************************************************/
 
-#include "Viterbi.h"
+#include "Decoder.h"
 #include "labels.h"
 #include <string.h>
 #include <stdio.h>
@@ -124,24 +124,30 @@ FILE* OpenOutputLabelFile(char *file_name, const char *out_lbl_dir,
   return lfp;
 }
 
-void WriteLabels(FILE* lfp, Label *label, LabelFormat labelFormat, long smpPrd,
-                 const char *label_file, const char *out_MLF)
+void WriteLabels(
+  FILE* lfp, 
+  Label *label, 
+//  LabelFormat labelFormat, 
+  STKNetworkOutputFormat labelFormat,
+  long smpPrd,
+  const char *label_file, 
+  const char *out_MLF) 
 {
   Label *level, *prev = NULL;
-  int ctm = labelFormat.CENTRE_TM;
+  int ctm = labelFormat.mCentreTimes;
 
   for (;label != NULL; label = label->mpNext) {
     if(label->mpName == NULL) continue;
 
-    if (!(labelFormat.TIMES_OFF)) {
+    if (!(labelFormat.mNoTimes)) {
       long long time = UNDEF_TIME;
       for (level = label; level != NULL; level = level->mpNextLevel) {
         if (time == UNDEF_TIME || time < level->mStart) time = level->mStart;
       }
       if (time != UNDEF_TIME) 
       {
-        fprintf_ll(lfp, 
-                smpPrd * (2 * time + ctm) / 2 - labelFormat.left_extent);
+        fprintf_ll(lfp, smpPrd * (2 * time + ctm) / 2 
+	              + 100 * (long long) (0.5 + 1e5 * labelFormat.mStartTimeShift));
 
         time = UNDEF_TIME;
         for (level = label; level != NULL; level = level->mpNextLevel) 
@@ -151,8 +157,8 @@ void WriteLabels(FILE* lfp, Label *label, LabelFormat labelFormat, long smpPrd,
         if (time != UNDEF_TIME) 
         {
           fprintf(lfp, " ");
-          fprintf_ll(lfp,
-                  smpPrd * (2 * time - ctm) / 2 + labelFormat.right_extent);
+          fprintf_ll(lfp, smpPrd * (2 * time - ctm) / 2 
+	                + 100 * (long long) (0.5 + 1e5 * labelFormat.mEndTimeShift));
         }
       }
     }
@@ -167,10 +173,9 @@ void WriteLabels(FILE* lfp, Label *label, LabelFormat labelFormat, long smpPrd,
       if (level->mId >= 0) {
         fprintf(lfp, "[%d]", level->mId + 2);
       }
-
-      if (!(labelFormat.SCORE_OFF) /* && level->mScore != 0.0*/) {
+      if (!(labelFormat.mNoAcousticLikes || labelFormat.mNoLMLikes) /* && level->mScore != 0.0*/) {
         // !!! only acoustic scores should be normalized !!!
-        fprintf(lfp, " %g", labelFormat.SCORE_NRM
+        fprintf(lfp, " %g", labelFormat.mScoreNorm
                             ? level->mScore / (level->mStop - level->mStart)
                             : level->mScore);
       }
@@ -403,11 +408,13 @@ FILE *OpenInputLabelFile(
   return lfp;
 }
 
-Label *ReadLabels(
-  FILE *lfp,
+Label* 
+ReadLabels(
+  FILE* lfp,
   MyHSearchData *label_hash,
   enum UnknownLabelsAction unknownLabels,
-  LabelFormat labelFormat,
+//  LabelFormat labelFormat,
+  STKNetworkOutputFormat labelFormat,
   long sampPeriod,
   const char *file_name,
   const char *in_MLF,
@@ -450,17 +457,21 @@ Label *ReadLabels(
 
     llv = strtoull(chptr, &endptr, 10);
     if (endptr != chptr) {
-      long center_shift = labelFormat.CENTRE_TM ? sampPeriod / 2 : 0;
+      long center_shift = labelFormat.mCentreTimes ? sampPeriod / 2 : 0;
 
-      if (!(labelFormat.TIMES_OFF)) {
-        current->mStart = (llv - center_shift - labelFormat.left_extent) / sampPeriod;
+      if (!(labelFormat.mNoTimes)) {
+        current->mStart = (llv - center_shift 
+	                + 100 * (long long) (0.5 + 1e5 * labelFormat.mStartTimeShift))
+			/ sampPeriod;
       }
       chptr = endptr;
 
       llv = strtoull(chptr, &endptr, 10);
       if (endptr != chptr) {
-        if (!(labelFormat.TIMES_OFF)) {
-          current->mStop = (llv + center_shift + labelFormat.right_extent) / sampPeriod;
+        if (!(labelFormat.mNoTimes)) {
+          current->mStop = (llv + center_shift 
+	                 + 100 * (long long) (0.5 + 1e5 * labelFormat.mEndTimeShift))
+			 / sampPeriod;
         }
         chptr = endptr;
 
@@ -526,7 +537,7 @@ Label *ReadLabels(
 void CloseInputLabelFile(FILE *lfp, const char *out_MLF)
 {
   if (out_MLF == NULL) {
-    my_fclose(lfp);
+    assert(my_fclose(lfp) == 0);
 /*    if (lfp != stdout) {
       if (transc_filter) pclose(lfp);
       else                 fclose(lfp);

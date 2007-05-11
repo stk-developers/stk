@@ -57,6 +57,7 @@ namespace STK
     gpKwds[KID_NumLayers   ] = "NumLayers";     gpKwds[KID_NumBlocks  ] = "NumBlocks";
     gpKwds[KID_Layer       ] = "Layer";         gpKwds[KID_Copy       ] = "Copy";
     gpKwds[KID_Stacking    ] = "Stacking";      gpKwds[KID_Transpose  ] = "Transpose";    
+    gpKwds[KID_Constant    ] = "Constant";
     gpKwds[KID_XformPredef ] = "XformPredef";   gpKwds[KID_Window     ] = "Window";  
     gpKwds[KID_WindowPredef] = "WindowPredef";  gpKwds[KID_BlockCopy  ] = "BlockCopy";       
     gpKwds[KID_BiasPredef  ] = "BiasPredef";
@@ -975,7 +976,7 @@ namespace STK
       ret->mPartialAccumK.Init(ret->mpMean->mClusterMatrixT.Cols());
       
       // for discriminative training
-      if (mMmiUpdate == 2 || mMmiUpdate == -2)
+      if (UT_EBW == mUpdateType)
       {
         ret->mPartialAccumGd = 0.0;
         ret->mAccumGd.Init(ret->mpMean->mClusterMatrixT.Rows(),
@@ -1344,7 +1345,6 @@ namespace STK
       }
       return (Xform *) macro->mpData;
     }
-  
     if (CheckKwd(keyword, KID_Xform)) {
       return (Xform *) ReadLinearXform(fp, macro, false);
     }
@@ -1384,7 +1384,9 @@ namespace STK
     if (CheckKwd(keyword, KID_Stacking)) {
       return (Xform *) ReadStackingXform(fp, macro);
     }
-  
+    if (CheckKwd(keyword, KID_Constant)) {
+      return (Xform *) ReadConstantXform(fp, macro);
+    }
     if (CheckKwd(keyword, KID_NumLayers) ||
       CheckKwd(keyword, KID_NumBlocks) ||
       CheckKwd(keyword, KID_BlockInfo))
@@ -1841,7 +1843,7 @@ namespace STK
     int n_rows = GetInt(fp);
     int n_cols = GetInt(fp);
   
-    BlockCopyXform::Block *p_blocks = new BlockCopyXform::Block [n_blocks];
+    BlockCopyXform::Block *p_blocks = new BlockCopyXform::Block[n_blocks];
 
     int i;        
     int j;
@@ -1856,7 +1858,8 @@ namespace STK
           if (ferror(fp)) {
             Error("Cannot read input file %s", gpCurrentMmfName);
           }
-          Error("Integral number expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+          Error("Integral number expected (%s:%d)", gpCurrentMmfName, 
+              gCurrentMmfLine);
         }
       
         if (n == 2)      { to = step; step = 1; }
@@ -1980,7 +1983,24 @@ namespace STK
     return ret;
   }; //ReadTransposeXform(FILE *fp, Macro *macro)
 
-
+  //***************************************************************************
+  //***************************************************************************
+  ConstantXform *
+  ModelSet::
+  ReadConstantXform(FILE *fp, Macro *macro)
+  {
+    int        out_size = GetInt(fp);
+    ConstantXform * ret = new ConstantXform(out_size);
+  
+    // load values
+    for (int i=0; i < out_size; i++) {
+      ret->mVector[0][i]  = GetFloat(fp);
+    }
+    ret->mpMacro      = macro;
+    return ret;
+  }; //ReadConstantXform(FILE *fp, Macro *macro)
+  
+  
   //***************************************************************************  
   //***************************************************************************  
   WindowXform *
@@ -2076,7 +2096,7 @@ namespace STK
     
     ret->mpMacro      = macro;
     return ret;
-  }; //ReadCopyXform(FILE *fp, Macro *macro)
+  }; //ReadFeatureMappingXform(FILE *fp, Macro *macro)
   
   
   //***************************************************************************
@@ -2103,7 +2123,7 @@ namespace STK
     
     ret->mpMacro      = macro;
     return ret;
-  }; //ReadCopyXform(FILE *fp, Macro *macro)
+  }; //ReadFrantaProductXform(FILE *fp, Macro *macro)
   
   
   //***************************************************************************
@@ -2143,7 +2163,7 @@ namespace STK
     
     ret->mpMacro      = macro;
     return ret;
-  }; //ReadCopyXform(FILE *fp, Macro *macro)
+  }; //MatlabXform(FILE *fp, Macro *macro)
   
   
   //***************************************************************************
@@ -2833,6 +2853,7 @@ namespace STK
       case XT_FUNC      : WriteFuncXform     (fp, binary, static_cast<FuncXform *>(xform)); break;
       case XT_BIAS      : WriteBiasXform     (fp, binary, static_cast<BiasXform *>(xform)); break;
       case XT_STACKING  : WriteStackingXform (fp, binary, static_cast<StackingXform *>(xform)); break;
+      case XT_CONSTANT  : WriteConstantXform (fp, binary, static_cast<ConstantXform *>(xform)); break;
       case XT_COMPOSITE : WriteCompositeXform(fp, binary, static_cast<CompositeXform *>(xform)); break;
       default:  break;    
     }
@@ -3121,6 +3142,21 @@ namespace STK
     fputs("\n", fp);
   } //WriteCopyXform(FILE *fp, bool binary, CopyXform *xform)
 
+  void 
+  ModelSet::
+  WriteConstantXform(FILE *fp, bool binary, ConstantXform* xform)
+  {
+    size_t  i;
+  
+    PutKwd(fp, binary, KID_Constant);
+    PutInt(fp, binary, xform->mOutSize);
+    PutNLn(fp, binary);
+    for (i=0; i < xform->mOutSize; i++) 
+    {
+      PutFlt(fp, binary, xform->mVector[0][i]);
+    }
+    PutNLn(fp, binary);
+  } //WriteConstantXform(FILE *fp, bool binary, BiasXform *xform)
   
   //*****************************************************************************
   //*****************************************************************************  
@@ -3228,7 +3264,7 @@ namespace STK
     fprintf(fp, "<State> 2\n");
     WriteState(fp, binary, xform->mpStateTo);
     fputs("\n", fp);
-  } //WriteCopyXform(FILE *fp, bool binary, CopyXform *xform)
+  } //WriteFeatureMappingXform(FILE *fp, bool binary, FeatureMappingXform *xform)
 
   
   //*****************************************************************************
@@ -3241,7 +3277,7 @@ namespace STK
       (int) xform->mInSize, (int) xform->NParts());
   
     fputs("\n", fp);
-  } //WriteFrantaProductXform(FILE *fp, bool binary, CopyXform *xform)
+  } //WriteFrantaProductXform(FILE *fp, bool binary, FrantaProductXform *xform)
 
   
   //###########################################################################################################
@@ -3491,7 +3527,7 @@ namespace STK
         Error("Incompatible accumulator file: '%s'", ud->mpFileName);
       }
   
-      if (!ud->mMmi) 
+      if (!ud->mMmi && !ud->mpModelSet->mCmllrStats ) 
       { // MMI estimation of Xform statistics has not been implemented yet
         for (i = 0; i < nxfsa_inf; i++) 
         {
@@ -3585,9 +3621,157 @@ namespace STK
           LOG_INC(vector[i], f);
         }
       }
+    } else if (macro_type == mt_Xform) {
+      if (ud->mpModelSet->mCmllrStats 
+      && ((Xform *) pData)->mpCmllrStats != NULL) {
+        size = ((Xform *) pData)->mInSize;
+        size = (size + size*(size+1)/2) * (size -1) + 1;
+        vector = ((Xform *) pData)->mpCmllrStats;
+        
+        if (faddfloat(vector, size, ud->mWeight,    ud->mpFp) != size) {
+            Error("Incompatible accumulator file: '%s'", ud->mpFileName);
+        }    
+      }
     }
   } // void ReadAccum(int macro_type, HMMSetNodeName nodeName...)
   
+
+  //****************************************************************************  
+  //****************************************************************************  
+  void
+  ModelSet::
+  ReadAccums(const FileListElem& rFile, long* totFrames, FLOAT* totLogLike, 
+      int mmiDenominatorAccums)
+  {
+    IStkStream                in;
+    FILE*                     fp;
+    char                      macro_name[128];
+    MyHSearchData*            hash;
+    unsigned int              i;
+    int                       t = 0;
+    int                       c;
+    int                       skip_accum = 0;
+    INT_32                    occurances;
+    ReadAccumUserData         ud;
+    Macro*                    macro;
+    int                       mtm = MTM_PRESCAN | 
+                                    MTM_STATE |
+                                    MTM_MIXTURE |
+                                    MTM_MEAN |   
+                                    MTM_VARIANCE | 
+                                    MTM_TRANSITION;
+  
+    macro_name[sizeof(macro_name)-1] = '\0';
+  
+    // open the file
+    in.open(rFile.Physical().c_str(), ios::binary);
+    if (!in.good())
+    {
+      Error("Cannot open input accumulator file: '%s'", rFile.Physical().c_str());
+    }
+    
+    fp = in.file();
+    
+    INT_32 i32;
+    if (fread(&i32,       sizeof(i32),  1, fp) != 1 ||
+        fread(totLogLike, sizeof(FLOAT), 1, fp) != 1) 
+    {
+      Error("Invalid accumulator file: '%s'", rFile.Physical().c_str());
+    }
+
+    *totFrames = i32;
+    
+//    *totFrames  *= weight; // Not sure whether we should report weighted quantities or not
+//    *totLogLike *= weight;
+  
+    ud.mpFileName   = rFile.Physical().c_str();
+    ud.mpFp         = fp;
+    ud.mpModelSet   = this;
+    ud.mWeight      = rFile.Weight();;
+    ud.mMmi         = mmiDenominatorAccums;
+  
+    for (;;) 
+    {
+      if (skip_accum) 
+      { // Skip to the begining of the next macro accumulator
+        for (;;) 
+        {
+          while ((c = getc(fp)) != '~' && c != EOF)
+            ;
+          
+          if (c == EOF) 
+            break;
+            
+          if (strchr("hsmuvtx", t = c = getc(fp)) &&
+            (c = getc(fp)) == ' ' && (c = getc(fp)) == '"')
+          {  
+            break;
+          }
+          
+          ungetc(c, fp);
+        }
+        
+        if (c == EOF) 
+          break;
+      } 
+      else 
+      {
+        if ((c = getc(fp)) == EOF) break;
+        
+        if (c != '~'      || !strchr("hsmuvtx", t = getc(fp)) ||
+          getc(fp) != ' ' || getc(fp) != '"') 
+        {
+          Error("Incomatible accumulator file: '%s'", rFile.Physical().c_str());
+        }
+      }
+  
+      for (i=0; (c = getc(fp))!=EOF && c!='"' && i<sizeof(macro_name)-1; i++) 
+      {
+        macro_name[i] = c;
+      }
+      macro_name[i] = '\0';
+  
+      hash = t == 'h' ? &mHmmHash :
+             t == 's' ? &mStateHash :
+             t == 'm' ? &mMixtureHash :
+             t == 'u' ? &mMeanHash :
+             t == 'v' ? &mVarianceHash :
+             t == 't' ? &mTransitionHash : 
+             t == 'x' ? &mXformHash : NULL;
+  
+      assert(hash);
+      if ((macro = FindMacro(hash, macro_name)) == NULL) 
+      {
+        skip_accum = 1;
+        continue;
+      }
+  
+      skip_accum = 0;
+      if (fread(&occurances, sizeof(occurances), 1, fp) != 1) 
+      {
+        Error("Invalid accumulator file: '%s'", rFile.Physical().c_str());
+      }
+      
+      if (!mmiDenominatorAccums) macro->mOccurances += occurances;
+      switch (t) 
+      {
+        case 'h': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
+        case 's': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
+        case 'm': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
+        case 'u': ReadAccum(mt_mean,       NULL, macro->mpData, &ud);          break;
+        case 'v': ReadAccum(mt_variance,   NULL, macro->mpData, &ud);          break;
+        case 't': ReadAccum(mt_transition, NULL, macro->mpData, &ud);          break;
+        case 'x': ReadAccum(mt_Xform,      NULL, macro->mpData, &ud);          break;
+        default:  assert(0);
+      }
+    }
+    
+    in.close();
+    //delete [] ud.mpFileName;
+    //free(ud.mpFileName);    
+  }; // ReadAccums(...)
+
+
 
   //****************************************************************************  
   //****************************************************************************  
@@ -3657,7 +3841,7 @@ namespace STK
           if (c == EOF) 
             break;
             
-          if (strchr("hsmuvt", t = c = getc(fp)) &&
+          if (strchr("hsmuvtx", t = c = getc(fp)) &&
             (c = getc(fp)) == ' ' && (c = getc(fp)) == '"')
           {  
             break;
@@ -3673,7 +3857,7 @@ namespace STK
       {
         if ((c = getc(fp)) == EOF) break;
         
-        if (c != '~'      || !strchr("hsmuvt", t = getc(fp)) ||
+        if (c != '~'      || !strchr("hsmuvtx", t = getc(fp)) ||
           getc(fp) != ' ' || getc(fp) != '"') 
         {
           Error("Incomatible accumulator file: '%s'", pFileName);
@@ -3691,7 +3875,8 @@ namespace STK
              t == 'm' ? &mMixtureHash :
              t == 'u' ? &mMeanHash :
              t == 'v' ? &mVarianceHash :
-             t == 't' ? &mTransitionHash : NULL;
+             t == 't' ? &mTransitionHash : 
+             t == 'x' ? &mXformHash : NULL;
   
       assert(hash);
       if ((macro = FindMacro(hash, macro_name)) == NULL) 
@@ -3712,9 +3897,10 @@ namespace STK
         case 'h': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
         case 's': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
         case 'm': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
-        case 'u': ReadAccum(mt_mean, NULL, macro->mpData, &ud);                break;
-        case 'v': ReadAccum(mt_variance, NULL, macro->mpData, &ud);            break;
+        case 'u': ReadAccum(mt_mean,       NULL, macro->mpData, &ud);          break;
+        case 'v': ReadAccum(mt_variance,   NULL, macro->mpData, &ud);          break;
         case 't': ReadAccum(mt_transition, NULL, macro->mpData, &ud);          break;
+        case 'x': ReadAccum(mt_Xform,      NULL, macro->mpData, &ud);          break;
         default:  assert(0);
       }
     }
@@ -3821,17 +4007,19 @@ namespace STK
       }
   
   //    if (!ud->mMmi) { // MMI estimation of Xform statistics has not been implemented yet
-      for (i = 0; i < nxfsa; i++) 
-      {
-        size = xfsa[i].mpXform->mInSize;
-        size = (macro_type == mt_mean) ? size : size+size*(size+1)/2;
-        assert(xfsa[i].mpXform->mpMacro != NULL);
-        if (fprintf(ud->mpFp, "\"%s\"", xfsa[i].mpXform->mpMacro->mpName) < 0 ||
-          fwrite(&size,           sizeof(size),        1, ud->mpFp) != 1    ||
-          fwrite(xfsa[i].mpStats, sizeof(FLOAT), size, ud->mpFp) != size ||
-          fwrite(&xfsa[i].mNorm,  sizeof(FLOAT),    1, ud->mpFp) != 1) 
+      if(!ud->mpModelSet->mCmllrStats) {
+        for (i = 0; i < nxfsa; i++) 
         {
-          Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
+          size = xfsa[i].mpXform->mInSize;
+          size = (macro_type == mt_mean) ? size : size+size*(size+1)/2;
+          assert(xfsa[i].mpXform->mpMacro != NULL);
+          if (fprintf(ud->mpFp, "\"%s\"", xfsa[i].mpXform->mpMacro->mpName) < 0 ||
+            fwrite(&size,           sizeof(size),        1, ud->mpFp) != 1    ||
+            fwrite(xfsa[i].mpStats, sizeof(FLOAT), size, ud->mpFp) != size ||
+            fwrite(&xfsa[i].mNorm,  sizeof(FLOAT),    1, ud->mpFp) != 1) 
+          {
+            Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
+          }
         }
       }
   //    }
@@ -3863,6 +4051,19 @@ namespace STK
       if (fwrite(vector, sizeof(FLOAT), size, ud->mpFp) != size) 
       {
         Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
+      }
+    }
+    else if (macro_type == mt_Xform) 
+    {
+      if (ud->mpModelSet->mCmllrStats 
+      && ((Xform *) pData)->mpCmllrStats != NULL) {
+        size = ((Xform *) pData)->mInSize;
+        size = (size + size*(size+1)/2) * (size -1) + 1;
+        vector = ((Xform *) pData)->mpCmllrStats;
+  
+        if (fwrite(vector, sizeof(FLOAT), size, ud->mpFp) != size) {
+          Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
+        }
       }
     }
   } // WriteAccum(int macro_type, HMMSetNodeName nodeName,..)
@@ -3897,9 +4098,10 @@ namespace STK
   
     ud.mpFp         = fp;
     ud.mpFileName   = file_name;
+    ud.mpModelSet   = this;
   //  ud.mMmi = MMI_denominator_accums;
   
-    Scan(MTM_PRESCAN | (MTM_ALL & ~(MTM_XFORM_INSTANCE|MTM_XFORM)),
+    Scan(MTM_PRESCAN | (MTM_ALL & ~(MTM_XFORM_INSTANCE)), //|MTM_XFORM
               NULL, WriteAccum, &ud);
   
     fclose(fp);

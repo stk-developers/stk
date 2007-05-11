@@ -10,16 +10,25 @@
  *                                                                         *
  ***************************************************************************/
 
+#define SVN_DATE       "$Date$"
+#define SVN_AUTHOR     "$Author$"
+#define SVN_REVISION   "$Revision$"
+#define SVN_ID         "$Id$"
+
+
 #define MODULE_VERSION "0.7 "__TIME__" "__DATE__
+
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <malloc.h>
 #include <assert.h>
+
 #include "STKLib/fileio.h"
 #include "STKLib/common.h"
 #include "STKLib/Models.h"
-#include "STKLib/Viterbi.h"
+#include "STKLib/Decoder.h"
 #ifndef WIN32
 #include <unistd.h>
 #else
@@ -174,6 +183,8 @@ int main(int argc, char *argv[])
   mmf_dir        = GetParamStr(&cfg_hash, SNAME":MMFDIR",          ".");
   mmf_mask       = GetParamStr(&cfg_hash, SNAME":MMFMASK",         NULL);
 
+  bool print_all_options = GetParamBool(&cfg_hash,SNAME":PRINTALLOPTIONS", false);
+
   if (GetParamBool(&cfg_hash, SNAME":PRINTCONFIG", false))
     PrintConfig(&cfg_hash);
   
@@ -183,6 +194,11 @@ int main(int argc, char *argv[])
   if (!GetParamBool(&cfg_hash,SNAME":ACCEPTUNUSEDPARAM", false))
     CheckCommandLineParamUse(&cfg_hash);
 
+  if (print_all_options) 
+  {
+    print_registered_parameters();
+  }
+  
   if (NULL != script)
   {
     for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) 

@@ -61,7 +61,7 @@
 #endif /* !DIR_SEPARATOR_CHAR */
 
 
-#if !HAVE_REENTRANT_SEARCH
+#if !HAVE_REENTRANT_SEARCH || !HAVE_SEARCH_H
 #  include <gnusearch.h>
 #else
 #  include <search.h>
@@ -115,17 +115,33 @@
 #endif
 
 
-
+// The following declaration assumes that SSE instructions are enabled
+// and that we are using GNU C/C++ compiler, which defines the __attribute__ (...)
+// notation.
+//
+// ENABLE_SSE is defined in <config.h>. Its value depends on options given
+// in the configure phase of builidng the library
+#if ENABLE_SSE && defined(__GNUC__ )
 // vector of four single floats
-// vector of four single doubles
-typedef float v4sf __attribute__((vector_size(16))); 
-typedef double v4sd __attribute__((vector_size(16))); 
+typedef float  v4sf __attribute__((vector_size(16))); 
+// vector of two single doubles
+typedef double v2sd __attribute__((vector_size(16))); 
 
 typedef union 
 {
   v4sf    v;
   float   f[4];
 } f4vector; 
+
+typedef union 
+{
+  v2sd    v;
+  double  f[2];
+} d2vector; 
+#endif // ENABLE_SSE && defined(__GNUC__ )
+
+
+
 
 
 #ifndef M_PI
@@ -155,6 +171,7 @@ typedef union
 #  define EPSILON DBL_EPSILON
 #  define FLOAT_FMT "%lg"
 #  define swapFLOAT swap8
+#  define _ABS  fabs
 #  define _EXP  exp
 #  define _LOG  log
 #  define _SQRT sqrt
@@ -163,6 +180,7 @@ typedef union
 #  define EPSILON FLT_EPSILON
 #  define FLOAT_FMT "%g"
 #  define swapFLOAT swap4
+#  define _ABS  fabsf
 #  define _EXP  expf
 #  define _LOG  logf
 #  define _SQRT sqrtf
@@ -221,14 +239,32 @@ typedef union
 #  define WHITE_CHARS " \t"
 #endif
 
+
+#include <sys/stat.h>
+
+#if !defined(S_IFDIR)
+#  if defined(_IFDIR)
+#    define S_IFDIR _IFDIR
+#  elif defined(_S_IFDIR)
+#    define S_IFDIR _S_IFDIR
+#  else
+#    error "_IFDIR flag not found. Please check your sys/stat.h header file for compatible flag"
+#  endif
+#endif
+
+
 using namespace STK;
 
     
 //namespace STK
 //{
   /// This type will be used for flag passing
-  typedef unsigned int    FlagType;
+  typedef unsigned int  FlagType;
+
   
+  /// Type for representing node's start and stop times
+  typedef long long  TimingType;
+
   
   /** **************************************************************************
    ** **************************************************************************
@@ -286,16 +322,20 @@ using namespace STK;
   private:
     std::string         mLogical;     ///< Logical file name representation
     std::string         mPhysical;    ///< Pysical file name representation
+    FLOAT               mWeight;
     
   public:
     FileListElem(const std::string & rFileName);
     ~FileListElem() {}
     
     const std::string &
-    Logical() const { return mLogical; };
+    Logical() const { return mLogical; }
 
     const std::string &
-    Physical() const { return mPhysical; };
+    Physical() const { return mPhysical; }
+
+    const FLOAT&
+    Weight() const { return mWeight; }
         
     FileListElem *      mpNext;
     char *              mpPhysical;
@@ -347,6 +387,23 @@ using namespace STK;
   
   void fast_softmax_vec(double *in, double *out, int size);
   void fast_sigmoid_vec(double *in, double *out, int size);
+
+
+  /** 
+   * @brief 
+   * 
+   * @param f1 
+   * @param f2 
+   * @param nRounds 
+   * 
+   * @return 
+   */
+  bool 
+  close_enough(const FLOAT f1, const FLOAT f2, int nRounds);
+  
+  FLOAT 
+  float_safe_substract(const FLOAT& f1, const FLOAT &f2, int nRounds);
+
   
   int my_hcreate_r(size_t nel,
                   MyHSearchData *tab);
@@ -363,6 +420,7 @@ using namespace STK;
   
   int fprintHTKstr(FILE *fp, const char *str);
   int getHTKstr(char *str, char **endPtrOrErrMsg);
+  int skipHTKstr(char *str, char **endPtrOrErrMsg);
   char *expandFilterCommand(const char *command, const char *filename);
   char *readline(FILE *fp, struct ReadlineData *data);
   
@@ -508,6 +566,22 @@ using namespace STK;
   extern const char*    gpParmFilter;
   extern const char*    gpParmOFilter;
   extern const char*    gpScriptFilter;
+
+
+  struct ParameterRecord
+  {
+    std::string    mName;
+    std::string    mType;
+    std::string    mHelp;
+  };
+
+  extern std::vector<ParameterRecord>    gRegisteredParameters;
+
+  void
+  print_registered_parameters();
+  
+  int breakpoint(); // Empty function, just for debuging purposes
+
   
 //}; //namespace STK
 

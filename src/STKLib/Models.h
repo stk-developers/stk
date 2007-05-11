@@ -60,6 +60,7 @@ namespace STK
   class LinearXform;
   class MatlabXform;
   class StackingXform;
+  class ConstantXform;
   class XformStatCache;
   class XformStatAccum;
 
@@ -115,8 +116,8 @@ namespace STK
   
   /// model set flags
   //@{  
-  const FlagType MODEL_SET_WITH_ACCUM   = 1; ///< The set should allocate space for
-                                             ///< accumulators 
+  const FlagType MODEL_SET_WITH_ACCUM         = 1; ///< The set should allocate space for accumulators 
+  const FlagType MODEL_SET_WITH_TWO_ACCUM_SET = 2; ///< The set should allocate space for two sets of accumulators (UT_TwoAccumSetEBW)
   //@}
   
   
@@ -212,6 +213,13 @@ namespace STK
     UM_CWEIGHTS   = 256
   };
   
+  enum UpdateType 
+  {
+    UT_ML=0,
+    UT_TwoAccumSetEBW,
+    UT_EBW
+  };
+  
   enum KeywordID
   {
     KID_UNSET=-1,
@@ -230,8 +238,10 @@ namespace STK
     KID_HMMSetID=119,KID_ParmKind,
   
     /* Non-HTK keywords */
+    // TODO: Check KID_Constant
     KID_FrmExt  =200,KID_PDFObsVec,  KID_ObsCoef,     KID_Input,    KID_NumLayers,
-    KID_NumBlocks,   KID_Layer,      KID_Copy,        KID_Stacking, KID_Transpose,   
+    KID_NumBlocks,   KID_Layer,      KID_Copy,        KID_Stacking, KID_Constant,
+    KID_Transpose,   
     KID_XformPredef, KID_Window,     KID_WindowPredef,KID_BlockCopy,KID_BiasPredef,
   
     /* Numeric functions - FuncXform*/
@@ -318,6 +328,7 @@ namespace STK
     BiasXform*      ReadBiasXform     (FILE* fp, Macro* macro, bool preddefined);
     FuncXform*      ReadFuncXform     (FILE* fp, Macro* macro, int funcId);
     StackingXform*  ReadStackingXform (FILE* fp, Macro* macro);
+    ConstantXform*  ReadConstantXform (FILE* fp, Macro* macro);
     int             ReadGlobalOptions (FILE* fp);
     
     void   WriteHMM          (FILE* fp, bool binary, Hmm*             hmm);
@@ -339,6 +350,7 @@ namespace STK
     void   WriteFuncXform    (FILE* fp, bool binary,      FuncXform*  xform);
     void   WriteBiasXform    (FILE* fp, bool binary,      BiasXform*  xform);
     void   WriteStackingXform(FILE* fp, bool binary,  StackingXform*  xform);
+    void   WriteConstantXform(FILE* fp, bool binary,  ConstantXform*  xform);
     void   WriteGlobalOptions(FILE* fp, bool binary);  
     
     
@@ -363,7 +375,7 @@ namespace STK
     int                       mParamKind;
     size_t                    mNMixtures;
     size_t                    mNStates;
-    bool                      mAllocAccums;
+    int                       mAllocAccums;
     int                       mTotalDelay;
     bool                      mAllMixuresUpdatableFromStatAccums;
     bool                      mIsHTKCopatible;         ///< Models use no extension with respecto to HTK
@@ -382,12 +394,17 @@ namespace STK
     MakeXformCommand*         mpXformToUpdate;
     size_t                    mNumberOfXformsToUpdate;
     int                       mGaussLvl2ModelReest;
-    int                       mMmiUpdate;
+    UpdateType                mUpdateType;
+    bool                      mISmoothAfterD;
+    bool                      JSmoothing;
     bool                      mSaveGlobOpts;
+    bool                      mCmllrStats; // Collect CMLLR statistics instedad of full covariance statistics
     FLOAT                     MMI_E;
     FLOAT                     MMI_h;
     FLOAT                     MMI_tauI;
     FLOAT                     mMapTau;
+    FLOAT                     mMinOccupation;
+    FLOAT                     mISmoothingMaxOccup;
     
     BiasXform**               mpClusterWeightVectors;
     int                       mNClusterWeightVectors;
@@ -506,6 +523,16 @@ namespace STK
                FLOAT *      totLogLike, 
                int          mmiDenominatorAccums);
     
+    /**
+     * @brief Reads accumulators from file
+     * @param rFile file to read represented by FileListElem
+     * @param totFrames 
+     * @param totLogLike 
+     * @param MMI_denominator_accums 
+     */
+    void
+    ReadAccums(const FileListElem& rFile, long* totFrames, FLOAT* totLogLike, 
+        int mmiDenominatorAccums);
     
     void
     ReadXformStats(const char * pOutDir, bool binary);
@@ -708,7 +735,6 @@ namespace STK
     void
     AttachPriors(HMMSetNodeName nodeName, State * pPriorState);
     
-    void
     /**
      * @brief Performs desired @c action on the HMM's data which are chosen by @mask
      * @param mask bit mask of flags that tells which data to process by @c action
@@ -716,6 +742,7 @@ namespace STK
      * @param action routine to apply on pUserData
      * @param pUserData the data to process by @c action
      */
+    void
     Scan( int             mask,
           HMMSetNodeName  nodeNameBuffer,
           ScanAction      action, 
@@ -784,11 +811,11 @@ namespace STK
     void
     ComputeGConst();
     
-    void
     /**
      * @brief Updates the object from the accumulators
      * @param rModelSet ModelSet object which holds the accumulator configuration
      */
+    void
     UpdateFromAccums(const ModelSet * pModelSet);
     
     /**
@@ -815,7 +842,6 @@ namespace STK
     Mixture&
     ResetClusterWeightVectorsAccums();
         
-    void
     /**
      * @brief Performs desired @c action on the HMM's data which are chosen by @mask
      * @param mask bit mask of flags that tells which data to process by @c action
@@ -823,6 +849,7 @@ namespace STK
      * @param action routine to apply on pUserData
      * @param pUserData the data to process by @c action
      */
+    void
     Scan( int             mask,
           HMMSetNodeName  nodeNameBuffer,
           ScanAction      action, 
@@ -837,6 +864,15 @@ namespace STK
      */
     void
     UpdateClusterParametersFromAccums(const ModelSet * pModelSet);
+    
+    /**
+     * @brief Change accumulators according to I-smoothing making use of prior model
+     * @param numPlusDenNorm sum of numerator and denominator norms
+     * @param pModelSet
+     */
+    void
+    ISmoothing(FLOAT numPlusDenNorm, const ModelSet * pModelSet);
+
   };
 
   
@@ -865,7 +901,7 @@ namespace STK
      * @param vectorSize Mean vector size
      * @param allocateAccums if true, memory for accumulators is allocated
      */
-    Mean(size_t vectorSize, bool allocateAccums);
+    Mean(size_t vectorSize, int allocateAccums);
     
     /// The destructor
     virtual
@@ -939,7 +975,7 @@ namespace STK
      * @param vectorSize Mean vector size
      * @param allocateAccums if true, memory for accumulators is allocated
      */
-    Variance(size_t vectorSize, bool allocateAccums);
+    Variance(size_t vectorSize, int allocateAccums);
     
     /// The destructor
     virtual
@@ -1001,7 +1037,7 @@ namespace STK
      * @param nStates Number of states
      * @param allocateAccums if true, memory for accumulators is allocated
      */
-    Transition(size_t nStates, bool allocateAccums);
+    Transition(size_t nStates, int allocateAccums);
     
     /// The destructor
     virtual
@@ -1154,6 +1190,7 @@ namespace STK
     XT_BIAS,
     XT_FUNC,
     XT_STACKING,
+    XT_CONSTANT,
     XT_COMPOSITE,
     XT_FEATURE_MAPPING,
     XT_FRANTA_PRODUCT,
@@ -1176,8 +1213,9 @@ namespace STK
     size_t              mOutSize;
     size_t              mMemorySize;
     int                 mDelay;
+    FLOAT *             mpCmllrStats; // !!! Not very nice to have it here
     
-    Xform() : MacroData() {}
+    Xform() : MacroData(), mpCmllrStats(NULL) {}
     
     virtual 
     ~Xform() {}
@@ -1244,7 +1282,7 @@ namespace STK
      * @param nBlocks number of blocks in the layer
      * @return pointer to the newly created array of pointers to Xforms
      */
-    Xform**    
+    Xform**
     InitBlocks(size_t nBlocks);
   }; // class XformLayer
   
@@ -1528,7 +1566,7 @@ namespace STK
     
     int*                mpIndices;
     int                 mInRows;
-  
+
     /**
      * @brief Transpose Xform evaluation 
      * @param pInputVector pointer to the input vector
@@ -1543,6 +1581,39 @@ namespace STK
              PropagDirectionType  direction);  
   };
 
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Constant Xform representation
+   */
+  class ConstantXform : public Xform 
+  {
+  public:
+    /**
+     * @brief The constructor
+     * @param inSize size of input vector
+     * @param outSize size of output vector
+     */
+    ConstantXform(size_t outSize);
+    
+    virtual
+    ~ConstantXform();
+    
+    Matrix<FLOAT>       mVector;
+
+    /**
+     * @brief Copy Xform evaluation 
+     * @param pInputVector pointer to the input vector
+     * @param pOutputVector pointer to the output vector
+     * @param pMemory pointer to the extra memory needed by the operation
+     * @param direction propagation direction (forward/backward)
+     */
+    virtual FLOAT* 
+    Evaluate(FLOAT*     pInputVector, 
+             FLOAT*     pOutputVector,
+             char*      pMemory,
+             PropagDirectionType  direction);  
+  };
+  
   /** *************************************************************************
    ** *************************************************************************
    *  @brief Window input by constant vector (value by value) - Xform representation
@@ -1767,6 +1838,7 @@ namespace STK
   public:
     FILE *        mpFp;
     char *        mpFileName;
+    ModelSet *    mpModelSet;
     int           mMmi;
   };
 

@@ -19,7 +19,7 @@
 #include "STKLib/fileio.h"
 #include "STKLib/common.h"
 #include "STKLib/Models.h"
-#include "STKLib/Viterbi.h"
+#include "STKLib/Decoder.h"
 
 using namespace STK;
 

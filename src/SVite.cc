@@ -10,7 +10,13 @@
  *                                                                         *
  ***************************************************************************/
 
-#define MODULE_VERSION "0.4 "__TIME__" "__DATE__
+#define SVN_DATE       "$Date$"
+#define SVN_AUTHOR     "$Author$"
+#define SVN_REVISION   "$Revision$"
+#define SVN_ID         "$Id$"
+
+
+#define MODULE_VERSION "0.4 "__TIME__" "__DATE__" "SVN_ID
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -18,12 +24,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "STKLib/Features.h"
 
-#include "STKLib/Viterbi.h"
+#include "STKLib/Decoder.h"
 #include "STKLib/Models.h"
 #include "STKLib/fileio.h"
 #include "STKLib/labels.h"
 #include "STKLib/common.h"
-
+#include "STKLib/Lattice.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 // THE STANDARD HEADERS
@@ -43,6 +49,8 @@
 // we will be using the STK namespace ..........................................
 using namespace STK;
 
+#include <map>
+std::map<char *,float> countMap;
 
 //******************************************************************************
 //******************************************************************************
@@ -65,16 +73,16 @@ void usage(char *progname)
 " -o s       Output label formating NCSTWMXF                 None\n"
 " -p f       Inter word trans penalty (log)                  0.0\n"
 " -q s       Output network formating JMRVWXalpstv           tvl\n"
-////"  -q s    output lattice formating ABtvaldmn              tvaldmn\n"
+////" -q s       Output lattice formating ABtvaldmn              tvaldmn\n"
 " -r f       Pronunciation prob scale factor                 1.0\n"
 " -s f       Grammar scale factor                            1.0\n"
 " -t f [i l] Set pruning to f [inc limit]                    Off\n"
-////"  -u i    set pruning max active                          0\n"
+" -u i       set pruning max active                          0\n"
 //"  -v f    Set word end pruning threshold                  0.0\n"
 " -w [f]     Recognise from network                          Off\n"
 " -x s       Extension for hmm files                         None\n"
 " -y s       Output transcription file extension             rec\n"
-////"  -z s    generate lattices with extension s              off\n"
+" -z s       generate lattices with extension s              off\n"
 " -A         Print command line arguments                    Off\n"
 " -C cf      Set config file to cf                           Default\n"
 " -D         Display configuration variables                 Off\n"
@@ -109,9 +117,11 @@ char *optionStr =
 " -r r   PRONUNSCALE"
 " -s r   LMSCALE"
 " -t ror PRUNING PRUNINGINC PRUNINGMAX"
+" -u r   MAXACTIVEMODELS"
 " -w o   RECOGNET"
 " -x r   SOURCEMODELEXT"
 " -y r   TARGETTRANSCEXT"
+" -z r   LATTICEEXT"
 " -D n   PRINTCONFIG=TRUE"
 " -G r   SOURCETRANSCFMT"
 " -H l   SOURCEMMF"
@@ -123,10 +133,14 @@ char *optionStr =
 " -V n   PRINTVERSION=TRUE"
 " -X r   SOURCETRANSCEXT";
 
-int main(int argc, char *argv[]) 
-{
+
+
   ModelSet                      hset;
-  Network                       net;
+  Decoder<DecoderNetwork>        decoder;
+  Decoder<_CompactDecoderNetwork> compact_decoder;
+
+  Decoder<DecoderNetwork>*       p_decoder;
+
   FILE *                        lfp = NULL;
   FILE *                        ilfp = NULL;
   
@@ -137,6 +151,8 @@ int main(int argc, char *argv[])
   int                           i;
   int                           fcnt = 0;
   Label *                       labels;
+
+  Lattice                       lattice;
   char                          line[1024];
   char                          label_file[1024];
   const char *                  cchrptr;
@@ -145,10 +161,6 @@ int main(int argc, char *argv[])
   MyHSearchData                 phoneHash;
   MyHSearchData                 dictHash;
   MyHSearchData                 cfgHash;
-  
-  FileListElem *                feature_files = NULL;
-  FileListElem *                file_name = NULL;
-  FileListElem **               last_file = &feature_files;
   
   int                           alignment = (AlignmentType) WORD_ALIGNMENT;
 
@@ -159,59 +171,74 @@ int main(int argc, char *argv[])
   double                        outprb_scale;
   double                        pronun_scale;
   double                        occprb_scale;
+  double                        posterior_scale = 1.0;
   double                        state_pruning;
   double                        stprn_step;
-  double                        stprn_limit;  
-//double  word_pruning;
+  double                        stprn_limit;
+  double                        poster_prune;
          
-  const  char *                 hmm_dir;
-  const  char *                 hmm_ext;
-  const  char *                 out_lbl_dir;
-  const char *                  out_lbl_ext;
-  const char *                  in_lbl_dir;
-  const char *                  in_lbl_ext;
-  const char *                  out_MLF;
-  const char *                  in_MLF;
-  const char *                  network_file;
-  const char *                  hmm_list;
-  const char *                  dictionary;
-  char *                        script;
-  char *                        mmf;
-  const char *                  label_filter;
-  const char *                  net_filter;
-  const char *                  label_ofilter;
-  const char *                  net_ofilter;
-        char *                  cmn_path;
-        char *                  cmn_file;
-  const char *                  cmn_mask;
-        char *                  cvn_path;
-        char *                  cvn_file;
-  const char *                  cvn_mask;
-  const char *                  cvg_file;
-  const char *                  mmf_dir;
-  const char *                  mmf_mask;
-
+  const char*                   hmm_dir;
+  const char*                   hmm_ext;
+  const char*                   out_lbl_dir;
+  const char*                   out_lbl_ext;
+  const char*                   in_lbl_dir;
+  const char*                   in_lbl_ext;
+  const char*                   out_MLF;
+  const char*                   in_MLF;
+  const char*                   network_file;
+  const char*                   hmm_list;
+  const char*                   dictionary;
+        char*                   script;
+        char*                   mmf;
+  const char*                   label_filter;
+  const char*                   net_filter;
+  const char*                   label_ofilter;
+  const char*                   net_ofilter;
+        char*                   cmn_path;
+        char*                   cmn_file;
+  const char*                   cmn_mask;
+        char*                   cvn_path;
+        char*                   cvn_file;
+  const char*                   cvn_mask;
+  const char*                   cvg_file;
+  const char*                   mmf_dir;
+  const char*                   mmf_mask;
+  const char*                   lat_ext;
   int                           trace_flag;
   int                           targetKind;
   int                           derivOrder;
-  int  *                        derivWinLengths;
+  int*                          derivWinLengths;
   int                           startFrmExt;
   int                           endFrmExt;
+  int                           max_active;
+  int                           min_active;
   bool                          baum_welch;
   bool                          swap_features;
   bool                          htk_compat;
-  enum TranscriptionFormat {TF_HTK, TF_STK} in_transc_fmt, out_transc_fmt;
+  bool                          compactNetworkRepresentation = false;
+  enum TranscriptionFormat {TF_HTK, TF_STK, TF_CSTK} in_transc_fmt, out_transc_fmt;
   int                           notInDictAction = WORD_NOT_IN_DIC_UNSET;
   
   ExpansionOptions              expOptions  = {0};
+  ExpansionOptions              emptyExpOpts= {0}; 
+                                
   STKNetworkOutputFormat        in_net_fmt  = {0};
   STKNetworkOutputFormat        out_net_fmt = {0};
-  LabelFormat                   out_lbl_fmt = {0};
-  LabelFormat                   in_lbl_fmt  = {0};
-  
-  
-  in_lbl_fmt.TIMES_OFF = 1;
+  STKNetworkOutputFormat        tmp_net_fmt = {0};
+//  LabelFormat                   out_lbl_fmt = {0};
+//  LabelFormat                   in_lbl_fmt  = {0};
 
+  bool  print_all_options; 
+
+
+
+
+int main(int argc, char *argv[]) 
+{
+                                emptyExpOpts.mStrictTiming   = true;
+                                emptyExpOpts.mNoOptimization = true;
+                                emptyExpOpts.mNoWordExpansion= true;  
+//  in_lbl_fmt.TIMES_OFF = 1;
   if (argc == 1) 
     usage(argv[0]);
 
@@ -242,7 +269,6 @@ int main(int argc, char *argv[])
   for (; i < argc; i++) 
   {
     feature_repo.AddFile(argv[i]);
-    //last_file = AddFileElem(last_file, argv[i]);
   }
   
   // extract the feature parameters
@@ -263,19 +289,24 @@ int main(int argc, char *argv[])
                                                                 ? true : false);
   expOptions.mRemoveWordsNodes
                = GetParamBool(&cfgHash,SNAME":REMEXPWRDNODES",  false);
-  in_lbl_fmt.TIMES_OFF =
-                !GetParamBool(&cfgHash,SNAME":TIMEPRUNING",    false);
-  in_lbl_fmt.left_extent  = -100 * (long long) (0.5 + 1e5 *
-                 GetParamFlt(&cfgHash, SNAME":STARTTIMESHIFT",  0.0));
-  in_lbl_fmt.right_extent =  100 * (long long) (0.5 + 1e5 *
-                 GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0));
+//  in_lbl_fmt.TIMES_OFF =
+  in_net_fmt.mNoTimes = 
+                !GetParamBool(&cfgHash,SNAME":TIMEPRUNING",     false);
+//  in_lbl_fmt.left_extent  = -100 * (long long) (0.5 + 1e5 *
+  in_net_fmt.mStartTimeShift =
+                 GetParamFlt(&cfgHash, SNAME":STARTTIMESHIFT",  0.0);
+//  in_lbl_fmt.right_extent =  100 * (long long) (0.5 + 1e5 *
+  in_net_fmt.mEndTimeShift =
+                 GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0);
+  in_net_fmt.mNoAcousticLikes = 
+               !!GetParamBool(&cfgHash,SNAME":ADDACSCORES",     true);
   baum_welch   = GetParamBool(&cfgHash,SNAME":EVALUATION",      false);
   swap_features=!GetParamBool(&cfgHash,SNAME":NATURALREADORDER",isBigEndian());
-  gpFilterWldcrd= GetParamStr(&cfgHash,SNAME":HFILTERWILDCARD", "$");
-  gpScriptFilter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",   NULL);
-  gpParmFilter  = GetParamStr(&cfgHash, SNAME":HPARMFILTER",     NULL);
-  gpHListFilter = GetParamStr(&cfgHash,SNAME":HMMLISTFILTER",   NULL);
-  gpMmfFilter   = GetParamStr(&cfgHash, SNAME":HMMDEFFILTER",    NULL);
+  gpFilterWldcrd=GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
+  gpScriptFilter=GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",   NULL);
+  gpParmFilter = GetParamStr(&cfgHash, SNAME":HPARMFILTER",     NULL);
+  gpHListFilter= GetParamStr(&cfgHash, SNAME":HMMLISTFILTER",   NULL);
+  gpMmfFilter  = GetParamStr(&cfgHash, SNAME":HMMDEFFILTER",    NULL);
   label_filter = GetParamStr(&cfgHash, SNAME":HLABELFILTER",    NULL);
   net_filter   = GetParamStr(&cfgHash, SNAME":HNETFILTER",      NULL);
   dict_filter  = GetParamStr(&cfgHash, SNAME":HDICTFILTER",     NULL);
@@ -302,6 +333,9 @@ int main(int argc, char *argv[])
   state_pruning= GetParamFlt(&cfgHash, SNAME":PRUNING",         0.0);
   stprn_step   = GetParamFlt(&cfgHash, SNAME":PRUNINGINC",      0.0);
   stprn_limit  = GetParamFlt(&cfgHash, SNAME":PRUNINGMAX",      0.0);
+  poster_prune = GetParamFlt(&cfgHash, SNAME":POSTERIORPRUNING",0.0);
+  max_active   = GetParamInt(&cfgHash, SNAME":MAXACTIVEMODELS", 0);
+  min_active   = GetParamInt(&cfgHash, SNAME":MINACTIVEMODELS", 0);
   trace_flag   = GetParamInt(&cfgHash, SNAME":TRACE",           0);
   script =(char*)GetParamStr(&cfgHash, SNAME":SCRIPT",          NULL);
   mmf    =(char*)GetParamStr(&cfgHash, SNAME":SOURCEMMF",       NULL);
@@ -309,70 +343,90 @@ int main(int argc, char *argv[])
   mmf_dir      = GetParamStr(&cfgHash, SNAME":MMFDIR",          ".");
   mmf_mask     = GetParamStr(&cfgHash, SNAME":MMFMASK",         NULL);
 
+  extern int STK::nbest_lattices;
+  STK::nbest_lattices = GetParamInt(&cfgHash, SNAME":NBEST",    0);
 
-  cchrptr      = GetParamStr(&cfgHash, SNAME":LABELFORMATING",  "");
-  while (*cchrptr) 
-  {
-    switch (*cchrptr++) 
-    {
-      case 'N': out_lbl_fmt.SCORE_NRM = 1; break;
-      case 'S': out_lbl_fmt.SCORE_OFF = 1; break;
-      case 'C': out_lbl_fmt.CENTRE_TM = 1; break;
-      case 'T': out_lbl_fmt.TIMES_OFF = 1; break;
-      case 'W': out_lbl_fmt.WORDS_OFF = 1; break;
-      case 'M': out_lbl_fmt.MODEL_OFF = 1; break;
-      case 'F': out_lbl_fmt.FRAME_SCR = 1; break;
-//      case 'X': out_lbl_fmt.STRIP_TRI = 1; break;
-      default:
-        Warning("Unknown label formating flag '%c' ignored (NCSTWMF)", 
-            *cchrptr);
-    }
-  }
 
-  cchrptr      = GetParamStr(&cfgHash, SNAME":NETFORMATING",  "");
-  
-  if (*cchrptr) 
-  {
-    out_net_fmt.mNoLMLikes    = 1;
-    out_net_fmt.mNoTimes       = 1;
-    out_net_fmt.mNoPronunVars = 1;
-    out_net_fmt.mNoAccLikes   = 1;
-  }
-  
-  while (*cchrptr) 
-  {
-    switch (*cchrptr++) 
-    {
-      case 'R': out_net_fmt.mBase62Labels  = 1; // reticent
-                out_net_fmt.mLinNodeSeqs  = 1;
-                out_net_fmt.mNoDefaults    = 1; break;
-      case 'V': out_net_fmt.mArcDefsWithJ= 1;
-                out_net_fmt.mAllFieldNames= 1; break;
-      case 'J': out_net_fmt.mArcDefsToEnd= 1; break;
-      case 'W': out_net_fmt.mNoWordNodes  = 1; break;
-      case 'M': out_net_fmt.mNoModelNodes = 1; break;
-      case 'X': out_net_fmt.mStripTriphones= 1; break;
-      case 't': out_net_fmt.mNoTimes       = 0; break;
-      case 's': out_net_fmt.mStartTimes    = 1; break;
-      case 'v': out_net_fmt.mNoPronunVars = 0; break;
-      case 'a': out_net_fmt.mNoAccLikes   = 0; break;
-      case 'l': out_net_fmt.mNoLMLikes    = 0; break;
-      case 'p': out_net_fmt.mAproxAccuracy = 1; break;
-      default:
-        Warning("Unknown net formating flag '%c' ignored (JMRVWXalpstv)", 
-            *cchrptr);
-    }
-  }
-  
+  lat_ext      = GetParamStr(&cfgHash, SNAME":LATTICEEXT",      NULL);
+  print_all_options = GetParamBool(&cfgHash,SNAME":PRINTALLOPTIONS", false);
+
   in_transc_fmt = (TranscriptionFormat) 
     GetParamEnum(&cfgHash, SNAME":SOURCETRANSCFMT",
       !network_file && htk_compat ? TF_HTK : TF_STK,
-      "HTK", TF_HTK, "STK", TF_STK, NULL);
+      "HTK", TF_HTK, "STK", TF_STK, "CSTK", TF_CSTK, NULL);
+  
+  if (in_transc_fmt == TF_CSTK)
+  {
+    in_transc_fmt = TF_STK;
+    compactNetworkRepresentation = true;
+  }
 
   out_transc_fmt = (TranscriptionFormat) 
     GetParamEnum(&cfgHash,SNAME":TARGETTRANSCFMT", 
-        htk_compat ? TF_HTK : TF_STK ,
+        htk_compat ?  : TF_STK ,
         "HTK", TF_HTK, "STK", TF_STK, NULL);
+	
+  if (lat_ext != NULL) {
+    out_transc_fmt = TF_STK;
+    out_lbl_ext = lat_ext;
+  }
+
+  cchrptr      = GetParamStr(&cfgHash, SNAME":LABELFORMATING",  "");
+  if (out_transc_fmt == TF_HTK) {
+    while (*cchrptr) 
+    {
+      switch (*cchrptr++) 
+      {
+        case 'N': out_net_fmt.mScoreNorm       = 1; break;
+        case 'S': out_net_fmt.mNoAcousticLikes = 1; break;
+        case 'C': out_net_fmt.mCentreTimes     = 1; break;
+        case 'T': out_net_fmt.mNoTimes         = 1; break;
+        case 'W': out_net_fmt.mNoWordNodes     = 1; break;
+        case 'M': out_net_fmt.mNoModelNodes    = 1; break;
+        case 'F': out_net_fmt.mFrameScores     = 1; break;
+        case 'X': out_net_fmt.mStripTriphones  = 1; break;
+        default:
+          Warning("Unknown label formating flag '%c' ignored (NCSTWMF)", 
+              *cchrptr);
+      }
+    }
+  }
+  
+  cchrptr      = GetParamStr(&cfgHash, SNAME":NETFORMATING",  "");
+  if (out_transc_fmt == TF_STK) {
+    if (*cchrptr) 
+    {
+      out_net_fmt.mNoLMLikes        = 1;
+      out_net_fmt.mNoAcousticLikes  = 1;
+      out_net_fmt.mNoTimes          = 1;
+      out_net_fmt.mNoPronunVars     = 1;
+    }
+  
+    while (*cchrptr) 
+    {
+      switch (*cchrptr++) 
+      {
+        case 'R': out_net_fmt.mBase62Labels             = 1; // reticent
+                  out_net_fmt.mLinNodeSeqs              = 1;
+                  out_net_fmt.mNoDefaults               = 1; break;
+        case 'V': out_net_fmt.mArcDefsWithJ             = 1;
+                  out_net_fmt.mAllFieldNames            = 1; break;
+        case 'J': out_net_fmt.mArcDefsToEnd             = 1; break;
+        case 'W': out_net_fmt.mNoWordNodes              = 1; break;
+        case 'M': out_net_fmt.mNoModelNodes             = 1; break;
+        case 'X': out_net_fmt.mStripTriphones           = 1; break;
+        case 't': out_net_fmt.mNoTimes                  = 0; break;
+        case 's': out_net_fmt.mStartTimes               = 1; break;
+        case 'v': out_net_fmt.mNoPronunVars             = 0; break;
+        case 'a': out_net_fmt.mNoAcousticLikes          = 0; break;
+        case 'l': out_net_fmt.mNoLMLikes                = 0; break;
+        case 'p': out_net_fmt.mAproxAccuracy            = 1; break;
+        default:
+          Warning("Unknown net formating flag '%c' ignored (JMRVWXalpstv)", 
+              *cchrptr);
+      }
+    }
+  }
 
   if (GetParamBool(&cfgHash, SNAME":STATEALIGNMENT", false)) 
   {
@@ -399,7 +453,12 @@ int main(int argc, char *argv[])
     CheckCommandLineParamUse(&cfgHash);
   }
 
+  if (print_all_options) 
+  {
+    print_registered_parameters();
+  }
  
+
   // initialize the feature repository
   feature_repo.Init(swap_features, startFrmExt, endFrmExt, targetKind, 
      derivOrder, derivWinLengths, cmn_path, cmn_mask, cvn_path, cvn_mask,
@@ -408,7 +467,6 @@ int main(int argc, char *argv[])
 
   if (NULL != script) 
     feature_repo.AddFileList(script, gpScriptFilter); 
-
   
   // parse the given MMF file(s)
   if (NULL != mmf)
@@ -418,7 +476,6 @@ int main(int argc, char *argv[])
       hset.ParseMmf(mmf, NULL);
     }
   }
-  
 
   // parse the HMM list
   if (hmm_list != NULL) 
@@ -456,15 +513,66 @@ int main(int argc, char *argv[])
       alignment &= ~WORD_ALIGNMENT;
       alignment |= MODEL_ALIGNMENT;
     }
-    out_lbl_fmt.WORDS_OFF = 1;
+    out_net_fmt.mNoWordNodes = 1;
   }
+
+
+  if (!compactNetworkRepresentation)
+    p_decoder = &decoder;
+  else
+    p_decoder = reinterpret_cast<Decoder<DecoderNetwork>* > (&compact_decoder);
+
+  
+  /*
+  IStkStream                      input_stream;    
+  input_stream.open(network_file, ios::in, transc_filter ? transc_filter : "");
+  
+  if (!input_stream.good())
+    Error("Cannot open network file: %s", network_file);
+  
+  ilfp = input_stream.file();
+
+  ReadSTKNetwork(
+      ilfp, 
+      &dictHash,
+      &phoneHash, 
+      notInDictAction, 
+      in_net_fmt,
+      feature_repo.CurrentHeader().mSamplePeriod, 
+      network_file, 
+      NULL,
+      true,
+      compact_decoder.rNetwork());
+
+  input_stream.close();
+
+  OStkStream output_stream;
+  output_stream.open("test_output.net");
+
+  if (!output_stream.good())
+    Error("Cannot open test output");
+   
+  WriteSTKNetwork(output_stream.file(), compact_decoder.rNetwork(), out_net_fmt, 
+      feature_repo.CurrentHeader().mSamplePeriod, "test_label", "test_mlf.mlf",
+      0.0, 0.0, 1.0);
+  
+  output_stream.close();
+  compact_decoder.Clear();
+
+  /*
+  if (!compactNetworkRepresentation)
+    SViteApp< Decoder<DecoderNetwork> >();
+  else
+    SViteApp< Decoder<_CompactDecoderNetwork> >();
+    */
+
   
   if (network_file) 
   { // Unsupervised training
-    Node *node = NULL;
-    IStkStream input_stream;    
+    IStkStream                      input_stream;    
     
-    input_stream.open(network_file, ios::in, transc_filter? transc_filter : "");
+    input_stream.open(network_file, ios::in, transc_filter ? transc_filter : "");
+
     
     if (!input_stream.good())
     {
@@ -481,45 +589,75 @@ int main(int argc, char *argv[])
           ilfp, 
           dictionary ? &dictHash : &phoneHash,
           dictionary ? UL_ERROR : UL_INSERT, 
-          in_lbl_fmt,
+          in_net_fmt,
           feature_repo.CurrentHeader().mSamplePeriod, 
           network_file, 
           NULL, 
           NULL);
               
-      node = MakeNetworkFromLabels(labels, 
-          dictionary ? NT_WORD : NT_PHONE);
+      decoder.rNetwork().BuildFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
               
       ReleaseLabels(labels);
+
+      if (!compactNetworkRepresentation)
+        decoder.rNetwork().ExpansionsAndOptimizations(
+            expOptions, 
+            in_net_fmt, 
+            &dictHash,
+            &nonCDphHash, 
+            &phoneHash);
     }
     else if (in_transc_fmt == TF_STK) 
     {
       //:TODO:
       // header.mSamplePeriod not initialized yet... 
-      node = ReadSTKNetwork(
-         ilfp, 
-         &dictHash,
-         &phoneHash, 
-         notInDictAction, 
-         in_lbl_fmt,
-         feature_repo.CurrentHeader().mSamplePeriod, 
-         network_file, 
-         NULL);
+
+      if (compactNetworkRepresentation)
+      {
+        ReadSTKNetwork(
+          ilfp, 
+          &dictHash,
+          &phoneHash, 
+          notInDictAction, 
+          in_net_fmt,
+          feature_repo.CurrentHeader().mSamplePeriod, 
+          network_file, 
+          NULL,
+          compactNetworkRepresentation,
+          compact_decoder.rNetwork());
+      }
+      else
+      {
+        ReadSTKNetwork(
+          ilfp, 
+          &dictHash,
+          &phoneHash, 
+          notInDictAction, 
+          in_net_fmt,
+          feature_repo.CurrentHeader().mSamplePeriod, 
+          network_file, 
+          NULL,
+          compactNetworkRepresentation,
+          decoder.rNetwork());
+
+        decoder.rNetwork().ExpansionsAndOptimizations(
+          expOptions, 
+          in_net_fmt, 
+          &dictHash,
+          &nonCDphHash, 
+          &phoneHash);
+      }
     }
     else 
     {
       Error("Too bad. What did you do ?!?");
     }
-                                
-    NetworkExpansionsAndOptimizations(
-        node, 
-        expOptions, 
-        in_net_fmt, 
-        &dictHash,
-        &nonCDphHash, 
-        &phoneHash);
-                                      
-    net.Init(node, &hset, NULL);
+
+    if (compactNetworkRepresentation)
+      compact_decoder.Init(&hset, NULL/*, compactNetworkRepresentation*/);
+    else
+      decoder.Init(&hset, NULL/*, compactNetworkRepresentation*/);
+
   } 
   else 
   {
@@ -528,18 +666,15 @@ int main(int argc, char *argv[])
 
   lfp = OpenOutputMLF(out_MLF);
 
-  // we are going to read from the feature repository
-  feature_repo.Rewind();
-
 
   //////////////////////////////////////////////////////////////////////////////
   // read consequently all the feature files 
-  while (!feature_repo.EndOfList())
+  for (feature_repo.Rewind(); !feature_repo.EndOfList(); feature_repo.MoveNext())
   {
     if (trace_flag & 1) 
     {
       TraceLog("Processing file %d/%d '%s'", ++fcnt, feature_repo.QueueSize(), 
-          feature_repo.FollowingPhysical().c_str());
+          feature_repo.Current().Physical().c_str());
     }
     
     // read the feature matrix .................................................
@@ -548,7 +683,7 @@ int main(int argc, char *argv[])
     if (hset.mInputVectorSize != static_cast<int>(feature_matrix.Cols()))
     {
       Error("Vector size [%d] in '%s' is incompatible with HMM set [%d]",
-          feature_matrix.Cols(), feature_repo.CurrentPhysical().c_str(), 
+          feature_matrix.Cols(), feature_repo.Current().Physical().c_str(), 
           hset.mInputVectorSize);
     }
 
@@ -558,7 +693,7 @@ int main(int argc, char *argv[])
       static string    last_speaker_mmf;
       string           speaker_mmf;
 
-      ProcessMask(feature_repo.CurrentLogical(), mmf_mask, speaker_mmf);
+      ProcessMask(feature_repo.Current().Logical(), mmf_mask, speaker_mmf);
         
       if (last_speaker_mmf != speaker_mmf) 
       {
@@ -570,85 +705,154 @@ int main(int argc, char *argv[])
     // read the network file if given ..........................................
     if (!network_file) 
     {
-      Node* node = NULL;
+      // construct the name
+      strcpy(label_file, feature_repo.Current().Logical().c_str());
 
-      strcpy(label_file, feature_repo.CurrentLogical().c_str());
-
+      // open the label
       ilfp = OpenInputLabelFile(label_file, in_lbl_dir, 
           in_lbl_ext ? in_lbl_ext :
           in_transc_fmt == TF_STK ? "net" : "lab",
           ilfp, in_MLF);
 
+      // decide what to do depending on input format
       if (in_transc_fmt == TF_HTK) 
       {
         labels = ReadLabels(ilfp, dictionary ? &dictHash : &phoneHash, 
-            dictionary ? UL_ERROR : UL_INSERT, in_lbl_fmt,
+            dictionary ? UL_ERROR : UL_INSERT, in_net_fmt,
             feature_repo.CurrentHeader().mSamplePeriod, label_file, in_MLF, NULL);
 
-        node = MakeNetworkFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
+        decoder.rNetwork().BuildFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
+
         ReleaseLabels(labels);
       } 
       else if (in_transc_fmt == TF_STK) 
       {
-        node = ReadSTKNetwork(ilfp, &dictHash, &phoneHash, notInDictAction,
-            in_lbl_fmt, feature_repo.CurrentHeader().mSamplePeriod, label_file, in_MLF);
+        if (trace_flag & 2)
+          TraceLog("Recognition network: Loading \"%s\"", label_file);
+
+        if (!compactNetworkRepresentation)
+        {
+          ReadSTKNetwork(ilfp, &dictHash, &phoneHash, notInDictAction,
+              in_net_fmt, feature_repo.CurrentHeader().mSamplePeriod, label_file,
+              in_MLF, compactNetworkRepresentation,  decoder.rNetwork());
+        }
+        else
+        {
+          ReadSTKNetwork(ilfp, &dictHash, &phoneHash, notInDictAction,
+              in_net_fmt, feature_repo.CurrentHeader().mSamplePeriod, label_file,
+              in_MLF, compactNetworkRepresentation,  compact_decoder.rNetwork());
+        }
       } 
       else 
       {
         Error("Too bad. What did you do ?!?");
       }
 
-      NetworkExpansionsAndOptimizations(node, expOptions, in_net_fmt, &dictHash,
-          &nonCDphHash, &phoneHash);
+      // we perform optimizations of not in compact representation
+      if (!compactNetworkRepresentation)
+      {
+        if (trace_flag & 2)
+          TraceLog("Recognition network: Performing expansions and optimizations");
 
-      net.Init(node, &hset, NULL);
+        decoder.rNetwork().ExpansionsAndOptimizations(expOptions, in_net_fmt, &dictHash,
+            &nonCDphHash, &phoneHash);
+
+        decoder.Init(&hset, NULL/*, false*/);
+      }
+      else
+      {
+        compact_decoder.Init(&hset, NULL/*, true*/);
+      }
 
       CloseInputLabelFile(ilfp, in_MLF);
     }
 
-    net.mWPenalty     = word_penalty;
-    net.mMPenalty     = model_penalty;
-    net.mLmScale      = grammar_scale;
-    net.mPronScale    = pronun_scale;
-    net.mTranScale    = transp_scale;
-    net.mOutpScale    = outprb_scale;
-    net.mOcpScale     = occprb_scale;
-    net.mAlignment     = alignment;
-    net.mPruningThresh = state_pruning > 0.0 ? state_pruning : -LOG_0;
+    p_decoder->mWPenalty          = word_penalty;
+    p_decoder->mMPenalty          = model_penalty;
+    p_decoder->mLmScale           = grammar_scale;
+    p_decoder->mPronScale         = pronun_scale;
+    p_decoder->mTranScale         = transp_scale;
+    p_decoder->mOutpScale         = outprb_scale;
+    p_decoder->mOcpScale          = occprb_scale;
+    p_decoder->mAlignment         = alignment;
+    p_decoder->mPruningThresh     = state_pruning > 0.0 ? state_pruning : -LOG_0;
+    p_decoder->mMaxActiveModels   = max_active;
+    p_decoder->mMinActiveModels   = min_active;
+    p_decoder->mLatticeGeneration = (lat_ext != NULL);
+    
 
-    if (alignment & STATE_ALIGNMENT && out_lbl_fmt.MODEL_OFF) 
-      net.mAlignment &= ~MODEL_ALIGNMENT;
-    if (alignment & MODEL_ALIGNMENT && out_lbl_fmt.WORDS_OFF)
-      net.mAlignment &= ~WORD_ALIGNMENT;
-    if (alignment & STATE_ALIGNMENT && out_lbl_fmt.FRAME_SCR)
-      net.mAlignment |=  FRAME_ALIGNMENT;
+    if(p_decoder->mLatticeGeneration)
+    {
+      p_decoder->mAlignment = WORD_ALIGNMENT | MODEL_ALIGNMENT;
+    }
+    else
+    {
+      if (alignment & STATE_ALIGNMENT && out_net_fmt.mNoModelNodes) p_decoder->mAlignment &= ~MODEL_ALIGNMENT;
+      if (alignment & MODEL_ALIGNMENT && out_net_fmt.mNoWordNodes)  p_decoder->mAlignment &= ~WORD_ALIGNMENT;
+      if (alignment & STATE_ALIGNMENT && out_net_fmt.mFrameScores)  p_decoder->mAlignment |=  FRAME_ALIGNMENT;
+    }
+
+    fflush(stdout);
+    if (trace_flag & 2)
+      TraceLog("Recognition network: Performing recognition...");
 
     for (;;) 
     {
-      net.ViterbiInit();
-      net.PassTokenInNetwork = baum_welch ? &PassTokenSum : &PassTokenMax;
-      net.PassTokenInModel   = baum_welch ? &PassTokenSum : &PassTokenMax;
-
-      for (i = 0; i < feature_matrix.Rows(); i++) 
+      if (!compactNetworkRepresentation)
       {
-        net.ViterbiStep(feature_matrix[i]);
+        decoder.ViterbiInit();
+
+        decoder.PassTokenInNetwork = 
+          decoder.mLatticeGeneration ? &Decoder<DecoderNetwork>::PassTokenMaxForLattices :
+          baum_welch                 ? &Decoder<DecoderNetwork>::PassTokenSum 
+                                     : &Decoder<DecoderNetwork>::PassTokenMax;
+                                 
+        decoder.PassTokenInModel   = baum_welch ? &Decoder<DecoderNetwork>::PassTokenSum 
+                                                : &Decoder<DecoderNetwork>::PassTokenMax;
+
+        for (i = 0; i < feature_matrix.Rows(); i++) 
+        {
+          decoder.ViterbiStep(feature_matrix[i]);
+        }
+        
+        like = decoder.ViterbiDone(&labels, &lattice);
       }
-      
-      like = net.ViterbiDone(&labels);
+      else
+      {
+        compact_decoder.ViterbiInit();
+
+        compact_decoder.PassTokenInNetwork = 
+          compact_decoder.mLatticeGeneration ? &Decoder<_CompactDecoderNetwork>::PassTokenMaxForLattices :
+          baum_welch                 ? &Decoder<_CompactDecoderNetwork>::PassTokenSum 
+                                     : &Decoder<_CompactDecoderNetwork>::PassTokenMax;
+                                 
+        compact_decoder.PassTokenInModel   = baum_welch ? &Decoder<_CompactDecoderNetwork>::PassTokenSum 
+                                                : &Decoder<_CompactDecoderNetwork>::PassTokenMax;
+
+        for (i = 0; i < feature_matrix.Rows(); i++) 
+        {
+          compact_decoder.ViterbiStep(feature_matrix[i]);
+        }
+        
+        like = compact_decoder.ViterbiDone(&labels, &lattice);
+      }
+
 
       if (labels) 
         break;
 
-      if (net.mPruningThresh <= LOG_MIN 
+      if (p_decoder->mPruningThresh <= LOG_MIN 
       || (stprn_step <= 0.0) 
-      || ((net.mPruningThresh += stprn_step) > stprn_limit)) 
+      || ((p_decoder->mPruningThresh += stprn_step) > stprn_limit)) 
       {
         Warning("No tokens survived");
         break;
       }
 
       Warning("No tokens survived, trying pruning threshold: %.2f", 
-          net.mPruningThresh);
+          p_decoder->mPruningThresh);
+
+      lattice.Clear();
     }
 
     if (trace_flag & 1 && labels) 
@@ -656,38 +860,80 @@ int main(int argc, char *argv[])
       Label* label;
       int    n_frames = feature_matrix.Rows() - hset.mTotalDelay;
 
-      for (label = labels; 
-          label->mpNextLevel != NULL;
-          label = label->mpNextLevel)
-      {}
+      for (label = labels; label->mpNextLevel != NULL; 
+           label = label->mpNextLevel)
+      {  }
 
       for (; label != NULL; label = label->mpNext) 
       {
-        fprintf(stdout, "%s ", label->mpName);
+        if(label->mpName != NULL)
+          fprintf(stdout, "%s ", label->mpName);
       }
 
       TraceLog(" ==  [%d frames] %f", n_frames, like / n_frames);
     }
 
-    strcpy(label_file, feature_repo.CurrentLogical().c_str());
-    
-    lfp = OpenOutputLabelFile(label_file, out_lbl_dir, out_lbl_ext, lfp, 
-        out_MLF);
-
-    if (out_transc_fmt == TF_HTK) 
+    if (!lattice.IsEmpty())
     {
-      WriteLabels(lfp, labels, out_lbl_fmt, feature_repo.CurrentHeader().mSamplePeriod, label_file,
-          out_MLF);
+      tmp_net_fmt = out_net_fmt;
+      tmp_net_fmt.mNoLMLikes        = 0;
+      tmp_net_fmt.mNoAcousticLikes  = 0;
+      
+      if (trace_flag & 2)
+        TraceLog("Lattice: Performing optimizations (first pass)...");
+	
+      lattice.ExpansionsAndOptimizations(emptyExpOpts, tmp_net_fmt, 
+                                         NULL, NULL, NULL);
+
+      if (trace_flag & 2)
+        TraceLog("Lattice: Computing posterior probabilities...");
+      lattice.ForwardBackward(0.0, 0.0, 1.0, posterior_scale, true); // set false for "non-viterbi" posterior pruning
+      
+      if (trace_flag & 2)
+        TraceLog("Lattice: Performing posterior pruning...");
+	
+      lattice.PosteriorPrune(poster_prune  > 0.0 ? poster_prune  :
+                             state_pruning > 0.0 ? state_pruning : -LOG_0,
+			     0.0, 0.0, 1.0, posterior_scale);
+			     
+//      lattice.PosteriorExpectedCounts(countMap);
+      
+      lattice.FreePosteriors();
+
+
+      if (trace_flag & 2)
+        TraceLog("Lattice: Performing optimizations (second pass)...");
+      lattice.ExpansionsAndOptimizations(emptyExpOpts, out_net_fmt, NULL, NULL, NULL);
+    }
+
+    strcpy(label_file, feature_repo.Current().Logical().c_str());
+    lfp = OpenOutputLabelFile(label_file, out_lbl_dir, out_lbl_ext, lfp, out_MLF);
+
+    // write the output ........................................................
+    //
+    if (!lattice.IsEmpty())
+    {
+      WriteSTKNetwork(lfp, lattice, out_net_fmt, 
+          feature_repo.CurrentHeader().mSamplePeriod, label_file, out_MLF,
+          p_decoder->mWPenalty, p_decoder->mMPenalty, p_decoder->mLmScale);
+          
+      // we are not needing the lattice anymore, so free it from memory
+      lattice.Clear();
+    } 
+    else if (out_transc_fmt == TF_HTK) 
+    {
+      WriteLabels(lfp, labels, out_net_fmt, 
+          feature_repo.CurrentHeader().mSamplePeriod, label_file, out_MLF);
     } 
     else 
     {
-      Node* node = MakeNetworkFromLabels(labels, 
+      // create temporary linear network from labels, just to store it
+      DecoderNetwork tmp_net(labels, 
           alignment & (MODEL_ALIGNMENT|STATE_ALIGNMENT) ? NT_MODEL : NT_WORD);
       
-      WriteSTKNetwork(lfp, node, out_net_fmt, feature_repo.CurrentHeader().mSamplePeriod,
-          label_file, out_MLF);
-
-      FreeNetwork(node);
+      WriteSTKNetwork(lfp, tmp_net, out_net_fmt, 
+          feature_repo.CurrentHeader().mSamplePeriod, label_file, out_MLF,
+          p_decoder->mWPenalty, p_decoder->mMPenalty, p_decoder->mLmScale);
     }
 
     CloseOutputLabelFile(lfp, out_MLF);
@@ -695,7 +941,10 @@ int main(int argc, char *argv[])
 
     if (!network_file) 
     {
-      net.Release();
+      if (!compactNetworkRepresentation)
+        decoder.Clear();
+      else
+        compact_decoder.Clear();
     }
   } // while (!feature_repo.EndOfList())
 
@@ -703,12 +952,18 @@ int main(int argc, char *argv[])
   // clean up ..................................................................
   if (network_file) 
   {
-    net.Release();
+    if (!compactNetworkRepresentation)
+      decoder.Clear();
+    else
+      compact_decoder.Clear();
   }
   
-  hset.Release();
-  
-// my_hdestroy_r(&labelHash,   0);
+  for(std::map<char*,float>::iterator iter = countMap.begin(); iter != countMap.end(); ++iter ) {
+    std::cout << iter->first << " " << iter->second << std::endl; 
+  }
+
+  hset.Release();  
+  // my_hdestroy_r(&labelHash,   0);
   my_hdestroy_r(&phoneHash,   1);
   my_hdestroy_r(&nonCDphHash, 0);
   FreeDictionary(&dictHash);
@@ -717,13 +972,11 @@ int main(int argc, char *argv[])
     free(cfgHash.mpEntry[i]->data);
   
   my_hdestroy_r(&cfgHash, 1);
-
-  while (feature_files) 
-  {
-    file_name     = feature_files;
-    feature_files = feature_files->mpNext;
-    free(file_name);
+  
+  if (out_MLF) {
+    my_fclose(lfp);
   }
+
   //my_hdestroy_r(&cfgHash, 0);
 
   return 0;

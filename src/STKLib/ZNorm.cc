@@ -40,7 +40,7 @@ namespace STK
         FLOAT     ubm_weight  = ubm_state->mpMixture[i].mWeight;
         FLOAT*    ubm_l_obs   = XformPass(ubm_mix->mpInputXform, rFMatrix[t], time, FORWARD);
         assert(ubm_l_obs != NULL);
-        FLOAT     ubm_glike   = DiagCGaussianDensity(ubm_mix, ubm_l_obs, NULL);
+        FLOAT     ubm_glike   = Decoder<DecoderNetwork>::DiagCGaussianDensity(ubm_mix, ubm_l_obs, NULL);
         tmp_ubm_score = LogAdd(tmp_ubm_score, ubm_glike + ubm_weight);
       }
 
@@ -54,7 +54,7 @@ namespace STK
         Mixture*  spk_mix     = spk_state->mpMixture[i].mpEstimates; 
         FLOAT*    spk_l_obs   = XformPass(spk_mix->mpInputXform, rFMatrix[t], time, FORWARD);
         assert(spk_l_obs != NULL);
-        FLOAT     spk_glike   = DiagCGaussianDensity(spk_mix, spk_l_obs, NULL);
+        FLOAT     spk_glike   = Decoder<DecoderNetwork>::DiagCGaussianDensity(spk_mix, spk_l_obs, NULL);
         tmp_spk_score = LogAdd(tmp_spk_score, spk_glike + spk_weight);
       }
 

@@ -1,5 +1,6 @@
 
 #include "Features.h"
+#include <boost/tokenizer.hpp>
 
 namespace STK
 {
@@ -8,6 +9,54 @@ namespace STK
   // FeatureRepository section
   //###########################################################################
   //###########################################################################
+
+  //***************************************************************************
+  //***************************************************************************
+  void
+  AddFileListToFeatureRepositories(
+    const char* pFileName, 
+    const char* pFilter, 
+    std::queue<FeatureRepository *> &featureRepositoryList)
+  {
+    IStkStream            l_stream;
+    std::string           file_name(pFileName);
+
+    boost::char_separator<char> sep(",");
+    boost::tokenizer<boost::char_separator<char> > file_list(file_name, sep);
+    boost::tokenizer<boost::char_separator<char> >::iterator  p_file_name;
+
+    //:TODO: error if empty featureRepositoryList
+    
+    for (p_file_name = file_list.begin(); p_file_name != file_list.end(); ++p_file_name)
+    {
+      l_stream.open(p_file_name->c_str(), std::ios::in, pFilter);
+      
+      if (!l_stream.good())
+      {
+        //:TODO:
+        // Warning or error ... Why warning? -Lukas
+        Error("Cannot not open list file %s", p_file_name->c_str());
+      }
+      // read all lines and parse them
+      for(;;)
+      {
+        l_stream >> file_name;
+        //:TODO: if(l_stream.badl()) Error()
+        // Reading after last token set the fail bit
+        if(l_stream.fail()) 
+	  break;
+        // we can push_back a std::string as new FileListElem object
+        // is created using FileListElem(const std::string&) constructor
+        // and logical and physical names are correctly extracted
+	featureRepositoryList.front()->mInputQueue.push_back(file_name);
+	
+	//cycle in the featureRepositoryList
+	featureRepositoryList.push(featureRepositoryList.front());
+	featureRepositoryList.pop();
+      }
+      l_stream.close();
+    }
+  } // AddFileList(const std::string & rFileName)
 
 
   //***************************************************************************
@@ -57,45 +106,53 @@ namespace STK
   FeatureRepository::
   AddFileList(const char* pFileName, const char* pFilter)
   {
-    IStkStream    l_stream;
-    std::string   line;
-    std::vector<std::string>   file_list;
+    IStkStream            l_stream;
+    std::string           file_name(pFileName);
 
-    // the file may be a comma-separated list of files
-    TokenizeString(pFileName, file_list);
-
-    for (std::vector<std::string>::size_type i = 0; i < file_list.size(); i++)
+    boost::char_separator<char> sep(",");
+    boost::tokenizer<boost::char_separator<char> > file_list(file_name, sep);
+    boost::tokenizer<boost::char_separator<char> >::iterator  p_file_name;
+    
+    for (p_file_name = file_list.begin(); p_file_name != file_list.end(); ++p_file_name)
     {
       // open the file
-      l_stream.open(file_list[i].c_str(), std::ios::in, pFilter);
+      l_stream.open(p_file_name->c_str(), std::ios::in, pFilter);
       
-      if (l_stream.good())
-      {
-        // read all lines and parse them
-        while (!l_stream.eof())
-        {
-          getline(l_stream, line);
-          Trim(line);
-
-          if (!line.empty())
-            // we can push_back a std::string as new FileListElem object
-            // is created using FileListElem(const std::string&) constructor
-            // and logical and physical names are correctly extracted
-            mInputQueue.push_back(line);
-        }
-        // close the list file
-        l_stream.close();
-      }
-      else
+      if (!l_stream.good())
       {
         //:TODO:
-        // Warning or error
-        Error("Could not open list file %s", file_list[i].c_str());
+        // Warning or error ... Why warning? -Lukas
+        Error("Cannot not open list file %s", p_file_name->c_str());
       }
+      // read all lines and parse them
+      for(;;)
+      {
+        l_stream >> file_name;
+        //:TODO: if(l_stream.badl()) Error()
+        // Reading after last token set the fail bit
+        if(l_stream.fail()) 
+	  break;
+        // we can push_back a std::string as new FileListElem object
+        // is created using FileListElem(const std::string&) constructor
+        // and logical and physical names are correctly extracted
+        mInputQueue.push_back(file_name);
+      }
+      l_stream.close();
     }
   } // AddFileList(const std::string & rFileName)
-    
+
   
+  //***************************************************************************
+  //***************************************************************************
+  void
+  FeatureRepository::
+  MoveNext()
+  {
+    assert (mInputQueueIterator != mInputQueue.end());
+    mInputQueueIterator++;
+  } // ReadFullMatrix(Matrix<FLOAT>& rMatrix)
+
+
   //***************************************************************************
   //***************************************************************************
   bool
@@ -105,34 +162,23 @@ namespace STK
     // clear the matrix
     rMatrix.Destroy();
 
-    // move to the next record
-    if (mInputQueueIterator != mInputQueue.end())
+    // extract index file name
+    if (!mCurrentIndexFileDir.empty())
     {
-      // mark current position and move to the next record for next reading
-      mInputQueueCurrentIterator = mInputQueueIterator;
-      mInputQueueIterator++;
-
-      // extract index file name
-      if (!mCurrentIndexFileDir.empty())
-      {
-        char tmp_name[mCurrentIndexFileDir.length() + 
-          mCurrentIndexFileExt.length() + 
-          mInputQueueCurrentIterator->Physical().length()]; 
-        
-        MakeFileName(tmp_name, mInputQueueCurrentIterator->Physical().c_str(), 
-            mCurrentIndexFileDir.c_str(), mCurrentIndexFileExt.c_str());
-        
-        mCurrentIndexFileName = tmp_name;
-      }
-      else
-        mCurrentIndexFileName = "";
-
-      // read the matrix and return the result
-      //return ReadHTKFeatures(mInputQueueCurrentIterator->Physical(), rMatrix);
-      return ReadHTKFeatures(*mInputQueueCurrentIterator, rMatrix);
+      char tmp_name[mCurrentIndexFileDir.length() + 
+        mCurrentIndexFileExt.length() + 
+        mInputQueueIterator->Physical().length()]; 
+      
+      MakeFileName(tmp_name, mInputQueueIterator->Physical().c_str(), 
+          mCurrentIndexFileDir.c_str(), mCurrentIndexFileExt.c_str());
+      
+      mCurrentIndexFileName = tmp_name;
     }
+    else
+      mCurrentIndexFileName = "";
 
-    return false;
+    // read the matrix and return the result
+    return ReadHTKFeatures(*mInputQueueIterator, rMatrix);
   } // ReadFullMatrix(Matrix<FLOAT>& rMatrix)
 
 
@@ -235,7 +281,7 @@ namespace STK
 
   //***************************************************************************
   //***************************************************************************
-  bool 
+/*  bool 
   FeatureRepository::
   ReadHTKFeatures(const std::string& rFileName, Matrix<FLOAT>& rFeatureMatrix)
   {
@@ -637,7 +683,7 @@ namespace STK
     
     return true;
   }
-
+*/
 
   
   //***************************************************************************

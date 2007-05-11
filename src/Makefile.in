@@ -14,7 +14,7 @@
 
 @SET_MAKE@
 
-SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFeaCat_SOURCES) $(SLRatio_SOURCES) $(SNet_SOURCES) $(SResults_SOURCES) $(SRover_SOURCES) $(SVite_SOURCES)
+SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFeaCat_SOURCES) $(SLRatio_SOURCES) $(SResults_SOURCES) $(SRover_SOURCES) $(SVite_SOURCES)
 
 srcdir = @srcdir@
 top_srcdir = @top_srcdir@
@@ -37,8 +37,8 @@ NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
 bin_PROGRAMS = SExpand$(EXEEXT) SERest$(EXEEXT) SVite$(EXEEXT) \
-	SNet$(EXEEXT) SFeaCat$(EXEEXT) SLRatio$(EXEEXT) \
-	SResults$(EXEEXT) SRover$(EXEEXT)
+	SFeaCat$(EXEEXT) SLRatio$(EXEEXT) SResults$(EXEEXT) \
+	SRover$(EXEEXT)
 subdir = src
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -55,7 +55,8 @@ am_SERest_OBJECTS = SERest.$(OBJEXT)
 SERest_OBJECTS = $(am_SERest_OBJECTS)
 SERest_LDADD = $(LDADD)
 am__DEPENDENCIES_1 =
-am__DEPENDENCIES_2 = ./STKLib/libSTKLib.a $(am__DEPENDENCIES_1)
+am__DEPENDENCIES_2 = ./STKLib/libSTKLib.a $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
 SERest_DEPENDENCIES = $(am__DEPENDENCIES_2)
 am_SExpand_OBJECTS = SExpand.$(OBJEXT)
 SExpand_OBJECTS = $(am_SExpand_OBJECTS)
@@ -69,9 +70,6 @@ am_SLRatio_OBJECTS = SLRatio.$(OBJEXT)
 SLRatio_OBJECTS = $(am_SLRatio_OBJECTS)
 SLRatio_LDADD = $(LDADD)
 SLRatio_DEPENDENCIES = $(am__DEPENDENCIES_2)
-am_SNet_OBJECTS = SNet.$(OBJEXT)
-SNet_OBJECTS = $(am_SNet_OBJECTS)
-SNet_DEPENDENCIES = $(am__DEPENDENCIES_2)
 am_SResults_OBJECTS = SResults.$(OBJEXT)
 SResults_OBJECTS = $(am_SResults_OBJECTS)
 SResults_LDADD = $(LDADD)
@@ -93,11 +91,11 @@ CXXLD = $(CXX)
 CXXLINK = $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) \
 	-o $@
 SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFeaCat_SOURCES) \
-	$(SLRatio_SOURCES) $(SNet_SOURCES) $(SResults_SOURCES) \
-	$(SRover_SOURCES) $(SVite_SOURCES)
+	$(SLRatio_SOURCES) $(SResults_SOURCES) $(SRover_SOURCES) \
+	$(SVite_SOURCES)
 DIST_SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFeaCat_SOURCES) \
-	$(SLRatio_SOURCES) $(SNet_SOURCES) $(SResults_SOURCES) \
-	$(SRover_SOURCES) $(SVite_SOURCES)
+	$(SLRatio_SOURCES) $(SResults_SOURCES) $(SRover_SOURCES) \
+	$(SVite_SOURCES)
 RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	html-recursive info-recursive install-data-recursive \
 	install-exec-recursive install-info-recursive \
@@ -106,7 +104,7 @@ RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	uninstall-recursive
 ETAGS = etags
 CTAGS = ctags
-DIST_SUBDIRS = $(SUBDIRS)
+DIST_SUBDIRS = STKLib SNetLib .
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 AMDEP_FALSE = @AMDEP_FALSE@
@@ -142,10 +140,13 @@ INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 LDFLAGS = @LDFLAGS@
 LIBATLAS = @LIBATLAS@
+LIBMATLAB = @LIBMATLAB@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
+MATLABINCLUDEDIR = @MATLABINCLUDEDIR@
+MATLABLIBDIR = @MATLABLIBDIR@
 OBJEXT = @OBJEXT@
 PACKAGE = @PACKAGE@
 PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
@@ -161,6 +162,8 @@ REENTRANT_SEARCH_OBJ = @REENTRANT_SEARCH_OBJ@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 STRIP = @STRIP@
+USE_SNET_FALSE = @USE_SNET_FALSE@
+USE_SNET_TRUE = @USE_SNET_TRUE@
 VERSION = @VERSION@
 WANT_GETOPT_H_FALSE = @WANT_GETOPT_H_FALSE@
 WANT_GETOPT_H_TRUE = @WANT_GETOPT_H_TRUE@
@@ -204,24 +207,31 @@ sharedstatedir = @sharedstatedir@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 MAINTAINERCLEANFILES = Makefile.in
-SUBDIRS = STKLib SNetLib .
+@USE_SNET_FALSE@SNETLIBF = 
+@USE_SNET_TRUE@SNETLIBF = SNetLib
+SUBDIRS = STKLib $(SNETLIBF) .
 @WANT_GNUSEARCH_H_FALSE@HSEARCH_R_INC_DIR = 
 @WANT_GNUSEARCH_H_TRUE@HSEARCH_R_INC_DIR = -I$(top_srcdir)/lib
 @WANT_LIBGETOPT_FALSE@LIBGETOPT = 
 @WANT_LIBGETOPT_TRUE@LIBGETOPT = -lgetopt
+@WANT_HSEARCH_R_O_FALSE@LIBHSEARCH_R = 
+@WANT_HSEARCH_R_O_TRUE@LIBHSEARCH_R = -lhsearch_r
+@ENABLE_SSE_FALSE@SSE_FLAGS = 
+@ENABLE_SSE_TRUE@SSE_FLAGS = -msse -msse2 -mmmx -mfpmath=sse
+AM_CXXFLAGS = $(CXXFLAGS) $(SSE_FLAGS)
+AM_CFLAGS = $(CFLAGS) $(SSE_FLAGS)
 
 # These are the common libraries needed by all programs
-COMMONLDFLAGS = -L./STKLib -pthread
-COMMONLIBS = ./STKLib/libSTKLib.a $(LIBGETOPT)
+COMMONLDFLAGS = -pthread -L$(top_builddir)/lib
+COMMONLIBS = ./STKLib/libSTKLib.a $(LIBGETOPT) $(LIBHSEARCH_R) 
+AM_LDFLAGS = $(COMMONLDFLAGS) 
+LDADD = $(COMMONLIBS) 
 
 ################################################################################
 INCLUDES = $(ATLASINCLUDEDIR) -I. -I$(top_builddir) -I$(top_srcdir) \
               $(HSEARCH_R_INC_DIR)
 
-AM_LDFLAGS = $(COMMONLDFLAGS) 
-LDADD = $(COMMONLIBS)
 
-#am__DEPENDENCIES_1 = 
 # Specifications
 SERest_SOURCES = SERest.cc 
 SVite_SOURCES = SVite.cc
@@ -230,19 +240,6 @@ SFeaCat_SOURCES = SFeaCat.cc
 SLRatio_SOURCES = SLRatio.cc
 SResults_SOURCES = SResults.cc
 SRover_SOURCES = SRover.cc
-
-#SERest_DEPENDENCIES    = $(RECURSIVE_TARGETS) 
-#SVite_DEPENDENCIES     = $(RECURSIVE_TARGETS)
-#SExpand_DEPENDENCIES   = $(RECURSIVE_TARGETS)
-#SFeaCat_DEPENDENCIES   = $(RECURSIVE_TARGETS)
-#SLRatio_DEPENDENCIES   = $(RECURSIVE_TARGETS)
-#SResults_DEPENDENCIES  = $(RECURSIVE_TARGETS)
-#SRover_DEPENDENCIES    = $(RECURSIVE_TARGETS)
-
-# SNet is kind of special. It needs some files in the SNet source. This will probably change and separate SNetLib will be built
-SNet_SOURCES = SNet.cc 
-SNet_LDFLAGS = $(COMMONLDFLAGS) -L./SNetLib -pthread
-SNet_LDADD = $(COMMONLIBS) -lSNet 
 all: all-recursive
 
 .SUFFIXES:
@@ -311,9 +308,6 @@ SFeaCat$(EXEEXT): $(SFeaCat_OBJECTS) $(SFeaCat_DEPENDENCIES)
 SLRatio$(EXEEXT): $(SLRatio_OBJECTS) $(SLRatio_DEPENDENCIES) 
 	@rm -f SLRatio$(EXEEXT)
 	$(CXXLINK) $(SLRatio_LDFLAGS) $(SLRatio_OBJECTS) $(SLRatio_LDADD) $(LIBS)
-SNet$(EXEEXT): $(SNet_OBJECTS) $(SNet_DEPENDENCIES) 
-	@rm -f SNet$(EXEEXT)
-	$(CXXLINK) $(SNet_LDFLAGS) $(SNet_OBJECTS) $(SNet_LDADD) $(LIBS)
 SResults$(EXEEXT): $(SResults_OBJECTS) $(SResults_DEPENDENCIES) 
 	@rm -f SResults$(EXEEXT)
 	$(CXXLINK) $(SResults_LDFLAGS) $(SResults_OBJECTS) $(SResults_LDADD) $(LIBS)
@@ -334,7 +328,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SExpand.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SFeaCat.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SLRatio.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SNet.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SResults.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SRover.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SVite.Po@am__quote@
@@ -614,6 +607,23 @@ uninstall-info: uninstall-info-recursive
 	tags tags-recursive uninstall uninstall-am \
 	uninstall-binPROGRAMS uninstall-info-am
 
+@USE_SNET_TRUE@	SNETF    = SNet
+@USE_SNET_FALSE@	SNETF    = 
+# SWEChCoFast_SOURCES = SWEChCoFast.cc
+# SWE_SOURCES       = SWE.cc
+
+#SERest_DEPENDENCIES    = $(RECURSIVE_TARGETS) 
+#SVite_DEPENDENCIES     = $(RECURSIVE_TARGETS)
+#SExpand_DEPENDENCIES   = $(RECURSIVE_TARGETS)
+#SFeaCat_DEPENDENCIES   = $(RECURSIVE_TARGETS)
+#SLRatio_DEPENDENCIES   = $(RECURSIVE_TARGETS)
+#SResults_DEPENDENCIES  = $(RECURSIVE_TARGETS)
+#SRover_DEPENDENCIES    = $(RECURSIVE_TARGETS)
+
+# SNet is kind of special. It needs some files in the SNet source. This will probably change and separate SNetLib will be built
+@USE_SNET_TRUE@	SNet_SOURCES      = SNet.cc 
+@USE_SNET_TRUE@	SNet_LDFLAGS      = $(COMMONLDFLAGS) -pthread
+@USE_SNET_TRUE@	SNet_LDADD        = $(COMMONLIBS) ./SNetLib/libSNet.a
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

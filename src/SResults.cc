@@ -10,6 +10,12 @@
  *                                                                         *
  ***************************************************************************/
 
+#define SVN_DATE       "$Date$"
+#define SVN_AUTHOR     "$Author$"
+#define SVN_REVISION   "$Revision$"
+#define SVN_ID         "$Id$"
+
+
 #define MODULE_VERSION "0.1 "__TIME__" "__DATE__
 
 #include "STKLib/labels.h"
@@ -108,7 +114,8 @@ int main(int argc, char *argv[]) {
   char *ref_MLF_fn   = NULL;
   FILE *ref_MLF_fp  = NULL;
   char *rec_MLF_fn = NULL;
-  LabelFormat in_lbl_frm = {0};
+//  LabelFormat in_lbl_frm = {0};
+  STKNetworkOutputFormat in_lbl_frm = {0};
 
   FILE *rec_MLF_fp;
   float totalTime = 0.0;

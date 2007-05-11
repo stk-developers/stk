@@ -32,6 +32,7 @@
 // Standard includes
 //
 #include <list>
+#include <queue>
 #include <string>
 
 
@@ -52,6 +53,9 @@ namespace STK
   //  PUBLIC SECTION
   //////////////////////////////////////////////////////////////////////////////
   public:
+    /// Iterates through the list of feature file records
+    typedef   std::list<FileListElem>::iterator  ListIterator;
+
     // some params for loading features
     bool                        mSwapFeatures;
     int                         mStartFrameExt;
@@ -78,7 +82,6 @@ namespace STK
        mpCvn(NULL), mpCvg(NULL), mpA(NULL), mpB(NULL)
     { 
       mInputQueueIterator        = mInputQueue.end(); 
-      mInputQueueCurrentIterator = mInputQueue.end();
 
 #if FEATURE_REPOSITORY_PTHREAD_ENABLE
       mpRoMutex        = new pthread_mutex_t;
@@ -213,6 +216,12 @@ namespace STK
     CurrentHeader() const 
     { return mHeader; }
 
+    /** 
+     * @brief Returns a refference to the current file header
+     */
+    const HtkHeaderExt&
+    CurrentHeaderExt() const 
+    { return mHeaderExt; }
 
     /**
      * @brief Returns the current file details
@@ -223,7 +232,19 @@ namespace STK
      */
     const std::list<FileListElem>::iterator&
     pCurrentRecord() const
-    { return mInputQueueCurrentIterator; }
+    { return mInputQueueIterator; }
+
+
+    /**
+     * @brief Returns the following file details
+     *
+     * @return Refference to a class @c FileListElem
+     *
+     * Logical and physical file names are stored in @c FileListElem class
+     */
+    const std::list<FileListElem>::iterator&
+    pFollowingRecord() const
+    { return mInputQueueIterator; }
 
 
     void
@@ -247,40 +268,16 @@ namespace STK
     AddFileList(const char* pFileName, const char* pFilter = "");
   
     
-    /**
-     * @brief Returns current feature file logical name
-     * @return 
-     */
-    const std::string &
-    CurrentLogical() const
-    { return mInputQueueCurrentIterator->Logical(); }
+    const FileListElem&
+    Current() const
+    { return *mInputQueueIterator; }
 
-
-    /**
-     * @brief Returns current feature file physical name
-     * @return 
-     */
-    const std::string &
-    CurrentPhysical() const
-    { return mInputQueueCurrentIterator->Physical(); }
     
-    /**
-     * @brief Returns logical name of the file to be read next
-     * @return 
+    /** 
+     * @brief Moves to the next record
      */
-    const std::string &
-    FollowingLogical() const
-    { return mInputQueueIterator->Logical(); }
-
-
-    /**
-     * @brief Returns physical name of the file to be read next
-     * @return 
-     */
-    const std::string &
-    FollowingPhysical() const
-    { return mInputQueueIterator->Physical(); }
-    
+    void
+    MoveNext();
     
     /**
      * @brief Reads full feature matrix from a feature file
@@ -316,8 +313,13 @@ namespace STK
     const std::string&
     CurrentIndexFileName() const
     { return mCurrentIndexFileName; }
-
-
+    
+    friend
+    void
+    AddFileListToFeatureRepositories(
+    const char* pFileName,
+    const char* pFilter,
+    std::queue<FeatureRepository *> &featureRepositoryList);
 
 ////////////////////////////////////////////////////////////////////////////////
 //  PRIVATE SECTION
@@ -326,7 +328,6 @@ namespace STK
     /// List (queue) of input feature files
     std::list<FileListElem>             mInputQueue;
     std::list<FileListElem>::iterator   mInputQueueIterator;
-    std::list<FileListElem>::iterator   mInputQueueCurrentIterator;
     
     std::string                         mCurrentIndexFileName;
     std::string                         mCurrentIndexFileDir;
@@ -337,6 +338,7 @@ namespace STK
       
     // stores feature file's HTK header
     HtkHeader                   mHeader;
+    HtkHeaderExt                mHeaderExt;
 
 
     // this group of variables serve for working withthe same physical
