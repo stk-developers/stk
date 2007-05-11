@@ -70,7 +70,8 @@ namespace STK
       struct MyHSearchData *    word_hash,
       struct MyHSearchData *    phone_hash,
       int                       notInDict,
-      LabelFormat               labelFormat,
+//      LabelFormat               labelFormat,
+      STKNetworkOutputFormat    labelFormat,
       long                      sampPeriod,
       const char *              file_name,
       const char *              in_MLF,
@@ -230,7 +231,7 @@ namespace STK
           if (state == NODE_DEF) 
           {
             if ((!strcmp(chptr, "time") || !strcmp(chptr, "t")) 
-            && !(labelFormat.TIMES_OFF) && !(compactRepresentation)) 
+            && !(labelFormat.mNoTimes) && !(compactRepresentation)) 
             {
               char *colonptr=valptr;
 
@@ -449,28 +450,26 @@ namespace STK
               if (!(compactRepresentation))
                 ++enode->rNBackLinks();  
             } 
-            
             else if (!strcmp(chptr, "language") || !strcmp(chptr, "l")) 
-            {
-              FLOAT lm_like = getFloat(valptr, &chptr, file_name, line_no);
-              
+            {              
               // Set LM score to link starting in node. This link can possibly
               // lead to a phone node already inserted (div=) between 'p_node'
               // and'enode'
-              p_node->rpLinks()[p_node->rNLinks()-1].SetLmLike(lm_like);
+              FLOAT lm_like = getFloat(valptr, &chptr, file_name, line_no);
+	      if (!labelFormat.mNoLMLikes)
+                p_node->rpLinks()[p_node->rNLinks()-1].SetLmLike(lm_like);
             } 
-            
             else if (!strcmp(chptr, "acoustic") || !strcmp(chptr, "a")) 
             {
               // Set acoustic score to link starting in p_node. This link can
               // possibly lead to a phone node already inserted (div=) between
               // 'p_node' and'enode'
               FLOAT acoustic_like = getFloat(valptr, &chptr, file_name, line_no);
-              p_node->rpLinks()[p_node->rNLinks()-1].SetAcousticLike(acoustic_like);
+	      if (!labelFormat.mNoAcousticLikes)
+                p_node->rpLinks()[p_node->rNLinks()-1].SetAcousticLike(acoustic_like);
             } 
-
-            else if (!strcmp(chptr, "div") || !strcmp(chptr, "d")) 
-            {
+	    else if (!strcmp(chptr, "div") || !strcmp(chptr, "d")) 
+	    {
               if (compactRepresentation)
                 Error("d= or div= is not allowed in CSTK format (%s:%d)", 
                     file_name, line_no);
@@ -693,12 +692,16 @@ namespace STK
           
           if (p_node->mC.Start() != UNDEF_TIME) 
           {
-            p_node->mC.SetStart((p_node->mC.Start() - labelFormat.left_extent) / sampPeriod);
+            p_node->mC.SetStart((p_node->mC.Start() 
+	                       + 100 * (long long) (0.5 + 1e5 * labelFormat.mStartTimeShift))
+			       / sampPeriod);
           }
           
           if (p_node->mC.Stop()  != UNDEF_TIME) 
           {
-            p_node->mC.SetStop((p_node->mC.Stop() + labelFormat.right_extent) / sampPeriod);
+            p_node->mC.SetStop((p_node->mC.Stop() 
+	                      + 100 * (long long) (0.5 + 1e5 * labelFormat.mEndTimeShift)) 
+			      / sampPeriod);
           }
         }
 
@@ -771,7 +774,8 @@ namespace STK
       FILE*                     lfp,
       MyHSearchData*            word_hash,
       MyHSearchData*            phone_hash,
-      LabelFormat               labelFormat,
+      STKNetworkOutputFormat labelFormat,
+//      LabelFormat               labelFormat,
       long                      sampPeriod,
       const char*               file_name,
       const char*               in_MLF,
@@ -989,13 +993,15 @@ namespace STK
         if (nodeType != 'S') 
         {
           if (fscanf(lfp, " (%lld %lld)", &start, &stop)==2 
-          && !(labelFormat.TIMES_OFF)) 
+          && !(labelFormat.mNoTimes)) 
           {
-            long center_shift = labelFormat.CENTRE_TM ? sampPeriod / 2 : 0;
-            node->mC.SetStart((start - center_shift - labelFormat.left_extent)  
-                / sampPeriod);
-            node->mC.SetStop((stop  + center_shift + labelFormat.right_extent) 
-                / sampPeriod);
+            long center_shift = labelFormat.mCentreTimes ? sampPeriod / 2 : 0;
+            node->mC.SetStart((start - center_shift 
+	                     + 100 * (long long) (0.5 + 1e5 * labelFormat.mStartTimeShift))  
+                             / sampPeriod);
+            node->mC.SetStop((stop  + center_shift 
+	                    + 100 * (long long) (0.5 + 1e5 * labelFormat.mEndTimeShift)) 
+                            / sampPeriod);
           }
         }
 
@@ -1333,7 +1339,8 @@ namespace STK
     WriteSTKNetworkInOldFormat(
       FILE*                   pFp,
       _NetworkType&           rNetwork,
-      LabelFormat labelFormat,
+      STKNetworkOutputFormat labelFormat,
+//      LabelFormat labelFormat,
       long        sampPeriod,
       const char  *net_file,
       const char  *out_MNF)
@@ -1405,16 +1412,16 @@ namespace STK
           fprintf(pFp," {"FLOAT_FMT"}", p_node->mC.PhoneAccuracy());
         }
 
-        if (!(labelFormat.TIMES_OFF) &&
+        if (!(labelFormat.mNoTimes) &&
           p_node->mC.Start() != UNDEF_TIME && p_node->mC.Stop() != UNDEF_TIME) 
         {
-          int ctm = labelFormat.CENTRE_TM;
+          int ctm = labelFormat.mCentreTimes;
           fprintf   (pFp," (");
           fprintf_ll(pFp, sampPeriod * (2 * p_node->mC.Start() + ctm) / 2 
-              - labelFormat.left_extent);
+              + 100 * (long long) (0.5 + 1e5 * labelFormat.mStartTimeShift));
           fprintf   (pFp," ");
           fprintf_ll(pFp, sampPeriod * (2 * p_node->mC.Stop() - ctm)  / 2 
-              + labelFormat.right_extent);
+              + 100 * (long long) (0.5 + 1e5 * labelFormat.mEndTimeShift));
           fprintf   (pFp,")");
         }
 

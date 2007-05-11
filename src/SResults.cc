@@ -114,7 +114,8 @@ int main(int argc, char *argv[]) {
   char *ref_MLF_fn   = NULL;
   FILE *ref_MLF_fp  = NULL;
   char *rec_MLF_fn = NULL;
-  LabelFormat in_lbl_frm = {0};
+//  LabelFormat in_lbl_frm = {0};
+  STKNetworkOutputFormat in_lbl_frm = {0};
 
   FILE *rec_MLF_fp;
   float totalTime = 0.0;

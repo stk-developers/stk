@@ -49,6 +49,9 @@
 // we will be using the STK namespace ..........................................
 using namespace STK;
 
+#include <map>
+std::map<char *,float> countMap;
+
 //******************************************************************************
 //******************************************************************************
 void usage(char *progname)
@@ -79,7 +82,7 @@ void usage(char *progname)
 " -w [f]     Recognise from network                          Off\n"
 " -x s       Extension for hmm files                         None\n"
 " -y s       Output transcription file extension             rec\n"
-" -z s    generate lattices with extension s              off\n"
+" -z s       generate lattices with extension s              off\n"
 " -A         Print command line arguments                    Off\n"
 " -C cf      Set config file to cf                           Default\n"
 " -D         Display configuration variables                 Off\n"
@@ -168,6 +171,7 @@ char *optionStr =
   double                        outprb_scale;
   double                        pronun_scale;
   double                        occprb_scale;
+  double                        posterior_scale = 1.0;
   double                        state_pruning;
   double                        stprn_step;
   double                        stprn_limit;
@@ -220,8 +224,9 @@ char *optionStr =
                                 
   STKNetworkOutputFormat        in_net_fmt  = {0};
   STKNetworkOutputFormat        out_net_fmt = {0};
-  LabelFormat                   out_lbl_fmt = {0};
-  LabelFormat                   in_lbl_fmt  = {0};
+  STKNetworkOutputFormat        tmp_net_fmt = {0};
+//  LabelFormat                   out_lbl_fmt = {0};
+//  LabelFormat                   in_lbl_fmt  = {0};
 
   bool  print_all_options; 
 
@@ -232,104 +237,8 @@ int main(int argc, char *argv[])
 {
                                 emptyExpOpts.mStrictTiming   = true;
                                 emptyExpOpts.mNoOptimization = true;
-                                emptyExpOpts.mNoWordExpansion= true;
-  /*
-  ModelSet                      hset;
-  Decoder<DecoderNetwork>        decoder;
-  Decoder<_CompactDecoderNetwork> compact_decoder;
-
-  Decoder<DecoderNetwork>*       p_decoder;
-
-  FILE *                        lfp = NULL;
-  FILE *                        ilfp = NULL;
-  
-  Matrix<FLOAT>                 feature_matrix;
-  FeatureRepository             feature_repo;
-
-  FLOAT                         like;
-  int                           i;
-  int                           fcnt = 0;
-  Label *                       labels;
-
-  Lattice                       lattice;
-  char                          line[1024];
-  char                          label_file[1024];
-  const char *                  cchrptr;
-  
-  MyHSearchData                 nonCDphHash;
-  MyHSearchData                 phoneHash;
-  MyHSearchData                 dictHash;
-  MyHSearchData                 cfgHash;
-  
-  int                           alignment = (AlignmentType) WORD_ALIGNMENT;
-
-  double                        word_penalty;
-  double                        model_penalty;
-  double                        grammar_scale;
-  double                        transp_scale;
-  double                        outprb_scale;
-  double                        pronun_scale;
-  double                        occprb_scale;
-  double                        state_pruning;
-  double                        stprn_step;
-  double                        stprn_limit;  
-         
-  const char*                   hmm_dir;
-  const char*                   hmm_ext;
-  const char*                   out_lbl_dir;
-  const char*                   out_lbl_ext;
-  const char*                   in_lbl_dir;
-  const char*                   in_lbl_ext;
-  const char*                   out_MLF;
-  const char*                   in_MLF;
-  const char*                   network_file;
-  const char*                   hmm_list;
-  const char*                   dictionary;
-        char*                   script;
-        char*                   mmf;
-  const char*                   label_filter;
-  const char*                   net_filter;
-  const char*                   label_ofilter;
-  const char*                   net_ofilter;
-        char*                   cmn_path;
-        char*                   cmn_file;
-  const char*                   cmn_mask;
-        char*                   cvn_path;
-        char*                   cvn_file;
-  const char*                   cvn_mask;
-  const char*                   cvg_file;
-  const char*                   mmf_dir;
-  const char*                   mmf_mask;
-  const char*                   lat_ext;
-  int                           trace_flag;
-  int                           targetKind;
-  int                           derivOrder;
-  int*                          derivWinLengths;
-  int                           startFrmExt;
-  int                           endFrmExt;
-  bool                          baum_welch;
-  bool                          swap_features;
-  bool                          htk_compat;
-  bool                          compactNetworkRepresentation = false;
-  enum TranscriptionFormat {TF_HTK, TF_STK, TF_CSTK} in_transc_fmt, out_transc_fmt;
-  int                           notInDictAction = WORD_NOT_IN_DIC_UNSET;
-  
-  ExpansionOptions              expOptions  = {0};
-  ExpansionOptions              emptyExpOpts= {0}; 
-                                emptyExpOpts.mStrictTiming   = true;
-                                emptyExpOpts.mNoOptimization = true;
-                                emptyExpOpts.mNoWordExpansion= true;
-                                
-  STKNetworkOutputFormat        in_net_fmt  = {0};
-  STKNetworkOutputFormat        out_net_fmt = {0};
-  LabelFormat                   out_lbl_fmt = {0};
-  LabelFormat                   in_lbl_fmt  = {0};
-
-  bool  print_all_options; 
-  */
-  
-  in_lbl_fmt.TIMES_OFF = 1;
-
+                                emptyExpOpts.mNoWordExpansion= true;  
+//  in_lbl_fmt.TIMES_OFF = 1;
   if (argc == 1) 
     usage(argv[0]);
 
@@ -380,19 +289,24 @@ int main(int argc, char *argv[])
                                                                 ? true : false);
   expOptions.mRemoveWordsNodes
                = GetParamBool(&cfgHash,SNAME":REMEXPWRDNODES",  false);
-  in_lbl_fmt.TIMES_OFF =
-                !GetParamBool(&cfgHash,SNAME":TIMEPRUNING",    false);
-  in_lbl_fmt.left_extent  = -100 * (long long) (0.5 + 1e5 *
-                 GetParamFlt(&cfgHash, SNAME":STARTTIMESHIFT",  0.0));
-  in_lbl_fmt.right_extent =  100 * (long long) (0.5 + 1e5 *
-                 GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0));
+//  in_lbl_fmt.TIMES_OFF =
+  in_net_fmt.mNoTimes = 
+                !GetParamBool(&cfgHash,SNAME":TIMEPRUNING",     false);
+//  in_lbl_fmt.left_extent  = -100 * (long long) (0.5 + 1e5 *
+  in_net_fmt.mStartTimeShift =
+                 GetParamFlt(&cfgHash, SNAME":STARTTIMESHIFT",  0.0);
+//  in_lbl_fmt.right_extent =  100 * (long long) (0.5 + 1e5 *
+  in_net_fmt.mEndTimeShift =
+                 GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0);
+  in_net_fmt.mNoAcousticLikes = 
+               !!GetParamBool(&cfgHash,SNAME":ADDACSCORES",     true);
   baum_welch   = GetParamBool(&cfgHash,SNAME":EVALUATION",      false);
   swap_features=!GetParamBool(&cfgHash,SNAME":NATURALREADORDER",isBigEndian());
-  gpFilterWldcrd= GetParamStr(&cfgHash,SNAME":HFILTERWILDCARD", "$");
-  gpScriptFilter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",  NULL);
-  gpParmFilter  = GetParamStr(&cfgHash, SNAME":HPARMFILTER",    NULL);
-  gpHListFilter = GetParamStr(&cfgHash,SNAME":HMMLISTFILTER",   NULL);
-  gpMmfFilter   = GetParamStr(&cfgHash, SNAME":HMMDEFFILTER",   NULL);
+  gpFilterWldcrd=GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
+  gpScriptFilter=GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",   NULL);
+  gpParmFilter = GetParamStr(&cfgHash, SNAME":HPARMFILTER",     NULL);
+  gpHListFilter= GetParamStr(&cfgHash, SNAME":HMMLISTFILTER",   NULL);
+  gpMmfFilter  = GetParamStr(&cfgHash, SNAME":HMMDEFFILTER",    NULL);
   label_filter = GetParamStr(&cfgHash, SNAME":HLABELFILTER",    NULL);
   net_filter   = GetParamStr(&cfgHash, SNAME":HNETFILTER",      NULL);
   dict_filter  = GetParamStr(&cfgHash, SNAME":HDICTFILTER",     NULL);
@@ -435,61 +349,7 @@ int main(int argc, char *argv[])
 
   lat_ext      = GetParamStr(&cfgHash, SNAME":LATTICEEXT",      NULL);
   print_all_options = GetParamBool(&cfgHash,SNAME":PRINTALLOPTIONS", false);
-  cchrptr      = GetParamStr(&cfgHash, SNAME":LABELFORMATING",  "");
 
-  while (*cchrptr) 
-  {
-    switch (*cchrptr++) 
-    {
-      case 'N': out_lbl_fmt.SCORE_NRM = 1; break;
-      case 'S': out_lbl_fmt.SCORE_OFF = 1; break;
-      case 'C': out_lbl_fmt.CENTRE_TM = 1; break;
-      case 'T': out_lbl_fmt.TIMES_OFF = 1; break;
-      case 'W': out_lbl_fmt.WORDS_OFF = 1; break;
-      case 'M': out_lbl_fmt.MODEL_OFF = 1; break;
-      case 'F': out_lbl_fmt.FRAME_SCR = 1; break;
-//      case 'X': out_lbl_fmt.STRIP_TRI = 1; break;
-      default:
-        Warning("Unknown label formating flag '%c' ignored (NCSTWMF)", 
-            *cchrptr);
-    }
-  }
-
-  cchrptr      = GetParamStr(&cfgHash, SNAME":NETFORMATING",  "");
-  
-  if (*cchrptr) 
-  {
-    out_net_fmt.mNoLMLikes        = 1;
-    out_net_fmt.mNoAcousticLikes  = 1;
-    out_net_fmt.mNoTimes          = 1;
-    out_net_fmt.mNoPronunVars     = 1;
-  }
-  
-  while (*cchrptr) 
-  {
-    switch (*cchrptr++) 
-    {
-      case 'R': out_net_fmt.mBase62Labels             = 1; // reticent
-                out_net_fmt.mLinNodeSeqs              = 1;
-                out_net_fmt.mNoDefaults               = 1; break;
-      case 'V': out_net_fmt.mArcDefsWithJ             = 1;
-                out_net_fmt.mAllFieldNames            = 1; break;
-      case 'J': out_net_fmt.mArcDefsToEnd             = 1; break;
-      case 'W': out_net_fmt.mNoWordNodes              = 1; break;
-      case 'M': out_net_fmt.mNoModelNodes             = 1; break;
-      case 'X': out_net_fmt.mStripTriphones           = 1; break;
-      case 't': out_net_fmt.mNoTimes                  = 0; break;
-      case 's': out_net_fmt.mStartTimes               = 1; break;
-      case 'v': out_net_fmt.mNoPronunVars             = 0; break;
-      case 'a': out_net_fmt.mNoAcousticLikes          = 0; break;
-      case 'l': out_net_fmt.mNoLMLikes                = 0; break;
-      case 'p': out_net_fmt.mAproxAccuracy            = 1; break;
-      default:
-        Warning("Unknown net formating flag '%c' ignored (JMRVWXalpstv)", 
-            *cchrptr);
-    }
-  }
-  
   in_transc_fmt = (TranscriptionFormat) 
     GetParamEnum(&cfgHash, SNAME":SOURCETRANSCFMT",
       !network_file && htk_compat ? TF_HTK : TF_STK,
@@ -503,8 +363,70 @@ int main(int argc, char *argv[])
 
   out_transc_fmt = (TranscriptionFormat) 
     GetParamEnum(&cfgHash,SNAME":TARGETTRANSCFMT", 
-        htk_compat ? TF_HTK : TF_STK ,
+        htk_compat ?  : TF_STK ,
         "HTK", TF_HTK, "STK", TF_STK, NULL);
+	
+  if (lat_ext != NULL) {
+    out_transc_fmt = TF_STK;
+    out_lbl_ext = lat_ext;
+  }
+
+  cchrptr      = GetParamStr(&cfgHash, SNAME":LABELFORMATING",  "");
+  if (out_transc_fmt == TF_HTK) {
+    while (*cchrptr) 
+    {
+      switch (*cchrptr++) 
+      {
+        case 'N': out_net_fmt.mScoreNorm       = 1; break;
+        case 'S': out_net_fmt.mNoAcousticLikes = 1; break;
+        case 'C': out_net_fmt.mCentreTimes     = 1; break;
+        case 'T': out_net_fmt.mNoTimes         = 1; break;
+        case 'W': out_net_fmt.mNoWordNodes     = 1; break;
+        case 'M': out_net_fmt.mNoModelNodes    = 1; break;
+        case 'F': out_net_fmt.mFrameScores     = 1; break;
+        case 'X': out_net_fmt.mStripTriphones  = 1; break;
+        default:
+          Warning("Unknown label formating flag '%c' ignored (NCSTWMF)", 
+              *cchrptr);
+      }
+    }
+  }
+  
+  cchrptr      = GetParamStr(&cfgHash, SNAME":NETFORMATING",  "");
+  if (out_transc_fmt == TF_STK) {
+    if (*cchrptr) 
+    {
+      out_net_fmt.mNoLMLikes        = 1;
+      out_net_fmt.mNoAcousticLikes  = 1;
+      out_net_fmt.mNoTimes          = 1;
+      out_net_fmt.mNoPronunVars     = 1;
+    }
+  
+    while (*cchrptr) 
+    {
+      switch (*cchrptr++) 
+      {
+        case 'R': out_net_fmt.mBase62Labels             = 1; // reticent
+                  out_net_fmt.mLinNodeSeqs              = 1;
+                  out_net_fmt.mNoDefaults               = 1; break;
+        case 'V': out_net_fmt.mArcDefsWithJ             = 1;
+                  out_net_fmt.mAllFieldNames            = 1; break;
+        case 'J': out_net_fmt.mArcDefsToEnd             = 1; break;
+        case 'W': out_net_fmt.mNoWordNodes              = 1; break;
+        case 'M': out_net_fmt.mNoModelNodes             = 1; break;
+        case 'X': out_net_fmt.mStripTriphones           = 1; break;
+        case 't': out_net_fmt.mNoTimes                  = 0; break;
+        case 's': out_net_fmt.mStartTimes               = 1; break;
+        case 'v': out_net_fmt.mNoPronunVars             = 0; break;
+        case 'a': out_net_fmt.mNoAcousticLikes          = 0; break;
+        case 'l': out_net_fmt.mNoLMLikes                = 0; break;
+        case 'p': out_net_fmt.mAproxAccuracy            = 1; break;
+        default:
+          Warning("Unknown net formating flag '%c' ignored (JMRVWXalpstv)", 
+              *cchrptr);
+      }
+    }
+  }
 
   if (GetParamBool(&cfgHash, SNAME":STATEALIGNMENT", false)) 
   {
@@ -591,7 +513,7 @@ int main(int argc, char *argv[])
       alignment &= ~WORD_ALIGNMENT;
       alignment |= MODEL_ALIGNMENT;
     }
-    out_lbl_fmt.WORDS_OFF = 1;
+    out_net_fmt.mNoWordNodes = 1;
   }
 
 
@@ -615,7 +537,7 @@ int main(int argc, char *argv[])
       &dictHash,
       &phoneHash, 
       notInDictAction, 
-      in_lbl_fmt,
+      in_net_fmt,
       feature_repo.CurrentHeader().mSamplePeriod, 
       network_file, 
       NULL,
@@ -667,7 +589,7 @@ int main(int argc, char *argv[])
           ilfp, 
           dictionary ? &dictHash : &phoneHash,
           dictionary ? UL_ERROR : UL_INSERT, 
-          in_lbl_fmt,
+          in_net_fmt,
           feature_repo.CurrentHeader().mSamplePeriod, 
           network_file, 
           NULL, 
@@ -697,7 +619,7 @@ int main(int argc, char *argv[])
           &dictHash,
           &phoneHash, 
           notInDictAction, 
-          in_lbl_fmt,
+          in_net_fmt,
           feature_repo.CurrentHeader().mSamplePeriod, 
           network_file, 
           NULL,
@@ -711,7 +633,7 @@ int main(int argc, char *argv[])
           &dictHash,
           &phoneHash, 
           notInDictAction, 
-          in_lbl_fmt,
+          in_net_fmt,
           feature_repo.CurrentHeader().mSamplePeriod, 
           network_file, 
           NULL,
@@ -796,7 +718,7 @@ int main(int argc, char *argv[])
       if (in_transc_fmt == TF_HTK) 
       {
         labels = ReadLabels(ilfp, dictionary ? &dictHash : &phoneHash, 
-            dictionary ? UL_ERROR : UL_INSERT, in_lbl_fmt,
+            dictionary ? UL_ERROR : UL_INSERT, in_net_fmt,
             feature_repo.CurrentHeader().mSamplePeriod, label_file, in_MLF, NULL);
 
         decoder.rNetwork().BuildFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
@@ -811,13 +733,13 @@ int main(int argc, char *argv[])
         if (!compactNetworkRepresentation)
         {
           ReadSTKNetwork(ilfp, &dictHash, &phoneHash, notInDictAction,
-              in_lbl_fmt, feature_repo.CurrentHeader().mSamplePeriod, label_file,
+              in_net_fmt, feature_repo.CurrentHeader().mSamplePeriod, label_file,
               in_MLF, compactNetworkRepresentation,  decoder.rNetwork());
         }
         else
         {
           ReadSTKNetwork(ilfp, &dictHash, &phoneHash, notInDictAction,
-              in_lbl_fmt, feature_repo.CurrentHeader().mSamplePeriod, label_file,
+              in_net_fmt, feature_repo.CurrentHeader().mSamplePeriod, label_file,
               in_MLF, compactNetworkRepresentation,  compact_decoder.rNetwork());
         }
       } 
@@ -865,9 +787,9 @@ int main(int argc, char *argv[])
     }
     else
     {
-      if (alignment & STATE_ALIGNMENT && out_lbl_fmt.MODEL_OFF) p_decoder->mAlignment &= ~MODEL_ALIGNMENT;
-      if (alignment & MODEL_ALIGNMENT && out_lbl_fmt.WORDS_OFF) p_decoder->mAlignment &= ~WORD_ALIGNMENT;
-      if (alignment & STATE_ALIGNMENT && out_lbl_fmt.FRAME_SCR) p_decoder->mAlignment |=  FRAME_ALIGNMENT;
+      if (alignment & STATE_ALIGNMENT && out_net_fmt.mNoModelNodes) p_decoder->mAlignment &= ~MODEL_ALIGNMENT;
+      if (alignment & MODEL_ALIGNMENT && out_net_fmt.mNoWordNodes)  p_decoder->mAlignment &= ~WORD_ALIGNMENT;
+      if (alignment & STATE_ALIGNMENT && out_net_fmt.mFrameScores)  p_decoder->mAlignment |=  FRAME_ALIGNMENT;
     }
 
     fflush(stdout);
@@ -953,18 +875,29 @@ int main(int argc, char *argv[])
 
     if (!lattice.IsEmpty())
     {
+      tmp_net_fmt = out_net_fmt;
+      tmp_net_fmt.mNoLMLikes        = 0;
+      tmp_net_fmt.mNoAcousticLikes  = 0;
+      
       if (trace_flag & 2)
         TraceLog("Lattice: Performing optimizations (first pass)...");
-      lattice.ExpansionsAndOptimizations(emptyExpOpts, out_net_fmt, 
+	
+      lattice.ExpansionsAndOptimizations(emptyExpOpts, tmp_net_fmt, 
                                          NULL, NULL, NULL);
+
       if (trace_flag & 2)
         TraceLog("Lattice: Computing posterior probabilities...");
-      lattice.ForwardBackward();
+      lattice.ForwardBackward(0.0, 0.0, 1.0, posterior_scale, true); // set false for "non-viterbi" posterior pruning
       
       if (trace_flag & 2)
         TraceLog("Lattice: Performing posterior pruning...");
+	
       lattice.PosteriorPrune(poster_prune  > 0.0 ? poster_prune  :
-                             state_pruning > 0.0 ? state_pruning : -LOG_0);
+                             state_pruning > 0.0 ? state_pruning : -LOG_0,
+			     0.0, 0.0, 1.0, posterior_scale);
+			     
+//      lattice.PosteriorExpectedCounts(countMap);
+      
       lattice.FreePosteriors();
 
 
@@ -989,7 +922,7 @@ int main(int argc, char *argv[])
     } 
     else if (out_transc_fmt == TF_HTK) 
     {
-      WriteLabels(lfp, labels, out_lbl_fmt, 
+      WriteLabels(lfp, labels, out_net_fmt, 
           feature_repo.CurrentHeader().mSamplePeriod, label_file, out_MLF);
     } 
     else 
@@ -1024,9 +957,12 @@ int main(int argc, char *argv[])
     else
       compact_decoder.Clear();
   }
-
-  hset.Release();
   
+  for(std::map<char*,float>::iterator iter = countMap.begin(); iter != countMap.end(); ++iter ) {
+    std::cout << iter->first << " " << iter->second << std::endl; 
+  }
+
+  hset.Release();  
   // my_hdestroy_r(&labelHash,   0);
   my_hdestroy_r(&phoneHash,   1);
   my_hdestroy_r(&nonCDphHash, 0);
@@ -1036,6 +972,10 @@ int main(int argc, char *argv[])
     free(cfgHash.mpEntry[i]->data);
   
   my_hdestroy_r(&cfgHash, 1);
+  
+  if (out_MLF) {
+    my_fclose(lfp);
+  }
 
   //my_hdestroy_r(&cfgHash, 0);
 

@@ -122,6 +122,7 @@ int main(int argc, char* argv[])
   Decoder<DecoderNetwork>         decoder;
 
   FeatureRepository               feature_repo;
+  FeatureRepository               feature_repo_alig;
 
   FILE*                           sfp;
   FILE*                           ilfp = NULL;
@@ -264,8 +265,8 @@ int main(int argc, char* argv[])
   
   ExpansionOptions        expOptions        = {0};
   STKNetworkOutputFormat  in_net_fmt        = {0};
-  LabelFormat             in_lbl_fmt        = {0};
-  in_lbl_fmt.TIMES_OFF = 1;
+//  LabelFormat             in_lbl_fmt        = {0};
+//  in_lbl_fmt.TIMES_OFF = 1;
 
 
   // show help if no arguments specified
@@ -273,8 +274,6 @@ int main(int argc, char* argv[])
     usage(argv[0]);
 
 
-  // initialize basic ModelSet
-  hset.Init(MODEL_SET_WITH_ACCUM);
   
   if (!my_hcreate_r(100,  &dictHash)
    || !my_hcreate_r(100,  &phoneHash)
@@ -284,36 +283,57 @@ int main(int argc, char* argv[])
   }
   
   i = ParseOptions(argc, argv, optionStr, SNAME, &cfgHash);
-  
-  htk_compat   = GetParamBool(&cfgHash,SNAME":HTKCOMPAT", false);
-
-  if (htk_compat) 
-  {
+  if (htk_compat) {
     if (argc == i) Error("HMM list file name expected");
     InsertConfigParam(&cfgHash,        SNAME":SOURCEHMMLIST", argv[i++], '-');
   }
   
-  // the rest of the parameters are the feature files
-  for (; i < argc; i++) 
-  {
-    feature_repo.AddFile(argv[i]);
-  }
-
-  
+  htk_compat   = GetParamBool(&cfgHash,SNAME":HTKCOMPAT",       false);  
+  script =(char*)GetParamStr(&cfgHash, SNAME":SCRIPT",          NULL);
+  parallel_mode= GetParamInt(&cfgHash, SNAME":PARALLELMODE",   -1);
   one_pass_reest=GetParamBool(&cfgHash,SNAME":SINGLEPASSTRN",   false);
+  if (parallel_mode == 0) {
+    one_pass_reest = false;
+  }
+  update_type   = (UpdateType) GetParamEnum(&cfgHash,SNAME":UPDATETYPE",   UT_ML,
+                              "ML",UT_ML,"MPE",UT_EBW,"MMI",UT_TwoAccumSetEBW, NULL);
+
   targetKind   = GetDerivParams(&cfgHash, &deriv_order, &deriv_win_lengths,
                                 &start_frm_ext, &end_frm_ext,
                                 &cmn_path, &cmn_file, &cmn_mask,
                                 &cvn_path, &cvn_file, &cvn_mask, &cvg_file,
                                 SNAME":", one_pass_reest ? 2 : 0);
 
-  if (one_pass_reest) {
+  feature_repo.Init(swap_features, start_frm_ext, end_frm_ext,
+                    targetKind, deriv_order, deriv_win_lengths,
+		    cmn_path, cmn_mask, cvn_path, cvn_mask, cvg_file);
+		    
+  std::queue<FeatureRepository *> featureRepositoryList;
+  featureRepositoryList.push(&feature_repo);
+
+  if (one_pass_reest || (0 == parallel_mode && UT_TwoAccumSetEBW == update_type)) {
     targetKind_alig = GetDerivParams(&cfgHash, &deriv_order_alig, &deriv_win_lengths_alig,
                                      &start_frm_ext_alig, &end_frm_ext_alig,
                                      &cmn_path_alig, &cmn_file_alig, &cmn_mask_alig,
                                      &cvn_path_alig, &cvn_file_alig, &cvn_mask_alig,
                                      &cvg_file_alig, SNAME":", 1);
+
+    feature_repo_alig.Init(swap_features_alig, start_frm_ext_alig, end_frm_ext_alig,
+                           targetKind_alig, deriv_order_alig, deriv_win_lengths_alig,
+			   cmn_path_alig, cmn_mask_alig, cvn_path_alig, cvn_mask_alig,
+                           cvg_file_alig);
+			   
+    featureRepositoryList.push(&feature_repo_alig);
   }
+  // the rest of the parameters are the feature files
+  for (; i < argc; i++) {
+    featureRepositoryList.front()->AddFile(argv[i]);
+    swap(featureRepositoryList.front(), featureRepositoryList.back());
+  }
+  if (NULL != script) {
+    AddFileListToFeatureRepositories(script, gpScriptFilter, featureRepositoryList);
+  }
+  
   xfStatsBin   = GetParamBool(&cfgHash,SNAME":XFORMSTATSBINARY",false);
   xformList    = GetParamStr(&cfgHash, SNAME":XFORMLIST",       NULL);
   viterbiTrain = GetParamBool(&cfgHash,SNAME":VITERBITRAIN",    false);
@@ -327,12 +347,15 @@ int main(int argc, char* argv[])
                =!GetParamBool(&cfgHash,SNAME":MINIMIZENET",     false);
   expOptions.mRemoveWordsNodes
                = GetParamBool(&cfgHash,SNAME":REMEXPWRDNODES",  false);
-  in_lbl_fmt.TIMES_OFF =
+//  in_lbl_fmt.TIMES_OFF =
+  in_net_fmt.mNoTimes =
                 !GetParamBool(&cfgHash,SNAME":TIMEPRUNING",     false);
-  in_lbl_fmt.left_extent  = -100 * (long long) (0.5 + 1e5 *
-                 GetParamFlt(&cfgHash, SNAME":STARTTIMESHIFT",  0.0));
-  in_lbl_fmt.right_extent =  100 * (long long) (0.5 + 1e5 *
-                 GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0));
+//  in_lbl_fmt.left_extent  = -100 * (long long) (0.5 + 1e5 *
+  in_net_fmt.mStartTimeShift =
+                 GetParamFlt(&cfgHash, SNAME":STARTTIMESHIFT",  0.0);
+//  in_lbl_fmt.right_extent =  100 * (long long) (0.5 + 1e5 *
+  in_net_fmt.mEndTimeShift =
+                 GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0);
   swap_features_alig =
   swap_features=!GetParamBool(&cfgHash,SNAME":NATURALREADORDER",isBigEndian());
   gpFilterWldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD","$");
@@ -363,13 +386,11 @@ int main(int argc, char* argv[])
   trace_flag   = GetParamInt(&cfgHash, SNAME":TRACE",           0);
   stat_file    = GetParamStr(&cfgHash, SNAME":SAVESTATS",       NULL);
   min_examples = GetParamInt(&cfgHash, SNAME":MINEGS",          3);
-  parallel_mode= GetParamInt(&cfgHash, SNAME":PARALLELMODE",   -1);
   min_variance = GetParamFlt(&cfgHash, SNAME":MINVAR",          0.0);
   min_mix_wght = GetParamFlt(&cfgHash, SNAME":MIXWEIGHTFLOOR",  1.0);
   hmms_binary  = GetParamBool(&cfgHash,SNAME":SAVEBINARY",      false);
   save_glob_opt= GetParamBool(&cfgHash,SNAME":SAVEGLOBOPTS",    true);
   cmllr_stats  = GetParamBool(&cfgHash,SNAME":CMLLRSTATS",      false);
-  script =(char*)GetParamStr(&cfgHash, SNAME":SCRIPT",          NULL);
   src_hmm_list = GetParamStr(&cfgHash, SNAME":SOURCEHMMLIST",   NULL);
   src_hmm_dir  = GetParamStr(&cfgHash, SNAME":SOURCEMODELDIR",  NULL);
   src_hmm_ext  = GetParamStr(&cfgHash, SNAME":SOURCEMODELEXT",  NULL);
@@ -402,8 +423,6 @@ int main(int argc, char* argv[])
   accum_type   = (AccumType) GetParamEnum(&cfgHash,SNAME":ACCUMULATORTYPE", AT_ML,
                               "ML",AT_ML,"MPE", AT_MPE, "MMI", AT_MMI,"MCE",AT_MCE,"MFE",AT_MFE, NULL);
 
-  update_type   = (UpdateType) GetParamEnum(&cfgHash,SNAME":UPDATETYPE",   UT_ML,
-                              "ML",UT_ML,"MPE",UT_EBW,"MMI",UT_TwoAccumSetEBW, NULL);
 
   sig_slope    = GetParamFlt(&cfgHash, SNAME":MCESIGSLOPE",    -1.0); // -1.0 ~ off
   E_constant   = GetParamFlt(&cfgHash, SNAME":EBWCONSTANTE",    2.0);
@@ -443,6 +462,8 @@ int main(int argc, char* argv[])
                   UM_WEIGHT     | UM_XFSTATS | UM_XFORM ;
   }
 
+  // initialize basic ModelSet
+  hset.Init(update_type == UT_TwoAccumSetEBW ? MODEL_SET_WITH_TWO_ACCUM_SET : MODEL_SET_WITH_ACCUM);
   hset.mUpdateMask          = update_mask;
 
   // ***************************************************************************
@@ -475,13 +496,6 @@ int main(int argc, char* argv[])
   }
 
 
-  // initialize the feature repository
-  feature_repo.Init(swap_features, start_frm_ext, end_frm_ext, targetKind, 
-     deriv_order, deriv_win_lengths, cmn_path, cmn_mask, cvn_path, cvn_mask,
-     cvg_file);
-  
-  if (NULL != script) 
-    feature_repo.AddFileList(script, gpScriptFilter); 
     
 
   if (NULL != src_mmf)
@@ -527,17 +541,15 @@ int main(int argc, char* argv[])
   
   hset.AttachPriors(hset_prior);
 
-  if (parallel_mode == 0) 
-    one_pass_reest = 0;
-
-  if ((feature_repo.QueueSize() & 1) && one_pass_reest) 
+  if (one_pass_reest && feature_repo.QueueSize() != feature_repo_alig.QueueSize())
     Error("Single pass re-estimation requires even number (two sets) of feature files");
 
   if (parallel_mode == -1 &&  update_type == UT_TwoAccumSetEBW)
-    Error("MMI update is not possible without using parallel mode");
+    Error("Two accumulator set MMI update is not possible without using -p 0");
     
-  if ((feature_repo.QueueSize() & 1) && update_type == UT_TwoAccumSetEBW && parallel_mode == 0)
-    Error("MMI update requires even number (two sets) of accumulator files");
+  if (UT_TwoAccumSetEBW == update_type && 0 == parallel_mode
+  && feature_repo.QueueSize() != feature_repo_alig.QueueSize())
+    Error("Two accumulator set MMI update requires even number of accumulator files");
     
   if (src_hmm_list) 
     hset.ReadHMMList(src_hmm_list, src_hmm_dir ? src_hmm_dir : "", src_hmm_ext ? src_hmm_ext : "");
@@ -593,8 +605,8 @@ int main(int argc, char* argv[])
           ilfp, 
           dictionary ? &dictHash : &phoneHash,
           dictionary ? UL_ERROR : UL_INSERT, 
-          in_lbl_fmt,
-          feature_repo.CurrentHeader().mSamplePeriod, 
+          in_net_fmt,
+          feature_repo.CurrentHeader().mSamplePeriod, // :TODO: mSamplePeriod should be probably taken from feature_repo_alig
           network_file, 
           NULL, 
           NULL);
@@ -612,8 +624,8 @@ int main(int argc, char* argv[])
         &dictHash,
         &phoneHash, 
         notInDictAction, 
-        in_lbl_fmt,
-        feature_repo.CurrentHeader().mSamplePeriod, 
+        in_net_fmt,
+        feature_repo.CurrentHeader().mSamplePeriod, // :TODO: mSamplePeriod should be probably taken from feature_repo_alig
         network_file, 
         NULL,
         false,
@@ -671,28 +683,26 @@ int main(int argc, char* argv[])
   }
   
 
-  for (feature_repo.Rewind(); !feature_repo.EndOfList(); feature_repo.MoveNext())
+  for (feature_repo.Rewind(); !feature_repo.EndOfList(); feature_repo.MoveNext(), feature_repo_alig.MoveNext())
   {
-    FeatureRepository::ListIterator aux_alig_name(feature_repo.pCurrentRecord());
+//    FeatureRepository::ListIterator aux_alig_name(feature_repo.pCurrentRecord());
 
-    if (trace_flag & 1) 
-    {
-      if (one_pass_reest || (0 == parallel_mode && UT_TwoAccumSetEBW == update_type)) 
-      {
-
-        // get the name of the following feature file
-        aux_alig_name++;
+    if (trace_flag & 1) {
+      if (one_pass_reest || (0 == parallel_mode && UT_TwoAccumSetEBW == update_type)) {
+// get the name of the following feature file
+//        aux_alig_name++;
 
         TraceLog("Processing file pair %d/%d '%s' <-> %s",  ++fcnt,
-                 feature_repo.QueueSize() / (one_pass_reest ? 2 : 1),
-                 feature_repo.Current().Physical().c_str(),
-                 aux_alig_name->Physical().c_str());
-      } 
-      else 
-      {
+                 feature_repo.QueueSize(),
+                 feature_repo_alig.Current().Logical().c_str(),
+		 feature_repo.Current().Logical().c_str()
+//                 aux_alig_name->Physical().c_str()
+		 );
+      }
+      else {
         TraceLog("Processing file %d/%d '%s'", ++fcnt,
                  feature_repo.QueueSize(),
-                 feature_repo.Current().Physical().c_str());
+                 feature_repo.Current().Logical().c_str());
       }
     }
     
@@ -702,7 +712,7 @@ int main(int argc, char* argv[])
       FLOAT P2;
       long  S;
 
-      hset.ReadAccums(feature_repo.Current(), &S, &P, UT_ML);
+      hset.ReadAccums(feature_repo_alig.Current(), &S, &P, UT_ML);
 
       totFrames  += S;
       totLogLike += P;
@@ -713,8 +723,6 @@ int main(int argc, char* argv[])
       if (UT_TwoAccumSetEBW == update_type) 
       {
         // Second set of accums is for compeating models
-        feature_repo.MoveNext();
-
         hset.ReadAccums(feature_repo.Current(), &S, &P2, update_type);
 
         totLogPosterior += P - P2;
@@ -733,20 +741,18 @@ int main(int argc, char* argv[])
       {
         feature_matrix_alig = new Matrix<FLOAT>;
 
-        feature_repo.ReadFullMatrix(*feature_matrix_alig);
+        feature_repo_alig.ReadFullMatrix(*feature_matrix_alig);
         
-        n_samples_alig = feature_repo.CurrentHeader().mNSamples;
+        n_samples_alig = feature_repo_alig.CurrentHeader().mNSamples;
 
         if (hset_alig->mInputVectorSize != static_cast<int>
-            (feature_repo.CurrentHeader().mSampleSize / sizeof(float))) 
+            (feature_repo_alig.CurrentHeader().mSampleSize / sizeof(float))) 
         {
           Error("Vector size [%d] in '%s' is incompatible with alignment HMM set [%d]",
-                feature_repo.CurrentHeader().mSampleSize/sizeof(float),
-                feature_repo.Current().Physical().c_str(),
+                feature_repo_alig.CurrentHeader().mSampleSize/sizeof(float),
+                feature_repo_alig.Current().Physical().c_str(),
                 hset_alig->mInputVectorSize);
         }
-
-        feature_repo.MoveNext();
       }
 
       // now reest features are read ...........................................
@@ -784,14 +790,15 @@ int main(int argc, char* argv[])
         
         Error("Mismatch in number of frames in single pass re-estimation "
               "feature file pair: '%s' <-> '%s'%s",
+              feature_repo_alig.Current().Physical().c_str(),
               feature_repo.Current().Physical().c_str(),
-              aux_alig_name->Physical().c_str(),
+//              aux_alig_name->Physical().c_str(),
               hset_alig->mTotalDelay != hset.mTotalDelay ?
               ". Consider different delays of alignment/source HMM set!":"");
       }
 
       // use feature_matrix for alignment
-      if (!one_pass_reest)
+      if (!one_pass_reest) 
       {
         feature_matrix_alig = &feature_matrix;
       }
@@ -800,7 +807,7 @@ int main(int argc, char* argv[])
       {
         static string lastSpeakerMMF;
         string speakerMMF;
-        ProcessMask(aux_alig_name->Logical().c_str(), mmf_mask_alig, speakerMMF);
+        ProcessMask(feature_repo_alig.Current().Logical().c_str(), mmf_mask_alig, speakerMMF);
         
         if(lastSpeakerMMF != speakerMMF) 
         {
@@ -845,8 +852,8 @@ int main(int argc, char* argv[])
               ilfp, 
               dictionary ? &dictHash : &phoneHash,
               dictionary ? UL_ERROR : UL_INSERT, 
-              in_lbl_fmt,
-              feature_repo.CurrentHeader().mSamplePeriod, 
+              in_net_fmt,
+              feature_repo.CurrentHeader().mSamplePeriod, // :TODO: mSamplePeriod should be probably taken from feature_repo_alig
               label_file, 
               src_mlf, 
               NULL);
@@ -863,8 +870,8 @@ int main(int argc, char* argv[])
               &dictHash, 
               &phoneHash, 
               notInDictAction, 
-              in_lbl_fmt,
-              feature_repo.CurrentHeader().mSamplePeriod, 
+              in_net_fmt,
+              feature_repo.CurrentHeader().mSamplePeriod, // :TODO: mSamplePeriod should be probably taken from feature_repo_alig 
               label_file, 
               src_mlf, false, decoder.rNetwork());
         } 
@@ -919,8 +926,8 @@ int main(int argc, char* argv[])
       {
         if (n_frames < 1) 
         {
-          Warning("Number of frames smaller than model delay, skipping file %s",
-                  feature_repo.Current().Physical().c_str());
+          Warning("Number of frames is smaller than model delay, skipping file %s",
+                  feature_repo.Current().Logical().c_str());
           P = LOG_MIN;
           break;
         }
@@ -947,13 +954,13 @@ int main(int argc, char* argv[])
           (decoder.mPruningThresh += prn_step) > prn_limit) 
         {
           Warning("Overpruning or bad data, skipping file %s",
-                  feature_repo.Current().Physical().c_str());
+                  feature_repo.Current().Logical().c_str());
           break;
         }
 
         Warning("Overpruning or bad data in file %s, "
                 "trying pruning threshold: %.2f",
-                feature_repo.Current().Physical().c_str(), decoder.mPruningThresh);
+                feature_repo.Current().Logical().c_str(), decoder.mPruningThresh);
       }
       
       ClusterWeightAccumUserData cwa = {hset.mNClusterWeightVectors, hset.mpGw, 

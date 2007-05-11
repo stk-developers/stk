@@ -18,8 +18,45 @@
 #include <cstdio>
 #include <ctype.h>
 
+  /** **************************************************************************
+   ** **************************************************************************
+   *  @brief HTK lables and STK network input/output format options
+   */
+  class STKNetworkOutputFormat 
+  {
+  public:
+    unsigned mNoLMLikes              : 1 ;
+    unsigned mNoTimes                : 1 ;
+    unsigned mStartTimes             : 1 ;
+    unsigned mNoWordNodes            : 1 ;
+    unsigned mNoModelNodes           : 1 ;
+    unsigned mNoPronunVars           : 1 ;
+    unsigned mNoDefaults             : 1 ;
+    unsigned mAllFieldNames          : 1 ;
+    unsigned mArcDefsToEnd           : 1 ;
+    unsigned mArcDefsWithJ           : 1 ;
+    unsigned mBase62Labels           : 1 ;
+    unsigned mAproxAccuracy          : 1 ;
+    unsigned mNoAcousticLikes        : 1 ;
+    
+    //Currently only for HTK labels
+    unsigned mCentreTimes            : 1 ;
+    unsigned mScoreNorm              : 1 ;
+    unsigned mFrameScores            : 1 ;
+                                     
+    //Have no effect yet             
+    unsigned mStripTriphones         : 1 ;
+    unsigned mLinNodeSeqs            : 1 ;
+
+    float mStartTimeShift;
+    float mEndTimeShift;
+  };
+  // class STKNetworkOutputFormat 
+  //****************************************************************************
+
+
 //typedef struct _LabelFormat LabelFormat;
-class LabelFormat 
+/*class LabelFormat 
 {
 public:
   unsigned  SCORE_NRM:1;
@@ -32,7 +69,7 @@ public:
   unsigned  FRAME_SCR:1;
   long long left_extent;
   long long right_extent;
-};
+};*/
 
 //typedef struct _Label Label;
 class Label 
@@ -73,7 +110,8 @@ FILE *OpenOutputLabelFile(
 void WriteLabels(
   FILE        * flp,
   Label       * labels,
-  LabelFormat labelFormat,
+//  LabelFormat labelFormat,
+  STKNetworkOutputFormat labelFormat,
   long        sampPeriod,
   const char  * label_file,
   const char  * out_MLF);
@@ -107,7 +145,8 @@ Label* ReadLabels(
   FILE* lfp,
   MyHSearchData* label_hash,
   enum UnknownLabelsAction unknownLabels,
-  LabelFormat labelFormat,
+//  LabelFormat labelFormat,
+  STKNetworkOutputFormat labelFormat,
   long sampPeriod,
   const char* file_name,
   const char* in_MLF,

@@ -95,7 +95,7 @@ MakeLRTraceTable(Decoder<DecoderNetwork>* pDecoder, int* nWords,
 
 void PutCandidateToLabels(LRTrace *lrt, FLOAT scoreThreshold, FILE *lfp,
                           const char *label_file, const char *out_MLF,
-                          LabelFormat out_lbl_fmt, long sampPeriod)
+                          STKNetworkOutputFormat out_net_fmt, long sampPeriod)
 {
   if (lrt->candidateEndTime != 0
      && (scoreThreshold < LOG_MIN || lrt->candidateLR > scoreThreshold)) {
@@ -105,7 +105,7 @@ void PutCandidateToLabels(LRTrace *lrt, FLOAT scoreThreshold, FILE *lfp,
      label.mpName = lrt->mpWordEnd->mC.mpPronun->mpWord->mpName;
      label.mScore = lrt->candidateLR;
 
-     WriteLabels(lfp, &label, out_lbl_fmt, sampPeriod, label_file, out_MLF);
+     WriteLabels(lfp, &label, out_net_fmt, sampPeriod, label_file, out_MLF);
   }
 }
 
@@ -300,11 +300,12 @@ int main(int argc, char *argv[])
   int notInDictAction = 0;
   RHFBuffer rhfbuff                    = {0};
   ExpansionOptions expOptions          = {0};
-  STKNetworkOutputFormat in_net_fmt    = {0};
+  STKNetworkOutputFormat  in_net_fmt    = {0};
+  STKNetworkOutputFormat out_net_fmt    = {0};
 //  STKNetworkOutputFormat out_net_fmt   = {0};
-  LabelFormat out_lbl_fmt              = {0};
-  LabelFormat in_lbl_fmt               = {0};
-  in_lbl_fmt.TIMES_OFF = 1;
+//  LabelFormat out_lbl_fmt              = {0};
+//  LabelFormat in_lbl_fmt               = {0};
+//  in_lbl_fmt.TIMES_OFF = 1;
 
   int nWords, j;
   LRTrace *lrt = NULL;
@@ -341,12 +342,15 @@ int main(int argc, char *argv[])
                =!GetParamBool(&cfgHash,SNAME":MINIMIZENET",     false);
   expOptions.mRemoveWordsNodes
                = GetParamBool(&cfgHash,SNAME":REMEXPWRDNODES",  false);
-  in_lbl_fmt.TIMES_OFF =
+//  in_lbl_fmt.TIMES_OFF =
+  in_net_fmt.mNoTimes =
                 !GetParamBool(&cfgHash,SNAME":TIMEPRUNING",    false);
-  in_lbl_fmt.left_extent  = -100 * (long long) (0.5 + 1e5 *
-                 GetParamFlt(&cfgHash, SNAME":STARTTIMESHIFT",  0.0));
-  in_lbl_fmt.right_extent =  100 * (long long) (0.5 + 1e5 *
-                 GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0));
+//  in_lbl_fmt.left_extent  = -100 * (long long) (0.5 + 1e5 *
+  in_net_fmt.mStartTimeShift  = 
+                 GetParamFlt(&cfgHash, SNAME":STARTTIMESHIFT",  0.0);
+//  in_net_fmt.right_extent =  100 * (long long) (0.5 + 1e5 *
+  in_net_fmt.mEndTimeShift  = 
+                 GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0);
   fulleval     = GetParamBool(&cfgHash,SNAME":EVALUATION",      false);
   swap_features=!GetParamBool(&cfgHash,SNAME":NATURALREADORDER",isBigEndian());
   gpFilterWldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
@@ -388,14 +392,14 @@ int main(int argc, char *argv[])
   cchrptr      = GetParamStr(&cfgHash, SNAME":LABELFORMATING",  "");
   while (*cchrptr) {
     switch (*cchrptr++) {
-      case 'N': out_lbl_fmt.SCORE_NRM = 1; break;
-      case 'S': out_lbl_fmt.SCORE_OFF = 1; break;
-      case 'C': out_lbl_fmt.CENTRE_TM = 1; break;
-      case 'T': out_lbl_fmt.TIMES_OFF = 1; break;
-//      case 'W': out_lbl_fmt.WORDS_OFF = 1; break;
-//      case 'M': out_lbl_fmt.MODEL_OFF = 1; break;
-//      case 'F': out_lbl_fmt.FRAME_SCR = 1; break;
-//      case 'X': out_lbl_fmt.STRIP_TRI = 1; break;
+      case 'N': out_net_fmt.mScoreNorm       = 1; break;
+      case 'S': out_net_fmt.mNoAcousticLikes = 1; break;
+      case 'C': out_net_fmt.mCentreTimes      = 1; break;
+      case 'T': out_net_fmt.mNoTimes         = 1; break;
+//      case 'W': out_net_fmt.mNoWordNodes  = 1; break;
+//      case 'M': out_net_fmt.mNoModelNodes = 1; break;
+//      case 'F': out_net_fmt.mFrameScores  = 1; break;
+//      case 'X': out_net_fmt.mStripTriphones = 1; break;
       default:
         Warning("Unknown label formating flag '%c' ignored (NCST)", *cchrptr);
     }
@@ -469,7 +473,7 @@ int main(int argc, char *argv[])
 
 
     ReadSTKNetwork(ilfp, &dictHash, &phoneHash, notInDictAction,
-        in_lbl_fmt, header.mSamplePeriod, network_file, NULL, false,
+        in_net_fmt, header.mSamplePeriod, network_file, NULL, false,
         decoder.rNetwork());
 
     decoder.rNetwork().ExpansionsAndOptimizations(expOptions, in_net_fmt, &dictHash,
@@ -515,7 +519,7 @@ int main(int argc, char *argv[])
                               in_lbl_ext ? in_lbl_ext : "net",
                               ilfp, in_MLF);
 
-      ReadSTKNetwork(ilfp, &dictHash, &phoneHash, notInDictAction, in_lbl_fmt,
+      ReadSTKNetwork(ilfp, &dictHash, &phoneHash, notInDictAction, in_net_fmt,
           header.mSamplePeriod, label_file, in_MLF, false, decoder.rNetwork());
 
       decoder.rNetwork().ExpansionsAndOptimizations(expOptions, in_net_fmt, &dictHash,
@@ -625,7 +629,7 @@ int main(int argc, char *argv[])
         }
         if (lrt[j].candidateEndTime <= wordStartTime) {
           PutCandidateToLabels(&lrt[j], score_thresh, lfp, label_file,
-                               out_MLF, out_lbl_fmt, header.mSamplePeriod);
+                               out_MLF, out_net_fmt, header.mSamplePeriod);
         }
         lrt[j].candidateStartTime = wordStartTime;
         lrt[j].candidateEndTime = (long long) decoder.mTime;
@@ -637,7 +641,7 @@ int main(int argc, char *argv[])
     }
     for (j = 0; j < nWords; j++) {
       PutCandidateToLabels(&lrt[j], score_thresh, lfp, label_file,
-                           out_MLF, out_lbl_fmt, header.mSamplePeriod);
+                           out_MLF, out_net_fmt, header.mSamplePeriod);
     }
     //ViterbiDone(&decoder, NULL);
     decoder.ViterbiDone(NULL);

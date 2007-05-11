@@ -10,6 +10,54 @@ namespace STK
   //###########################################################################
   //###########################################################################
 
+  //***************************************************************************
+  //***************************************************************************
+  void
+  AddFileListToFeatureRepositories(
+    const char* pFileName, 
+    const char* pFilter, 
+    std::queue<FeatureRepository *> &featureRepositoryList)
+  {
+    IStkStream            l_stream;
+    std::string           file_name(pFileName);
+
+    boost::char_separator<char> sep(",");
+    boost::tokenizer<boost::char_separator<char> > file_list(file_name, sep);
+    boost::tokenizer<boost::char_separator<char> >::iterator  p_file_name;
+
+    //:TODO: error if empty featureRepositoryList
+    
+    for (p_file_name = file_list.begin(); p_file_name != file_list.end(); ++p_file_name)
+    {
+      l_stream.open(p_file_name->c_str(), std::ios::in, pFilter);
+      
+      if (!l_stream.good())
+      {
+        //:TODO:
+        // Warning or error ... Why warning? -Lukas
+        Error("Cannot not open list file %s", p_file_name->c_str());
+      }
+      // read all lines and parse them
+      for(;;)
+      {
+        l_stream >> file_name;
+        //:TODO: if(l_stream.badl()) Error()
+        // Reading after last token set the fail bit
+        if(l_stream.fail()) 
+	  break;
+        // we can push_back a std::string as new FileListElem object
+        // is created using FileListElem(const std::string&) constructor
+        // and logical and physical names are correctly extracted
+	featureRepositoryList.front()->mInputQueue.push_back(file_name);
+	
+	//cycle in the featureRepositoryList
+	featureRepositoryList.push(featureRepositoryList.front());
+	featureRepositoryList.pop();
+      }
+      l_stream.close();
+    }
+  } // AddFileList(const std::string & rFileName)
+
 
   //***************************************************************************
   //***************************************************************************
@@ -76,75 +124,23 @@ namespace STK
         // Warning or error ... Why warning? -Lukas
         Error("Cannot not open list file %s", p_file_name->c_str());
       }
-        // read all lines and parse them
+      // read all lines and parse them
       for(;;)
       {
         l_stream >> file_name;
-//        getline(l_stream, file_name);
-//        Trim(line);
-
         //:TODO: if(l_stream.badl()) Error()
         // Reading after last token set the fail bit
-        if(l_stream.fail()) break;
-//        if (!file_name.empty()) 
-//        {
-          // we can push_back a std::string as new FileListElem object
-          // is created using FileListElem(const std::string&) constructor
-          // and logical and physical names are correctly extracted
+        if(l_stream.fail()) 
+	  break;
+        // we can push_back a std::string as new FileListElem object
+        // is created using FileListElem(const std::string&) constructor
+        // and logical and physical names are correctly extracted
         mInputQueue.push_back(file_name);
-//        }        
-      } 
-      // close the list file
+      }
       l_stream.close();
     }
   } // AddFileList(const std::string & rFileName)
 
-
-/* DEPRECATED
-  //***************************************************************************
-  //***************************************************************************
-  void
-  FeatureRepository::
-  AddFileList(const char* pFileName, const char* pFilter)
-  {
-    IStkStream    l_stream;
-    std::string   line;
-    std::vector<std::string>   file_list;
-
-    // the file may be a comma-separated list of files
-    TokenizeString(pFileName, file_list);
-
-    for (std::vector<std::string>::size_type i = 0; i < file_list.size(); i++)
-    {
-      // open the file
-      l_stream.open(file_list[i].c_str(), std::ios::in, pFilter);
-      
-      if (l_stream.good())
-      {
-        // read all lines and parse them
-        while (!l_stream.eof())
-        {
-          getline(l_stream, line);
-          Trim(line);
-
-          if (!line.empty())
-            // we can push_back a std::string as new FileListElem object
-            // is created using FileListElem(const std::string&) constructor
-            // and logical and physical names are correctly extracted
-            mInputQueue.push_back(line);
-        }
-        // close the list file
-        l_stream.close();
-      }
-      else
-      {
-        //:TODO:
-        // Warning or error
-        Error("Could not open list file %s", file_list[i].c_str());
-      }
-    }
-  } // AddFileList(const std::string & rFileName)
-*/
   
   //***************************************************************************
   //***************************************************************************
@@ -285,7 +281,7 @@ namespace STK
 
   //***************************************************************************
   //***************************************************************************
-  bool 
+/*  bool 
   FeatureRepository::
   ReadHTKFeatures(const std::string& rFileName, Matrix<FLOAT>& rFeatureMatrix)
   {
@@ -687,7 +683,7 @@ namespace STK
     
     return true;
   }
-
+*/
 
   
   //***************************************************************************

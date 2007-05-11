@@ -14,6 +14,7 @@
 #define STK_DecoderNetwork_h
 
 #include "Net.h"
+#include <map>
 
 namespace STK
 {
@@ -24,35 +25,6 @@ namespace STK
   class AlphaBeta;
   class DecoderNetwork;
   class LinkContent;
-
-  /** **************************************************************************
-   ** **************************************************************************
-   *  @brief STK network specific output format options
-   */
-  class STKNetworkOutputFormat 
-  {
-  public:
-    unsigned mNoLMLikes              : 1 ;
-    unsigned mNoTimes                : 1 ;
-    unsigned mStartTimes             : 1 ;
-    unsigned mNoWordNodes            : 1 ;
-    unsigned mNoModelNodes           : 1 ;
-    unsigned mNoPronunVars           : 1 ;
-    unsigned mNoDefaults             : 1 ;
-    unsigned mAllFieldNames          : 1 ;
-    unsigned mArcDefsToEnd           : 1 ;
-    unsigned mArcDefsWithJ           : 1 ;
-    unsigned mBase62Labels           : 1 ;
-    unsigned mAproxAccuracy          : 1 ;
-    unsigned mNoAcousticLikes        : 1 ;
-                                     
-    //Have no effect yet             
-    unsigned mStripTriphones         : 1 ;
-    unsigned mLinNodeSeqs            : 1 ;
-  };
-  // class STKNetworkOutputFormat 
-  //****************************************************************************
-
 
   /** **************************************************************************
    ** **************************************************************************
@@ -559,7 +531,9 @@ namespace STK
     ForwardBackward(
       FLOAT wordPenalty = 0.0,
       FLOAT modelPenalty = 0.0 ,
-      FLOAT lmScale = 1.0);
+      FLOAT lmScale = 1.0,
+      FLOAT posteriorScale = 1.0,
+      bool viterbi = true);
 
     
     /** 
@@ -580,7 +554,13 @@ namespace STK
       const FLOAT& thresh,
       FLOAT wordPenalty = 0.0,
       FLOAT modelPenalty = 0.0,
-      FLOAT lmScale = 1.0);
+      FLOAT lmScale = 1.0,
+      FLOAT posteriorScale = 1.0);
+      
+      
+    void
+    PosteriorExpectedCounts(
+      std::map<char *,float> &countMap);
 
     void
     DensityPrune(
@@ -635,7 +615,8 @@ namespace STK
     void WriteSTKNetworkInOldFormat(
       FILE* flp,
       _NetworkType&             rNetwork,
-      LabelFormat labelFormat,
+//      LabelFormat labelFormat,
+      STKNetworkOutputFormat    format,
       long sampPeriod,
       const char* label_file,
       const char* out_MNF);
@@ -648,7 +629,8 @@ namespace STK
       struct MyHSearchData *    word_hash,
       struct MyHSearchData *    phone_hash,
       int                       notInDict,
-      LabelFormat               labelFormat,
+//      LabelFormat               labelFormat,
+      STKNetworkOutputFormat    format,
       long                      sampPeriod,
       const char *              file_name,
       const char *              in_MLF,
@@ -662,7 +644,8 @@ namespace STK
       FILE*                     lfp,
       MyHSearchData*            word_hash,
       MyHSearchData*            phone_hash,
-      LabelFormat               labelFormat,
+//      LabelFormat               labelFormat,
+      STKNetworkOutputFormat    format,
       long                      sampPeriod,
       const char*               file_name,
       const char*               in_MLF,

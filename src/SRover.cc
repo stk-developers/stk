@@ -92,8 +92,10 @@ int main(int argc, char *argv[]) {
   int ignore_unknown_labels = 0;
   int rnd_from_best    = 0;
 
-  LabelFormat in_lbl_frm = {0};
-  LabelFormat out_lbl_frm = {0};
+//  LabelFormat in_lbl_frm = {0};
+//  LabelFormat out_lbl_frm = {0};
+  STKNetworkOutputFormat in_lbl_frm = {0};
+  STKNetworkOutputFormat out_lbl_frm = {0};
   char *out_lbl_dir    = NULL;
   char *out_lbl_ext    = "alg";
   char *out_MLF_fn     = NULL;
@@ -209,10 +211,10 @@ int main(int argc, char *argv[]) {
                 
       case 'o': for (chrptr = optarg; *chrptr; chrptr++) {
                   switch (*chrptr) {
-                    case 'N': out_lbl_frm.SCORE_NRM = 1; break;
-                    case 'S': out_lbl_frm.SCORE_OFF = 1; break;
-                    case 'C': out_lbl_frm.CENTRE_TM = 1; break;
-                    case 'T': out_lbl_frm.TIMES_OFF = 1; break;
+                    case 'N': out_lbl_frm.mScoreNorm       = 1; break;
+                    case 'S': out_lbl_frm.mNoAcousticLikes = 1; break;
+                    case 'C': out_lbl_frm.mCentreTimes     = 1; break;
+                    case 'T': out_lbl_frm.mNoTimes         = 1; break;
                     default:
                       Error("Some of characters 'NCST' are expected after option -%c", opt);
                   }

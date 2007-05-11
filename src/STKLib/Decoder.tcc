@@ -1281,6 +1281,9 @@ namespace STK
       if (p_node->mC.mpAnr->mpPrevActiveNode) 
       {
         p_node->mC.mpAnr->mpPrevActiveNode->mC.mpAnr->mpNextActiveNode = p_node->mC.mpAnr->mpNextActiveNode;
+      } else {
+        assert(p_node == mpActiveNodes);
+        mpActiveNodes = p_node->mC.mpAnr->mpNextActiveNode; 
       }
 
       if (p_node->mC.mpAnr->mpNextActiveNode) 

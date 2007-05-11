@@ -144,10 +144,11 @@ int main(int argc, char *argv[])
   } in_transc_fmt = TF_STK, out_transc_fmt = TF_STK;
   int notInDictAction = 0;
   ExpansionOptions expOptions = {0};
+  STKNetworkOutputFormat  in_net_fmt = {0};
   STKNetworkOutputFormat out_net_fmt = {0};
   PhoneCorrectnessApproximationType corr_approx;
-  LabelFormat out_lbl_fmt = {0};
-  LabelFormat in_lbl_fmt = {0};
+//  LabelFormat out_lbl_fmt = {0};
+//  LabelFormat in_lbl_fmt = {0};
 
   if (argc == 1) usage(argv[0]);
 
@@ -177,10 +178,12 @@ int main(int argc, char *argv[])
                = GetParamBool(&cfgHash,SNAME":REMOVENULLNODES", false);
   expOptions.mRemoveWordsNodes
                = GetParamBool(&cfgHash,SNAME":REMEXPWRDNODES",  false);
-  in_lbl_fmt.left_extent  = -100 * (long long) (0.5 + 1e5 *
-                 GetParamFlt(&cfgHash, SNAME":STARTTIMESHIFT",  0.0));
-  in_lbl_fmt.right_extent =  100 * (long long) (0.5 + 1e5 *
-                 GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0));
+//  in_lbl_fmt.left_extent  = -100 * (long long) (0.5 + 1e5 *
+  in_net_fmt.mStartTimeShift = 
+                 GetParamFlt(&cfgHash, SNAME":STARTTIMESHIFT",  0.0);
+//  in_lbl_fmt.right_extent =  100 * (long long) (0.5 + 1e5 *
+  in_net_fmt.mEndTimeShift = 
+                 GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0);
   label_filter = GetParamStr(&cfgHash, SNAME":HLABELFILTER",    NULL);
   gpFilterWldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
   gpScriptFilter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",  NULL);
@@ -333,8 +336,6 @@ int main(int argc, char *argv[])
                   in_transc_fmt == TF_STK      ? net_filter    :
                                           label_filter;
 
-  in_lbl_fmt.TIMES_OFF = out_net_fmt.mNoTimes;
-
   in_MLF_fp  = OpenInputMLF(in_MLF_fn);
   out_MLF_fp = OpenOutputMLF(out_MLF_fn);
 
@@ -382,7 +383,7 @@ int main(int argc, char *argv[])
       if (in_transc_fmt == TF_HTK || in_transc_fmt == TF_MLF) 
       {
         labels = ReadLabels(in_MLF_fp, dictionary ? &dictHash : &phoneHash,
-            dictionary ? UL_ERROR : UL_INSERT, in_lbl_fmt, /*sampleRate*/ 1,
+            dictionary ? UL_ERROR : UL_INSERT, in_net_fmt, /*sampleRate*/ 1,
             label_file, in_MLF_fn, NULL);
         
         my_net.BuildFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
@@ -392,13 +393,13 @@ int main(int argc, char *argv[])
       else if (in_transc_fmt == TF_STK || in_transc_fmt == TF_MNF) 
       {
         ReadSTKNetwork(in_MLF_fp, &dictHash, &phoneHash, notInDictAction, 
-            in_lbl_fmt, /*sampleRate*/ 1, label_file, in_MLF_fn, false,
+            in_net_fmt, /*sampleRate*/ 1, label_file, in_MLF_fn, false,
             my_net); 
       } 
       else if (in_transc_fmt == TF_NOF || in_transc_fmt == TF_MOF) 
       {                                                            
         ReadSTKNetworkInOldFormat(in_MLF_fp, &dictHash, &phoneHash, 
-            in_lbl_fmt, /*sampleRate*/ 1, label_file, in_MLF_fn,
+            in_net_fmt, /*sampleRate*/ 1, label_file, in_MLF_fn,
             my_net);
       }
 
@@ -427,7 +428,7 @@ int main(int argc, char *argv[])
 
       if (out_transc_fmt == TF_NOF) 
       {
-        WriteSTKNetworkInOldFormat(out_MLF_fp, my_net, out_lbl_fmt, 1,
+        WriteSTKNetworkInOldFormat(out_MLF_fp, my_net, out_net_fmt, 1,
             label_file, out_MLF_fn);
       } 
       else 

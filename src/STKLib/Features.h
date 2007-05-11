@@ -32,6 +32,7 @@
 // Standard includes
 //
 #include <list>
+#include <queue>
 #include <string>
 
 
@@ -312,8 +313,13 @@ namespace STK
     const std::string&
     CurrentIndexFileName() const
     { return mCurrentIndexFileName; }
-
-
+    
+    friend
+    void
+    AddFileListToFeatureRepositories(
+    const char* pFileName,
+    const char* pFilter,
+    std::queue<FeatureRepository *> &featureRepositoryList);
 
 ////////////////////////////////////////////////////////////////////////////////
 //  PRIVATE SECTION

@@ -209,10 +209,12 @@ namespace STK
   ForwardBackward(
     FLOAT wordPenalty,
     FLOAT modelPenalty,
-    FLOAT lmScale)
+    FLOAT lmScale,
+    float posteriorScale,
+    bool viterbi)
   {
     Node*  p_start_node;
-    bool       viterbi = true;
+    ;
     FLOAT      score(0.0);
 
     iterator   i_node(begin());
@@ -239,12 +241,13 @@ namespace STK
         LinkType* p_link     (&(i_node->rpLinks()[i]));
         Node* p_end_node (p_link->pNode());
 
-        score = i_node->mC.mpAlphaBeta->mAlpha + p_link->LmLike() * lmScale + p_link->AcousticLike();
+        score = i_node->mC.mpAlphaBeta->mAlpha 
+	      + (p_link->LmLike() * lmScale + p_link->AcousticLike()) * posteriorScale;
         
         if (p_end_node->mC.mType & NT_MODEL)
-          score += modelPenalty; 
+          score += modelPenalty * posteriorScale; 
         else if (p_end_node->mC.mType & NT_WORD &&  p_end_node->mC.mpPronun != NULL)
-          score += wordPenalty;
+          score += wordPenalty * posteriorScale;
         
         if (viterbi)
         {
@@ -269,12 +272,13 @@ namespace STK
         LinkType* p_link     (&(i_node->rpBackLinks()[i]));
         Node* p_end_node (p_link->pNode());
 
-        score = i_node->mC.mpAlphaBeta->mBeta + p_link->LmLike() * lmScale + p_link->AcousticLike();
+        score = i_node->mC.mpAlphaBeta->mBeta 
+	      + (p_link->LmLike() * lmScale + p_link->AcousticLike()) * posteriorScale;
         
         if (i_node->mC.mType & NT_MODEL)
-          score += modelPenalty; 
+          score += modelPenalty * posteriorScale; 
         else if (i_node->mC.mType & NT_WORD &&  i_node->mC.mpPronun != NULL)
-          score += wordPenalty;
+          score += wordPenalty * posteriorScale;
 
 
         if (viterbi)
@@ -294,7 +298,40 @@ namespace STK
   }
   // ForwardBackward()
   // ************************************************************************
+  
+  // ************************************************************************
+  // ************************************************************************
+  void
+  Lattice::
+  PosteriorExpectedCounts(
+    std::map<char *,float> &countMap)
+  {
+    FLOAT tot_log_like = HIGHER_OF(pLast()->mC.mpAlphaBeta->mAlpha, 
+                                   begin()->mC.mpAlphaBeta->mBeta);
 
+    for (iterator i_node = begin(); i_node != end(); ++i_node) {
+      char *node_name;
+      
+      if (i_node->mC.mType & NT_MODEL) {
+        node_name = i_node->mC.mpHmm->mpMacro->mpName;
+      } else if (i_node->mC.mType & NT_WORD &&  i_node->mC.mpPronun != NULL) {
+        node_name = i_node->mC.mpPronun->mpWord->mpName;
+      } else {
+        continue;
+      }
+
+//      countMap.insert(std::make_pair(node_name, 0.0)).first->second
+//        += exp(i_node->mC.mpAlphaBeta->mAlpha + i_node->mC.mpAlphaBeta->mBeta - tot_log_like);
+	
+      countMap[node_name] += exp(i_node->mC.mpAlphaBeta->mAlpha + i_node->mC.mpAlphaBeta->mBeta - tot_log_like);
+	
+    }
+  }
+  // PosteriorExpectedCounts()
+  // ************************************************************************
+  
+  
+    
   // ************************************************************************
   // ************************************************************************
   FLOAT
@@ -319,7 +356,8 @@ namespace STK
     const FLOAT& thresh,
     FLOAT wordPenalty,
     FLOAT modelPenalty,
-    FLOAT lmScale)
+    FLOAT lmScale,
+    float posteriorScale)
   {
     assert(NULL != pLast()->mC.mpAlphaBeta);
 
@@ -348,13 +386,12 @@ namespace STK
         LinkType* p_link = &(i_node->rpLinks()[i]);
         iterator  p_end_node(p_link->pNode());
         FLOAT     score = i_node->mC.mpAlphaBeta->mAlpha + p_end_node->mC.mpAlphaBeta->mBeta 
-                  + p_link->LmLike() * lmScale + p_link->AcousticLike()
-                  + thresh;
+                  + (p_link->LmLike() * lmScale + p_link->AcousticLike() + thresh) * posteriorScale;
 
         if (p_end_node->mC.mType & NT_MODEL)
-          score += modelPenalty; 
+          score += modelPenalty * posteriorScale;
         else if (p_end_node->mC.mType & NT_WORD &&  p_end_node->mC.mpPronun != NULL)
-          score += wordPenalty;
+          score += wordPenalty * posteriorScale;
 
         if (score < end_alpha && score < start_beta)
         {
