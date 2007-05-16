@@ -12,6 +12,12 @@
 /* Define if we have libatlas */
 #undef HAVE_ATLAS
 
+/* define if the Boost library is available */
+#undef HAVE_BOOST
+
+/* define if the Boost::PROGRAM_OPTIONS library is available */
+#undef HAVE_BOOST_PROGRAM_OPTIONS
+
 /* Define to 1 if you have the <float.h> header file. */
 #undef HAVE_FLOAT_H
 

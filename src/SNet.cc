@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
   const char *NNet_instance_name = NULL;
   XformInstance *NNet_instance   = NULL;
   XformInstance *NNet_input      = NULL;
-  LabelFormat in_lbl_fmt = {0};
+  STKNetworkOutputFormat in_lbl_fmt = {0};
   RHFBuffer rhfbuff      = {0};
   RHFBuffer rhfbuff_out  = {0};
     
@@ -215,9 +215,9 @@ int main(int argc, char *argv[])
                                     &cvg_file_out, SNAME":",  2);
   }
   
-  in_lbl_fmt.left_extent  = -100 * (long long) (0.5 + 1e5 *
+  in_lbl_fmt.mStartTimeShift  = -100.0 * (0.5 + 1e5 *
                  GetParamFlt(&cfgHash, SNAME":STARTTIMESHIFT",  0.0));
-  in_lbl_fmt.right_extent =  100 * (long long) (0.5 + 1e5 *
+  in_lbl_fmt.mEndTimeShift =  100.0 * (0.5 + 1e5 *
                  GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0));
   NNet_instance_name =
                  GetParamStr(&cfgHash, SNAME":SOURCEINPUT",     NULL);

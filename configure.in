@@ -31,6 +31,8 @@ AC_PROG_CXX
 AC_PROG_CC
 
 # Checks for libraries.
+AX_BOOST_BASE([1.33.1])
+AX_BOOST_PROGRAM_OPTIONS
 
 # Checks for header files.
 AC_HEADER_STDC
@@ -71,7 +73,7 @@ AC_CHECK_FUNCS([gethostbyname socket gettimeofday inet_ntoa],
                [],
                [use_snet=no
                 break])
-AM_CONDITIONAL([USE_SNET], [test "$use_snet" != "no"]) 
+AM_CONDITIONAL([USE_SNET], [test "x$use_snet" != "xno"]) 
 
 
 ################################################################################
@@ -143,7 +145,7 @@ AC_ARG_ENABLE([sse],
 AM_CONDITIONAL([ENABLE_SSE], [test "$enable_sse" != "no"]) 
 
 ################################################################################ 
-# CHECK FOR ATLAS USAGE 
+# CHECK FOR MATLAB ENGINE LIBRARY USAGE 
 AC_ARG_WITH([matlab],   
             [AS_HELP_STRING([--with-matlab], 
               [add support for the Matlab Engine Library (experimental)@<:@default=no@:>@])], 
@@ -175,10 +177,10 @@ AC_ARG_WITH([atlas-dir],
             [AS_HELP_STRING([--with-atlas-dir], 
               [specify the atlas location]) ], 
             [AC_SUBST([ATLASINCLUDEDIR], ["-I $withval/include"])
-             AC_SUBST([ATLASLIBDIR], ["-L $withval/lib"])
+             AC_SUBST([ATLASLIBDIR], ["$withval/lib"])
              echo ATLAS: adding $ATLASLIBDIR to the library search path
              echo ATLAS: adding $ATLASINCLUDEDIR to the include search path
-             AC_SUBST([LDFLAGS],["$ATLASLIBDIR $LDFLAGS"])
+             AC_SUBST([LDFLAGS],["-L $ATLASLIBDIR $LDFLAGS"])
              AC_SUBST([CFLAGS],["$ATLASINCLUDEDIR $CFLAGS"])
              AC_SUBST([CXXFLAGS],["$ATLASINCLUDEDIR $CXXFLAGS"])
             ], 
@@ -199,22 +201,37 @@ AC_ARG_WITH([atlas-lib-dir],
             [AS_HELP_STRING([--with-atlas-lib-dir],
               [specify the atlas libdir location])
             ],
-            [AC_SUBST([ATLASLIBDIR], ["-L$withval"])
+            [AC_SUBST([ATLASLIBDIR], ["$withval"])
              echo ATLAS: adding $ATLASLIBDIR to the library search path
-             AC_SUBST([LDFLAGS],["$ATLASLIBDIR $LDFLAGS"])
+             AC_SUBST([LDFLAGS],["-L $ATLASLIBDIR $LDFLAGS"])
             ], 
             [])
 
 LIBATLAS=
 
+# At this point, Atlas include dir should have been set
+AC_ARG_WITH([atlas-static], 
+            [AS_HELP_STRING([--with-atlas-static], 
+              [force static atlas linking]) 
+            ], 
+            [echo ATLAS: forcing static likage
+             echo ATLAS: $ATLASLIBDIR/{libcblas,liblapack,libptcblas,libatlas}.a to be linked
+             AC_SUBST([LIBATLAS],["$ATLASLIBDIR/libcblas.a $ATLASLIBDIR/liblapack.a $ATLASLIBDIR/libptcblas.a $ATLASLIBDIR/libatlas.a"])
+             AC_DEFINE([HAVE_ATLAS], [1],
+                       [Define if we have libatlas])
+             with_atlas_static=yes
+            ], 
+            [if test -n "$ATLASLIBDIR"; then 
+              AC_SUBST([LDFLAGS],["-L $ATLASLIBDIR $LDFLAGS"])
+             fi ])
+
+
 # we choose one func from blas and one from lapack
-AS_IF([test "x$with_atlas" != "xno"],
+AS_IF([test "x$with_atlas" != "xno" -a "x$with_atlas_static" != "xyes" ],
       [AC_SEARCH_LIBS([cblas_sgemm], [cblas lapack atlas],
                       [AC_SUBST([LIBATLAS], ["-llapack -lcblas -latlas"])
-                       AC_DEFINE([HAVE_ATLAS], [1],
-                                 [Define if we have libatlas])
                       ],
-                      [if test "x$with_atlas" != xcheck; then
+                      [if test "x$with_atlas" != "xcheck"; then
                        AC_MSG_FAILURE(
                        [--with-atlas was given, but test for atlas failed. Try specifying the --with-atlas-dir or --with-alas-lib-dir.])
                        fi
@@ -226,11 +243,11 @@ LIBMATLAB=
 # we choose one func from blas and one from lapack
 AS_IF([test "x$with_matlab" != "xno"],
       [AC_SEARCH_LIBS([cblas_sgemm], [cblas lapack atlas],
-                      [AC_SUBST([LIBATLAS], ["-llapack -lcblas -latlas"])
+                      [AC_SUBST([LIBMATLAB], ["-leng -lmx"])
                        AC_DEFINE([MATLAB_ENGINE], [1], 
                          [Define if we want Matlab Engine Library support])
                       ],
-                      [],[-latlas -llapack -lcblas -pthread])
+                      [],[-leng -lmx])
        AC_SUBST([LIBMATLAB], ["-leng -lmx"])
       ])
 

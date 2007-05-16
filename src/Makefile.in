@@ -14,7 +14,7 @@
 
 @SET_MAKE@
 
-SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFeaCat_SOURCES) $(SLRatio_SOURCES) $(SResults_SOURCES) $(SRover_SOURCES) $(SVite_SOURCES)
+SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFeaCat_SOURCES) $(SLRatio_SOURCES) $(SNet_SOURCES) $(SResults_SOURCES) $(SRover_SOURCES) $(SVite_SOURCES)
 
 srcdir = @srcdir@
 top_srcdir = @top_srcdir@
@@ -36,13 +36,20 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
-bin_PROGRAMS = SExpand$(EXEEXT) SERest$(EXEEXT) SVite$(EXEEXT) \
-	SFeaCat$(EXEEXT) SLRatio$(EXEEXT) SResults$(EXEEXT) \
-	SRover$(EXEEXT)
+@USE_SNET_FALSE@bin_PROGRAMS = SExpand$(EXEEXT) SERest$(EXEEXT) \
+@USE_SNET_FALSE@	SVite$(EXEEXT) SFeaCat$(EXEEXT) \
+@USE_SNET_FALSE@	SLRatio$(EXEEXT) SResults$(EXEEXT) \
+@USE_SNET_FALSE@	SRover$(EXEEXT)
+@USE_SNET_TRUE@bin_PROGRAMS = SExpand$(EXEEXT) SERest$(EXEEXT) \
+@USE_SNET_TRUE@	SVite$(EXEEXT) SFeaCat$(EXEEXT) \
+@USE_SNET_TRUE@	SLRatio$(EXEEXT) SResults$(EXEEXT) \
+@USE_SNET_TRUE@	SRover$(EXEEXT) SNet$(EXEEXT)
 subdir = src
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/configure.in
+am__aclocal_m4_deps = $(top_srcdir)/m4/ax_boost_base.m4 \
+	$(top_srcdir)/m4/ax_boost_program_options.m4 \
+	$(top_srcdir)/configure.in
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
@@ -70,6 +77,11 @@ am_SLRatio_OBJECTS = SLRatio.$(OBJEXT)
 SLRatio_OBJECTS = $(am_SLRatio_OBJECTS)
 SLRatio_LDADD = $(LDADD)
 SLRatio_DEPENDENCIES = $(am__DEPENDENCIES_2)
+am__SNet_SOURCES_DIST = SNet.cc
+@USE_SNET_TRUE@am_SNet_OBJECTS = SNet.$(OBJEXT)
+SNet_OBJECTS = $(am_SNet_OBJECTS)
+@USE_SNET_TRUE@SNet_DEPENDENCIES = $(am__DEPENDENCIES_2) \
+@USE_SNET_TRUE@	./SNetLib/libSNet.a
 am_SResults_OBJECTS = SResults.$(OBJEXT)
 SResults_OBJECTS = $(am_SResults_OBJECTS)
 SResults_LDADD = $(LDADD)
@@ -91,11 +103,11 @@ CXXLD = $(CXX)
 CXXLINK = $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) \
 	-o $@
 SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFeaCat_SOURCES) \
-	$(SLRatio_SOURCES) $(SResults_SOURCES) $(SRover_SOURCES) \
-	$(SVite_SOURCES)
+	$(SLRatio_SOURCES) $(SNet_SOURCES) $(SResults_SOURCES) \
+	$(SRover_SOURCES) $(SVite_SOURCES)
 DIST_SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFeaCat_SOURCES) \
-	$(SLRatio_SOURCES) $(SResults_SOURCES) $(SRover_SOURCES) \
-	$(SVite_SOURCES)
+	$(SLRatio_SOURCES) $(am__SNet_SOURCES_DIST) \
+	$(SResults_SOURCES) $(SRover_SOURCES) $(SVite_SOURCES)
 RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	html-recursive info-recursive install-data-recursive \
 	install-exec-recursive install-info-recursive \
@@ -116,6 +128,9 @@ AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
+BOOST_CPPFLAGS = @BOOST_CPPFLAGS@
+BOOST_LDFLAGS = @BOOST_LDFLAGS@
+BOOST_PROGRAM_OPTIONS_LIB = @BOOST_PROGRAM_OPTIONS_LIB@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
@@ -240,6 +255,22 @@ SFeaCat_SOURCES = SFeaCat.cc
 SLRatio_SOURCES = SLRatio.cc
 SResults_SOURCES = SResults.cc
 SRover_SOURCES = SRover.cc
+#Sgram_SOURCES     = Sgram.cc
+# SWEChCoFast_SOURCES = SWEChCoFast.cc
+# SWE_SOURCES       = SWE.cc
+
+#SERest_DEPENDENCIES    = $(RECURSIVE_TARGETS) 
+#SVite_DEPENDENCIES     = $(RECURSIVE_TARGETS)
+#SExpand_DEPENDENCIES   = $(RECURSIVE_TARGETS)
+#SFeaCat_DEPENDENCIES   = $(RECURSIVE_TARGETS)
+#SLRatio_DEPENDENCIES   = $(RECURSIVE_TARGETS)
+#SResults_DEPENDENCIES  = $(RECURSIVE_TARGETS)
+#SRover_DEPENDENCIES    = $(RECURSIVE_TARGETS)
+
+# SNet is kind of special. It needs some files in the SNet source. This will probably change and separate SNetLib will be built
+@USE_SNET_TRUE@SNet_SOURCES = SNet.cc 
+@USE_SNET_TRUE@SNet_LDFLAGS = $(COMMONLDFLAGS) -pthread
+@USE_SNET_TRUE@SNet_LDADD = $(COMMONLIBS) ./SNetLib/libSNet.a
 all: all-recursive
 
 .SUFFIXES:
@@ -308,6 +339,9 @@ SFeaCat$(EXEEXT): $(SFeaCat_OBJECTS) $(SFeaCat_DEPENDENCIES)
 SLRatio$(EXEEXT): $(SLRatio_OBJECTS) $(SLRatio_DEPENDENCIES) 
 	@rm -f SLRatio$(EXEEXT)
 	$(CXXLINK) $(SLRatio_LDFLAGS) $(SLRatio_OBJECTS) $(SLRatio_LDADD) $(LIBS)
+SNet$(EXEEXT): $(SNet_OBJECTS) $(SNet_DEPENDENCIES) 
+	@rm -f SNet$(EXEEXT)
+	$(CXXLINK) $(SNet_LDFLAGS) $(SNet_OBJECTS) $(SNet_LDADD) $(LIBS)
 SResults$(EXEEXT): $(SResults_OBJECTS) $(SResults_DEPENDENCIES) 
 	@rm -f SResults$(EXEEXT)
 	$(CXXLINK) $(SResults_LDFLAGS) $(SResults_OBJECTS) $(SResults_LDADD) $(LIBS)
@@ -328,6 +362,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SExpand.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SFeaCat.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SLRatio.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SNet.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SResults.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SRover.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SVite.Po@am__quote@
@@ -609,21 +644,6 @@ uninstall-info: uninstall-info-recursive
 
 @USE_SNET_TRUE@	SNETF    = SNet
 @USE_SNET_FALSE@	SNETF    = 
-# SWEChCoFast_SOURCES = SWEChCoFast.cc
-# SWE_SOURCES       = SWE.cc
-
-#SERest_DEPENDENCIES    = $(RECURSIVE_TARGETS) 
-#SVite_DEPENDENCIES     = $(RECURSIVE_TARGETS)
-#SExpand_DEPENDENCIES   = $(RECURSIVE_TARGETS)
-#SFeaCat_DEPENDENCIES   = $(RECURSIVE_TARGETS)
-#SLRatio_DEPENDENCIES   = $(RECURSIVE_TARGETS)
-#SResults_DEPENDENCIES  = $(RECURSIVE_TARGETS)
-#SRover_DEPENDENCIES    = $(RECURSIVE_TARGETS)
-
-# SNet is kind of special. It needs some files in the SNet source. This will probably change and separate SNetLib will be built
-@USE_SNET_TRUE@	SNet_SOURCES      = SNet.cc 
-@USE_SNET_TRUE@	SNet_LDFLAGS      = $(COMMONLDFLAGS) -pthread
-@USE_SNET_TRUE@	SNet_LDADD        = $(COMMONLIBS) ./SNetLib/libSNet.a
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:
