@@ -54,9 +54,9 @@ INCLUDES    = $(ATLASINCLUDEDIR) -I. -I$(top_builddir) -I$(top_srcdir) \
 # These are the programs that we want to build in this directory
 # bin_PROGRAMS = SExpand SERest SVite $(SNETF) SFeaCat SLRatio SResults SRover 
 if USE_SNET
-bin_PROGRAMS = SExpand SERest SVite SFeaCat SLRatio SResults SRover SNet
+bin_PROGRAMS = SExpand SERest SVite SFeaCat SLRatio SResults SRover STree SNet 
 else
-bin_PROGRAMS = SExpand SERest SVite SFeaCat SLRatio SResults SRover 
+bin_PROGRAMS = SExpand SERest SVite SFeaCat SLRatio SResults SRover STree
 endif
 
 
@@ -68,7 +68,8 @@ SFeaCat_SOURCES   = SFeaCat.cc
 SLRatio_SOURCES   = SLRatio.cc
 SResults_SOURCES  = SResults.cc
 SRover_SOURCES    = SRover.cc
-#Sgram_SOURCES     = Sgram.cc
+STree_SOURCES     = STree.cc
+STree_LDADD       = $(COMMONLIBS) -lboost_program_options-gcc
 # SWEChCoFast_SOURCES = SWEChCoFast.cc
 # SWE_SOURCES       = SWE.cc
 

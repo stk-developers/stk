@@ -14,7 +14,7 @@
 
 @SET_MAKE@
 
-SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFeaCat_SOURCES) $(SLRatio_SOURCES) $(SNet_SOURCES) $(SResults_SOURCES) $(SRover_SOURCES) $(SVite_SOURCES)
+SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFeaCat_SOURCES) $(SLRatio_SOURCES) $(SNet_SOURCES) $(SResults_SOURCES) $(SRover_SOURCES) $(STree_SOURCES) $(SVite_SOURCES)
 
 srcdir = @srcdir@
 top_srcdir = @top_srcdir@
@@ -39,11 +39,11 @@ POST_UNINSTALL = :
 @USE_SNET_FALSE@bin_PROGRAMS = SExpand$(EXEEXT) SERest$(EXEEXT) \
 @USE_SNET_FALSE@	SVite$(EXEEXT) SFeaCat$(EXEEXT) \
 @USE_SNET_FALSE@	SLRatio$(EXEEXT) SResults$(EXEEXT) \
-@USE_SNET_FALSE@	SRover$(EXEEXT)
+@USE_SNET_FALSE@	SRover$(EXEEXT) STree$(EXEEXT)
 @USE_SNET_TRUE@bin_PROGRAMS = SExpand$(EXEEXT) SERest$(EXEEXT) \
 @USE_SNET_TRUE@	SVite$(EXEEXT) SFeaCat$(EXEEXT) \
 @USE_SNET_TRUE@	SLRatio$(EXEEXT) SResults$(EXEEXT) \
-@USE_SNET_TRUE@	SRover$(EXEEXT) SNet$(EXEEXT)
+@USE_SNET_TRUE@	SRover$(EXEEXT) STree$(EXEEXT) SNet$(EXEEXT)
 subdir = src
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -90,6 +90,9 @@ am_SRover_OBJECTS = SRover.$(OBJEXT)
 SRover_OBJECTS = $(am_SRover_OBJECTS)
 SRover_LDADD = $(LDADD)
 SRover_DEPENDENCIES = $(am__DEPENDENCIES_2)
+am_STree_OBJECTS = STree.$(OBJEXT)
+STree_OBJECTS = $(am_STree_OBJECTS)
+STree_DEPENDENCIES = $(am__DEPENDENCIES_2)
 am_SVite_OBJECTS = SVite.$(OBJEXT)
 SVite_OBJECTS = $(am_SVite_OBJECTS)
 SVite_LDADD = $(LDADD)
@@ -104,10 +107,11 @@ CXXLINK = $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) \
 	-o $@
 SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFeaCat_SOURCES) \
 	$(SLRatio_SOURCES) $(SNet_SOURCES) $(SResults_SOURCES) \
-	$(SRover_SOURCES) $(SVite_SOURCES)
+	$(SRover_SOURCES) $(STree_SOURCES) $(SVite_SOURCES)
 DIST_SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFeaCat_SOURCES) \
 	$(SLRatio_SOURCES) $(am__SNet_SOURCES_DIST) \
-	$(SResults_SOURCES) $(SRover_SOURCES) $(SVite_SOURCES)
+	$(SResults_SOURCES) $(SRover_SOURCES) $(STree_SOURCES) \
+	$(SVite_SOURCES)
 RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	html-recursive info-recursive install-data-recursive \
 	install-exec-recursive install-info-recursive \
@@ -255,7 +259,8 @@ SFeaCat_SOURCES = SFeaCat.cc
 SLRatio_SOURCES = SLRatio.cc
 SResults_SOURCES = SResults.cc
 SRover_SOURCES = SRover.cc
-#Sgram_SOURCES     = Sgram.cc
+STree_SOURCES = STree.cc
+STree_LDADD = $(COMMONLIBS) -lboost_program_options-gcc
 # SWEChCoFast_SOURCES = SWEChCoFast.cc
 # SWE_SOURCES       = SWE.cc
 
@@ -348,6 +353,9 @@ SResults$(EXEEXT): $(SResults_OBJECTS) $(SResults_DEPENDENCIES)
 SRover$(EXEEXT): $(SRover_OBJECTS) $(SRover_DEPENDENCIES) 
 	@rm -f SRover$(EXEEXT)
 	$(CXXLINK) $(SRover_LDFLAGS) $(SRover_OBJECTS) $(SRover_LDADD) $(LIBS)
+STree$(EXEEXT): $(STree_OBJECTS) $(STree_DEPENDENCIES) 
+	@rm -f STree$(EXEEXT)
+	$(CXXLINK) $(STree_LDFLAGS) $(STree_OBJECTS) $(STree_LDADD) $(LIBS)
 SVite$(EXEEXT): $(SVite_OBJECTS) $(SVite_DEPENDENCIES) 
 	@rm -f SVite$(EXEEXT)
 	$(CXXLINK) $(SVite_LDFLAGS) $(SVite_OBJECTS) $(SVite_LDADD) $(LIBS)
@@ -365,6 +373,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SNet.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SResults.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SRover.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STree.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SVite.Po@am__quote@
 
 .cc.o:
