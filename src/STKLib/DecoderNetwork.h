@@ -40,6 +40,7 @@ namespace STK
     unsigned mRemoveWordsNodes  : 1;
     unsigned mCDPhoneExpansion  : 1;
     unsigned mStrictTiming      : 1;
+    unsigned mNoWeightPushing   : 1;
     unsigned mTraceFlag;
   };
   // class ExpansionOptions 
@@ -85,7 +86,7 @@ namespace STK
    */
   struct AlphaBeta
   {
-    typedef  FLOAT   LinkType;
+    typedef  double   LinkType;
 
     AlphaBeta() : mAlpha(LOG_0), mBeta(LOG_0)
     {}
@@ -463,7 +464,7 @@ namespace STK
      * @param trace_flag 
      */
     void
-    LatticeLocalOptimization(int strictTiming, int trace_flag);
+    LatticeLocalOptimization(const ExpansionOptions &expOptions);
 
 
     /** 
@@ -575,10 +576,10 @@ namespace STK
   private:
 
     int 
-    LatticeLocalOptimization_ForwardPass(int strictTiming);
+    LatticeLocalOptimization_ForwardPass(const ExpansionOptions &expOptions);
 
     int 
-    LatticeLocalOptimization_BackwardPass(int strictTiming);
+    LatticeLocalOptimization_BackwardPass(const ExpansionOptions &expOptions);
 
   };
   // class DecoderNetwork

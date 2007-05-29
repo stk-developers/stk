@@ -558,7 +558,7 @@ namespace STK
     ComputeGlobalStats(FLOAT* observation, int time);
     
     void 
-    UpdateFromAccums(const char* pOutputDir);
+    UpdateFromAccums();
     
     void
     AttachPriors(ModelSet *pPriorModelSet);

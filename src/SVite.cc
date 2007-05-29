@@ -284,6 +284,8 @@ int main(int argc, char *argv[])
                = GetParamBool(&cfgHash,SNAME":RESPECTPRONVARS", false);
   expOptions.mStrictTiming
                = GetParamBool(&cfgHash,SNAME":EXACTTIMEMERGE",  false);
+  expOptions.mNoWeightPushing
+               =!GetParamBool(&cfgHash,SNAME":WEIGHTPUSHING",   true);
   expOptions.mNoOptimization
                =!GetParamBool(&cfgHash,SNAME":MINIMIZENET",     expOptions.mCDPhoneExpansion
                                                                 ? true : false);
