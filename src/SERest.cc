@@ -691,7 +691,10 @@ int main(int argc, char* argv[])
   }
   
 
-  for (feature_repo.Rewind(); !feature_repo.EndOfList(); feature_repo.MoveNext(), feature_repo_alig.MoveNext())
+  for (feature_repo.Rewind(); 
+      !feature_repo.EndOfList(); 
+      (one_pass_reest ? feature_repo_alig.MoveNext(),0: 0),
+      feature_repo.MoveNext())
   {
 //    FeatureRepository::ListIterator aux_alig_name(feature_repo.pCurrentRecord());
 
@@ -720,7 +723,9 @@ int main(int argc, char* argv[])
       FLOAT P2;
       long  S;
 
-      hset.ReadAccums(feature_repo_alig.Current(), &S, &P, UT_ML);
+      hset.ReadAccums(UT_TwoAccumSetEBW == update_type 
+                      ? feature_repo_alig.Current()
+		      : feature_repo.Current(), &S, &P, UT_ML);
 
       totFrames  += S;
       totLogLike += P;
