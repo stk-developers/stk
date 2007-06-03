@@ -27,6 +27,21 @@ namespace STK
   //***************************************************************************
   //***************************************************************************
   template<>
+    Matrix<double> &
+    Matrix<double>::
+    FastRowSigmoid()
+    {
+      for(size_t row = 0; row < this->Rows(); row++)
+      {
+        fast_sigmoid_vec((*this)[row], (*this)[row], this->Cols());
+      }
+      return *this;
+    }
+  
+  
+  //***************************************************************************
+  //***************************************************************************
+  template<>
     Matrix<float> &
     Matrix<float>::
     AddCVVtMul(const float& c, const BasicVector<float>& rA, 
@@ -518,6 +533,20 @@ namespace STK
   template<>
     Matrix<float> &
     Matrix<float>::
+    FastRowSoftmax()
+    {
+      for(size_t row = 0; row < this->Rows(); row++){
+        fast_softmax_vec((*this)[row], (*this)[row], this->Cols());
+      }
+      return *this;
+    }
+          
+  
+  //***************************************************************************
+  //***************************************************************************
+  template<>
+    Matrix<double> &
+    Matrix<double>::
     FastRowSoftmax()
     {
       for(size_t row = 0; row < this->Rows(); row++){

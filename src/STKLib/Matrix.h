@@ -460,6 +460,11 @@ namespace STK
     Matrix<float>::
     FastRowSigmoid();
     
+  template<>
+    Matrix<double> &
+    Matrix<double>::
+    FastRowSigmoid();
+    
   
   template<>
     Matrix<float> &
@@ -477,6 +482,11 @@ namespace STK
   template<>
     Matrix<float> &
     Matrix<float>::
+    FastRowSoftmax();
+  
+  template<>
+    Matrix<double> &
+    Matrix<double>::
     FastRowSoftmax();
   
   
