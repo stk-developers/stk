@@ -3438,7 +3438,7 @@ namespace STK
   //**************************************************************************  
   void
   ModelSet::
-  UpdateFromAccums(const char * pOutputDir)
+  UpdateFromAccums()
   {
     Macro * macro;
     size_t  i;
@@ -3467,8 +3467,7 @@ namespace STK
       
       if (strncmp(macro->mpName, "varFloor", 8)) 
       {
-        if (macro->mOccurances < mMinOccurances) 
-        {
+        if (macro->mOccurances < mMinOccurances) {
           WARN_FEW_EXAMPLES("Variance vector", macro->mpName, macro->mOccurances);
         } 
         else 

@@ -30,7 +30,8 @@ libSTKLib_a_CXXFLAGS = $(SSE_FLAGS) $(AM_CXXFLAGS)
 libSTKLib_a_CFLAGS   = $(SSE_FLAGS) $(AM_CFLAGS)
 EXTRA_libSTKLib_a_SOURCES  = $(IMAGESC_SRC)
 libSTKLib_a_DEPENDENCIES = $(HSEARCH_R_OBJ)
-libSTKLib_a_SOURCES = BasicVector.cc BasicVector.h BasicVector.tcc Error.cc  \
+libSTKLib_a_SOURCES = BasicVector.cc BasicVector.h BasicVector.tcc \
+		ContextSample.cc ContextSample.h Error.cc  \
     Error.h Features.cc Features.h Matrix.cc Matrix.h Matrix.tcc Models.cc  \
     Models.h Models_IO.cc Net.h Net.cc Net.tcc Decoder.cc Decoder.tcc \
 		Decoder.h DecoderNetwork.cc DecoderNetwork.h DecoderNetwork_IO.cc DecoderNetwork_IO.tcc ZNorm.cc  \

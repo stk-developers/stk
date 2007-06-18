@@ -1729,6 +1729,7 @@ namespace STK
           } 
           else if(mLatticeGeneration )
           {
+	    // Just to grab alternative hypothesis. All will be dealocated in turn.
             p_node->mC.mpAnr->mpExitToken->AddWordLinkRecord(p_node, -1, mTime);
           }
           
@@ -1772,6 +1773,7 @@ namespace STK
           if (p_node->mC.mpAnr->mpTokens[0].IsActive())
           {
             p_node->mC.mpAnr->mpTokens[0].AddWordLinkRecord(rNetwork().pFirst(), -1, mTime);
+	                                                 // rNetwork().pFirst() ... just to point to some !NULL node
           }
         }
 
@@ -2340,7 +2342,7 @@ namespace STK
         if (pLabels != NULL)
           *pLabels = rNetwork().pLast()->mC.mpAnr->mpExitToken->pGetLabels();
           
-        if (mLatticeGeneration && pLattice != NULL)
+        if (/*mLatticeGeneration && */pLattice != NULL)
         {
           //pLattice->BuildFromWlr(rNetwork().pLast()->mC.mpAnr->mpExitToken->mpWlr);
           Wlr2Lattice(rNetwork().pLast()->mC.mpAnr->mpExitToken->mpWlr, *pLattice);

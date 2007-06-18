@@ -1140,6 +1140,7 @@ namespace STK
       int                                     l=0;
       typename _NetworkType::Iterator         p_node;
       float                                   lm_scale(lmScale);
+      FLOAT                                   tot_log_like;
 
     
       // use the mAux field to index the nodes
@@ -1154,6 +1155,13 @@ namespace STK
 
         p_node->mAux = n++;
         l += p_node->NSuccessors();
+      }
+      
+      if (format.mPosteriors) {
+	assert(NULL != rNetwork.Begin()->mC.mpAlphaBeta);
+//        tot_log_like = HIGHER_OF(rNetwork.End()->mC.mpAlphaBeta->mAlpha, 
+//                                 rNetwork.Begin()->mC.mpAlphaBeta->mBeta);
+	tot_log_like = rNetwork.Begin()->mC.mpAlphaBeta->mBeta;
       }
       
       fprintf(pFp,"N=%d L=%d\n", n, l);
@@ -1211,7 +1219,12 @@ namespace STK
           if (p_node->mC.mType & NT_TRUE)   putc('T', pFp);
           if (p_node->mC.mType & NT_STICKY) putc('K', pFp);
         }
-
+        
+        if (format.mPosteriors) {
+	  assert(NULL != p_node->mC.mpAlphaBeta);
+	  fprintf(pFp," P="FLOAT_FMT, exp(p_node->mC.mpAlphaBeta->mAlpha + p_node->mC.mpAlphaBeta->mBeta - tot_log_like));
+	}
+	
         if (p_node->mC.mType & NT_PHONE && p_node->mC.PhoneAccuracy() != 1.0) {
           fprintf(pFp," p="FLOAT_FMT, p_node->mC.PhoneAccuracy());
         }

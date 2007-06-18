@@ -777,7 +777,7 @@ namespace STK
 
       if (!expOptions.mNoWordExpansion) {
         if (!expOptions.mNoOptimization) {
-          LatticeLocalOptimization(expOptions.mStrictTiming, expOptions.mTraceFlag);
+          LatticeLocalOptimization(expOptions);
         }
         assert(wordHash != NULL);
         ExpandByDictionary(wordHash, !expOptions.mRemoveWordsNodes, 
@@ -786,7 +786,7 @@ namespace STK
 
       if (expOptions.mCDPhoneExpansion) {
         if (!expOptions.mNoOptimization) {
-          LatticeLocalOptimization(expOptions.mStrictTiming, expOptions.mTraceFlag);
+          LatticeLocalOptimization(expOptions);
         }
         assert(triphHash != NULL && nonCDphHash != NULL);
         ExpandMonophonesToTriphones(nonCDphHash, triphHash);
@@ -795,7 +795,7 @@ namespace STK
       DiscardUnwantedInfo(rFormat);
     
       if (!expOptions.mNoOptimization) {
-        LatticeLocalOptimization(expOptions.mStrictTiming, expOptions.mTraceFlag);
+        LatticeLocalOptimization(expOptions);
       }
 
       RemoveRedundantNullNodes(expOptions.mRemoveNulls == 1);
@@ -962,7 +962,7 @@ namespace STK
   //***************************************************************************
     void 
     DecoderNetwork::
-    LatticeLocalOptimization(int strictTiming, int trace_flag)
+    LatticeLocalOptimization(const ExpansionOptions &expOptions)
     {
       Node *    node;
       int       i;
@@ -986,7 +986,7 @@ namespace STK
       
       for (;;) 
       {
-        if (trace_flag & 2) 
+        if (expOptions.mTraceFlag & 2) 
         {
           for (i=0,node=pFirst(); node; node=node->mpNext,i++)
           {}
@@ -994,9 +994,9 @@ namespace STK
           TraceLog("Forward pass.... (number of nodes: %d)", i);
         }
         
-        LatticeLocalOptimization_ForwardPass(strictTiming);
+        LatticeLocalOptimization_ForwardPass(expOptions);
     
-        if (trace_flag & 2) 
+        if (expOptions.mTraceFlag & 2) 
         {
           for (i=0,node=pFirst(); node; node=node->mpNext,i++)
           {}
@@ -1004,11 +1004,11 @@ namespace STK
           TraceLog("Backward pass... (number of nodes: %d)", i);
         }
         
-        if (!LatticeLocalOptimization_BackwardPass(strictTiming)) 
+        if (!LatticeLocalOptimization_BackwardPass(expOptions)) 
           break;
       }
     }  
-  // LatticeLocalOptimization(int strictTiming, int trace_flag)
+  // LatticeLocalOptimization(const ExpansionOptions &expOptions)
   //****************************************************************************
 
 
@@ -1016,7 +1016,7 @@ namespace STK
   //****************************************************************************
     int 
     DecoderNetwork::
-    LatticeLocalOptimization_ForwardPass(int strictTiming)
+    LatticeLocalOptimization_ForwardPass(const ExpansionOptions &expOptions)
     {
       int     i; 
       int     j;
@@ -1033,71 +1033,70 @@ namespace STK
       //for (Node* p_node = pFirst(); p_node != NULL; p_node = p_node->mpNext) 
       for (iterator p_node = begin(); p_node != end(); ++p_node) 
       {
-  /**/  for (i = 0; i < p_node->NLinks(); i++) 
-        {
-        
-          p_tnode = p_node->rpLinks()[i].pNode();
-          
-          if (p_tnode->NLinks() == 0) 
-            continue;
-    
-          // Weight pushing
-          t_lm_like = p_tnode->rpBackLinks()[0].LmLike();
-          //t_acoustic_like = p_tnode->rpBackLinks()[0].AcousticLike();
-          
-          for (l=1; l <  p_tnode->rNBackLinks(); l++) 
-          {
-            t_lm_like = HIGHER_OF(t_lm_like, p_tnode->rpBackLinks()[l].LmLike());
-            //t_acoustic_like = HIGHER_OF(t_acoustic_like, p_tnode->rpBackLinks()[l].AcousticLike());
-          }
-          
-          for (l=0; l < p_tnode->rNBackLinks(); l++) 
-          {
-            Node* backnode = p_tnode->rpBackLinks()[l].pNode();
+        if(!expOptions.mNoWeightPushing) {
+          for (i = 0; i < p_node->NLinks(); i++) {
+            p_tnode = p_node->rpLinks()[i].pNode();
 
-            p_tnode->rpBackLinks()[l].AddLmLike(-t_lm_like);
-            //p_tnode->rpBackLinks()[l].AddAcousticLike(-t_acoustic_like);
-            
-            for (k=0; k<backnode->NLinks() && backnode->rpLinks()[k].pNode()!=p_tnode; k++)
-            {}
-            
-            assert(k < backnode->NLinks());
+            if (p_tnode->NLinks() == 0) 
+              continue;
 
-            backnode->rpLinks()[k].AddLmLike(-t_lm_like);
-            //backnode->rpLinks()[k].AddAcousticLike(-t_acoustic_like);
+            // Weight pushing
+            t_lm_like = p_tnode->rpBackLinks()[0].LmLike();
+            //t_acoustic_like = p_tnode->rpBackLinks()[0].AcousticLike();
 
-#ifndef NDEBUG
-            for (k++; k<backnode->NLinks() && backnode->rpLinks()[k].pNode()!=p_tnode; k++)
-            {}
-#endif
-            assert(k == backnode->NLinks());
-          }
-          
-          for (l=0; l < p_tnode->NLinks(); l++) 
-          {
-            Node* forwnode = p_tnode->rpLinks()[l].pNode();
+            for (l=1; l <  p_tnode->rNBackLinks(); l++) 
+            {
+              t_lm_like = HIGHER_OF(t_lm_like, p_tnode->rpBackLinks()[l].LmLike());
+              //t_acoustic_like = HIGHER_OF(t_acoustic_like, p_tnode->rpBackLinks()[l].AcousticLike());
+            }
 
-            p_tnode->rpLinks()[l].AddLmLike(t_lm_like);
-            //p_tnode->rpLinks()[l].AddAcousticLike(t_acoustic_like);
-            
-            for (k=0; k<forwnode->rNBackLinks() && forwnode->rpBackLinks()[k].pNode()!=p_tnode;k++)
-            {}
-            
-            assert(k < forwnode->rNBackLinks());
+            for (l=0; l < p_tnode->rNBackLinks(); l++) 
+            {
+              Node* backnode = p_tnode->rpBackLinks()[l].pNode();
 
-            forwnode->rpBackLinks()[k].AddLmLike(t_lm_like);
-            //forwnode->rpBackLinks()[k].AddAcousticLike(t_acoustic_like);
+              p_tnode->rpBackLinks()[l].AddLmLike(-t_lm_like);
+              //p_tnode->rpBackLinks()[l].AddAcousticLike(-t_acoustic_like);
+
+              for (k=0; k<backnode->NLinks() && backnode->rpLinks()[k].pNode()!=p_tnode; k++)
+              {}
+
+              assert(k < backnode->NLinks());
+
+              backnode->rpLinks()[k].AddLmLike(-t_lm_like);
+              //backnode->rpLinks()[k].AddAcousticLike(-t_acoustic_like);
 
 #ifndef NDEBUG
-            for (k++; k<forwnode->rNBackLinks() && forwnode->rpBackLinks()[k].pNode()!=p_tnode;k++)
-            {}
+              for (k++; k<backnode->NLinks() && backnode->rpLinks()[k].pNode()!=p_tnode; k++)
+              {}
 #endif
-            assert(k == forwnode->rNBackLinks());
+              assert(k == backnode->NLinks());
+            }
+            
+            for (l=0; l < p_tnode->NLinks(); l++) 
+            {
+              Node* forwnode = p_tnode->rpLinks()[l].pNode();
+  
+              p_tnode->rpLinks()[l].AddLmLike(t_lm_like);
+              //p_tnode->rpLinks()[l].AddAcousticLike(t_acoustic_like);
+              
+              for (k=0; k<forwnode->rNBackLinks() && forwnode->rpBackLinks()[k].pNode()!=p_tnode;k++)
+              {}
+              
+              assert(k < forwnode->rNBackLinks());
+  
+              forwnode->rpBackLinks()[k].AddLmLike(t_lm_like);
+              //forwnode->rpBackLinks()[k].AddAcousticLike(t_acoustic_like);
+  
+#ifndef NDEBUG
+              for (k++; k<forwnode->rNBackLinks() && forwnode->rpBackLinks()[k].pNode()!=p_tnode;k++)
+              {}
+#endif
+              assert(k == forwnode->rNBackLinks());
+            }
           }
-        }
-  /**/      
-    //dnet(pFirstNode, 1, p_node);
-    
+        }      
+        //dnet(pFirstNode, 1, p_node);
+
         // For current node 'p_node', check for each possible pair of its successors
         // ('inode' and 'jnode') whether the pair may be merged to single node.
         for (i = 0; i < p_node->NLinks()-1; i++) 
@@ -1105,7 +1104,7 @@ namespace STK
           for (j = i+1; j < p_node->NLinks(); j++) 
           {
             //Node* inode = p_node->rpLinks()[i].pNode();
-            //Node* jnode = p_node->rpLinks()[j].pNode();
+          //Node* jnode = p_node->rpLinks()[j].pNode();
             iterator inode(p_node->rpLinks()[i].pNode());
             iterator jnode(p_node->rpLinks()[j].pNode());
 
@@ -1132,7 +1131,7 @@ namespace STK
               continue;
             }
             
-            if (strictTiming && (inode->mC.Start() != jnode->mC.Start()
+            if (expOptions.mStrictTiming && (inode->mC.Start() != jnode->mC.Start()
                             ||  inode->mC.Stop()  != jnode->mC.Stop())) 
             {
               continue;
@@ -1314,7 +1313,7 @@ namespace STK
       }
       return node_removed;
     }
-  //  LatticeLocalOptimization_ForwardPass(Node* pFirstNode, int strictTiming)
+  //  LatticeLocalOptimization_ForwardPass(const ExpansionOptions &expOptions)
   //****************************************************************************
 
   //***************************************************************************
@@ -1527,17 +1526,17 @@ namespace STK
   //***************************************************************************
     int 
     DecoderNetwork::
-    LatticeLocalOptimization_BackwardPass(int strictTiming)
+    LatticeLocalOptimization_BackwardPass(const ExpansionOptions &expOptions)
     {
       int     node_removed;
 
       Reverse();
-      node_removed = LatticeLocalOptimization_ForwardPass(strictTiming);
+      node_removed = LatticeLocalOptimization_ForwardPass(expOptions);
       Reverse();
 
       return node_removed;
     }
-  //  LatticeLocalOptimization_BackwardPass(Node *pFirstNode, int strictTiming)
+  //  LatticeLocalOptimization_BackwardPass(const ExpansionOptions &expOptions)
   //***************************************************************************
 
 /*

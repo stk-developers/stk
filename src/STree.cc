@@ -14,6 +14,7 @@
 namespace po = boost::program_options;
 
 using namespace STK;
+using namespace std;
 
 // A helper function to simplify the main part.
 template<class T>
@@ -27,28 +28,35 @@ std::ostream& operator <<(std::ostream& os, const std::vector<T>& v)
 /******************************************************************************/
 int main(int argc, char* argv[])
 {
-  // general-purpose variables
-  bool                    htk_compatible = false;
-  std::string             config_file;
-  std::string             action;
-  std::vector< std::string > 
-                          positional_parameters;
+  try 
+  {
+    // general-purpose variables
+    bool                    htk_compatible = false;
+    string                  config_file;
+    string                  action;
+    string                  predictor_vocab_fname;
+    VocabularyTable         predictor_vocabulary;
+    string                  target_vocab_fname;
+    VocabularyTable*        target_vocabulary;
+    vector< string >        positional_parameters;
 
-  try {
+
     // command line options only
     po::options_description generic_options("Command line options");
     generic_options.add_options()
-      ("help", "Print this help message") 
-      ("action,A",     po::value<std::string>(&action),         "Action to perform")
-      ("configfile,C", po::value<std::string>(&config_file),    "Configuration file")
-      ("order",        po::value<int>(),                        "Number of predictors")
-      ("script,S",     po::value<std::vector<std::string> >(),  "Script files")
+      ("help",          "Print more detailed help") 
+      ("action,A",      po::value<string>(&action),         "Action to perform")
+      ("configfile,C",  po::value<string>(&config_file),    "Configuration file")
+      ("predictorvocab", po::value<string>(&predictor_vocab_fname),    "Predictor vocabulary file")
+      ("targetvocab",   po::value<string>(&target_vocab_fname),    "Target vocabulary file [same as predictor]")
+      ("order",         po::value<int>(),                        "Number of predictors")
+      ("script,S",      po::value<vector<string> >(),  "Script files")
       ;
 
     // config file options only
     po::options_description config_options("Configuration");
     config_options.add_options()
-      ("sourcehmm,H",       po::value<std::string>(), "Source hmm") 
+      ("sourcehmm,H",       po::value<string>(), "Source hmm") 
       ;
 
     // hidden options only
@@ -86,9 +94,8 @@ int main(int argc, char* argv[])
       std::cout << generic_options << std::endl;
       return 0;
     }
-
     // if help specified, dump all parameters
-    if (var_map.count("help")) {
+    else if (var_map.count("help")) {
       std::cout << visible_options << std::endl;
       return 0;
     }
@@ -106,13 +113,65 @@ int main(int argc, char* argv[])
 
     // END OF COMMAND LINE PARAMETER PARSING ...................................
     
+    // load the predictor vocabulary
+    if (var_map.count("predictorvocab")) {
+      predictor_vocabulary.LoadFromFile(predictor_vocab_fname);
+      // target vocab will be the same by default
+      target_vocabulary = &predictor_vocabulary;
+    }
+    else {
+      throw runtime_error("Predictor vocabulary file not set");
+    }
+
+    // if target vocabulary specified, then read it
+    if (var_map.count("targetvocab")) {
+      target_vocabulary = new VocabularyTable();
+      target_vocabulary->LoadFromFile(target_vocab_fname);
+    }
+
+
+    // SWITCH AMONG ACTIONS ....................................................
     // make the action flag lower-case
     std::transform(action.begin(), action.end(), action.begin(), 
         (int(*)(int)) std::tolower);
 
-    // SWITCH AMONG ACTIONS ....................................................
     if (action == "train") {
       BDTree* p_newtree;
+      // Create the stats file
+      NGramPool data(3);
+      data.setPredictorVocab(&predictor_vocabulary);
+      data.setTargetVocab(target_vocabulary);
+
+      // load the data 
+      vector<string>::const_iterator it_file;
+      const vector<string>& script = 
+        var_map["script"].as<vector<string> >();
+
+      // parse all script files
+      for (it_file=script.begin(); it_file != script.end(); ++it_file) {
+        std::cout << "Parsing script file: " << *it_file << std::endl;
+
+        IStkStream list_stream(it_file->c_str());
+        if (!list_stream.good()) {
+          throw runtime_error(string("Error opening script file ") +
+              *it_file);
+        }
+        list_stream >> std::ws;
+
+        // browse the list
+        string line_buf;
+        while (!list_stream.eof()) {
+          std::getline(list_stream, line_buf);
+          list_stream >> std::ws;
+
+          // parse the file
+          data.AddFromFile(line_buf, 1.0);
+        }
+
+
+        list_stream.close();
+      }
+
 
     } // action == train
 
@@ -122,12 +181,19 @@ int main(int argc, char* argv[])
     else {
       throw std::runtime_error("Wrong action specified");
     }
+
+    // CLEAN UP ................................................................
+    if (target_vocabulary != &predictor_vocabulary) {
+      delete target_vocabulary;
+    }
   }
   catch (std::exception& rExc) {
+    std::cerr << "Exception thrown" << std::endl;
     std::cerr << rExc.what() << std::endl;
     return 1;
   }
 
   return 0;
 }
+
 

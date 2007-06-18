@@ -230,6 +230,8 @@ AC_ARG_WITH([atlas-static],
 AS_IF([test "x$with_atlas" != "xno" -a "x$with_atlas_static" != "xyes" ],
       [AC_SEARCH_LIBS([cblas_sgemm], [cblas lapack atlas],
                       [AC_SUBST([LIBATLAS], ["-llapack -lcblas -latlas"])
+                       AC_DEFINE([HAVE_ATLAS], [1],
+                                 [Define if we have libatlas])
                       ],
                       [if test "x$with_atlas" != "xcheck"; then
                        AC_MSG_FAILURE(

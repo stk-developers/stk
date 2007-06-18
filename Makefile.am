@@ -4,3 +4,6 @@ SUBDIRS = lib src
 
 dist-hook:
 	rm -rf `find $(distdir)/doc -name .svn`
+
+STree:
+	cd src; make STree; cd .. 

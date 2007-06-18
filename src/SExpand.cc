@@ -121,6 +121,8 @@ int main(int argc, char *argv[])
   double     grammar_scale;
   double     word_penalty;
   double     model_penalty;
+  double     posterior_scale;
+  bool       viterbi_posters;
   const char *cchrptr;
   const char *in_MLF_fn;
   const char *in_lbl_dir;
@@ -138,6 +140,7 @@ int main(int argc, char *argv[])
   char *tee_phn;
   int trace_flag       =  0;
   int fcnt             = 0;
+
   enum TranscriptionFormat {
     TF_MLF, TF_MNF, TF_HTK, TF_STK, TF_ERR,
     TF_NOF, TF_MOF, //obsolote formats
@@ -147,6 +150,8 @@ int main(int argc, char *argv[])
   STKNetworkOutputFormat  in_net_fmt = {0};
   STKNetworkOutputFormat out_net_fmt = {0};
   PhoneCorrectnessApproximationType corr_approx;
+  
+  InitLogMath();
 //  LabelFormat out_lbl_fmt = {0};
 //  LabelFormat in_lbl_fmt = {0};
 
@@ -172,6 +177,8 @@ int main(int argc, char *argv[])
                = GetParamBool(&cfgHash,SNAME":RESPECTPRONVARS", false);
   expOptions.mStrictTiming
                = GetParamBool(&cfgHash,SNAME":EXACTTIMEMERGE",  false);
+  expOptions.mNoWeightPushing
+               =!GetParamBool(&cfgHash,SNAME":WEIGHTPUSHING",   true);
   expOptions.mNoOptimization
                =!GetParamBool(&cfgHash,SNAME":MINIMIZENET",     true);
   expOptions.mRemoveNulls
@@ -207,6 +214,8 @@ int main(int argc, char *argv[])
   script =(char*)GetParamStr(&cfgHash, SNAME":SCRIPT",          NULL);
   poster_prune = GetParamFlt(&cfgHash, SNAME":POSTERIORPRUNING",0.0);
   grammar_scale= GetParamFlt(&cfgHash, SNAME":LMSCALE",         1.0);
+  posterior_scale=GetParamFlt(&cfgHash, SNAME":POSTERIORSCALE",  1.0);
+  viterbi_posters=GetParamBool(&cfgHash,SNAME":VITERBIPOSTERIORS", false);
   word_penalty = GetParamFlt(&cfgHash, SNAME":WORDPENALTY",     0.0);
   model_penalty= GetParamFlt(&cfgHash, SNAME":MODELPENALTY",    0.0);
   
@@ -238,6 +247,7 @@ int main(int argc, char *argv[])
       case 'a': out_net_fmt.mNoAcousticLikes   = 0; break;
       case 'l': out_net_fmt.mNoLMLikes    = 0; break;
       case 'p': out_net_fmt.mAproxAccuracy = 1; break;
+      case 'P': out_net_fmt.mPosteriors    = 1; break;
       default:
         Warning("Unknown net formating flag '%c' ignored (JMRVWXalpstv)", *cchrptr);
     }
@@ -405,20 +415,22 @@ int main(int argc, char *argv[])
 
       CloseInputLabelFile(in_MLF_fp, in_MLF_fn);
       
-      if(poster_prune > 0.0)
-      {
-      
-        // Just to ensure topological ordering
-        //my_net.SelfLinksToNullNodes(); // not sure wheather needed
-        my_net.TopologicalSort();
-
-        my_net.ForwardBackward(word_penalty, model_penalty, grammar_scale);
-        my_net.PosteriorPrune(poster_prune, word_penalty, model_penalty, grammar_scale);
-        my_net.FreePosteriors();
-      }
 
       my_net.ExpansionsAndOptimizations(expOptions, out_net_fmt, &dictHash, 
           &nonCDphHash, &triphHash);
+
+	
+      if(poster_prune > 0.0 || out_net_fmt.mPosteriors) {
+        // Just to ensure topological ordering
+        //my_net.SelfLinksToNullNodes(); // not sure wheather needed
+    
+        my_net.TopologicalSort();
+        my_net.ForwardBackward(word_penalty, model_penalty, grammar_scale, posterior_scale, viterbi_posters);
+	if(poster_prune > 0.0) {
+          my_net.PosteriorPrune(poster_prune, word_penalty, model_penalty, grammar_scale, posterior_scale);
+	}
+      }
+
 
       if (out_net_fmt.mAproxAccuracy)
         my_net.ComputePhoneCorrectnes(corr_approx, &silHash);
@@ -436,6 +448,11 @@ int main(int argc, char *argv[])
         WriteSTKNetwork(out_MLF_fp, my_net, out_net_fmt, 1, label_file, 
             out_MLF_fn, 0.0, 0.0, 1.0);
       }
+      
+      if(poster_prune > 0.0 || out_net_fmt.mPosteriors) {  
+        my_net.FreePosteriors();
+      }
+
 
       CloseOutputLabelFile(out_MLF_fp, out_MLF_fn);
       my_net.Clear();

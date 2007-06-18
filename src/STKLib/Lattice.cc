@@ -210,12 +210,12 @@ namespace STK
     FLOAT wordPenalty,
     FLOAT modelPenalty,
     FLOAT lmScale,
-    float posteriorScale,
+    FLOAT posteriorScale,
     bool viterbi)
   {
     Node*  p_start_node;
     ;
-    FLOAT      score(0.0);
+    double      score(0.0);
 
     iterator   i_node(begin());
     iterator   i_rbegin(pLast());
@@ -244,7 +244,7 @@ namespace STK
         score = i_node->mC.mpAlphaBeta->mAlpha 
 	      + (p_link->LmLike() * lmScale + p_link->AcousticLike()) * posteriorScale;
         
-        if (p_end_node->mC.mType & NT_MODEL)
+        if (p_end_node->mC.mType & NT_MODEL || p_end_node->mC.mType & NT_PHONE)
           score += modelPenalty * posteriorScale; 
         else if (p_end_node->mC.mType & NT_WORD &&  p_end_node->mC.mpPronun != NULL)
           score += wordPenalty * posteriorScale;
@@ -275,7 +275,7 @@ namespace STK
         score = i_node->mC.mpAlphaBeta->mBeta 
 	      + (p_link->LmLike() * lmScale + p_link->AcousticLike()) * posteriorScale;
         
-        if (i_node->mC.mType & NT_MODEL)
+        if (i_node->mC.mType & NT_MODEL  || i_node->mC.mType & NT_PHONE)
           score += modelPenalty * posteriorScale; 
         else if (i_node->mC.mType & NT_WORD &&  i_node->mC.mpPronun != NULL)
           score += wordPenalty * posteriorScale;
@@ -357,7 +357,7 @@ namespace STK
     FLOAT wordPenalty,
     FLOAT modelPenalty,
     FLOAT lmScale,
-    float posteriorScale)
+    FLOAT posteriorScale)
   {
     assert(NULL != pLast()->mC.mpAlphaBeta);
 

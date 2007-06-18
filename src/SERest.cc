@@ -259,11 +259,11 @@ int main(int argc, char* argv[])
   enum TranscriptionFormat {TF_HTK, TF_STK, TF_ERR} in_transc_fmt;
   int notInDictAction = (NotInDictActionType) WORD_NOT_IN_DIC_UNSET;
   
-  RHFBuffer               rhfbuff           = {0};
+/*  RHFBuffer               rhfbuff           = {0};
   RHFBuffer               rhfbuff_alig      = {0};
   
   rhfbuff.mpLastFileName = NULL;
-  rhfbuff_alig.mpLastFileName = NULL;
+  rhfbuff_alig.mpLastFileName = NULL;*/
   
   ExpansionOptions        expOptions        = {0};
   STKNetworkOutputFormat  in_net_fmt        = {0};
@@ -291,6 +291,8 @@ int main(int argc, char* argv[])
   }
   
   htk_compat   = GetParamBool(&cfgHash,SNAME":HTKCOMPAT",       false);  
+  swap_features_alig =
+  swap_features=!GetParamBool(&cfgHash,SNAME":NATURALREADORDER",isBigEndian());
   script =(char*)GetParamStr(&cfgHash, SNAME":SCRIPT",          NULL);
   parallel_mode= GetParamInt(&cfgHash, SNAME":PARALLELMODE",   -1);
   one_pass_reest=GetParamBool(&cfgHash,SNAME":SINGLEPASSTRN",   false);
@@ -345,6 +347,8 @@ int main(int argc, char* argv[])
                = GetParamBool(&cfgHash,SNAME":RESPECTPRONVARS", false);
   expOptions.mStrictTiming
                = GetParamBool(&cfgHash,SNAME":EXACTTIMEMERGE",  false);
+  expOptions.mNoWeightPushing
+               =!GetParamBool(&cfgHash,SNAME":WEIGHTPUSHING",   true);
   expOptions.mNoOptimization
                =!GetParamBool(&cfgHash,SNAME":MINIMIZENET",     false);
   expOptions.mRemoveWordsNodes
@@ -358,8 +362,6 @@ int main(int argc, char* argv[])
 //  in_lbl_fmt.right_extent =  100 * (long long) (0.5 + 1e5 *
   in_net_fmt.mEndTimeShift =
                  GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0);
-  swap_features_alig =
-  swap_features=!GetParamBool(&cfgHash,SNAME":NATURALREADORDER",isBigEndian());
   gpFilterWldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD","$");
   gpScriptFilter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",  NULL);
   gpHListFilter = GetParamStr(&cfgHash, SNAME":HMMLISTFILTER",  NULL);
@@ -1089,7 +1091,7 @@ int main(int argc, char* argv[])
       }
       
       //UpdateHMMSetFromAccums(trg_hmm_dir, &hset);
-      hset.UpdateFromAccums(trg_hmm_dir);
+      hset.UpdateFromAccums();
       hset.WriteMmf(trg_mmf, trg_hmm_dir, trg_hmm_ext, hmms_binary);
     }
   }
@@ -1129,11 +1131,11 @@ int main(int argc, char* argv[])
   if (src_mlf) 
     fclose(ilfp);
                                                               
-  if (NULL != rhfbuff.mpFp)
+/*  if (NULL != rhfbuff.mpFp)
     fclose(rhfbuff.mpFp);
   
   if (NULL != rhfbuff_alig.mpFp)
-    fclose(rhfbuff_alig.mpFp);
+    fclose(rhfbuff_alig.mpFp);*/
     
     
   return 0;

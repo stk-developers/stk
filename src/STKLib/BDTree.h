@@ -11,6 +11,7 @@ namespace STK
 {
   typedef std::vector<FLOAT> Data;
 
+
   class Distribution
   {
   public:
@@ -93,7 +94,7 @@ namespace STK
      * @return true or false
      */
     virtual bool
-    Eval(const ContextSample& rTerm) const = 0;
+    Eval(const NGram& rTerm) const = 0;
 
     /** 
      * @brief Creates an exact copy of this
@@ -121,7 +122,6 @@ namespace STK
   class BDTree
   {
   public:
-    
     /** 
      * @brief Plain constructor
      */
@@ -157,6 +157,14 @@ namespace STK
      */
     void
     Write(std::ostream& rStream, int format);
+
+    /** 
+     * @brief Builds the tree from the given NGram subset
+     * 
+     * @param rNGrams NGram counts to use
+     */
+    void
+    BuildFromNGrams(const NGramSubset& rNGrams);
 
   private:
     BDTree*         mpTree0;
