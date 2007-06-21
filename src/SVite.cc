@@ -215,6 +215,7 @@ char *optionStr =
   bool                          baum_welch;
   bool                          swap_features;
   bool                          htk_compat;
+  bool                          time_pruning;
   bool                          compactNetworkRepresentation = false;
   enum TranscriptionFormat {TF_HTK, TF_STK, TF_CSTK} in_transc_fmt, out_transc_fmt;
   int                           notInDictAction = WORD_NOT_IN_DIC_UNSET;
@@ -292,8 +293,8 @@ int main(int argc, char *argv[])
   expOptions.mRemoveWordsNodes
                = GetParamBool(&cfgHash,SNAME":REMEXPWRDNODES",  false);
 //  in_lbl_fmt.TIMES_OFF =
-  in_net_fmt.mNoTimes = 
-                !GetParamBool(&cfgHash,SNAME":TIMEPRUNING",     false);
+  time_pruning = GetParamBool(&cfgHash,SNAME":TIMEPRUNING",     false);
+  in_net_fmt.mNoTimes = !time_pruning;
 //  in_lbl_fmt.left_extent  = -100 * (long long) (0.5 + 1e5 *
   in_net_fmt.mStartTimeShift =
                  GetParamFlt(&cfgHash, SNAME":STARTTIMESHIFT",  0.0);
@@ -781,6 +782,7 @@ int main(int argc, char *argv[])
       CloseInputLabelFile(ilfp, in_MLF);
     }
 
+    p_decoder->mTimePruning       = time_pruning;
     p_decoder->mWPenalty          = word_penalty;
     p_decoder->mMPenalty          = model_penalty;
     p_decoder->mLmScale           = grammar_scale;

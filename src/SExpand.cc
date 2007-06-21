@@ -123,6 +123,7 @@ int main(int argc, char *argv[])
   double     model_penalty;
   double     posterior_scale;
   bool       viterbi_posters;
+  bool       viterbi_decode;
   const char *cchrptr;
   const char *in_MLF_fn;
   const char *in_lbl_dir;
@@ -180,7 +181,7 @@ int main(int argc, char *argv[])
   expOptions.mNoWeightPushing
                =!GetParamBool(&cfgHash,SNAME":WEIGHTPUSHING",   true);
   expOptions.mNoOptimization
-               =!GetParamBool(&cfgHash,SNAME":MINIMIZENET",     true);
+               =!GetParamBool(&cfgHash,SNAME":MINIMIZENET",     false);
   expOptions.mRemoveNulls
                = GetParamBool(&cfgHash,SNAME":REMOVENULLNODES", false);
   expOptions.mRemoveWordsNodes
@@ -191,6 +192,7 @@ int main(int argc, char *argv[])
 //  in_lbl_fmt.right_extent =  100 * (long long) (0.5 + 1e5 *
   in_net_fmt.mEndTimeShift = 
                  GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0);
+  viterbi_decode=GetParamBool(&cfgHash,SNAME":VITERBIDECODE",  false);
   label_filter = GetParamStr(&cfgHash, SNAME":HLABELFILTER",    NULL);
   gpFilterWldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
   gpScriptFilter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",  NULL);
@@ -205,7 +207,7 @@ int main(int argc, char *argv[])
   in_lbl_ext   = GetParamStr(&cfgHash, SNAME":SOURCETRANSCEXT", NULL);
   out_MLF_fn   = GetParamStr(&cfgHash, SNAME":TARGETMLF",       NULL);
   out_lbl_dir  = GetParamStr(&cfgHash, SNAME":TARGETTRANSCDIR", NULL);
-  out_lbl_ext  = GetParamStr(&cfgHash, SNAME":TARGETTRANSCEXT", "net");
+  out_lbl_ext  = GetParamStr(&cfgHash, SNAME":TARGETTRANSCEXT", viterbi_decode ? "rec" : "net");
   trace_flag   = GetParamInt(&cfgHash, SNAME":TRACE",           0);
   cd_list_file = GetParamStr(&cfgHash, SNAME":TARGETHMMLIST",   NULL);
   ci_phn =(char*)GetParamStr(&cfgHash, SNAME":CIMODEL",         NULL);
@@ -216,6 +218,7 @@ int main(int argc, char *argv[])
   grammar_scale= GetParamFlt(&cfgHash, SNAME":LMSCALE",         1.0);
   posterior_scale=GetParamFlt(&cfgHash, SNAME":POSTERIORSCALE",  1.0);
   viterbi_posters=GetParamBool(&cfgHash,SNAME":VITERBIPOSTERIORS", false);
+  viterbi_decode=GetParamBool(&cfgHash,SNAME":VITERBIDECODE",  false);
   word_penalty = GetParamFlt(&cfgHash, SNAME":WORDPENALTY",     0.0);
   model_penalty= GetParamFlt(&cfgHash, SNAME":MODELPENALTY",    0.0);
   
@@ -255,8 +258,8 @@ int main(int argc, char *argv[])
   in_transc_fmt= (TranscriptionFormat) GetParamEnum(&cfgHash,SNAME":SOURCETRANSCFMT", TF_STK,
                               "HTK", TF_HTK, "STK", TF_STK, "net", TF_NOF, NULL);
 
-  out_transc_fmt= (TranscriptionFormat) GetParamEnum(&cfgHash,SNAME":TARGETTRANSCFMT", TF_STK,
-                              "STK", TF_STK, "net", TF_NOF, NULL);
+  out_transc_fmt= (TranscriptionFormat) GetParamEnum(&cfgHash,SNAME":TARGETTRANSCFMT", viterbi_decode ? TF_HTK : TF_STK,
+                              "STK", TF_STK, "net", TF_NOF, viterbi_decode ? "HTK" : NULL, TF_HTK, NULL);
 
   corr_approx = (PhoneCorrectnessApproximationType) GetParamEnum(&cfgHash,SNAME":MPECORAPPROX", MPE_ApproximateAccuracy,
                               "APPROXACC", MPE_ApproximateAccuracy, "FRAMEACC", MPE_FrameAccuracy, "FRAMEERR", MPE_FrameError, NULL);
@@ -415,7 +418,6 @@ int main(int argc, char *argv[])
 
       CloseInputLabelFile(in_MLF_fp, in_MLF_fn);
       
-
       my_net.ExpansionsAndOptimizations(expOptions, out_net_fmt, &dictHash, 
           &nonCDphHash, &triphHash,
           word_penalty,
@@ -438,19 +440,52 @@ int main(int argc, char *argv[])
 
       if (out_net_fmt.mAproxAccuracy)
         my_net.ComputePhoneCorrectnes(corr_approx, &silHash);
+	
+      if (viterbi_decode) {
+        Decoder<DecoderNetwork> decoder;
+        DecoderNetwork *tmp_net = &decoder.rNetwork();
+        decoder.rNetwork() = my_net;	
+	decoder.Init(NULL, NULL);
+
+//        decoder.mTimePruning       = false;
+        decoder.mWPenalty          = word_penalty;
+        decoder.mMPenalty          = model_penalty;
+        decoder.mLmScale           = grammar_scale;
+//      decoder.mPronScale         = pronun_scale;  // Ignored by posterior pruning, so not yet implementet here too
+        decoder.mAlignment         = WORD_ALIGNMENT | MODEL_ALIGNMENT;
+        decoder.mPruningThresh     = -LOG_0;
+    
+        decoder.ViterbiInit();
+	FLOAT like = decoder.ViterbiDone(&labels, NULL, true);
+	decoder.rNetwork() = *tmp_net;
+	
+	if (labels) {
+          Label* label;
+          for (label = labels; label->mpNextLevel != NULL; label = label->mpNextLevel) {}
+          for (; label != NULL; label = label->mpNext) {
+            if(label->mpName != NULL)
+              fprintf(stdout, "%s ", label->mpName);
+          }
+          TraceLog(" == %f", like);
+        }
+      }
 
       out_MLF_fp = OpenOutputLabelFile(label_file, out_lbl_dir, out_lbl_ext,
                                       out_MLF_fp, out_MLF_fn);
-
-      if (out_transc_fmt == TF_NOF) 
-      {
-        WriteSTKNetworkInOldFormat(out_MLF_fp, my_net, out_net_fmt, 1,
-            label_file, out_MLF_fn);
-      } 
-      else 
-      {
-        WriteSTKNetwork(out_MLF_fp, my_net, out_net_fmt, 1, label_file, 
-            out_MLF_fn, 0.0, 0.0, 1.0);
+				
+      if (viterbi_decode) {      
+        if (out_transc_fmt == TF_HTK) {
+          WriteLabels(out_MLF_fp, labels, out_net_fmt, 1, label_file, out_MLF_fn);
+        } else {
+        // create temporary linear network from labels, just to store it
+          DecoderNetwork tmp_net(labels, NT_PHONE);
+          WriteSTKNetwork(out_MLF_fp, tmp_net, out_net_fmt, 1, label_file, out_MLF_fn, 0.0, 0.0, 1.0);
+        }
+	ReleaseLabels(labels);
+      } else if (out_transc_fmt == TF_NOF) {
+        WriteSTKNetworkInOldFormat(out_MLF_fp, my_net, out_net_fmt, 1, label_file, out_MLF_fn);
+      } else {
+        WriteSTKNetwork(out_MLF_fp, my_net, out_net_fmt, 1, label_file, out_MLF_fn, 0.0, 0.0, 1.0);
       }
       
       if(poster_prune > 0.0 || out_net_fmt.mPosteriors) {  

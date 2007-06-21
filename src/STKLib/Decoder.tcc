@@ -1,5 +1,5 @@
 #include "Lattice.h"
-
+#include <map>
 
 
 
@@ -787,23 +787,28 @@ namespace STK
     {
       int                       maxStatesInModel;
 
+      if(NULL != pHmms) {
 //      mCompactRepresentation = compactRepresentation;
-      PhoneNodesToModelNodes(pHmms, pHmmsToUpdate, maxStatesInModel);
+        PhoneNodesToModelNodes(pHmms, pHmmsToUpdate, maxStatesInModel);
     
-      // Need to contain at least 2 states for propper token passing
-      if (maxStatesInModel < 2)
-      {
-        Error("The network does not contain any model "
-              "(possibly no dictionary suplied for word-based network)");
-      }
-
-      mpAuxTokens = new Token[maxStatesInModel-1];
-      mpOutPCache = (Cache*) malloc(pHmms->mNStates      * sizeof(Cache));
-      mpMixPCache = (Cache*) malloc(pHmms->mNMixtures    * sizeof(Cache));
+        // Need to contain at least 2 states for propper token passing
+        if (maxStatesInModel < 2) {
+          Error("The network does not contain any model "
+                "(possibly no dictionary suplied for word-based network)");
+        }
+        mpAuxTokens = new Token[maxStatesInModel-1];
+        mpOutPCache = (Cache*) malloc(pHmms->mNStates      * sizeof(Cache));
+        mpMixPCache = (Cache*) malloc(pHmms->mNMixtures    * sizeof(Cache));
       
-      if (mpOutPCache == NULL || mpMixPCache == NULL) 
-      {
-        Error("Insufficient memory");
+        if (mpOutPCache == NULL || mpMixPCache == NULL) {
+          Error("Insufficient memory");
+        }
+        OutputProbability =
+          pHmms->mOutPdfKind == KID_DiagC     ? &DiagCGaussianMixtureDensity :
+          pHmms->mOutPdfKind == KID_PDFObsVec ? &FromObservationAtStateId    : NULL;
+      } else {
+        mpOutPCache = NULL;
+	mpMixPCache = NULL;
       }
     
       mWPenalty          = 0.0;
@@ -814,10 +819,7 @@ namespace STK
       mOcpScale          = 1.0;
       mLmScale           = 1.0;
       mLatticeGeneration = false;
-      
-      OutputProbability =
-        pHmms->mOutPdfKind == KID_DiagC     ? &DiagCGaussianMixtureDensity :
-        pHmms->mOutPdfKind == KID_PDFObsVec ? &FromObservationAtStateId    : NULL;
+      mTimePruning       = false;
       
       PassTokenInNetwork  = &PassTokenMax;
       PassTokenInModel    = &PassTokenMax;
@@ -1487,7 +1489,7 @@ namespace STK
   template <typename _NodeType>
     Label *
     Token<_NodeType>::
-    pGetLabels()
+    pGetLabels(bool getTimesFromNetwork)
     {
       WordLinkRecord *  wlr;
       Label *           tmp;
@@ -1503,8 +1505,14 @@ namespace STK
           Error("Insufficient memory");
     
         tmp->mScore = wlr->mLike;
-        tmp->mStop  = wlr->mTime;
         tmp->mId    = wlr->mStateIdx;
+
+	if(getTimesFromNetwork) {
+          tmp->mStart = wlr->pNode()->mC.Start();
+          tmp->mStop  = wlr->pNode()->mC.Stop();
+	} else {
+	  tmp->mStop  = wlr->mTime;
+	} 
     
         if (wlr->pNode()->mC.mType & NT_MODEL) 
         {
@@ -1512,9 +1520,13 @@ namespace STK
           tmp->mpData = wlr->pNode()->mC.mpHmm;
           tmp->mpName = wlr->pNode()->mC.mpHmm->mpMacro->mpName;
           tmp->mpNextLevel = level[li+1] ? level[li+1] : level[2];
-        } 
-        else //if (wlr->pNode()->mC.mpPronun->outSymbol) 
-        {
+        } else if (wlr->pNode()->mC.mType & NT_PHONE) {
+          li = 1;
+          tmp->mpData = wlr->pNode()->mC.mpName;
+          tmp->mpName = wlr->pNode()->mC.mpName;
+          tmp->mpNextLevel = level[li+1] ? level[li+1] : level[2];
+        } else //if (wlr->pNode()->mC.mpPronun->outSymbol) 
+	{
           li = 2;
           tmp->mpData = wlr->pNode()->mC.mpPronun ? wlr->pNode()->mC.mpPronun->mpWord    : NULL;
           tmp->mpName = wlr->pNode()->mC.mpPronun ? wlr->pNode()->mC.mpPronun->outSymbol : NULL;
@@ -1550,15 +1562,17 @@ namespace STK
             level[li-1] = tmp2;
           }*/
     
+	  if(!getTimesFromNetwork) {
+            level[li]->mStart  = tmp->mStop;
+	  }
           level[li]->mScore -= tmp->mScore;
-          level[li]->mStart  = tmp->mStop;
         }
     
         tmp->mpNext = level[li];
         level[li] = tmp;
       }
       
-      for (li = 0; li < 3; li++) 
+      for (li = 0; li < 3; li++)
       {
         if (level[li]) 
           level[li]->mStart = 0;
@@ -1647,7 +1661,7 @@ namespace STK
   //      assert(p_node->mC.mActiveNodeFlag || (p_node->mC.mType & NT_TEE && p_node->mC.mIsActive));
   //      for (Xnode = mpActiveNodes; Xnode && Xnode != p_node; Xnode = Xnode->mpNextActiveNode);
   //      assert(Xnode);
-          if (p_node->mC.mType & NT_MODEL) 
+          if (p_node->mC.mType & (NT_MODEL | NT_PHONE)) 
           {
             if (mCollectAlphaBeta) 
             {
@@ -1676,7 +1690,7 @@ namespace STK
             {
               p_node->mC.mpAnr->mpExitToken->AddWordLinkRecord(p_node, -1, mTime);
             } 
-            else if (p_node->mC.mType & NT_MODEL && mAlignment & MODEL_ALIGNMENT) 
+            else if (p_node->mC.mType & (NT_MODEL | NT_PHONE) && mAlignment & MODEL_ALIGNMENT) 
             {
               p_node->mC.mpAnr->mpExitToken->AddWordLinkRecord(p_node, -1, mTime);
             }
@@ -1686,20 +1700,21 @@ namespace STK
     
             for (i = 0; i < n_links; i++) 
             {
-              FLOAT acoustic_like = links[i].AcousticLike() * mTranScale;
-              FLOAT lm_like       = (links[i].LmLike() - acoustic_like) * mLmScale;
-              
-              if (p_node->mC.mpAnr->mpExitToken->mLike + lm_like > mBeamThresh 
-                  && (//mCompactRepresentation ||
-                     ((/*links[i].pNode()->mC.Start() == UNDEF_TIME ||*/
-                        links[i].pNode()->mC.Start() <= mTime) 
-                  
-                  && (  links[i].pNode()->mC.Stop()  == UNDEF_TIME        
-                  ||    links[i].pNode()->mC.Stop()  >= mTime)
-                        
+//              FLOAT acoustic_like = links[i].AcousticLike() * mTranScale;
+//              FLOAT lm_like       = (links[i].LmLike() - acoustic_like) * mLmScale;
+
+              FLOAT acoustic_like = links[i].AcousticLike(); // * mAcScale;
+              FLOAT tot_like      = links[i].LmLike() * mLmScale + acoustic_like;
+
+              if (p_node->mC.mpAnr->mpExitToken->mLike + tot_like > mBeamThresh 
+                  && (((!mTimePruning
+		       || (/*links[i].pNode()->mC.Start() == UNDEF_TIME ||*/
+                             links[i].pNode()->mC.Start() <= mTime) 
+                       && (  links[i].pNode()->mC.Stop()  == UNDEF_TIME        
+                       ||    links[i].pNode()->mC.Stop()  >= mTime))
                   && (mSearchPaths != SP_TRUE_ONLY
                   || (p_node->mC.mType & NT_TRUE)   
-                  || !(links[i].pNode()->mC.mType & NT_MODEL)))))
+                  || !(links[i].pNode()->mC.mType & (NT_MODEL | NT_PHONE))))))
               {
                 if (links[i].pNode()->mC.mType & NT_MODEL) 
                 {
@@ -1720,14 +1735,14 @@ namespace STK
                 // Current lattice generation algorithm expect that word link record is created for all tokens leaving
                 // any network node (including model and !NULL nodes).
   //              if (mLatticeGeneration)
-  //                AddLinkToLattice(p_node, links[i].pNode(), lm_like);
+  //                AddLinkToLattice(p_node, links[i].pNode(), tot_like);
                 
                 PassTokenInNetwork(p_node->mC.mpAnr->mpExitToken,
-                    &links[i].pNode()->mC.mpAnr->mpTokens[0], lm_like, acoustic_like);
+                    &links[i].pNode()->mC.mpAnr->mpTokens[0], tot_like, acoustic_like);
               }
             }
           } 
-          else if(mLatticeGeneration )
+          else if(mLatticeGeneration)
           {
 	    // Just to grab alternative hypothesis. All will be dealocated in turn.
             p_node->mC.mpAnr->mpExitToken->AddWordLinkRecord(p_node, -1, mTime);
@@ -1830,20 +1845,24 @@ namespace STK
     
         assert(p_node->mC.mpAnr);
         p_hmm = p_node->mC.mpHmm;
-        
-        if (//!mCompactRepresentation && 
-            ((/*p_node->Start() != UNDEF_TIME &&*/p_node->mC.Start() >= mTime)
-            ||  (  p_node->mC.Stop()  != UNDEF_TIME &&  p_node->mC.Stop()  <  mTime)
-            ||  mSearchPaths == SP_TRUE_ONLY && !(p_node->mC.mType & NT_TRUE)))
+
+//printf("%s %d %d %d", p_node->mC.mpHmm->mpMacro->mpName, (int) p_node->mC.Start(), (int) p_node->mC.Stop(), (int) mTime);
+
+        if (mTimePruning 
+	    && ((/*p_node->Start() != UNDEF_TIME &&*/p_node->mC.Start() >= mTime)
+            ||  (  p_node->mC.Stop()  != UNDEF_TIME &&  p_node->mC.Stop()  <  mTime))
+            ||  mSearchPaths == SP_TRUE_ONLY && !(p_node->mC.mType & NT_TRUE))
         {
           for (i = 0; i < p_hmm->mNStates-1; i++) 
           {
             KillToken(&p_node->mC.mpAnr->mpTokens[i]);
           }
-          
+//printf(" Killed\n");
           DeactivateModel(p_node);
           continue;
         }
+//printf("\n");
+
     
         if (mAccumType == AT_MPE && InForwardPass() && p_node->mC.mpAnr->mpTokens[0].IsActive()) 
         {
@@ -2273,14 +2292,18 @@ namespace STK
       PassTokenInModel    = &PassTokenMax;
       PassTokenInNetwork  = mLatticeGeneration ? &PassTokenMaxForLattices : &PassTokenMax;
       mPropagDir          = FORWARD;
-      mpModelSet->ResetXformInstances();
+
+      if(NULL != mpModelSet)
+        mpModelSet->ResetXformInstances();
     
       mTime = 0; // Must not be set to -mpModelSet->mTotalDelay yet
                  // otherwise token cannot enter first model node
                  // with start set to 0
                  
       TokenPropagationInit();
-      mTime = -mpModelSet->mTotalDelay;
+      
+      if(NULL != mpModelSet)
+        mTime = -mpModelSet->mTotalDelay;
     }  
   
   
@@ -2310,7 +2333,7 @@ namespace STK
   template<typename _NetworkType>
     FLOAT 
     Decoder<_NetworkType>::
-    ViterbiDone(Label** pLabels, Lattice* pLattice)
+    ViterbiDone(Label** pLabels, Lattice* pLattice, bool getTimesFromNetwork)
     {
       FLOAT tot_like = LOG_0;
       
@@ -2340,7 +2363,7 @@ namespace STK
         tot_like = rNetwork().pLast()->mC.mpAnr->mpExitToken->mLike;
         
         if (pLabels != NULL)
-          *pLabels = rNetwork().pLast()->mC.mpAnr->mpExitToken->pGetLabels();
+          *pLabels = rNetwork().pLast()->mC.mpAnr->mpExitToken->pGetLabels(getTimesFromNetwork);
           
         if (/*mLatticeGeneration && */pLattice != NULL)
         {
@@ -2823,7 +2846,8 @@ namespace STK
   // MCEReest
   //***************************************************************************
   
-  
+extern std::map<string,FLOAT> state_posteriors;
+
   //***************************************************************************
   //***************************************************************************
   template<typename _NetworkType>
@@ -2865,18 +2889,18 @@ namespace STK
     
       p_hmms_alig->ResetXformInstances();
     
-      if (p_hmms_alig != p_hmms_upd) 
+      if (p_hmms_alig != p_hmms_upd)
         p_hmms_upd->ResetXformInstances();
     
-      for (i = 0; i < p_hmms_alig->mTotalDelay; i++) 
+      for (i = 0; i < p_hmms_alig->mTotalDelay; i++)
       {
         p_hmms_alig->UpdateStacks(rObsMx[i],
                                   i-p_hmms_alig->mTotalDelay, FORWARD);
       }
     
-      if (p_hmms_alig != p_hmms_upd) 
+      if (p_hmms_alig != p_hmms_upd)
       {
-        for (i = 0; i < p_hmms_upd->mTotalDelay; i++) 
+        for (i = 0; i < p_hmms_upd->mTotalDelay; i++)
         {
           p_hmms_upd->UpdateStacks(rObsMx2[i],
                       i-p_hmms_upd->mTotalDelay, FORWARD);
@@ -2915,7 +2939,7 @@ namespace STK
     
         for (i_node = rNetwork().begin(); i_node != rNetwork().end(); ++i_node) 
         { //for every model
-    //    for (k=0; k < nnodes; k++) {
+    //    for (k=0; k < nnodes; k++) {\\}
     //      NetworkType::Node *i_node = &mpNodes[k];
           if (i_node->mC.mType & NT_MODEL &&
             i_node->mC.rpAlphaBetaList() != NULL &&
@@ -2988,7 +3012,9 @@ namespace STK
                 {
                   update_dir = 1.0;
                 }
-    
+//string state_name = i_node->mC.mpHmm->mpState[j - 1]->mpMacro->mpName;
+//state_posteriors[state_name.substr(0, state_name.find('_'))] += exp(st[j].mAlpha + st[j].mBeta - P);
+
                 ReestState(
                   &(*i_node), 
                   j - 1,
@@ -2999,15 +3025,18 @@ namespace STK
               }
             }
             
-            if (i_node->mC.rpAlphaBetaListReverse()) 
+             if (i_node->mC.rpAlphaBetaListReverse()) 
               free(i_node->mC.rpAlphaBetaListReverse());
               
             i_node->mC.rpAlphaBetaListReverse() = i_node->mC.rpAlphaBetaList();
             i_node->mC.rpAlphaBetaList() = i_node->mC.rpAlphaBetaList()->mpNext;
           }
         }
+//for(std::map<string,FLOAT>::iterator i_sp = state_posteriors.begin(); i_sp != state_posteriors.end(); ++i_sp) {
+//  printf("%d %s %f\n", mTime, i_sp->first.c_str(), i_sp->second);
+//}
+//state_posteriors.clear();
       }
-    
       for (i_node = rNetwork().begin(); i_node != rNetwork().end(); ++i_node) 
       {
         if (i_node->mC.rpAlphaBetaListReverse() != NULL)
@@ -3384,4 +3413,3 @@ namespace STK
   //***************************************************************************
 
 }
-

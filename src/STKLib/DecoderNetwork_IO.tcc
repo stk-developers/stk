@@ -703,6 +703,7 @@ namespace STK
 	                      + 100 * (long long) (0.5 + 1e5 * labelFormat.mEndTimeShift)) 
 			      / sampPeriod);
           }
+//printf(">%d %d\n", (int) p_node->mC.Start(), (int) p_node->mC.Stop());
         }
 
         if (first->mC.mpPronun != NULL) 

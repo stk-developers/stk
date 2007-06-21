@@ -351,7 +351,7 @@ namespace STK
       ViterbiStep(FLOAT* pObservation);
       
       FLOAT             
-      ViterbiDone(Label** pLabels, Lattice* pNetwork = NULL);
+      ViterbiDone(Label** pLabels, Lattice* pNetwork = NULL, bool getTimesFromNetwork = false);
       
       WordLinkRecord*
       TimePruning(int frame_delay);
@@ -448,6 +448,7 @@ namespace STK
       int                         mMinActiveModels;
 
       bool                        mLatticeGeneration;
+      bool                        mTimePruning;
 //      bool                        mCompactRepresentation;
 
       bool                        mContinuousTokenGeneration;
@@ -553,7 +554,7 @@ namespace STK
        * @brief Returns pointer to an array of this token's labels
        */
       Label*
-      pGetLabels();
+      pGetLabels(bool getTimesFromNetwork = false);
       
       Node*
       pGetLattice();
@@ -701,4 +702,3 @@ namespace STK
 #include "Decoder.tcc"
 
 #endif  // #ifndef STK_Decoder_h
-  

@@ -246,7 +246,8 @@ int main(int argc, char* argv[])
   bool                            swap_features_alig;
   bool                            htk_compat;
   bool                            J_smoothing;
-  double                          I_max_occup;;
+  bool                            time_pruning;
+  double                          I_max_occup;
   
   AccumType                       accum_type;
   bool                expand_predef_xforms;
@@ -355,8 +356,8 @@ int main(int argc, char* argv[])
   expOptions.mRemoveWordsNodes
                = GetParamBool(&cfgHash,SNAME":REMEXPWRDNODES",  false);
 //  in_lbl_fmt.TIMES_OFF =
-  in_net_fmt.mNoTimes =
-                !GetParamBool(&cfgHash,SNAME":TIMEPRUNING",     false);
+  time_pruning = GetParamBool(&cfgHash,SNAME":TIMEPRUNING",     false);
+  in_net_fmt.mNoTimes = !time_pruning;
 //  in_lbl_fmt.left_extent  = -100 * (long long) (0.5 + 1e5 *
   in_net_fmt.mStartTimeShift =
                  GetParamFlt(&cfgHash, SNAME":STARTTIMESHIFT",  0.0);
@@ -920,7 +921,7 @@ int main(int argc, char* argv[])
 
         CloseInputLabelFile(ilfp, src_mlf);
       }
-      
+      decoder.mTimePruning     = time_pruning;
       decoder.mWPenalty        = word_penalty;
       decoder.mMPenalty        = model_penalty;
       decoder.mLmScale         = grammar_scale;

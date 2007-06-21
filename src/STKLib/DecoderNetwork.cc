@@ -798,14 +798,15 @@ namespace STK
         ExpandMonophonesToTriphones(nonCDphHash, triphHash);
       }
 
-      DiscardUnwantedInfo(rFormat);
-    
+      DiscardUnwantedInfo(rFormat);    
+      RemoveRedundantNullNodes(expOptions.mRemoveNulls == 1);
+
       if (!expOptions.mNoOptimization) {
         LatticeLocalOptimization(expOptions, wordPenalty, modelPenalty,
             lmScale, posteriorScale);
+	RemoveRedundantNullNodes(false);
       }
 
-      RemoveRedundantNullNodes(expOptions.mRemoveNulls == 1);
     } 
   // void NetworkExpansionsAndOptimizations( )
   //****************************************************************************
