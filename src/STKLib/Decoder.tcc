@@ -3218,19 +3218,32 @@ namespace STK
       if(pWlr->mpNext != NULL)
       {
         int j = 0;
-        WordLinkRecord*           p                   = pWlr->mpNext;
-        typename WordLinkRecord::LikeType  aux_total_like      
-                                                      = pWlr->mLike - p->mLike;
-        typename WordLinkRecord::LikeType  aux_acoustic_like   
-                                                      = pWlr->mAcousticLike - p->mAcousticLike;
+        WordLinkRecord* p = pWlr->mpNext;
+        typename WordLinkRecord::LikeType aux_total_like = 
+          pWlr->mLike - p->mLike;
+        typename WordLinkRecord::LikeType aux_acoustic_like = 
+          pWlr->mAcousticLike - p->mAcousticLike;
+        typename WordLinkRecord::LikeType aux_lm_like = 
+          float_safe_substract(aux_total_like, aux_acoustic_like, 3);
 
-        p->pNode()->rpLinks()[p->mNReferences - p->mAux].SetNode(         pWlr->pNode());
-        p->pNode()->rpLinks()[p->mNReferences - p->mAux].SetLmLike(       float_safe_substract(aux_total_like, aux_acoustic_like, 3));
-        p->pNode()->rpLinks()[p->mNReferences - p->mAux].SetAcousticLike( aux_acoustic_like);
+        if (pWlr->pNode()->mC.mType & NT_MODEL) {
+          aux_lm_like = (aux_lm_like - this->mMPenalty) /mLmScale;
+        }
+        else if (pWlr->pNode()->mC.mType & NT_WORD
+        &&       pWlr->pNode()->rpLinks()[j].pNode()->mC.mpPronun != NULL) {
+          aux_lm_like = (aux_lm_like - mWPenalty) / mLmScale;
+        }
+        else {
+          aux_lm_like = aux_lm_like / this->mLmScale;
+        }
 
-        pWlr->pNode()->rpBackLinks()[j].SetNode(          p->pNode());
-        pWlr->pNode()->rpBackLinks()[j].SetLmLike(        float_safe_substract(aux_total_like, aux_acoustic_like, 3));
-        pWlr->pNode()->rpBackLinks()[j].SetAcousticLike(  aux_acoustic_like);
+        p->pNode()->rpLinks()[p->mNReferences - p->mAux].SetNode(pWlr->pNode());
+        p->pNode()->rpLinks()[p->mNReferences - p->mAux].SetLmLike(aux_lm_like);
+        p->pNode()->rpLinks()[p->mNReferences - p->mAux].SetAcousticLike(aux_acoustic_like);
+
+        pWlr->pNode()->rpBackLinks()[j].SetNode(p->pNode());
+        pWlr->pNode()->rpBackLinks()[j].SetLmLike(aux_lm_like);
+        pWlr->pNode()->rpBackLinks()[j].SetAcousticLike(aux_acoustic_like);
 
         //printf("1 i->mLike         = %f   p->mLike         = %f   diff = %e\n",  pWlr->mLike, p->mLike, static_cast<float>(pWlr->mLike - p->mLike)); 
         //printf("1 i->mAcousticLike = %f   p->mAcousticLike = %f   diff = %e\n",  pWlr->mAcousticLike, p->mAcousticLike, static_cast<float>(pWlr->mAcousticLike - p->mAcousticLike)); 
@@ -3246,13 +3259,24 @@ namespace STK
           
           for(j = 1, i = pWlr->mpAltHyps->begin(); i != pWlr->mpAltHyps->end(); j++, i++)
           {
-            WordLinkRecord*           p                   = i->mpWlr;
-            typename WordLinkRecord::LikeType  aux_total_like      = i->mLike - p->mLike;
-            typename WordLinkRecord::LikeType  aux_acoustic_like   = i->mAcousticLike - p->mAcousticLike;
+            WordLinkRecord* p = i->mpWlr;
+            typename WordLinkRecord::LikeType aux_total_like  = i->mLike - p->mLike;
+            typename WordLinkRecord::LikeType aux_acoustic_like = i->mAcousticLike - p->mAcousticLike;
+            typename WordLinkRecord::LikeType aux_lm_like = float_safe_substract(aux_total_like, aux_acoustic_like, 3);
 
+            if (pWlr->pNode()->mC.mType & NT_MODEL) {
+              aux_lm_like = (aux_lm_like - mMPenalty) / mLmScale;
+            }
+            else if (pWlr->pNode()->mC.mType & NT_WORD
+            &&       pWlr->pNode()->rpLinks()[j].pNode()->mC.mpPronun != NULL) {
+              aux_lm_like = (aux_lm_like - mWPenalty) / mLmScale;
+            }
+            else {
+              aux_lm_like = aux_lm_like / mLmScale;
+            }
             
             p->pNode()->rpLinks()[p->mNReferences - p->mAux].SetNode(pWlr->pNode());
-            p->pNode()->rpLinks()[p->mNReferences - p->mAux].SetLmLike(float_safe_substract(aux_total_like, aux_acoustic_like, 3));
+            p->pNode()->rpLinks()[p->mNReferences - p->mAux].SetLmLike(aux_lm_like);
             p->pNode()->rpLinks()[p->mNReferences - p->mAux].SetAcousticLike(aux_acoustic_like);
 
             pWlr->pNode()->rpBackLinks()[j].SetNode(p->pNode());

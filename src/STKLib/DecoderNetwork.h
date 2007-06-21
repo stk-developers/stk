@@ -464,7 +464,11 @@ namespace STK
      * @param trace_flag 
      */
     void
-    LatticeLocalOptimization(const ExpansionOptions &expOptions);
+    LatticeLocalOptimization(const ExpansionOptions &expOptions,
+      FLOAT wordPenalty,
+      FLOAT modelPenalty,
+      FLOAT lmScale,
+      FLOAT posteriorScale);
 
 
     /** 
@@ -507,7 +511,11 @@ namespace STK
       const STKNetworkOutputFormat&  rFormat,
       MyHSearchData *         wordHash,
       MyHSearchData *         nonCDphHash,
-      MyHSearchData *         triphHash);
+      MyHSearchData *         triphHash,
+      FLOAT                   wordPenalty = 0.0,
+      FLOAT                   modelPenalty = 0.0,
+      FLOAT                   lmScale = 1.0,
+      FLOAT                   posteriorScale = 1.0);
 
     /** 
      * @brief Remove null nones having less than three predecessors or less 
@@ -574,12 +582,19 @@ namespace STK
     TopologicalSort();
 
   private:
+    int 
+    LatticeLocalOptimization_ForwardPass(const ExpansionOptions &expOptions,
+      FLOAT wordPenalty,
+      FLOAT modelPenalty,
+      FLOAT lmScale,
+      FLOAT posteriorScale);
 
     int 
-    LatticeLocalOptimization_ForwardPass(const ExpansionOptions &expOptions);
-
-    int 
-    LatticeLocalOptimization_BackwardPass(const ExpansionOptions &expOptions);
+    LatticeLocalOptimization_BackwardPass(const ExpansionOptions &expOptions,
+      FLOAT wordPenalty,
+      FLOAT modelPenalty,
+      FLOAT lmScale,
+      FLOAT posteriorScale);
 
   };
   // class DecoderNetwork

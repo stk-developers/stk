@@ -215,13 +215,14 @@ int main(int argc, char *argv[])
                                     &cvg_file_out, SNAME":",  2);
   }
   
-  in_lbl_fmt.mStartTimeShift  = -100.0 * (0.5 + 1e5 *
-                 GetParamFlt(&cfgHash, SNAME":STARTTIMESHIFT",  0.0));
-  in_lbl_fmt.mEndTimeShift =  100.0 * (0.5 + 1e5 *
-                 GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0));
-  NNet_instance_name =
-                 GetParamStr(&cfgHash, SNAME":SOURCEINPUT",     NULL);
-  swap_features=!GetParamBool(&cfgHash,SNAME":NATURALREADORDER", isBigEndian());
+  in_lbl_fmt.mStartTimeShift = 
+    GetParamFlt(&cfgHash, SNAME":STARTTIMESHIFT",  0.0);
+  in_lbl_fmt.mEndTimeShift = 
+    GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0);
+  NNet_instance_name = 
+    GetParamStr(&cfgHash, SNAME":SOURCEINPUT",     NULL);
+  swap_features = 
+    !GetParamBool(&cfgHash,SNAME":NATURALREADORDER", isBigEndian());
   swap_features_out=swap_features;
 //  swap_fea_out =!GetParamBool(&cfgHash,SNAME":NATURALWRITEORDER",isBigEndian());
   gpFilterWldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
@@ -457,14 +458,23 @@ int main(int argc, char *argv[])
       obs = XformPass(NNet_input, obs, time, FORWARD);
       
       //Input of NN is not yet read because of NNet_input delay
-      if (time <= 0) continue;
+      if (time <= 0) {
+        continue;
+      }
 
-      if (outlabel_map) 
-      {
+      if (outlabel_map) {
         //Create NN output example vector from lables
-        for (j = 0; j < NNet_instance->OutSize(); j++) obs_out[j] = 0;
-        while (lbl_ptr && lbl_ptr->mStop < time) lbl_ptr = lbl_ptr->mpNext;
-        if (lbl_ptr && lbl_ptr->mStart <= time) obs_out[(int) lbl_ptr->mpData - 1] = 1;
+        for (j = 0; j < NNet_instance->OutSize(); j++) {
+          obs_out[j] = 0;
+        }
+
+        while (lbl_ptr && lbl_ptr->mStop < time) {
+          lbl_ptr = lbl_ptr->mpNext;
+        }
+
+        if (lbl_ptr && lbl_ptr->mStart <= time) {
+          obs_out[(int) lbl_ptr->mpData - 1] = 1;
+        }
       } 
       else 
       {

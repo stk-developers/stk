@@ -417,7 +417,11 @@ int main(int argc, char *argv[])
       
 
       my_net.ExpansionsAndOptimizations(expOptions, out_net_fmt, &dictHash, 
-          &nonCDphHash, &triphHash);
+          &nonCDphHash, &triphHash,
+          word_penalty,
+          model_penalty,
+          grammar_scale,
+          posterior_scale);
 
 	
       if(poster_prune > 0.0 || out_net_fmt.mPosteriors) {

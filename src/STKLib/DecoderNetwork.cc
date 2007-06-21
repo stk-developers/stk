@@ -760,7 +760,11 @@ namespace STK
       const STKNetworkOutputFormat&  rFormat,
       MyHSearchData *         wordHash,
       MyHSearchData *         nonCDphHash,
-      MyHSearchData *         triphHash)
+      MyHSearchData *         triphHash,
+      FLOAT                   wordPenalty,
+      FLOAT                   modelPenalty,
+      FLOAT                   lmScale,
+      FLOAT                   posteriorScale)
     {
       Node*              p_node(pFirst());
 
@@ -777,7 +781,8 @@ namespace STK
 
       if (!expOptions.mNoWordExpansion) {
         if (!expOptions.mNoOptimization) {
-          LatticeLocalOptimization(expOptions);
+          LatticeLocalOptimization(expOptions, wordPenalty, modelPenalty,
+              lmScale, posteriorScale);
         }
         assert(wordHash != NULL);
         ExpandByDictionary(wordHash, !expOptions.mRemoveWordsNodes, 
@@ -786,7 +791,8 @@ namespace STK
 
       if (expOptions.mCDPhoneExpansion) {
         if (!expOptions.mNoOptimization) {
-          LatticeLocalOptimization(expOptions);
+          LatticeLocalOptimization(expOptions, wordPenalty, modelPenalty,
+              lmScale, posteriorScale);
         }
         assert(triphHash != NULL && nonCDphHash != NULL);
         ExpandMonophonesToTriphones(nonCDphHash, triphHash);
@@ -795,7 +801,8 @@ namespace STK
       DiscardUnwantedInfo(rFormat);
     
       if (!expOptions.mNoOptimization) {
-        LatticeLocalOptimization(expOptions);
+        LatticeLocalOptimization(expOptions, wordPenalty, modelPenalty,
+            lmScale, posteriorScale);
       }
 
       RemoveRedundantNullNodes(expOptions.mRemoveNulls == 1);
@@ -962,7 +969,11 @@ namespace STK
   //***************************************************************************
     void 
     DecoderNetwork::
-    LatticeLocalOptimization(const ExpansionOptions &expOptions)
+    LatticeLocalOptimization(const ExpansionOptions &expOptions,
+      FLOAT wordPenalty,
+      FLOAT modelPenalty,
+      FLOAT lmScale,
+      FLOAT posteriorScale)
     {
       Node *    node;
       int       i;
@@ -994,7 +1005,8 @@ namespace STK
           TraceLog("Forward pass.... (number of nodes: %d)", i);
         }
         
-        LatticeLocalOptimization_ForwardPass(expOptions);
+        LatticeLocalOptimization_ForwardPass(expOptions, wordPenalty, 
+            modelPenalty, lmScale, posteriorScale);
     
         if (expOptions.mTraceFlag & 2) 
         {
@@ -1004,8 +1016,10 @@ namespace STK
           TraceLog("Backward pass... (number of nodes: %d)", i);
         }
         
-        if (!LatticeLocalOptimization_BackwardPass(expOptions)) 
+        if (!LatticeLocalOptimization_BackwardPass(expOptions, wordPenalty, 
+              modelPenalty, lmScale, posteriorScale)) {
           break;
+        }
       }
     }  
   // LatticeLocalOptimization(const ExpansionOptions &expOptions)
@@ -1016,7 +1030,11 @@ namespace STK
   //****************************************************************************
     int 
     DecoderNetwork::
-    LatticeLocalOptimization_ForwardPass(const ExpansionOptions &expOptions)
+    LatticeLocalOptimization_ForwardPass(const ExpansionOptions &expOptions,
+      FLOAT wordPenalty,
+      FLOAT modelPenalty,
+      FLOAT lmScale,
+      FLOAT posteriorScale)
     {
       int     i; 
       int     j;
@@ -1526,18 +1544,24 @@ namespace STK
   //***************************************************************************
     int 
     DecoderNetwork::
-    LatticeLocalOptimization_BackwardPass(const ExpansionOptions &expOptions)
+    LatticeLocalOptimization_BackwardPass(const ExpansionOptions &expOptions,
+      FLOAT wordPenalty,
+      FLOAT modelPenalty,
+      FLOAT lmScale,
+      FLOAT posteriorScale)
     {
       int     node_removed;
 
       Reverse();
-      node_removed = LatticeLocalOptimization_ForwardPass(expOptions);
+      node_removed = LatticeLocalOptimization_ForwardPass(expOptions, 
+          wordPenalty, modelPenalty, lmScale, posteriorScale);
       Reverse();
 
       return node_removed;
     }
   //  LatticeLocalOptimization_BackwardPass(const ExpansionOptions &expOptions)
   //***************************************************************************
+
 
 /*
   void 

@@ -607,7 +607,11 @@ int main(int argc, char *argv[])
             in_net_fmt, 
             &dictHash,
             &nonCDphHash, 
-            &phoneHash);
+            &phoneHash,
+            word_penalty,
+            model_penalty,
+            grammar_scale,
+            posterior_scale);
     }
     else if (in_transc_fmt == TF_STK) 
     {
@@ -647,7 +651,11 @@ int main(int argc, char *argv[])
           in_net_fmt, 
           &dictHash,
           &nonCDphHash, 
-          &phoneHash);
+          &phoneHash,
+          word_penalty,
+          model_penalty,
+          grammar_scale,
+          posterior_scale);
       }
     }
     else 
@@ -757,7 +765,11 @@ int main(int argc, char *argv[])
           TraceLog("Recognition network: Performing expansions and optimizations");
 
         decoder.rNetwork().ExpansionsAndOptimizations(expOptions, in_net_fmt, &dictHash,
-            &nonCDphHash, &phoneHash);
+            &nonCDphHash, &phoneHash,
+            word_penalty,
+            model_penalty,
+            grammar_scale,
+            posterior_scale);
 
         decoder.Init(&hset, NULL/*, false*/);
       }
@@ -884,8 +896,8 @@ int main(int argc, char *argv[])
       if (trace_flag & 2)
         TraceLog("Lattice: Performing optimizations (first pass)...");
 	
-      lattice.ExpansionsAndOptimizations(emptyExpOpts, tmp_net_fmt, 
-                                         NULL, NULL, NULL);
+      lattice.ExpansionsAndOptimizations(emptyExpOpts, tmp_net_fmt, NULL, NULL, 
+          NULL, word_penalty, model_penalty, grammar_scale, posterior_scale);
 
       if (trace_flag & 2)
         TraceLog("Lattice: Computing posterior probabilities...");
@@ -905,7 +917,8 @@ int main(int argc, char *argv[])
 
       if (trace_flag & 2)
         TraceLog("Lattice: Performing optimizations (second pass)...");
-      lattice.ExpansionsAndOptimizations(emptyExpOpts, out_net_fmt, NULL, NULL, NULL);
+      lattice.ExpansionsAndOptimizations(emptyExpOpts, out_net_fmt, NULL, NULL, 
+          NULL, word_penalty, model_penalty, grammar_scale, posterior_scale);
     }
 
     strcpy(label_file, feature_repo.Current().Logical().c_str());

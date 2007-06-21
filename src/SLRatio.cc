@@ -256,6 +256,7 @@ int main(int argc, char *argv[])
   double word_penalty;
   double model_penalty;
   double grammar_scale;
+  double posterior_scale;
   double transp_scale;
   double outprb_scale;
   double pronun_scale;
@@ -368,6 +369,7 @@ int main(int argc, char *argv[])
   dictionary   = GetParamStr(&cfgHash, SNAME":SOURCEDICT",      NULL);
   hmm_list     = GetParamStr(&cfgHash, SNAME":SOURCEHMMLIST",   NULL);
   grammar_scale= GetParamFlt(&cfgHash, SNAME":LMSCALE",         1.0);
+  posterior_scale= GetParamFlt(&cfgHash, SNAME":POSTERIORSCALE",         1.0);
   outprb_scale = GetParamFlt(&cfgHash, SNAME":OUTPSCALE",       1.0);
   transp_scale = GetParamFlt(&cfgHash, SNAME":TRANSPSCALE",     1.0);
   pronun_scale = GetParamFlt(&cfgHash, SNAME":PRONUNSCALE",     1.0);
@@ -479,7 +481,11 @@ int main(int argc, char *argv[])
         decoder.rNetwork());
 
     decoder.rNetwork().ExpansionsAndOptimizations(expOptions, in_net_fmt, &dictHash,
-        &nonCDphHash, &phoneHash);
+        &nonCDphHash, &phoneHash,
+        word_penalty,
+        model_penalty,
+        grammar_scale,
+        posterior_scale);
 
 
     decoder.Init(&hset, NULL);
@@ -525,7 +531,11 @@ int main(int argc, char *argv[])
           header.mSamplePeriod, label_file, in_MLF, false, decoder.rNetwork());
 
       decoder.rNetwork().ExpansionsAndOptimizations(expOptions, in_net_fmt, &dictHash,
-          &nonCDphHash, &phoneHash);
+          &nonCDphHash, &phoneHash,
+          word_penalty,
+          model_penalty,
+          grammar_scale,
+          posterior_scale);
 
       decoder.Init(&hset, NULL);
 

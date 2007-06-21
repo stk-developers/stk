@@ -157,6 +157,7 @@ int main(int argc, char* argv[])
   double                          word_penalty;
   double                          model_penalty;
   double                          grammar_scale;
+  double                          posterior_scale;
   double                          transp_scale;
   double                          outprb_scale;
   double                          occprb_scale;
@@ -372,6 +373,7 @@ int main(int argc, char* argv[])
   gpMmfOFilter = GetParamStr(&cfgHash, SNAME":HMMDEFOFILTER",   NULL);
   dictionary   = GetParamStr(&cfgHash, SNAME":SOURCEDICT",      NULL);
   grammar_scale= GetParamFlt(&cfgHash, SNAME":LMSCALE",         1.0);
+  posterior_scale= GetParamFlt(&cfgHash, SNAME":POSTERIORSCALE", 1.0);
   outprb_scale = GetParamFlt(&cfgHash, SNAME":OUTPSCALE",       1.0);
   transp_scale = GetParamFlt(&cfgHash, SNAME":TRANSPSCALE",     1.0);
   pronun_scale = GetParamFlt(&cfgHash, SNAME":PRONUNSCALE",     1.0);
@@ -649,7 +651,11 @@ int main(int argc, char* argv[])
       in_net_fmt, 
       &dictHash,
       &nonCDphHash, 
-      &phoneHash);
+      &phoneHash,
+      word_penalty,
+      model_penalty,
+      grammar_scale,
+      posterior_scale);
                                       
 //    p_node = my_net.pFirst();
 //    decoder.Init(p_node, hset_alig, &hset);
@@ -898,7 +904,11 @@ int main(int argc, char* argv[])
           in_net_fmt,
           &dictHash,
           &nonCDphHash,
-          &phoneHash);
+          &phoneHash,
+          word_penalty,
+          model_penalty,
+          grammar_scale,
+          posterior_scale);
             
 //        my_net.ExpansionsAndOptimizations(expOptions, in_net_fmt, 
 //            &dictHash, &nonCDphHash, &phoneHash);

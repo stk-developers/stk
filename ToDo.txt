@@ -84,3 +84,17 @@ Ideas for MPE:
   num-den + Tau -> num-den + Tau*num-den/num+den)
   E * den -> E * num+den
   minocc based on num+den for MPE or num for MMI
+
+
+
+ToDo(extra):
+- Expansion and optimization - add scaling params
+- Descale scores in lattices after their generation
+- Get rid of labels (replace by lattices)
+- Make the networks transparent and simple
+- use DEFINE on template network... 
+- separate decoder from network a bit more...
+- fix FeatureRepository 
+
+                                           
+

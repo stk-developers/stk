@@ -261,11 +261,11 @@ namespace STK
       void
       Wlr2Lattice(WordLinkRecord* pWlr, STK::Lattice& rLattice);
 
-      static void 
+      void 
       Wlr2Lattice_AllocateNodes(WordLinkRecord* pWlr, 
           typename STK::Lattice::Node*& rpNode);
 
-      static void 
+      void 
       Wlr2Lattice_EstablishLinks(WordLinkRecord* pWlr);
       
       std::vector<FLOAT> mActiveModelsBestLikes;
@@ -438,6 +438,7 @@ namespace STK
       FLOAT                       mMPenalty;
       FLOAT                       mPronScale;
       FLOAT                       mLmScale;
+      FLOAT                       mPosteriorScale;
       FLOAT                       mTranScale;
       FLOAT                       mOutpScale;
       FLOAT                       mOcpScale;
