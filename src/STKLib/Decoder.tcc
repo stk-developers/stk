@@ -3256,14 +3256,14 @@ extern std::map<string,FLOAT> state_posteriors;
           float_safe_substract(aux_total_like, aux_acoustic_like, 3);
 
         if (pWlr->pNode()->mC.mType & NT_MODEL) {
-          aux_lm_like = (aux_lm_like - this->mMPenalty) /mLmScale;
+          aux_lm_like = (aux_lm_like - mMPenalty) /mLmScale;
         }
         else if (pWlr->pNode()->mC.mType & NT_WORD
-        &&       pWlr->pNode()->rpLinks()[j].pNode()->mC.mpPronun != NULL) {
+        &&       pWlr->pNode()->mC.mpPronun != NULL) {
           aux_lm_like = (aux_lm_like - mWPenalty) / mLmScale;
         }
         else {
-          aux_lm_like = aux_lm_like / this->mLmScale;
+          aux_lm_like = aux_lm_like / mLmScale;
         }
 
         p->pNode()->rpLinks()[p->mNReferences - p->mAux].SetNode(pWlr->pNode());
@@ -3297,7 +3297,7 @@ extern std::map<string,FLOAT> state_posteriors;
               aux_lm_like = (aux_lm_like - mMPenalty) / mLmScale;
             }
             else if (pWlr->pNode()->mC.mType & NT_WORD
-            &&       pWlr->pNode()->rpLinks()[j].pNode()->mC.mpPronun != NULL) {
+            &&       pWlr->pNode()->mC.mpPronun != NULL) {
               aux_lm_like = (aux_lm_like - mWPenalty) / mLmScale;
             }
             else {
@@ -3309,7 +3309,7 @@ extern std::map<string,FLOAT> state_posteriors;
             p->pNode()->rpLinks()[p->mNReferences - p->mAux].SetAcousticLike(aux_acoustic_like);
 
             pWlr->pNode()->rpBackLinks()[j].SetNode(p->pNode());
-            pWlr->pNode()->rpBackLinks()[j].SetLmLike(float_safe_substract(aux_total_like, aux_acoustic_like, 3));
+            pWlr->pNode()->rpBackLinks()[j].SetLmLike(aux_lm_like);
             pWlr->pNode()->rpBackLinks()[j].SetAcousticLike(aux_acoustic_like);
 
             //printf("n i->mLike         = %f   p->mLike         = %f   diff = %e\n",  i->mLike, p->mLike, static_cast<float>(i->mLike - p->mLike)); 

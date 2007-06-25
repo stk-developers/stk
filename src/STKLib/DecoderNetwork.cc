@@ -799,14 +799,15 @@ namespace STK
       }
 
       DiscardUnwantedInfo(rFormat);    
-      RemoveRedundantNullNodes(expOptions.mRemoveNulls == 1);
+      RemoveRedundantNullNodes(expOptions.mRemoveNulls == 1, wordPenalty, 
+          modelPenalty, lmScale, posteriorScale);
 
       if (!expOptions.mNoOptimization) {
         LatticeLocalOptimization(expOptions, wordPenalty, modelPenalty,
             lmScale, posteriorScale);
-	RemoveRedundantNullNodes(false);
+        RemoveRedundantNullNodes(false, wordPenalty, modelPenalty, lmScale, 
+            posteriorScale);
       }
-
     } 
   // void NetworkExpansionsAndOptimizations( )
   //****************************************************************************
@@ -1128,9 +1129,9 @@ namespace STK
             iterator jnode(p_node->rpLinks()[j].pNode());
 
             // Final node may be never merged.
-            if (inode->NLinks() == 0 || jnode->NLinks() == 0) 
+            if (inode->NLinks() == 0 || jnode->NLinks() == 0) {
               continue;
-
+            }
 
             // Two nodes ('inode' and 'jnode') may be mergeg if they are of the 
             // same type, name, ... with the same predecessors and with the same
@@ -1138,7 +1139,6 @@ namespace STK
             if ((inode->mC.mType & ~NT_TRUE) != (jnode->mC.mType & ~NT_TRUE)
             || ( inode->mC.mType & NT_PHONE && inode->mC.mpName   != jnode->mC.mpName)
             || ( inode->mC.mType & NT_WORD  && inode->mC.mpPronun != jnode->mC.mpPronun)
-
     //          &&  (inode->mpPronun == NULL ||
     //             jnode->mpPronun == NULL ||
     //             inode->mpPronun->mpWord       != jnode->mpPronun->mpWord ||
@@ -1253,7 +1253,7 @@ namespace STK
                 jlk->pNode()->rNBackLinks()--;
     
                 // update likelihood correctly
-                if (ill->Like() < jlk->Like())
+                if (ill->Like(lmScale) < jlk->Like(lmScale))
                 {
                   ill->SetLmLike(jlk->LmLike());
                   ill->SetAcousticLike(jlk->AcousticLike());
@@ -1520,15 +1520,15 @@ namespace STK
             if(SamePhoneme(overlapped->mpNode->mC.mpName, p_node->mC.mpName)) {
               FLOAT startingPhoneAccuracu = p_node->mC.PhoneAccuracy();
               
-              p_node->mC.SetPhoneAccuracy(p_node->mC.PhoneAccuracy()
-                                          + (LOWER_OF(overlapped->mpNode->mC.Stop(), p_node->mC.Stop())
-                                             - HIGHER_OF(overlapped->mpNode->mC.Start(), maxCorrectPhoneStopTimeTillNow)) / 100000.0);
+              p_node->mC.SetPhoneAccuracy(p_node->mC.PhoneAccuracy() + 
+                  (LOWER_OF(overlapped->mpNode->mC.Stop(), p_node->mC.Stop()) - 
+                   HIGHER_OF(overlapped->mpNode->mC.Start(), maxCorrectPhoneStopTimeTillNow)) / 100000.0);
 
               maxCorrectPhoneStopTimeTillNow = HIGHER_OF(maxCorrectPhoneStopTimeTillNow, 
                                                            overlapped->mpNode->mC.Stop());
 
               assert((p_node->mC.PhoneAccuracy() - startingPhoneAccuracu) <= (overlapped->mpNode->mC.Stop() - overlapped->mpNode->mC.Start())/ 100000.0);
-              assert( p_node->mC.PhoneAccuracy()                          <= (            p_node->mC.Stop() -             p_node->mC.Start())/ 100000.0);
+              assert(p_node->mC.PhoneAccuracy() <= (p_node->mC.Stop() - p_node->mC.Start())/ 100000.0);
               
               if(maxCorrectPhoneStopTimeTillNow >= p_node->mC.Stop()) {
                 break;
@@ -1689,7 +1689,11 @@ namespace STK
   // successors
   int 
   DecoderNetwork::
-  RemoveRedundantNullNodes(bool removeAllNullNodes)
+  RemoveRedundantNullNodes(bool removeAllNullNodes,
+      FLOAT wordPenalty,
+      FLOAT modelPenalty,
+      FLOAT lmScale,
+      FLOAT posteriorScale)
   {
     Node *    p_node;
     Node *    tnode;
@@ -1766,8 +1770,8 @@ namespace STK
             if(k < orig_nlinks) 
             {
               // Link which is to be created already exists. Its duplication must be avoided.
-              if (backnode->rpLinks()[k].Like() >  
-                 p_node->rpLinks()[i].Like() + p_node->rpBackLinks()[j].Like())
+              if (backnode->rpLinks()[k].Like(lmScale) >  
+                 p_node->rpLinks()[i].Like(lmScale) + p_node->rpBackLinks()[j].Like(lmScale))
               {
                 backnode->rpLinks()[k].SetLmLike(backnode->rpLinks()[k].LmLike());
                 backnode->rpLinks()[k].SetAcousticLike(backnode->rpLinks()[k].AcousticLike());
@@ -1811,8 +1815,8 @@ namespace STK
 
             if (k < orig_nbacklinks) 
             {
-              if (forwnode->rpBackLinks()[k].Like() > 
-                p_node->rpBackLinks()[i].Like() + p_node->rpLinks()[j].Like())
+              if (forwnode->rpBackLinks()[k].Like(lmScale) > 
+                p_node->rpBackLinks()[i].Like(lmScale) + p_node->rpLinks()[j].Like(lmScale))
               {
                 forwnode->rpBackLinks()[k].SetLmLike(forwnode->rpBackLinks()[k].LmLike()); 
                 forwnode->rpBackLinks()[k].SetAcousticLike(forwnode->rpBackLinks()[k].AcousticLike()); 
@@ -1977,3 +1981,4 @@ namespace STK
 }
 // namespace STK
 // ****************************************************************************
+

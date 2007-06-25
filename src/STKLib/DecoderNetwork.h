@@ -322,8 +322,8 @@ namespace STK
     { mLmLike = mAcousticLike = 0.0; }
 
     LikeType
-    Like() const
-    { return mLmLike + mAcousticLike; }
+    Like(FLOAT lmScale) const
+    { return mLmLike*lmScale + mAcousticLike; }
 
     /** 
      * @brief Returns link's acoustic likelihood
@@ -522,7 +522,11 @@ namespace STK
      * than three successors
      */
     int
-    RemoveRedundantNullNodes(bool removeAllNullNodes);
+    RemoveRedundantNullNodes(bool removeAllNullNodes,
+      FLOAT wordPenalty,
+      FLOAT modelPenalty,
+      FLOAT lmScale,
+      FLOAT posteriorScale);
 
     void 
     SelfLinksToNullNodes();

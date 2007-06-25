@@ -1209,22 +1209,21 @@ namespace STK
 
         if (!format.mNoPronunVars && p_node->mC.mType & NT_WORD
         && p_node->mC.mpPronun != NULL && p_node->mC.mpPronun->mpWord->npronuns > 1
-        && (p_node->mC.mpPronun->variant_no > 1 || !format.mNoDefaults))
-        {
-          fprintf(pFp," v=%d", p_node->mC.mpPronun->variant_no);
-        }
-
-        if (p_node->mC.mType & NT_TRUE || p_node->mC.mType & NT_STICKY) 
-        {
+        && (p_node->mC.mpPronun->variant_no > 1 || !format.mNoDefaults)) {
+          fprintf(pFp," v=%d", p_node->mC.mpPronun->variant_no); 
+        } 
+        
+        if (p_node->mC.mType & NT_TRUE || p_node->mC.mType & NT_STICKY) { 
           fputs(" f=", pFp);
           if (p_node->mC.mType & NT_TRUE)   putc('T', pFp);
           if (p_node->mC.mType & NT_STICKY) putc('K', pFp);
         }
         
         if (format.mPosteriors) {
-	  assert(NULL != p_node->mC.mpAlphaBeta);
-	  fprintf(pFp," P="FLOAT_FMT, exp(p_node->mC.mpAlphaBeta->mAlpha + p_node->mC.mpAlphaBeta->mBeta - tot_log_like));
-	}
+          assert(NULL != p_node->mC.mpAlphaBeta);
+          fprintf(pFp," P="FLOAT_FMT, exp(p_node->mC.mpAlphaBeta->mAlpha + 
+                p_node->mC.mpAlphaBeta->mBeta - tot_log_like));
+        }
 	
         if (p_node->mC.mType & NT_PHONE && p_node->mC.PhoneAccuracy() != 1.0) {
           fprintf(pFp," p="FLOAT_FMT, p_node->mC.PhoneAccuracy());
@@ -1232,7 +1231,9 @@ namespace STK
 
         if (!format.mArcDefsToEnd) 
         {
-          if (format.mAllFieldNames) fprintf(pFp," J=%d", p_node->rNLinks());
+          if (format.mAllFieldNames) {
+            fprintf(pFp," J=%d", p_node->rNLinks());
+          }
     
           for (j = 0; j < p_node->rNLinks(); j ++) 
           {
@@ -1244,19 +1245,17 @@ namespace STK
             if (format.mBase62Labels) fprintBase62(pFp, p_node->rpLinks()[j].pNode()->mAux);
             else                      fprintf(pFp,"%d", p_node->rpLinks()[j].pNode()->mAux);
 
+            FLOAT lm_score = p_node->rpLinks()[j].LmLike();
 
-            
-            FLOAT lm_score;
-
-            if      (p_node->rpLinks()[j].pNode()->mC.mType & NT_MODEL)
-              lm_score = (p_node->rpLinks()[j].LmLike() - modelPenalty) / lm_scale; 
-
-            else if (p_node->rpLinks()[j].pNode()->mC.mType & NT_WORD 
-            &&       p_node->rpLinks()[j].pNode()->mC.mpPronun != NULL)
-              lm_score = (p_node->rpLinks()[j].LmLike() - wordPenalty) / lm_scale; 
-
-            else   
-              lm_score = p_node->rpLinks()[j].LmLike() / lm_scale; 
+// THIS WOULD UN-SCALE THE SCORES, BUT THIS NOW HAPPENS JUST AFTER LATTICE
+// GENERATION
+//            if      (p_node->rpLinks()[j].pNode()->mC.mType & NT_MODEL)
+//              lm_score = (p_node->rpLinks()[j].LmLike() - modelPenalty) / lm_scale; 
+//            else if (p_node->rpLinks()[j].pNode()->mC.mType & NT_WORD 
+//            &&       p_node->rpLinks()[j].pNode()->mC.mpPronun != NULL)
+//              lm_score = (p_node->rpLinks()[j].LmLike() - wordPenalty) / lm_scale; 
+//            else   
+//              lm_score = p_node->rpLinks()[j].LmLike() / lm_scale; 
 
             // output language probability
             if ((!close_enough(lm_score, 0.0, 10)) 
@@ -1286,12 +1285,11 @@ namespace STK
         l = 0;
         for (p_node = rNetwork.Begin(); p_node != rNetwork.End(); p_node++) 
         {
-          if (p_node->NSuccessors() < 1)
+          if (p_node->NSuccessors() < 1) {
             continue;
+          }
 
-          int j;
-    
-          for (j = 0; j < p_node->rNLinks(); j ++) 
+          for (int j = 0; j < p_node->rNLinks(); j ++) 
           {
             if (p_node->rpLinks()[j].PointsNowhere())
               continue;
@@ -1306,19 +1304,20 @@ namespace STK
 
             if (format.mBase62Labels) fprintBase62(pFp, p_node->rpLinks()[j].pNode()->mAux);
             else                      fprintf(pFp,"%d", p_node->rpLinks()[j].pNode()->mAux);
-
             
-            FLOAT lm_score;
+            FLOAT lm_score = p_node->rpLinks()[j].LmLike();
 
-            if      (p_node->rpLinks()[j].pNode()->mC.mType & NT_MODEL)
-              lm_score = (p_node->rpLinks()[j].LmLike() - modelPenalty) / lm_scale; 
-
-            else if (p_node->rpLinks()[j].pNode()->mC.mType & NT_WORD 
-            &&       p_node->rpLinks()[j].pNode()->mC.mpPronun != NULL)
-              lm_score = (p_node->rpLinks()[j].LmLike() - wordPenalty) / lm_scale; 
-
-            else   
-              lm_score = p_node->rpLinks()[j].LmLike() / lm_scale; 
+// THIS WOULD UN-SCALE THE SCORES, BUT THIS NOW HAPPENS JUST AFTER LATTICE
+// GENERATION
+//            if      (p_node->rpLinks()[j].pNode()->mC.mType & NT_MODEL)
+//              lm_score = (p_node->rpLinks()[j].LmLike() - modelPenalty) / lm_scale; 
+//
+//            else if (p_node->rpLinks()[j].pNode()->mC.mType & NT_WORD 
+//            &&       p_node->rpLinks()[j].pNode()->mC.mpPronun != NULL)
+//              lm_score = (p_node->rpLinks()[j].LmLike() - wordPenalty) / lm_scale; 
+//
+//            else   
+//              lm_score = p_node->rpLinks()[j].LmLike() / lm_scale; 
 
             // output language probability
             if ((!close_enough(lm_score, 0.0, 10)) 
