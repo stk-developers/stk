@@ -903,22 +903,24 @@ int main(int argc, char *argv[])
 
       if (trace_flag & 2)
         TraceLog("Lattice: Computing posterior probabilities...");
-      lattice.ForwardBackward(0.0, 0.0, 1.0, posterior_scale, true); // set false for "non-viterbi" posterior pruning
+      lattice.ForwardBackward(word_penalty, model_penalty, grammar_scale, 
+          posterior_scale, true); // set false for "non-viterbi" posterior pruning
       
       if (trace_flag & 2)
         TraceLog("Lattice: Performing posterior pruning...");
 	
       lattice.PosteriorPrune(poster_prune  > 0.0 ? poster_prune  :
                              state_pruning > 0.0 ? state_pruning : -LOG_0,
-			     0.0, 0.0, 1.0, posterior_scale);
+			     word_penalty, model_penalty, grammar_scale, posterior_scale);
 			     
 //      lattice.PosteriorExpectedCounts(countMap);
       
       lattice.FreePosteriors();
 
 
-      if (trace_flag & 2)
+      if (trace_flag & 2) {
         TraceLog("Lattice: Performing optimizations (second pass)...");
+      }
       lattice.ExpansionsAndOptimizations(emptyExpOpts, out_net_fmt, NULL, NULL, 
           NULL, word_penalty, model_penalty, grammar_scale, posterior_scale);
     }
