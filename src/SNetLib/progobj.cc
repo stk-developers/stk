@@ -12,7 +12,8 @@ ProgObj(XformInstance* NNetInstance, int cacheSize, int bunchSize,
                        
   mpLearningRateList = NULL;
   int ls = (static_cast<CompositeXform*>(NNetInstance->mpXform))->mNLayers / 3;
-  mpLearningRateList = (float*)malloc(sizeof(float) * ls);
+  //mpLearningRateList = (float*)malloc(sizeof(float) * ls);
+  mpLearningRateList = new float[ls];
 
   if(learning_rate_list != NULL)
   {
@@ -114,6 +115,9 @@ SNet::ProgObj::
   delete mpReceivedMutex;  
   delete mpBarrier;
   delete mpEndBarrier;
+
+  //free(mpLearningRateList);
+  delete [] mpLearningRateList;
 }
 
 

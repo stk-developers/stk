@@ -500,6 +500,9 @@ int main(int argc, char *argv[])
     {
       ReleaseLabels(labels);
     }
+
+    feature_matrix_out.Destroy();
+    feature_matrix.Destroy();
   }
   // MAIN FILE LOOP END
 

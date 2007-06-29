@@ -81,6 +81,7 @@ SNet::NNet::~NNet(){
   delete mpOutCache;
   delete mpCompCachePart;
   delete mpError;
+  delete mpTimers;
 }
 
 void SNet::NNet::AddToCache(FLOAT *inVector, FLOAT *outVector, int inSize, int outSize){
