@@ -130,7 +130,7 @@ namespace STK
     
     rMat.Init(nRows, nCols);
 
-    srand48(seed);
+    srand(seed);
     FLOAT range = maxVal - minVal; 
 
     size_t i;
@@ -139,8 +139,8 @@ namespace STK
     for(i = 0; i < nRows; i++)
     {
       for(j = 0; j < nCols; j++)
-      {
-        rMat[i][j] = static_cast<FLOAT>(drand48()) * range + minVal;
+      {         
+        rMat[i][j] = static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * range + minVal;
       }
     }
   }
@@ -180,13 +180,13 @@ namespace STK
     
     rVct.Init(vctLen);
 
-    srand48(seed);
+    srand(seed);
     FLOAT range = maxVal - minVal; 
     
     size_t j;
     for(j = 0; j < vctLen; j++)
     {
-      rVct[j] = static_cast<FLOAT>(drand48()) * range + minVal;
+      rVct[j] = static_cast<float>(rand()) / static_cast<float>(RAND_MAX) * range + minVal;
     }
   }    
 

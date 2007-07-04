@@ -1276,7 +1276,7 @@ void fast_softmax_vec(double *in, double *out, int size)
         }
         Warning("Cannot popen %s filter '%s: %s'. Trying again ...",
                 *type == 'r' ? "input": "output", f, strerror(errno));
-        sleep(1);
+        //sleep(1);
       }
       free(f);
     } else if ((fp = fopen(file_name, type)) == NULL) {
