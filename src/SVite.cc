@@ -930,7 +930,7 @@ int main(int argc, char *argv[])
 
     // write the output ........................................................
     //
-    if (!lattice.IsEmpty())
+    if (out_transc_fmt == TF_STK)
     {
       WriteSTKNetwork(lfp, lattice, out_net_fmt, 
           feature_repo.CurrentHeader().mSamplePeriod, label_file, out_MLF,
@@ -939,12 +939,12 @@ int main(int argc, char *argv[])
       // we are not needing the lattice anymore, so free it from memory
       lattice.Clear();
     } 
-    else if (out_transc_fmt == TF_HTK) 
+    else // if (out_transc_fmt == TF_HTK) 
     {
       WriteLabels(lfp, labels, out_net_fmt, 
           feature_repo.CurrentHeader().mSamplePeriod, label_file, out_MLF);
-    } 
-    else 
+    }
+/*    else 
     {
       // create temporary linear network from labels, just to store it
       DecoderNetwork tmp_net(labels, 
@@ -953,7 +953,7 @@ int main(int argc, char *argv[])
       WriteSTKNetwork(lfp, tmp_net, out_net_fmt, 
           feature_repo.CurrentHeader().mSamplePeriod, label_file, out_MLF,
           p_decoder->mWPenalty, p_decoder->mMPenalty, p_decoder->mLmScale);
-    }
+    }*/
 
     CloseOutputLabelFile(lfp, out_MLF);
     ReleaseLabels(labels);

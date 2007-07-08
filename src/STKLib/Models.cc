@@ -1333,6 +1333,7 @@ namespace STK
 
       if (*nrm_mpe + 2 * gWeightAccumDen <= pModelSet->mMinOccupation) 
       {
+//!!!Should not be better to move this after I-smoothing???
         if (mpMacro)
           Warning("Low occupation of '%s', mixture is not updated", mpMacro->mpName);
         else 
@@ -2069,7 +2070,7 @@ namespace STK
           ///accum_sum += mpMixture[i].mWeightAccumDen;
 
           //... but it does not make sense for MPE (we would have to distinguish MMI and MPE update),
-          //!!! So do not have mWeightAccum and prior weights are taken instead.
+          //!!! So we do not have mWeightAccum and prior weights are taken instead.
           //!!! Anyway, this is something not very nice.
           if(mpPrior->mpMixture[i].mWeight < LOG_MIN)
           {
@@ -2113,8 +2114,13 @@ namespace STK
       }
   
         // Remove mixtures with low weight
-      if (pModelSet->mUpdateMask & UM_WEIGHT) 
+//      if (pModelSet->mUpdateMask & UM_WEIGHT) 
       {
+
+//!!! In MPE update code, we do not update mixture with low counts
+//!!! Here, we remove mixture with low weight, but even if weights are not bo be re-estimated
+//!!! We should behave more consistently
+
         for (i = 0, k = 0; i < mNMixtures; i++, k++) 
         {
           if (mpMixture[i].mWeightAccum / accum_sum < pModelSet->mMinMixWeight) 

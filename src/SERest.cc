@@ -287,12 +287,11 @@ int main(int argc, char* argv[])
   }
   
   i = ParseOptions(argc, argv, optionStr, SNAME, &cfgHash);
+  htk_compat   = GetParamBool(&cfgHash,SNAME":HTKCOMPAT",       false);  
   if (htk_compat) {
     if (argc == i) Error("HMM list file name expected");
     InsertConfigParam(&cfgHash,        SNAME":SOURCEHMMLIST", argv[i++], '-');
-  }
-  
-  htk_compat   = GetParamBool(&cfgHash,SNAME":HTKCOMPAT",       false);  
+  }  
   swap_features_alig =
   swap_features=!GetParamBool(&cfgHash,SNAME":NATURALREADORDER",isBigEndian());
   script =(char*)GetParamStr(&cfgHash, SNAME":SCRIPT",          NULL);
