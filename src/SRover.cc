@@ -16,7 +16,8 @@
 #define SVN_ID         "$Id$"
 
 
-#define MODULE_VERSION "0.5 "__TIME__" "__DATE__
+#define MODULE_VERSION "2.0.5 "__TIME__" "__DATE__" "SVN_ID  
+//#define MODULE_VERSION "0.5 "__TIME__" "__DATE__
 
 // This alignment is kind of wierd - check it!!!
 //six     !NULL   !NULL   !NULL   !NULL
@@ -42,6 +43,7 @@ void usage(char *progname)
   if ((tchrptr = strrchr(progname, '\\')) != NULL) progname = tchrptr+1;
   if ((tchrptr = strrchr(progname, '/')) != NULL) progname = tchrptr+1;
   fprintf(stderr,
+"\n%s version " MODULE_VERSION "\n"
 "\nUSAGE: %s [options] labelList MLF1 [weight1] MLF2 [weight2]...\n\n"
 " Option                                         Default\n\n"
 "  -b       Random choice in the case of a tie   Take first\n"
@@ -69,7 +71,7 @@ void usage(char *progname)
 " %s is Copyright (C) 2004 Lukas Burget et al. and\n"
 " licensed under the GNU General Public License, version 2.\n"
 " Bug reports, feedback, etc, to: burget@fit.vutbr.cz\n"
-"\n", progname, progname);
+"\n", progname, progname, progname);
   exit(-1);
 }
 

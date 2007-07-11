@@ -16,7 +16,8 @@
 #define SVN_ID         "$Id$"
 
 
-#define MODULE_VERSION "2.0.4"
+#define MODULE_VERSION "2.0.7 "__TIME__" "__DATE__" "SVN_ID  
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -43,7 +44,7 @@ void usage(char *progname)
   if ((tchrptr = strrchr(progname, '\\')) != NULL) progname = tchrptr+1;
   if ((tchrptr = strrchr(progname, '/')) != NULL) progname = tchrptr+1;
   fprintf(stderr,
-"\nSNet version " MODULE_VERSION "\n"
+"\n%s version " MODULE_VERSION "\n"
 "\nUSAGE: %s [options] DataFiles...\n\n"
 " Option                                                     Default\n\n"
 " -A         Print command line arguments                    Off\n"
@@ -78,7 +79,7 @@ void usage(char *progname)
 " %s is Copyright (C) 2004-2005 Stanislav Kontar, Lukas Burget, Ondrej Glembek et al. and\n"
 " licensed under the GNU General Public License, version 2.\n"
 " Bug reports, feedback, etc, to: burget@fit.vutbr.cz\n"
-"\n", progname, progname);
+"\n", progname, progname, progname);
   exit(-1);
 }
 

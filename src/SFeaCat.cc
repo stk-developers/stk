@@ -15,8 +15,7 @@
 #define SVN_REVISION   "$Revision$"
 #define SVN_ID         "$Id$"
 
-
-#define MODULE_VERSION "0.7 "__TIME__" "__DATE__
+#define MODULE_VERSION "2.0.7 "__TIME__" "__DATE__" "SVN_ID  
 
 
 #include <stdlib.h>
@@ -44,6 +43,7 @@ void usage(char *progname)
   if ((tchrptr = strrchr(progname, '\\')) != NULL) progname = tchrptr+1;
   if ((tchrptr = strrchr(progname, '/')) != NULL) progname = tchrptr+1;
   fprintf(stderr,
+"\n%s version " MODULE_VERSION "\n"
 "\nUSAGE: %s [options] DataFiles...\n\n"
 " Option                                                     Default\n\n"
 //" -c f   Mixture pruning threshold                         10.0\n"
@@ -62,7 +62,7 @@ void usage(char *progname)
 " %s is Copyright (C) 2004-2005 Lukas Burget et al. and\n"
 " licensed under the GNU General Public License, version 2.\n"
 " Bug reports, feedback, etc, to: burget@fit.vutbr.cz\n"
-"\n", progname, progname);
+"\n", progname, progname, progname);
   exit(-1);
 }
 
