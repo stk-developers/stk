@@ -1374,7 +1374,6 @@ namespace STK
     PredefinedLinearTransformID mPredefinedID;
     
     /// Variables for predefined transforms
-    size_t mNRepetitions;
     bool mIncludeC0;
     FLOAT mConstant;
     FLOAT mMinValue;

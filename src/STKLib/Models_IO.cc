@@ -1631,7 +1631,7 @@ namespace STK
     // create new object
     ret = new LinearXform(in_size, out_size);
     ret->mPredefinedID = PLTID_NONE;
-    
+
     // generating of predefined transforms 
     // - predefined transforms are suported in text format only
     if(predefined)
@@ -1646,19 +1646,13 @@ namespace STK
       {
         ret->mPredefinedID = PLTID_DCT;            
         ret->mIncludeC0 = (GetInt(fp) != 0);
-        ret->mNRepetitions = GetInt(fp);
-        size_t n_basis = out_size / ret->mNRepetitions;
   
-        if(n_basis * ret->mNRepetitions != out_size) 
+        if(out_size > in_size || (out_size == in_size && !ret->mIncludeC0))
         {
-          Error("DCT transforms do not fit to the Xform (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
-        }
-        if(n_basis > in_size || (n_basis == in_size && !ret->mIncludeC0))
-        {
-          Error("Number of base components (%d) of DCT can not be higher then input vector size (%d) (%s:%d)", n_basis, in_size, gpCurrentMmfName, gCurrentMmfLine);
+          Error("Number of base components (%d) of DCT can not be higher then input vector size (%d) (%s:%d)", out_size, in_size, gpCurrentMmfName, gCurrentMmfLine);
         }
   
-        GenerateDCTMatrix(ret->mMatrix, n_basis, in_size, ret->mNRepetitions, ret->mIncludeC0);	    
+        GenerateDCTMatrix(ret->mMatrix, out_size, in_size, 1, ret->mIncludeC0);	    
       } 
       else if(!strcmp(p_tr_name, "CONST"))
       {
@@ -3033,7 +3027,6 @@ namespace STK
           PutString(fp, binary, "Dct");
           PutSpace(fp, binary);
           PutInt(fp, binary, (xform->mIncludeC0 ? 1 : 0));
-          PutInt(fp, binary, xform->mNRepetitions);
           PutNLn(fp, binary);
           break;
 
