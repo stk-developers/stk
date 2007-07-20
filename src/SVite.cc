@@ -232,6 +232,7 @@ char *optionStr =
 
   bool  print_all_options; 
 
+  extern int STK::nbest_lattices;
 
 
 
@@ -347,7 +348,6 @@ int main(int argc, char *argv[])
   mmf_dir      = GetParamStr(&cfgHash, SNAME":MMFDIR",          ".");
   mmf_mask     = GetParamStr(&cfgHash, SNAME":MMFMASK",         NULL);
 
-  extern int STK::nbest_lattices;
   STK::nbest_lattices = GetParamInt(&cfgHash, SNAME":NBEST",    0);
 
 
