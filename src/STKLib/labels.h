@@ -39,6 +39,8 @@
     unsigned mAproxAccuracy          : 1 ;
     unsigned mNoAcousticLikes        : 1 ;
     unsigned mPosteriors             : 1 ;
+
+    unsigned mDeriveTimes            : 1 ;
     
     //Currently only for HTK labels
     unsigned mCentreTimes            : 1 ;

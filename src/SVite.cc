@@ -888,6 +888,10 @@ int main(int argc, char *argv[])
       }
 
       TraceLog(" ==  [%d frames] %f", n_frames, like / n_frames);
+
+//      TraceLog(" ==  [%d frames] %f (Act: %f/%f)", n_frames, like / n_frames,
+//                   (float) p_decoder->mNActiveModelsForUtterance / n_frames, 
+//                   (float) p_decoder->mNActiveTokensForUtterance / n_frames);
     }
 
     if (!lattice.IsEmpty())

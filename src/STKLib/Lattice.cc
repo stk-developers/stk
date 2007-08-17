@@ -341,6 +341,7 @@ namespace STK
     for (iterator i_node = begin(); i_node != end(); ++i_node)
     {
       delete i_node->mC.mpAlphaBeta;
+      i_node->mC.mpAlphaBeta = NULL;
     }
   }
   // FreePosteriors()

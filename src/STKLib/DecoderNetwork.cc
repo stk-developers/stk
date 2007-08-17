@@ -428,7 +428,7 @@ namespace STK
               tnode->mC.mpName = NULL;
               *tnode = *p_node;
     
-              if ((tnode->rpLinks()     = (LinkType *) malloc(sizeof(LinkType))) == NULL ||
+              if ((tnode->rpLinks()   = (LinkType *) malloc(sizeof(LinkType))) == NULL ||
                 (tnode->rpBackLinks() = (LinkType *) malloc(sizeof(LinkType))) == NULL) 
               {
                 Error("Insufficient memory");
@@ -825,7 +825,7 @@ namespace STK
     
       for (p_node = begin(); p_node != end(); p_node++)  
       {
-        if (format.mNoLMLikes) 
+        if (format.mNoLMLikes && !format.mPosteriors) 
         {
           for (i=0; i < p_node->NLinks();     i++) 
             p_node->rpLinks()    [i].SetLmLike(0.0);
@@ -834,7 +834,7 @@ namespace STK
             p_node->rpBackLinks()[i].SetLmLike(0.0);
         }
 
-        if (format.mNoAcousticLikes) 
+        if (format.mNoAcousticLikes && !format.mPosteriors) 
         {
           for (i=0; i < p_node->NLinks();     i++) 
             p_node->rpLinks()    [i].SetAcousticLike(0.0);

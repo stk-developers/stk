@@ -554,7 +554,7 @@ namespace STK
        * @brief Returns pointer to an array of this token's labels
        */
       Label*
-      pGetLabels(bool getTimesFromNetwork = false);
+      pGetLabels(bool getTimesFromNetwork = false, FLOAT total_like = LOG_0);
       
       Node*
       pGetLattice();

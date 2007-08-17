@@ -238,21 +238,22 @@ int main(int argc, char *argv[])
   while (*cchrptr) {
     switch (*cchrptr++) {
       case 'R': out_net_fmt.mBase62Labels  = 1; // reticent
-                out_net_fmt.mLinNodeSeqs  = 1;
+                out_net_fmt.mLinNodeSeqs   = 1;
                 out_net_fmt.mNoDefaults    = 1; break;
-      case 'V': out_net_fmt.mArcDefsWithJ= 1;
-                out_net_fmt.mAllFieldNames= 1; break;
-      case 'J': out_net_fmt.mArcDefsToEnd= 1; break;
-      case 'W': out_net_fmt.mNoWordNodes  = 1; break;
-      case 'M': out_net_fmt.mNoModelNodes = 1; break;
+      case 'V': out_net_fmt.mArcDefsWithJ  = 1;
+                out_net_fmt.mAllFieldNames = 1; break;
+      case 'J': out_net_fmt.mArcDefsToEnd  = 1; break;
+      case 'W': out_net_fmt.mNoWordNodes   = 1; break;
+      case 'M': out_net_fmt.mNoModelNodes  = 1; break;
       case 'X': out_net_fmt.mStripTriphones= 1; break;
       case 't': out_net_fmt.mNoTimes       = 0; break;
       case 's': out_net_fmt.mStartTimes    = 1; break;
-      case 'v': out_net_fmt.mNoPronunVars = 0; break;
-      case 'a': out_net_fmt.mNoAcousticLikes   = 0; break;
-      case 'l': out_net_fmt.mNoLMLikes    = 0; break;
+      case 'v': out_net_fmt.mNoPronunVars  = 0; break;
+      case 'a': out_net_fmt.mNoAcousticLikes=0; break;
+      case 'l': out_net_fmt.mNoLMLikes     = 0; break;
       case 'p': out_net_fmt.mAproxAccuracy = 1; break;
       case 'P': out_net_fmt.mPosteriors    = 1; break;
+      case 'T': out_net_fmt.mDeriveTimes   = 1; break;
       default:
         Warning("Unknown net formating flag '%c' ignored (JMRVWXalpstv)", *cchrptr);
     }
@@ -470,30 +471,32 @@ int main(int argc, char *argv[])
           }
           TraceLog(" == %f", like);
         }
-      }
+        out_MLF_fp = OpenOutputLabelFile(label_file, out_lbl_dir, out_lbl_ext,
+                                         out_MLF_fp, out_MLF_fn);
 
-      out_MLF_fp = OpenOutputLabelFile(label_file, out_lbl_dir, out_lbl_ext,
-                                      out_MLF_fp, out_MLF_fn);
-				
-      if (viterbi_decode) {      
         if (out_transc_fmt == TF_HTK) {
           WriteLabels(out_MLF_fp, labels, out_net_fmt, 1, label_file, out_MLF_fn);
         } else {
         // create temporary linear network from labels, just to store it
           DecoderNetwork tmp_net(labels, NT_PHONE);
-          WriteSTKNetwork(out_MLF_fp, tmp_net, out_net_fmt, 1, label_file, out_MLF_fn, 0.0, 0.0, 1.0);
+          WriteSTKNetwork(out_MLF_fp, tmp_net, out_net_fmt, 1, label_file, out_MLF_fn,
+                          word_penalty, model_penalty, grammar_scale, posterior_scale);
         }
 	ReleaseLabels(labels);
-      } else if (out_transc_fmt == TF_NOF) {
-        WriteSTKNetworkInOldFormat(out_MLF_fp, my_net, out_net_fmt, 1, label_file, out_MLF_fn);
       } else {
-        WriteSTKNetwork(out_MLF_fp, my_net, out_net_fmt, 1, label_file, out_MLF_fn, 0.0, 0.0, 1.0);
+        out_MLF_fp = OpenOutputLabelFile(label_file, out_lbl_dir, out_lbl_ext,
+                                      out_MLF_fp, out_MLF_fn);
+				
+        if (out_transc_fmt == TF_NOF) {
+          WriteSTKNetworkInOldFormat(out_MLF_fp, my_net, out_net_fmt, 1, label_file, out_MLF_fn);
+        } else {
+          WriteSTKNetwork(out_MLF_fp, my_net, out_net_fmt, 1, label_file, out_MLF_fn,
+                          word_penalty, model_penalty, grammar_scale, posterior_scale);
+        }
       }
-      
       if(poster_prune > 0.0 || out_net_fmt.mPosteriors) {  
         my_net.FreePosteriors();
       }
-
 
       CloseOutputLabelFile(out_MLF_fp, out_MLF_fn);
       my_net.Clear();

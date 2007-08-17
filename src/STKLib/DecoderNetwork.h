@@ -197,11 +197,11 @@ namespace STK
       int           mEmittingStateId;
       int           mAux2;
 #   endif
-#   ifndef EXPANDNET_ONLY    
-      union
+#   ifndef EXPANDNET_ONLY
+      struct //union { We need both in SExpant - node posteriors for one best string
       {
         ActiveNodeRecord*          mpAnr;
-        AlphaBeta*                 mpAlphaBeta;
+        AlphaBeta*                 mpAlphaBeta; 
       };
 #   endif
     };
@@ -222,7 +222,8 @@ namespace STK
 
       void
       Init()
-      { mStart = mStop = UNDEF_TIME; }
+      { mStart = mStop = UNDEF_TIME; 
+        mpAlphaBeta = NULL; }
 
       //time range when model can be active - apply only for model type
       void
@@ -278,7 +279,7 @@ namespace STK
       int           mEmittingStateId;
       int           mAux2;
 #   endif
-      union
+      struct //union { We need both in SExpant - node posteriors for one best string; AlphaBeta also initialized in Init()
       {
         ActiveNodeRecord*          mpAnr;
         AlphaBeta*                 mpAlphaBeta;
@@ -628,7 +629,8 @@ namespace STK
       const char*               out_MNF,
       const FLOAT&              wordPenalty,
       const FLOAT&              modelPenalty,
-      const FLOAT&              lmScale);
+      const FLOAT&              lmScale,
+      const FLOAT               posteriorScale = 1.0);
   
 
   template<class _NetworkType>

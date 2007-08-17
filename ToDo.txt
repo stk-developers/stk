@@ -65,6 +65,7 @@ For example, DiagCGaussianDensity is now method of decoder. But this function ma
 Local optimization before posterior pruning makes statr_beta and end_alpha quite different - probably thanks to weight-pushing.
 Size of accumulators depends on update type -> update type should be specified (and fixed) before HmmSet::Init 
                                                or we should report error if accums are not allocated properly (may be this isbetter option)
+For empty input network file, SExpan announce: ReadSTKNetwork: Network has multiple nodes with no successors 
 
 To finish new SKT networks
 - Expanded network cannot hold information about word output symbols and

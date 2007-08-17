@@ -1135,12 +1135,14 @@ namespace STK
       const char*             out_MNF,
       const FLOAT&            wordPenalty,
       const FLOAT&            modelPenalty,
-      const FLOAT&            lmScale)
+      const FLOAT&            lmScale,
+      const FLOAT             posteriorScale)
     {
       int                                     n;
       int                                     l=0;
       typename _NetworkType::Iterator         p_node;
-      float                                   lm_scale(lmScale);
+      typedef typename _NetworkType::Node    _node_type;
+//      float                                   lm_scale(lmScale);
       FLOAT                                   tot_log_like;
 
     
@@ -1183,8 +1185,62 @@ namespace STK
         if (format.mBase62Labels) fprintBase62(pFp, p_node->mAux);
         else                      fprintf(pFp,"%d", p_node->mAux);
     
-        if (!format.mNoTimes && p_node->mC.Stop() != UNDEF_TIME) 
-        {
+    
+// Derive times from neighbours if missing
+        if(!format.mNoTimes && p_node->mC.Stop() == UNDEF_TIME && format.mDeriveTimes) {
+	  if (p_node->mC.Stop() == UNDEF_TIME) {
+            int i;
+	    p_node->mC.SetStart(UNDEF_TIME);
+            for (i = 0; i < p_node->rNBackLinks(); i++) {
+              _node_type *backnode = p_node->rpBackLinks()[i].pNode();
+              if (backnode->mC.Stop() != UNDEF_TIME) {
+                p_node->mC.SetStart(p_node->mC.Start() == UNDEF_TIME
+                                    ?          backnode->mC.Stop()
+                                    : LOWER_OF(backnode->mC.Stop(), p_node->mC.Start()));
+              }
+            }
+            if (p_node->mC.Start() != UNDEF_TIME) {
+
+/*  	      /// Hack jak svina platny neb pro JHU workshop. Tohe musi prijit pryc
+	      if(p_node->rNLinks() == 1
+	         && p_node->rpLinks()[0].pNode()->mC.mType & NT_WORD
+	         && p_node->rpLinks()[0].pNode()->mC.mpPronun
+	         && strcmp(p_node->rpLinks()[0].pNode()->mC.mpPronun->mpWord->mpName, "sp")
+	         && strcmp(p_node->rpLinks()[0].pNode()->mC.mpPronun->mpWord->mpName, "sil")
+		 && p_node->rpLinks()[0].pNode()->mC.Start() == UNDEF_TIME
+		 && p_node->rpLinks()[0].pNode()->mC.Stop()  == UNDEF_TIME
+	         && p_node->rpLinks()[0].pNode()->rNLinks() == 1
+	         && p_node->rpLinks()[0].pNode()->rpLinks()[0].pNode()->mC.mType & NT_WORD
+	         && p_node->rpLinks()[0].pNode()->rpLinks()[0].pNode()->mC.mpPronun
+	         && !strcmp(p_node->rpLinks()[0].pNode()->rpLinks()[0].pNode()->mC.mpPronun->mpWord->mpName, "sp")
+		 && p_node->rpLinks()[0].pNode()->rpLinks()[0].pNode()->rNLinks() > 0
+		 && !strcmp(p_node->rpLinks()[0].pNode()->rpLinks()[0].pNode()->rpLinks()[0].pNode()->mC.mpPronun->mpWord->mpName, "sp")
+	         ) {
+		 
+		Pronun* pron = p_node->rpLinks()[0].pNode()->mC.mpPronun;
+	        p_node->rpLinks()[0].pNode()->mC.mpPronun = p_node->rpLinks()[0].pNode()->rpLinks()[0].pNode()->mC.mpPronun;
+		p_node->rpLinks()[0].pNode()->mC.mpPronun = pron;
+		p_node->rpLinks()[0].pNode()->mC.SetStart(p_node->rpLinks()[0].pNode()->rpLinks()[0].pNode()->mC.Start());
+		p_node->rpLinks()[0].pNode()->mC.SetStop (p_node->rpLinks()[0].pNode()->rpLinks()[0].pNode()->mC.Stop());
+		p_node->rpLinks()[0].pNode()->rpLinks()[0].pNode()->mC.SetStart(UNDEF_TIME);
+		p_node->rpLinks()[0].pNode()->rpLinks()[0].pNode()->mC.SetStop(UNDEF_TIME);         
+	      }
+*/
+	      for (i = 0; i < p_node->rNLinks(); i++) {
+                _node_type *forwnode = p_node->rpLinks()[i].pNode();
+                if (forwnode->mC.Start() != UNDEF_TIME) {
+                  p_node->mC.SetStop(p_node->mC.Stop() == UNDEF_TIME
+                                      ?           forwnode->mC.Start()
+                                      : HIGHER_OF(forwnode->mC.Start(), p_node->mC.Stop()));
+                }
+              }
+	    }
+	    
+          }
+	}
+//
+
+        if (!format.mNoTimes && p_node->mC.Stop() != UNDEF_TIME) {
           fputs(" t=", pFp);
     
           if (p_node->mC.Start() != UNDEF_TIME && format.mStartTimes) {
@@ -1246,6 +1302,20 @@ namespace STK
             else                      fprintf(pFp,"%d", p_node->rpLinks()[j].pNode()->mAux);
 
             FLOAT lm_score = p_node->rpLinks()[j].LmLike();
+	    FLOAT ac_score = p_node->rpLinks()[j].AcousticLike();
+	    
+	    if (format.mPosteriors) {
+	      typename _NetworkType::Node* p_end_node = p_node->rpLinks()[j].pNode();
+	      FLOAT score = p_node->mC.mpAlphaBeta->mAlpha + p_end_node->mC.mpAlphaBeta->mBeta 
+                            + (lm_score * lmScale + ac_score) * posteriorScale;
+
+              if (p_end_node->mC.mType & NT_MODEL) {
+                score += modelPenalty * posteriorScale;
+	      } else if (p_end_node->mC.mType & NT_WORD &&  p_end_node->mC.mpPronun != NULL) {
+                score += wordPenalty * posteriorScale;
+	      }
+              fprintf(pFp," P="FLOAT_FMT, exp(score - tot_log_like));
+            }
 
 // THIS WOULD UN-SCALE THE SCORES, BUT THIS NOW HAPPENS JUST AFTER LATTICE
 // GENERATION
@@ -1298,14 +1368,28 @@ namespace STK
               fprintf(pFp, format.mArcDefsWithJ ? "J=%d S=" : "I=", l++);
 
             if (format.mBase62Labels) fprintBase62(pFp, p_node->mAux);
-            else                     fprintf(pFp,"%d", p_node->mAux);
+            else                      fprintf(pFp,"%d", p_node->mAux);
             putc(' ', pFp); // space = ' ';
             if (format.mAllFieldNames) fputs("E=", pFp);
 
             if (format.mBase62Labels) fprintBase62(pFp, p_node->rpLinks()[j].pNode()->mAux);
             else                      fprintf(pFp,"%d", p_node->rpLinks()[j].pNode()->mAux);
-            
-            FLOAT lm_score = p_node->rpLinks()[j].LmLike();
+	    
+	    FLOAT lm_score = p_node->rpLinks()[j].LmLike();
+	    FLOAT ac_score = p_node->rpLinks()[j].AcousticLike();
+	    
+	    if (format.mPosteriors) {
+	      typename _NetworkType::Node* p_end_node = p_node->rpLinks()[j].pNode();
+	      FLOAT score = p_node->mC.mpAlphaBeta->mAlpha + p_end_node->mC.mpAlphaBeta->mBeta 
+                            + (lm_score * lmScale + ac_score) * posteriorScale;
+
+              if (p_end_node->mC.mType & NT_MODEL) {
+                score += modelPenalty * posteriorScale;
+	      } else if (p_end_node->mC.mType & NT_WORD &&  p_end_node->mC.mpPronun != NULL) {
+                score += wordPenalty * posteriorScale;
+	      }
+              fprintf(pFp," P="FLOAT_FMT, exp(score - tot_log_like));
+            }
 
 // THIS WOULD UN-SCALE THE SCORES, BUT THIS NOW HAPPENS JUST AFTER LATTICE
 // GENERATION
@@ -1330,7 +1414,7 @@ namespace STK
             if ((!close_enough(p_node->rpLinks()[j].AcousticLike(), 0.0, 10)) 
             && !(format.mNoAcousticLikes))
             {
-              fprintf(pFp," a="FLOAT_FMT, p_node->rpLinks()[j].AcousticLike());
+              fprintf(pFp," a="FLOAT_FMT, ac_score);
             }
 
             fputs("\n", pFp);

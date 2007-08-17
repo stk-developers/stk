@@ -1489,7 +1489,7 @@ namespace STK
   template <typename _NodeType>
     Label *
     Token<_NodeType>::
-    pGetLabels(bool getTimesFromNetwork)
+    pGetLabels(bool getTimesFromNetwork, FLOAT tot_log_like)
     {
       WordLinkRecord *  wlr;
       Label *           tmp;
@@ -1498,17 +1498,24 @@ namespace STK
         
       if (!this->IsActive()) 
         return NULL;
-      
+	
+      bool poster_score = tot_log_like > LOG_MIN;
       for (wlr = this->mpWlr; wlr != NULL; wlr = wlr->mpNext) 
       {
         if ((tmp = (Label *) malloc(sizeof(Label))) == NULL)
           Error("Insufficient memory");
     
         tmp->mScore = wlr->mLike;
+	
+	if(poster_score) {
+	  assert(wlr->pNode()->mC.mpAlphaBeta);
+	  tmp->mScore = exp(wlr->pNode()->mC.mpAlphaBeta->mAlpha + 
+                            wlr->pNode()->mC.mpAlphaBeta->mBeta - tot_log_like);
+	}
         tmp->mId    = wlr->mStateIdx;
 
 	if(getTimesFromNetwork) {
-          tmp->mStart = wlr->pNode()->mC.Start();
+	  tmp->mStart = wlr->pNode()->mC.Start();
           tmp->mStop  = wlr->pNode()->mC.Stop();
 	} else {
 	  tmp->mStop  = wlr->mTime;
@@ -1562,10 +1569,12 @@ namespace STK
             level[li-1] = tmp2;
           }*/
     
-	  if(!getTimesFromNetwork) {
+//	  if(!getTimesFromNetwork) 
+	  {
             level[li]->mStart  = tmp->mStop;
 	  }
-          level[li]->mScore -= tmp->mScore;
+	  if(!poster_score)
+            level[li]->mScore -= tmp->mScore;
         }
     
         tmp->mpNext = level[li];
@@ -2363,7 +2372,10 @@ namespace STK
         tot_like = rNetwork().pLast()->mC.mpAnr->mpExitToken->mLike;
         
         if (pLabels != NULL)
-          *pLabels = rNetwork().pLast()->mC.mpAnr->mpExitToken->pGetLabels(getTimesFromNetwork);
+          *pLabels = rNetwork().pLast()->mC.mpAnr->mpExitToken->pGetLabels(getTimesFromNetwork, 
+	                                             rNetwork().pFirst()->mC.mpAlphaBeta 
+						     ? rNetwork().pFirst()->mC.mpAlphaBeta->mBeta
+						     : LOG_0);
           
         if (/*mLatticeGeneration && */pLattice != NULL)
         {
