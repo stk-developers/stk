@@ -2503,7 +2503,6 @@ namespace STK
   LinearXform(size_t inSize, size_t outSize):
     mMatrix(outSize, inSize)
   {
-    //mpMatrixO     = new FLOAT[inSize * outSize];
     mOutSize      = outSize;
     mInSize       = inSize;
     mMemorySize   = 0;
@@ -2518,7 +2517,6 @@ namespace STK
   LinearXform::
   ~LinearXform()
   {
-    //delete [] mpMatrixO;
   }
   
   
@@ -2532,6 +2530,16 @@ namespace STK
            char*      pMemory,
            PropagDirectionType  direction)
   {
+#ifdef HAVE_ATLAS
+    memset(pOutputVector, 0, mOutSize*sizeof(FLOAT));
+# if DOUBLEPRECISION
+    cblas_dgemv(CblasRowMajor, CblasNoTrans, mMatrix.Rows(), mMatrix.Cols(), 1.0, 
+        mMatrix.pData(), mMatrix.Stride(), pInputVector, 1, 1.0F, pOutputVector, 1);
+# else
+    cblas_sgemv(CblasRowMajor, CblasNoTrans, mMatrix.Rows(), mMatrix.Cols(), 1.0, 
+        mMatrix.pData(), mMatrix.Stride(), pInputVector, 1, 1.0F, pOutputVector, 1);
+# endif
+#else
     size_t c; // column counter
     size_t r; // row counter
     
@@ -2541,10 +2549,10 @@ namespace STK
       pOutputVector[r] = 0.0;
       for (c = 0; c < mInSize; c++) 
       {
-        //pOutputVector[r] += pInputVector[c] * mpMatrixO[mInSize * r + c];
         pOutputVector[r] += mMatrix[r][c] * pInputVector[c];
       }
     }
+#endif
     return pOutputVector;  
   }; //Evaluate(...)
   
