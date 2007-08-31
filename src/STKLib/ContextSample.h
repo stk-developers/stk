@@ -2,10 +2,12 @@
 #define ContextSample_h
 
 #include "common.h"
+#include "BQuestion.h"
 
 #include <iostream>
 #include <map>
 #include <string>
+#include <set>
 
 
 namespace STK
@@ -21,7 +23,7 @@ namespace STK
   /** 
    * @brief 
    */
-  class NGram
+  class NGram : public BQuestionTerm
   {
   public:
     typedef FLOAT ProbType;
@@ -59,7 +61,8 @@ namespace STK
   }; // class NGram
 
 
-  /** 
+  /** *************************************************************************
+   *  *************************************************************************
    * @brief Maps real token names to their integer value
    */
   class VocabularyTable 
@@ -96,7 +99,8 @@ namespace STK
   }; // class VocabularyTable
 
   
-  /** 
+  /** *************************************************************************
+   *  *************************************************************************
    * @brief NGram storage.
    * 
    * This structure just holds pointers to the NGram pool. No memory allocation 
@@ -108,34 +112,68 @@ namespace STK
     typedef std::vector<NGram*> NGramContainer;
 
     NGramSubset()
+    : mData(), mOrder(0), mpPool(NULL)
+    {}
+
+    NGramSubset(size_t order)
+    : mData(), mOrder(order), mpPool(NULL)
     {}
 
     NGramSubset(const NGramSubset& rOrig)
-    : mData(rOrig.mData), mpPool(rOrig.mpPool)
+    : mData(rOrig.mData), mOrder(rOrig.mOrder), mpPool(rOrig.mpPool)
     {}
 
+    virtual
     ~NGramSubset()
     {}
 
+    /// Returns context size
+    const size_t
+    Order() const
+    { return mOrder; }
+
     /// gives access to the parrent pool
     const NGramPool&
-    Parrent() const
+    Parent() const
     { return *mpPool;}
+
+    /// computes data entropy
+    FLOAT
+    Entropy() const;
+
+    /// computes split data entropy, provided question rQuestion
+    FLOAT
+    SplitEntropy(const BQuestion& rQuestion) const;
 
     /// returns total data mass
     FLOAT
     Mass() const;
 
+    /** 
+     * @brief Splits data according to a given question
+     * 
+     * @param rQuestion question that decides about the split
+     * @param rData0 negative answer data
+     * @param rData1 positive answer data
+     */
+    void
+    Split(const BQuestion& rQuestion, NGramSubset& rData0, NGramSubset& rData1);
+
+    friend class Distribution;
+    friend class BDTree;
+
   protected:
     NGramContainer       mData;
+    size_t               mOrder;
     NGramPool*           mpPool;
   };
 
 
-  /** 
+  /** *************************************************************************
+   *  *************************************************************************
    * @brief Parent storage for NGrams
    */
-  class NGramPool
+  class NGramPool : public NGramSubset
   {
   private:
     NGram*
@@ -145,13 +183,16 @@ namespace STK
     typedef std::vector<NGram*> NGramContainer;
 
     NGramPool()
-    : mData(), mOrder(0), mpPredictorTable(NULL), mpTargetTable(NULL)
-    {}
+    : NGramSubset(), 
+      mpPredictorTable(NULL), mpTargetTable(NULL)
+    { mpPool = this; }
 
     NGramPool(size_t n)
-    : mData(), mOrder(n), mpPredictorTable(NULL), mpTargetTable(NULL)
-    {}
+    : NGramSubset(n),
+      mpPredictorTable(NULL), mpTargetTable(NULL)
+    { mpPool= this; }
 
+    virtual
     ~NGramPool();
 
     void 
@@ -169,11 +210,21 @@ namespace STK
     { mpTargetTable = pVocab;} 
 
 
-    /// Returns context size
-    const size_t
-    Order() const
-    { return mOrder; }
+    /** 
+     * @brief Search for a given NGram
+     * @param pNGram pointer to the NGram to look for
+     * @return Pointer to the found NGram or NULL if not found
+     */
+    NGram*
+    FindNGram(const NGram* pNGram);
 
+    /** 
+     * @brief Compares two ngram structures
+     * @return true if different, false if equal
+     */
+    const bool
+    CompareNGram(const NGram* pFirst, const NGram* pSecond) const;
+    
     /// Returns number of samples in the pool
     const size_t
     Size() const
@@ -184,8 +235,6 @@ namespace STK
     operator <<(std::ostream& rOstr, const NGramPool& rWhat);
 
   private:
-    NGramContainer       mData;
-    size_t               mOrder;
     VocabularyTable*     mpPredictorTable;
     VocabularyTable*     mpTargetTable;
   }; // class NGramPool

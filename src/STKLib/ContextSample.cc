@@ -110,7 +110,7 @@ namespace STK {
     for (i=rWhat.mData.begin(); i!=rWhat.mData.end(); ++i) {
       NGram& r_ngram = *(*i);
 
-      for (size_t j=0; j<rWhat.Order(); ++j) {
+      for (int j=rWhat.Order()-1; j>=0; j--) {
         rOstr << r_ngram[j] << " ";
       }
       rOstr << r_ngram.Counts() << std::endl;
@@ -120,6 +120,7 @@ namespace STK {
 
   //***************************************************************************/
   //***************************************************************************/
+  // virtual
   NGramPool::
   ~NGramPool()
   {
@@ -190,10 +191,10 @@ namespace STK {
         tmp_sample->mCounts = counts * weight ;
         
         // copy the chunk to the new NGram Token array
-        std::vector<std::string>::iterator it;
+        std::vector<std::string>::reverse_iterator it; 
         size_t token_index = 0;
 
-        for (it=token_chunk.begin(); it!=token_chunk.end(); ++it, ++token_index) {
+        for (it = token_chunk.rbegin(); it!=token_chunk.rend(); ++it, ++token_index) {
           int x = mpPredictorTable->AToI(*it); 
           (*tmp_sample)[token_index] = x;
         }
@@ -251,6 +252,160 @@ namespace STK {
   }
 
 
+  //***************************************************************************/
+  //***************************************************************************/
+  NGram*
+  NGramPool::
+  FindNGram(const NGram* pNGram)
+  {
+    NGramContainer::iterator i;
+
+    for (i=mData.begin(); i!=mData.end(); ++i) 
+    {
+      bool different=true;
+
+      for (int j=0; j<Order() && different; ++j) {
+        // TODO
+
+      }
+      if (!different) {
+        return *i;
+      }
+    }
+
+    return NULL;
+  } // FindNGram(const NGram* pNGram)
+
+
+  const bool
+  NGramPool::
+  CompareNGram(const NGram* pFirst, const NGram* pSecond) const
+  {
+    for (int i=0; i<Order(); ++i) {
+      // TODO
+    }
+  }
+
+  //****************************************************************************
+  //****************************************************************************
+  void
+  NGramSubset::
+  Split(const BQuestion& rQuestion, NGramSubset& rData0, NGramSubset& rData1)
+  {
+    rData0.mData.reserve(mData.size());
+    rData1.mData.reserve(mData.size());
+
+    NGramContainer::iterator i;
+    for (i = mData.begin(); i != mData.end(); ++i) {
+      if (rQuestion.Eval(**i)) {
+        rData1.mData.push_back(*i);
+      }
+      else {
+        rData0.mData.push_back(*i);
+      }
+    }
+  }    
+
+  
+  //****************************************************************************
+  //****************************************************************************
+  FLOAT
+  NGramSubset::
+  Entropy() const
+  {
+    std::map<NGram::TokenType, NGram::ProbType> vocab;
+    std::map<NGram::TokenType, NGram::ProbType>::iterator i_vocab;
+    double  N = 0;
+    
+    // collect vocabulary counts and total number of tokens
+    NGramContainer::const_iterator i;
+    for (i=mData.begin(); i!=mData.end(); ++i) {
+      NGram::TokenType* p_token = &((**i)[0]);;
+      NGram::ProbType   counts = (*i)->Counts();
+
+      if (vocab.find(*p_token) == vocab.end()) {
+        vocab[*p_token] = counts;
+      }
+      else {
+        vocab[*p_token] += counts;
+      }
+
+      N += counts;
+    }
+    
+    // accumulate some stats for entropy computation
+    // e = -sum(#token/N * log2(#token/N)) =
+    //   = -1/N*sum(#token*log2(#token)) + log2(N)
+    //   where sums are over all tokens
+    double acc = 0;
+
+    for (i_vocab=vocab.begin(); i_vocab!=vocab.end(); ++i_vocab) {
+      acc += i_vocab->second * log2(i_vocab->second);
+    }
+
+    return -acc/N + log2(N);
+  }
+
+
+  //****************************************************************************
+  //****************************************************************************
+  FLOAT
+  NGramSubset::
+  SplitEntropy(const BQuestion& rQuestion) const
+  {
+    std::map<NGram::TokenType, NGram::ProbType> vocab0;
+    std::map<NGram::TokenType, NGram::ProbType> vocab1;
+    std::map<NGram::TokenType, NGram::ProbType>::iterator i_vocab;
+    double  N0 = 0;
+    double  N1 = 0;
+    
+    // collect vocabulary counts and total number of tokens
+    NGramContainer::const_iterator i;
+    for (i=mData.begin(); i!=mData.end(); ++i) {
+      NGram::TokenType* p_token = &((**i)[0]);;
+      NGram::ProbType   counts = (*i)->Counts();
+
+      if (! rQuestion.Eval(**i)) {
+        if (vocab0.find(*p_token) == vocab0.end()) {
+          vocab0[*p_token] = counts;
+        }
+        else {
+          vocab0[*p_token] += counts;
+        }
+
+        N0 += counts;
+      }
+      else {
+        if (vocab1.find(*p_token) == vocab1.end()) {
+          vocab1[*p_token] = counts;
+        }
+        else {
+          vocab1[*p_token] += counts;
+        }
+
+        N1 += counts;
+      }
+    }
+    
+    // accumulate some stats for entropy computation
+    // e = -sum(#token/N * log(#token/N)) =
+    //   = -1/N*sum(#token*log(#token)) + log(N)
+    //   where sums are over all tokens
+    double acc0 = 0;
+    double acc1 = 0;
+
+    for (i_vocab=vocab0.begin(); i_vocab!=vocab0.end(); ++i_vocab) {
+      acc0 += i_vocab->second * log(i_vocab->second);
+    }
+    for (i_vocab=vocab1.begin(); i_vocab!=vocab1.end(); ++i_vocab) {
+      acc1 += i_vocab->second * log(i_vocab->second);
+    }
+    
+    double p0 = N0/(N0+N1);
+    double p1 = N1/(N0+N1);
+
+    return p0*(-acc0/N0 + log(N0)) + p1*(-acc1/N1 + log(N1));
+  }
 
 } // namespace STK
 

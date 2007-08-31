@@ -39,18 +39,20 @@ int main(int argc, char* argv[])
     string                  target_vocab_fname;
     VocabularyTable*        target_vocabulary;
     vector< string >        positional_parameters;
+    BDTreeBuildTraits       new_tree_traits;
 
 
     // command line options only
     po::options_description generic_options("Command line options");
     generic_options.add_options()
       ("help",          "Print more detailed help") 
-      ("action,A",      po::value<string>(&action),         "Action to perform")
-      ("configfile,C",  po::value<string>(&config_file),    "Configuration file")
-      ("predictorvocab", po::value<string>(&predictor_vocab_fname),    "Predictor vocabulary file")
-      ("targetvocab",   po::value<string>(&target_vocab_fname),    "Target vocabulary file [same as predictor]")
-      ("order",         po::value<int>(),                        "Number of predictors")
-      ("script,S",      po::value<vector<string> >(),  "Script files")
+      ("action,A",      po::value<string>(&action),                           "Action to perform")
+      ("configfile,C",  po::value<string>(&config_file),                      "Configuration file")
+      ("minentropyred", po::value<double>(&new_tree_traits.mMinReduction),    "Minimum entropy reduction criterion")
+      ("predictorvocab", po::value<string>(&predictor_vocab_fname),           "Predictor vocabulary file")
+      ("targetvocab",   po::value<string>(&target_vocab_fname),               "Target vocabulary file [same as predictor]")
+      ("order",         po::value<int>(&new_tree_traits.mNPred),              "Number of predictors")
+      ("script,S",      po::value<vector<string> >(),                         "Script files")
       ;
 
     // config file options only
@@ -168,11 +170,14 @@ int main(int argc, char* argv[])
           data.AddFromFile(line_buf, 1.0);
         }
 
-
         list_stream.close();
       }
 
 
+      BDTree new_tree(data, new_tree_traits, "");
+      new_tree.Dump(std::cout, " ");
+
+      std::cout << data;
     } // action == train
 
     else if (action == "score") {
