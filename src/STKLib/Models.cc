@@ -1647,6 +1647,9 @@ namespace STK
       
       mpAccums = static_cast<FLOAT*>
         (stk_memalign(16, accum_size, &free_vec));
+#ifdef STK_MEMALIGN_MANUAL
+      mpAccumsFree = static_cast<FLOAT*>(free_vec);
+#endif
     }
     else
     {
