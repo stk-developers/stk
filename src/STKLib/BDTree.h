@@ -4,15 +4,14 @@
 #include "common.h"
 #include "ContextSample.h"
 #include "BQuestion.h"
-//#include <STKLib/common.h>
-//#include <STKLib/ContextSample.h>
+#include "BDTree_IO.h"
 
 #include <vector>
 
 
 namespace STK
 {
-  typedef std::vector<FLOAT> Data;
+  class BSetQuestion;
 
 
   /** *************************************************************************
@@ -24,12 +23,15 @@ namespace STK
     BSetQuestion() : BQuestion(), mSet(), mPred(0)
     {}
 
-    BSetQuestion(int pred): BQuestion(), mSet(), mPred(pred)
+    BSetQuestion(int pred, int vocab_size)
+    : BQuestion(), mSet(vocab_size), mPred(pred)
     {};
 
-    BSetQuestion(const BSetQuestion& rOrig): BQuestion(rOrig), mSet(rOrig.mSet), 
-    mPred(rOrig.mPred)
+    BSetQuestion(const BSetQuestion& rOrig)
+    : BQuestion(rOrig), mSet(rOrig.mSet), mPred(rOrig.mPred)
     {};
+
+    BSetQuestion(std::istream& rStream, BDTreeHeader& rHeader);
 
     virtual
     ~BSetQuestion()
@@ -53,6 +55,25 @@ namespace STK
     void
     DumpImplicit() const;
 
+    /** 
+     * @brief Reads the tree definition from a stream
+     * 
+     * @param rStream std::stream to read from
+     * @param rHeader header with parameters
+     */
+    virtual void
+    Read(std::istream& rStream, BDTreeHeader& rHeader);
+
+    /** 
+     * @brief Reads the tree definition from a stream
+     * 
+     * @param rStream std::stream to read from
+     * @param rHeader header with parameters
+     */
+    virtual void
+    Write(std::ostream& rStream, BDTreeHeader& rHeader);
+
+
     // Set Question specific methods ..........................................
     int
     Predictor() const
@@ -68,7 +89,8 @@ namespace STK
     EvalRawToken(const NGram::TokenType& rToken) const;
 
   private:
-    typedef   std::set<NGram::TokenType> SetType;
+    //typedef   std::set<NGram::TokenType> SetType;
+    typedef   std::vector<bool> SetType;
     SetType   mSet;
     int       mPred;
   };
@@ -78,22 +100,108 @@ namespace STK
   {
   public:
     typedef FLOAT ProbType;
-    typedef std::map<NGram::TokenType, FLOAT> Container;
 
     Distribution() 
-    : mVec(), mN(0)
+    :  mN(0)
     {}
 
     Distribution(size_t n) 
-    //: mVec(n), mN(0)
-    :mN(0)
+    :  mN(0)
     {}
 
     Distribution(const Distribution& rOrig)
-    : mVec(rOrig.mVec), mN(rOrig.mN)
+    : mN(rOrig.mN)
     {}
     
+    virtual
     ~Distribution()
+    {}
+
+//    /** 
+//     * @brief Dumps the question to a stream
+//     * 
+//     * @param rStream std::ostream for output
+//     * @param rPrefix prefix which is prepended to the output
+//     */
+//    virtual void
+//    Dump(std::ostream& rStream, const std::string& rPrefix) const;
+
+    /** 
+     * @brief Returns soft data counts
+     */
+    const ProbType&
+    Counts() const
+    { return mN; }
+//
+//    /** 
+//     * @brief Returns the entropy of the distribution
+//     */
+//    virtual const ProbType 
+//    Entropy() const;
+//
+//    /** 
+//     * @brief Computes weighted entropy of two distributions
+//     */
+//    static const ProbType
+//    SplitEntropy(const Distribution& rD1, const Distribution& rD2);
+//
+//
+//    virtual void
+//    ComputeFromNGrams(const NGramSubset& rData);
+//
+//    template <class InputIterator>
+//      void
+//      ComputeFromCounts(InputIterator first);
+//
+//
+//    template <class InputIterator>
+//      void
+//      ComputeFromSamples(InputIterator first, InputIterator last);
+//
+//
+//    /** 
+//     * @brief Smoothes distribution by another distribution
+//     * 
+//     * @param rDistr Smoothing distribution
+//     * @param r smoothing kludge/fudge factor
+//     *
+//     * Psmoothed(s) = b*Pthis(s) + (1-b)*PrDistr(s) 
+//     *
+//     *   where
+//     *
+//     * b = #(s) / (#(s)+r)
+//     */
+//    virtual void
+//    Smooth(const Distribution& rDistr, FLOAT r);
+//
+//    ProbType 
+//    operator [] (const NGram::TokenType& rToken);
+
+  protected:
+    ProbType           mN;   ///< Soft data count
+    
+  }; // class VecDistribution
+
+
+  class VecDistribution : public Distribution
+  {
+  public:
+    typedef FLOAT ProbType;
+    typedef std::vector<FLOAT> Container;
+
+    VecDistribution() 
+    : Distribution(), mVec()
+    {}
+
+    VecDistribution(size_t n) 
+    : Distribution(n), mVec(n)
+    {}
+
+    VecDistribution(const VecDistribution& rOrig)
+    : Distribution(rOrig), mVec(rOrig.mVec)
+    {}
+    
+    ~VecDistribution()
     {}
 
     /** 
@@ -102,53 +210,71 @@ namespace STK
      * @param rStream std::ostream for output
      * @param rPrefix prefix which is prepended to the output
      */
-    void
+    virtual void
     Dump(std::ostream& rStream, const std::string& rPrefix) const;
 
+    //..........................................................................
     /** 
-     * @brief Returns soft data counts
+     * @brief Reads the tree definition from a stream
+     * 
+     * @param rStream std::stream to read from
+     * @param rHeader header with parameters
      */
-    const ProbType&
-    Counts() const
-    { return mN; }
+    void
+    Read(std::istream& rStream, BDTreeHeader& rHeader);
+
+    /** 
+     * @brief Reads the tree definition from a stream
+     * 
+     * @param rStream std::stream to read from
+     * @param rHeader header with parameters
+     */
+    void
+    Write(std::ostream& rStream, BDTreeHeader& rHeader);
+
 
     /** 
      * @brief Returns the entropy of the distribution
      */
-    const ProbType 
+    virtual const ProbType 
     Entropy() const;
 
     /** 
      * @brief Computes weighted entropy of two distributions
      */
     static const ProbType
-    SplitEntropy(const Distribution& rD1, const Distribution& rD2);
-
-
-    void
-    BuildFromCounts(const Data& rData);
-
-    void
-    ComputeFromCounts(const Data& rData);
-
-    void
-    ComputeFromNGrams(const NGramSubset& rData);
-
-    template <class InputIterator>
-      void
-      ComputeFromCounts(InputIterator first);
+    SplitEntropy(const VecDistribution& rD1, const VecDistribution& rD2);
 
 
     template <class InputIterator>
       void
-      ComputeFromSamples(InputIterator first, InputIterator last);
+      ComputeFromNGrams(InputIterator first, InputIterator last);
 
+
+    /** 
+     * @brief Smoothes distribution by another distribution
+     * 
+     * @param rDistr Smoothing distribution
+     * @param r smoothing kludge/fudge factor
+     *
+     * Psmoothed(s) = b*Pthis(s) + (1-b)*PrDistr(s) 
+     *
+     *   where
+     *
+     * b = #(s) / (#(s)+r)
+     */
+    virtual void
+    Smooth(const VecDistribution& rDistr, FLOAT r);
+
+
+    ProbType 
+    operator [] (const NGram::TokenType& rToken);
 
   private:
     Container          mVec; ///< Data distribution vector
-    ProbType           mN;   ///< Soft data count
     
-  }; // class Distribution
+  }; // class VecDistribution
+
 
 
   /** 
@@ -162,6 +288,7 @@ namespace STK
     mMinReduction(0.001),
     mMinInData(0),
     mNPred(3),
+    mSmoothR(0.0),
     mVerbosity(1)
     {}
 
@@ -169,6 +296,7 @@ namespace STK
     double    mMinInData;       ///< Minimum input data mass
     int       mNPred;           ///< Number of predictors
 
+    double    mSmoothR;         ///< Bottom-up recursive smoothing r-factor
     int       mVerbosity;       ///< Verbosity level
 
   }; //class BDTreeAttributes
@@ -179,12 +307,13 @@ namespace STK
    */
   class BDTree
   {
-  public:
+  private:
     /** 
      * @brief Plain constructor
      */
     BDTree();
 
+  public:
     /** 
      * @brief Copy constructor
      */
@@ -200,33 +329,49 @@ namespace STK
         const std::string& rPrefix);
 
     /** 
+     * @brief Loads a new tree from a stream
+     * 
+     * @param rStream stream to read
+     * @param rHeader header containing file info
+     */
+     BDTree(std::istream& rStream, BDTreeHeader& rHeader);
+
+
+    /** 
      * @brief Destructor
      */
     ~BDTree();
 
+
+    BDTree*
+    Clone()
+    { return new BDTree(*this); }
+
+
     bool
     IsLeaf() const
     { return (NULL == mpTree0) && (NULL == mpTree1) && (NULL == mpQuestion); }
+
+
     //..........................................................................
     /** 
      * @brief Reads the tree definition from a stream
      * 
      * @param rStream std::stream to read from
-     * @param format  format 
-     * @param rTraits tree building parameters
+     * @param rHeader tree building parameters
      */
     void
-    Read(std::istream& rStream, int format, BDTreeBuildTraits& rTraits);
+    Read(std::istream& rStream, BDTreeHeader& rHeader);
 
     /** 
      * @brief Reads the tree definition from a stream
      * 
      * @param rStream std::stream to read from
-     * @param format  format 
-     * @param rTraits tree building parameters
+     * @param rHeader tree building parameters
      */
     void
-    Write(std::ostream& rStream, int format);
+    Write(std::ostream& rStream, BDTreeHeader& rHeader);
+
 
     /** 
      * @brief Builds the tree from the given NGram subset
@@ -237,8 +382,51 @@ namespace STK
     BuildFromNGrams(NGramSubset& rNGrams, BDTreeBuildTraits& rTraits,
         const std::string& rPrefix);
 
+
+    /** 
+     * @brief Finds "optimal" split question for this node
+     * 
+     * @param rNGrams data set
+     * @param rTraits tree building parameters
+     * @param pSplitEnt fill with split entropy
+     * 
+     * @return pointer to new question if succeede, otherwise NULL
+     */
     BSetQuestion*
     FindSimpleQuestion(NGramSubset& rNGrams, BDTreeBuildTraits& rTraits, FLOAT* pSplitEnt) ;
+
+
+    /** 
+     * @brief Scores a single n-gram
+     * @param rNGram data to score
+     * @return Score based on the decision tree structure and precomputed smoothed probabilities
+     *
+     * NOTE: Smoothing is not done on-line. It has to be precomputed using ComputeBackoffDists
+     */
+    FLOAT 
+    ScoreNGram(const NGram& rNGram);
+
+    /** 
+     * @brief Scores data
+     * 
+     * @param rNGrams utterance data
+     * @param r smoothing factor
+     * 
+     * @return utterance score
+     */
+    FLOAT
+    ScoreNGramSubset(const NGramSubset& rNGrams);
+
+    /** 
+     * @brief Computes smoothed probabilities using smoothing factor r
+     * 
+     * @param pParent parent node, NULL for root
+     * @param r smoothing factor
+     *
+     * See Distribution::Smooth(...) for details
+     */
+    void
+    ComputeBackoffDists(BDTree* pParent, FLOAT r);
 
     /** 
      * @brief Dumps the question to a stream
@@ -255,11 +443,11 @@ namespace STK
         int pred);
 
   private:
-    BDTree*         mpTree0;
-    BDTree*         mpTree1;
-    BQuestion*      mpQuestion;
-    Distribution    mDist;
-  
+    BDTree*           mpTree0;
+    BDTree*           mpTree1;
+    BQuestion*        mpQuestion;
+    VecDistribution   mDist;
+    VecDistribution*  mpBackoffDist;
   }; // class BDTree
 } // namespace STK
 

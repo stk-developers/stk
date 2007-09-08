@@ -92,6 +92,11 @@ namespace STK
     VocabularyTable&
     LoadFromStream(std::istream& rIStream);
 
+    ///
+    const size_t
+    Size() const
+    { return mIntMap.size(); }
+
   private:
     StringMapType   mStrMap;
     IntMapType      mIntMap;
@@ -209,6 +214,14 @@ namespace STK
     setTargetVocab(VocabularyTable* pVocab)
     { mpTargetTable = pVocab;} 
 
+    const VocabularyTable*
+    pPredictorTable() const 
+    { return mpPredictorTable; }
+
+
+    const VocabularyTable*
+    pTargetTable() const 
+    { return mpTargetTable; }
 
     /** 
      * @brief Search for a given NGram

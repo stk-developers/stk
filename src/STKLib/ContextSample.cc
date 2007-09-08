@@ -295,6 +295,11 @@ namespace STK {
     rData0.mData.reserve(mData.size());
     rData1.mData.reserve(mData.size());
 
+    rData0.mOrder = mOrder;
+    rData0.mpPool = mpPool;
+    rData1.mOrder = mOrder;
+    rData1.mpPool = mpPool;
+
     NGramContainer::iterator i;
     for (i = mData.begin(); i != mData.end(); ++i) {
       if (rQuestion.Eval(**i)) {

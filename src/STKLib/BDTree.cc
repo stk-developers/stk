@@ -1,38 +1,185 @@
+/***************************************************************************
+ *   copyright            : (C) 2004 by Lukas Burget,UPGM,FIT,VUT,Brno     *
+ *   email                : burget@fit.vutbr.cz                            *
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+
 #include "BDTree.h"
 
 #include <vector>
 #include <iostream>
 
-using std::vector;
 
 namespace STK
 {
+  // //***************************************************************************/
+  // //***************************************************************************/
+  // void
+  // MapDistribution::
+  // Dump(std::ostream& rStream, const std::string& rPrefix) const
+  // {
+  //   rStream << rPrefix;
+
+  //   MapDistribution::Container::const_iterator i;
+  //   for (i = mVec.begin(); i!=mVec.end(); ++i) {
+  //     rStream << i->first << ": " << i->second << "\t";
+  //   }
+  //   rStream << std::endl;
+  // }
+
+
+  // //***************************************************************************/
+  // //***************************************************************************/
+  // const MapDistribution::ProbType
+  // MapDistribution::
+  // Entropy() const
+  // {
+  //   double e = 0;
+  //   MapDistribution::Container::const_iterator i;
+
+  //   for (i=mVec.begin(); i!=mVec.end(); ++i) {
+  //     e -= i->second * log2(i->second);
+  //   }
+  //   
+  //   return e;
+  // }
+
+
+  // //***************************************************************************/
+  // //***************************************************************************/
+  // const MapDistribution::ProbType
+  // MapDistribution::
+  // SplitEntropy(const MapDistribution& rD1, const MapDistribution& rD2)
+  // {
+  //   double w1 = rD1.mN / (rD1.mN + rD2.mN);
+  //   double w2 = rD2.mN / (rD1.mN + rD2.mN);
+
+  //   return w1*rD1.Entropy() + w2*rD2.Entropy();
+  // }
+
+
+  // //***************************************************************************/
+  // //***************************************************************************/
+  // void
+  // MapDistribution::
+  // ComputeFromCounts(const Data& rData)
+  // {
+  //   Data::const_iterator  i;
+  //   MapDistribution::Container::iterator  j;
+  //   double                n = 0;
+  //     
+  //   // set probs to 0
+  //   for (j=mVec.begin(); j!=mVec.end(); ++j) {
+  //     j->second = 0.0;
+  //   }
+
+  //   for (i=rData.begin(); i!=rData.end(); ++i) {
+  //     n += *i;
+  //   }
+
+  //   for (i=rData.begin(), j=mVec.begin(); j!=mVec.end(); ++i, ++j) {
+  //     j->second /= n;
+  //   }
+  // }
+
+
+  // //***************************************************************************/
+  // //***************************************************************************/
+  // void
+  // MapDistribution::
+  // ComputeFromNGrams(const NGramSubset& rData)
+  // {
+  //   mVec.clear();
+  //   mN = 0;
+
+  //   // collect the counts
+  //   NGramSubset::NGramContainer::const_iterator i;
+
+  //   for (i=rData.mData.begin(); i!=rData.mData.end(); ++i) {
+  //     NGram::TokenType* p_token = &((**i)[0]);
+  //     NGram::ProbType   counts = (*i)->Counts();
+
+  //     if (mVec.find(*p_token) == mVec.end()) {
+  //       mVec[*p_token] = counts;
+  //     }
+  //     else {
+  //       mVec[*p_token] += counts;
+  //     }
+
+  //     mN += counts;
+  //   }
+  //     
+  //   // normalize counts to probs
+  //   MapDistribution::Container::iterator  j;
+  //   
+  //   for (j=mVec.begin(); j!=mVec.end(); ++j) {
+  //     j->second /= mN;
+  //   }
+  // }
+
+
+  // //***************************************************************************/
+  // //***************************************************************************/
+  // MapDistribution::ProbType 
+  // MapDistribution::
+  // operator [] (const NGram::TokenType& rToken)
+  // {
+  //   if(mVec.find(rToken) != mVec.end()) {
+  //     return mVec[rToken];
+  //   }
+  //   else {
+  //     return 0.0;
+  //   }
+  // }
+
+
+  // //***************************************************************************/
+  // //***************************************************************************/
+  // void
+  // MapDistribution::
+  // Smooth(const MapDistribution& rDistr, FLOAT r)
+  // {
+  //   MapDistribution::Container::iterator i_this;
+  //   MapDistribution::Container::const_iterator i_parent;
+
+  // } //Smooth(const MapDistribution& rDistr, FLOAT r)
+  
+
+  //***************************************************************************/
+  //***************************************************************************/
   //***************************************************************************/
   //***************************************************************************/
   void
-  Distribution::
+  VecDistribution::
   Dump(std::ostream& rStream, const std::string& rPrefix) const
   {
     rStream << rPrefix;
 
-    Distribution::Container::const_iterator i;
+    VecDistribution::Container::const_iterator i;
     for (i = mVec.begin(); i!=mVec.end(); ++i) {
-      rStream << i->first << ": " << i->second << "\t";
+      rStream << *i << "  ";
     }
     rStream << std::endl;
   }
 
+
   //***************************************************************************/
   //***************************************************************************/
-  const Distribution::ProbType
-  Distribution::
+  const VecDistribution::ProbType
+  VecDistribution::
   Entropy() const
   {
     double e = 0;
-    Distribution::Container::const_iterator i;
+    VecDistribution::Container::const_iterator i;
 
     for (i=mVec.begin(); i!=mVec.end(); ++i) {
-      e -= i->second * log2(i->second);
+      e -= *i * log2(*i);
     }
     
     return e;
@@ -41,9 +188,9 @@ namespace STK
 
   //***************************************************************************/
   //***************************************************************************/
-  const Distribution::ProbType
-  Distribution::
-  SplitEntropy(const Distribution& rD1, const Distribution& rD2)
+  const VecDistribution::ProbType
+  VecDistribution::
+  SplitEntropy(const VecDistribution& rD1, const VecDistribution& rD2)
   {
     double w1 = rD1.mN / (rD1.mN + rD2.mN);
     double w2 = rD2.mN / (rD1.mN + rD2.mN);
@@ -52,71 +199,87 @@ namespace STK
   }
 
 
+
+
+  //***************************************************************************/
+  //***************************************************************************/
+  // void
+  // VecDistribution::
+  // ComputeFromNGrams(const NGramSubset& rData)
+  // {
+  //   mVec.clear();
+  //   mN = 0;
+
+  //   // collect the counts
+  //   NGramSubset::NGramContainer::const_iterator i;
+
+  //   for (i=rData.mData.begin(); i!=rData.mData.end(); ++i) {
+  //     NGram::TokenType* p_token = &((**i)[0]);
+  //     NGram::ProbType   counts = (*i)->Counts();
+
+  //     mVec[*p_token]  += counts;
+  //     mN              += counts;
+  //   }
+  //     
+  //   // normalize counts to probs
+  //   VecDistribution::Container::iterator  j;
+  //   
+  //   for (j=mVec.begin(); j!=mVec.end(); ++j) {
+  //     *j /= mN;
+  //   }
+  // }
+
+
+  //***************************************************************************/
+  //***************************************************************************/
+  VecDistribution::ProbType 
+  VecDistribution::
+  operator [] (const NGram::TokenType& rToken)
+  {
+    assert (rToken < mVec.size());
+    return mVec[rToken];
+  }
+
   //***************************************************************************/
   //***************************************************************************/
   void
-  Distribution::
-  ComputeFromCounts(const Data& rData)
+  VecDistribution::
+  Smooth(const VecDistribution& rDistr, FLOAT r)
   {
-    Data::const_iterator  i;
-    Distribution::Container::iterator  j;
-    double                n = 0;
-      
-    // set probs to 0
-    for (j=mVec.begin(); j!=mVec.end(); ++j) {
-      j->second = 0.0;
-    }
+    double norm = 0.0F;
+    VecDistribution::Container::iterator i_this = mVec.begin();
+    VecDistribution::Container::const_iterator i_parent = rDistr.mVec.begin();
 
-    for (i=rData.begin(); i!=rData.end(); ++i) {
-      n += *i;
-    }
+    assert(mVec.size() == rDistr.mVec.size());
 
-    for (i=rData.begin(), j=mVec.begin(); j!=mVec.end(); ++i, ++j) {
-      j->second /= n;
-    }
-  }
+    while (i_this != mVec.end()) {
+      // compute weight
+      double prob = *i_this;
+      double b = *i_this*mN / (*i_this*mN + r);
 
+      *i_this = b * (*i_this) + (1-b) * (*i_parent);
+      norm += *i_this;
+
+      ++i_this;
+      ++i_parent;
+    } // while (i_this != mVec.end() && i_parent != rDistr.mVec.end()) {
+
+    // normalize
+    while (i_this != mVec.end()) {
+      *i_this /= norm;
+    }
+  } //Smooth(const VecDistribution& rDistr, FLOAT r)
+  
 
   //***************************************************************************/
   //***************************************************************************/
-  void
-  Distribution::
-  ComputeFromNGrams(const NGramSubset& rData)
-  {
-    mVec.clear();
-    mN = 0;
-
-    // collect the counts
-    NGramSubset::NGramContainer::const_iterator i;
-
-    for (i=rData.mData.begin(); i!=rData.mData.end(); ++i) {
-      NGram::TokenType* p_token = &((**i)[0]);
-      NGram::ProbType   counts = (*i)->Counts();
-
-      if (mVec.find(*p_token) == mVec.end()) {
-        mVec[*p_token] = counts;
-      }
-      else {
-        mVec[*p_token] += counts;
-      }
-
-      mN += counts;
-    }
-      
-    // normalize counts to probs
-    Distribution::Container::iterator  j;
-    
-    for (j=mVec.begin(); j!=mVec.end(); ++j) {
-      j->second /= mN;
-    }
-  }
-
-
   //***************************************************************************/
   //***************************************************************************/
   BDTree::
   BDTree(NGramSubset& rData, BDTreeBuildTraits& rTraits,
       const std::string& rPrefix)
+  : mDist(rData.Parent().pTargetTable()->Size()),
+    mpBackoffDist(NULL)
   {
     BuildFromNGrams(rData, rTraits, rPrefix);
   }
@@ -125,9 +288,47 @@ namespace STK
   //***************************************************************************/
   //***************************************************************************/
   BDTree::
+  BDTree(const BDTree& rOrig)
+  : mDist(rOrig.mDist)
+  {
+    if (!rOrig.IsLeaf()) {
+      mpTree0     = rOrig.mpTree0->Clone();
+      mpTree1     = rOrig.mpTree1->Clone();
+      mpQuestion  = rOrig.mpQuestion->Clone();
+    }
+    else {
+      mpTree0     = NULL;
+      mpTree1     = NULL;
+      mpQuestion  = NULL;
+    }
+    
+    if (NULL == rOrig.mpBackoffDist) {
+      mpBackoffDist = NULL;
+    }
+    else {
+      mpBackoffDist = new VecDistribution(*(rOrig.mpBackoffDist));
+    }
+  }
+
+  //***************************************************************************/
+  //***************************************************************************/
+  BDTree::
+  BDTree(std::istream& rStream, BDTreeHeader& rHeader)
+  : mDist(rHeader.mVocabSize)
+  {
+    Read(rStream, rHeader);
+  }
+
+
+  //***************************************************************************/
+  //***************************************************************************/
+  BDTree::
   ~BDTree()
   {
-    
+    delete mpTree0;
+    delete mpTree1;
+    delete mpQuestion;
+    delete mpBackoffDist;
   }
 
 
@@ -144,7 +345,7 @@ namespace STK
     BQuestion* p_new_question = NULL;
 
     // compute distribution
-    mDist.ComputeFromNGrams(rNGrams);
+    mDist.ComputeFromNGrams(rNGrams.mData.begin(), rNGrams.mData.end());
     if (rTraits.mVerbosity > 0) {
       std::cout << "BDTree::Info      " << rPrefix << "Data mass: " << mDist.Counts() << std::endl;
     }
@@ -223,7 +424,7 @@ namespace STK
 
 
     // go through all predictors and find subset
-    for (int i=1; i<=rTraits.mNPred; ++i) {
+    for (int i=1; i<rTraits.mNPred; ++i) {
       BSetQuestion* p_tmp_question = FindSubset_Greedy(rNGrams, rTraits, &e, i);
 
       if (e < best_e || best_e < 0) {
@@ -253,7 +454,7 @@ namespace STK
     bool    inserted  = true;
     bool    deleted   = true;
     double  e         = rNGrams.Entropy();
-    BSetQuestion* p_new_question = new BSetQuestion(pred);
+    BSetQuestion* p_new_question = new BSetQuestion(pred, rNGrams.Parent().pTargetTable()->Size());
 
     std::map<NGram::TokenType, int> vocab;
     std::map<NGram::TokenType, int>::iterator i_vocab;
@@ -314,7 +515,6 @@ namespace STK
       if (deleted) {
         p_new_question->Unset(i_best_change->first);
       }
-
     }
 
     // update entropy if possible
@@ -324,6 +524,46 @@ namespace STK
 
     return p_new_question;
   }
+
+
+  //***************************************************************************/
+  //***************************************************************************/
+  FLOAT
+  BDTree::
+  ScoreNGram(const NGram& rNGram)
+  {
+    BDTree* p_node = this;
+
+    while (!p_node->IsLeaf()) {
+      p_node = p_node->mpQuestion->Eval(rNGram) ? p_node->mpTree1 : p_node->mpTree0;
+    } 
+
+    if (NULL != p_node->mpBackoffDist) {
+      return (*(p_node->mpBackoffDist))[rNGram[0]];
+    }
+    else {
+      return p_node->mDist[rNGram[0]];
+    }
+  } // ScoreNGram(const NGram& rNGram)
+
+
+  //***************************************************************************/
+  //***************************************************************************/
+  FLOAT
+  BDTree::
+  ScoreNGramSubset(const NGramSubset& rNGrams)
+  {
+    NGramSubset::NGramContainer::const_iterator i;
+    double  score;
+
+    for (i = rNGrams.mData.begin(); i != rNGrams.mData.end(); ++i) {
+      double n_gram_score = ScoreNGram(**i);
+      score += (*i)->Counts() * log(n_gram_score);
+    }
+
+    return score;
+  } // ScoreNGramSubset(const NGramSubset& rNGrams, FLOAT r)
+
 
   //***************************************************************************/
   //***************************************************************************/
@@ -345,17 +585,46 @@ namespace STK
       mpTree1->Dump(rStream, new_pref);
     }
   }
+
+
+  //***************************************************************************/
+  //***************************************************************************/
+  void
+  BDTree::
+  ComputeBackoffDists(BDTree* pParent, FLOAT r)
+  {
+    mpBackoffDist = new VecDistribution(mDist);
+
+    if (NULL != pParent) {
+      mpBackoffDist->Smooth(*(pParent->mpBackoffDist), r);
+    }
+
+    if (!IsLeaf()) {
+      mpTree0->ComputeBackoffDists(this, r);
+      mpTree1->ComputeBackoffDists(this, r);
+    }
+  }
   
 
   //***************************************************************************/
+  //***************************************************************************/
   // BSetQuestion
+  //***************************************************************************/
+  //***************************************************************************/
+  BSetQuestion::
+  BSetQuestion(std::istream& rStream, BDTreeHeader& rHeader)
+  : BQuestion(), mSet(rHeader.mVocabSize), mPred(rHeader.mOrder)
+  {
+    Read(rStream, rHeader);
+  }
+
   //***************************************************************************/
   //***************************************************************************/
   void
   BSetQuestion::
   Set(const NGram::TokenType& rToken)
   {
-    mSet.insert(rToken);
+    mSet[rToken] = 1;
   }
 
 
@@ -365,12 +634,14 @@ namespace STK
   BSetQuestion::
   Unset(const NGram::TokenType& rToken)
   {
-    BSetQuestion::SetType::const_iterator i_ngram;
+    //BSetQuestion::SetType::const_iterator i_ngram;
 
-    i_ngram = mSet.find(rToken);
-    if (i_ngram != mSet.end()) {
-      mSet.erase(i_ngram); 
-    }
+    //i_ngram = mSet.find(rToken);
+    //if (i_ngram != mSet.end()) {
+    //  mSet.erase(i_ngram); 
+    //}
+
+    mSet[rToken] = 0;
   }
 
   //***************************************************************************/
@@ -380,10 +651,11 @@ namespace STK
   Eval(const BQuestionTerm& rTerm) const
   {
     const NGram* p_ngram = reinterpret_cast<const NGram*>(&rTerm);
-    BSetQuestion::SetType::const_iterator i_ngram;
+    //BSetQuestion::SetType::const_iterator i_ngram;
 
-    i_ngram = mSet.find((*p_ngram)[mPred]);
-    return !(i_ngram == mSet.end() || *i_ngram == 0);
+    //i_ngram = mSet.find((*p_ngram)[mPred]);
+    //return !(i_ngram == mSet.end() || *i_ngram == 0);
+    return mSet[(*p_ngram)[mPred]];
   }
 
   //***************************************************************************/
@@ -393,10 +665,11 @@ namespace STK
   EvalRawToken(const NGram::TokenType& rToken) const
   {
     //const NGram* p_ngram = static_cast<const NGram*>(&rTerm);
-    BSetQuestion::SetType::const_iterator i_ngram;
+    //BSetQuestion::SetType::const_iterator i_ngram;
 
-    i_ngram = mSet.find(rToken);
-    return !(i_ngram == mSet.end() || *i_ngram == 0);
+    //i_ngram = mSet.find(rToken);
+    //return !(i_ngram == mSet.end() || *i_ngram == 0);
+    return mSet[rToken];
   }
 
   //***************************************************************************/
@@ -417,20 +690,24 @@ namespace STK
     rStream << rPrefix << "================================" << std::endl;
     rStream << rPrefix << "= Simple question " << std::endl;
     rStream << rPrefix << "=  Predictor: " << mPred << std::endl;
-    rStream << rPrefix << "=  Posivive: ";
+    rStream << rPrefix << "=  Positive: ";
 
     BSetQuestion::SetType::const_iterator i;
     for (i = mSet.begin(); i!=mSet.end(); ++i) {
-      rStream << *i<< " ";
+      rStream << *i<< "  ";
     }
     rStream << std::endl;
     rStream << rPrefix << "================================" << std::endl;
   }
 
+  //***************************************************************************/
+  //***************************************************************************/
   void
   BSetQuestion::
   DumpImplicit() const
   { Dump(std::cout, "Implicit dump "); }
+
+
 } // namespace STK
 
 // EOF

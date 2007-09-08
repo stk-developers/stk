@@ -53,6 +53,7 @@ int main(int argc, char* argv[])
       ("targetvocab",   po::value<string>(&target_vocab_fname),               "Target vocabulary file [same as predictor]")
       ("order",         po::value<int>(&new_tree_traits.mNPred),              "Number of predictors")
       ("script,S",      po::value<vector<string> >(),                         "Script files")
+      ("smoothr",       po::value<double>(&new_tree_traits.mSmoothR),         "Smooth r factor")
       ;
 
     // config file options only
@@ -175,9 +176,20 @@ int main(int argc, char* argv[])
 
 
       BDTree new_tree(data, new_tree_traits, "");
+
+      if (new_tree_traits.mSmoothR > 0.0) {
+        new_tree.ComputeBackoffDists(NULL, new_tree_traits.mSmoothR);
+      }
       new_tree.Dump(std::cout, " ");
 
       std::cout << data;
+
+      FLOAT e = new_tree.ScoreNGramSubset(data);
+
+
+      std::cout << e << std::endl;
+
+
     } // action == train
 
     else if (action == "score") {
