@@ -1,0 +1,15 @@
+*.out
+*.tmp
+*.log
+*.cache
+*~
+distr
+config.h
+exp
+tagme
+tags
+bin
+Makefile
+config.status
+stamp-h1
+cscope.files
