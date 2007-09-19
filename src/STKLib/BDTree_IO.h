@@ -33,7 +33,7 @@ namespace STK
      * @param rStream std::ostream
      */
     void
-    Write(std::ostream rStream);
+    Write(std::ostream& rStream);
   }; //struct BDTreeHeader
 
 

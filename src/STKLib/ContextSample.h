@@ -26,8 +26,8 @@ namespace STK
   class NGram : public BQuestionTerm
   {
   public:
-    typedef FLOAT ProbType;
-    typedef int   TokenType;
+    typedef double  ProbType;
+    typedef int     TokenType;
 
     //..........................................................................
     NGram()
@@ -143,15 +143,15 @@ namespace STK
     { return *mpPool;}
 
     /// computes data entropy
-    FLOAT
+    double
     Entropy() const;
 
     /// computes split data entropy, provided question rQuestion
-    FLOAT
+    double
     SplitEntropy(const BQuestion& rQuestion) const;
 
     /// returns total data mass
-    FLOAT
+    double
     Mass() const;
 
     /** 
@@ -165,6 +165,8 @@ namespace STK
     Split(const BQuestion& rQuestion, NGramSubset& rData0, NGramSubset& rData1);
 
     friend class Distribution;
+    friend class VecDistribution;
+    friend class NGramSubsets;
     friend class BDTree;
 
   protected:
@@ -173,6 +175,40 @@ namespace STK
     NGramPool*           mpPool;
   };
 
+
+  class NGramSubsets : public std::vector<NGramSubset>
+  {
+  public:
+    ~NGramSubsets()
+    { Destroy(); }
+
+    double
+    Mass() const;
+
+    void
+    Destroy();
+
+    double
+    Entropy() const;
+
+    double
+    ParallelEntropy() const;
+
+    double
+    MMI() const;
+
+    double
+    SplitEntropy(const BQuestion& rQuestion) const;
+
+    double
+    ParallelSplitEntropy(const BQuestion& rQuestion) const;
+
+    double
+    SplitMMI(const BQuestion& rQuestion) const;
+
+    void
+    Split(const BQuestion& rQuestion, NGramSubsets& rData0, NGramSubsets& rData1);
+  };
 
   /** *************************************************************************
    *  *************************************************************************
@@ -196,6 +232,12 @@ namespace STK
     : NGramSubset(n),
       mpPredictorTable(NULL), mpTargetTable(NULL)
     { mpPool= this; }
+
+    NGramPool(const NGramPool& rOrig)
+    : NGramSubset(rOrig),
+      mpPredictorTable(rOrig.mpPredictorTable),
+      mpTargetTable(rOrig.mpTargetTable)
+    { mpPool = this; }
 
     virtual
     ~NGramPool();
@@ -242,6 +284,10 @@ namespace STK
     const size_t
     Size() const
     { return mData.size(); }
+
+    /// Erases all data
+    void
+    Clear();
 
     /// Dumps the whole pool to the stream
     friend std::ostream&

@@ -12,6 +12,7 @@
 
 #include "BDTree.h"
 #include <cstring>
+#include <stdexcept>
 
 namespace STK
 {
@@ -26,14 +27,23 @@ namespace STK
   VecDistribution::
   Read(std::istream& rStream, BDTreeHeader& rHeader)
   {
-    INT_32 aux_double;
-    INT_32 i;
-    INT_32 size;
+    DOUBLE_64 aux_double;
+    INT_32    i;
+    INT_32    size;
 
+    // read training data mass for this node (leaf)
+    rStream.read(reinterpret_cast<char*>(&aux_double), sizeof(aux_double));
+    mN = aux_double;
+
+    // read number of records for this distribution
     rStream.read(reinterpret_cast<char*>(&size), sizeof(size));
     assert(size == rHeader.mVocabSize);
+
+    // reserve place
+    mVec.clear();
     mVec.reserve(size);
 
+    // read all records
     for (i = 0; i < size; ++i) {
       rStream.read(reinterpret_cast<char*>(&aux_double), sizeof(aux_double));
       mVec.push_back(aux_double);
@@ -50,6 +60,11 @@ namespace STK
     DOUBLE_64 aux_double;
     INT_32    aux_int;
 
+    // write training data mass for this node (leaf)
+    aux_double = mN;
+    rStream.write(reinterpret_cast<char*>(&aux_double), sizeof(aux_double));
+
+    // write number of records in this distribution
     aux_int = mVec.size();
     rStream.write(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
 
@@ -67,7 +82,7 @@ namespace STK
   //***************************************************************************/
   void
   BDTreeHeader::
-  Write(std::ostream rStream)
+  Write(std::ostream& rStream)
   {
     char    aux_char;
     INT_32  aux_int;
@@ -100,7 +115,7 @@ namespace STK
       rStream.write(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
     }
     else {
-      throw runtime_error("ASCII format not supported yet");
+      throw std::runtime_error("ASCII format not supported yet");
     }
   }
 
@@ -111,7 +126,7 @@ namespace STK
   Read(std::istream& rStream)
   {
     char    aux_char;
-    INT_32  aux_int
+    INT_32  aux_int;
     char    p_intro[strlen(BDTreeHeader::INTRO)];
 
     // read intro and check it
@@ -124,7 +139,7 @@ namespace STK
     switch(aux_char) {
       case 'a': mBinary = false; break;
       case 'b': mBinary = true; break;
-      default : throw runtime_error("Format not supported");
+      default : throw std::runtime_error("Format not supported");
     }
 
     if (mBinary) {
@@ -148,13 +163,45 @@ namespace STK
     }
     else { // if (Binary) 
       // TODO: Implement this
-      throw runtime_error("ASCII format not supported yet");
+      throw std::runtime_error("ASCII format not supported yet");
     }
   }
 
 
   //***************************************************************************/
   //***************************************************************************/
+  //***************************************************************************/
+  //***************************************************************************/
+  void
+  BDTree::
+  LoadFile(const std::string& rName)
+  {
+    //OStkStream model_stream(model_name.c_str());
+    //if (!model_stream.good()) {
+    //  throw runtime_error(string("Error opening output file ") + 
+    //      model_name);
+    //}
+
+    //BDTreeHeader file_header;
+    //file_header.mBinary = true;
+    //file_header.mOrder  = 
+
+    //// output header
+    //file_header.Write(model_stream);
+    //// output model
+    //this->Write(model_stream, file_header);
+
+    //model_stream.close();
+  }
+
+  //***************************************************************************/
+  //***************************************************************************/
+  void
+  BDTree::
+  SaveFile(const std::string& rName)
+  {
+  }
+  
   //***************************************************************************/
   //***************************************************************************/
   void
@@ -170,9 +217,14 @@ namespace STK
       mpQuestion  = new BSetQuestion(rStream, rHeader);
       mpTree0     = new BDTree(rStream, rHeader);
       mpTree1     = new BDTree(rStream, rHeader);
+      mpBackoffDist = NULL;
     }
     else {
       mDist.Read(rStream, rHeader);
+      mpQuestion  = NULL;
+      mpTree0     = NULL;
+      mpTree1     = NULL;
+      mpBackoffDist = NULL;
     }
   } // Read(std::istream& rStream, BDTreeHeader& rHeader)
 
@@ -186,7 +238,7 @@ namespace STK
     INT_32 flag = 0;
 
     if (!IsLeaf()) {
-      flag &= 1;
+      flag |= 1;
     }
 
     // write main flag
@@ -215,10 +267,18 @@ namespace STK
     INT_32 i;
     INT_32 size;
 
+    // which predictor
+    rStream.read(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
+    mPred = aux_int;
+
+    // number of records for set
     rStream.read(reinterpret_cast<char*>(&size), sizeof(size));
     assert(size == rHeader.mVocabSize);
+
+    mSet.clear();
     mSet.reserve(size);
 
+    // read records
     for (i = 0; i < size; ++i) {
       rStream.read(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
       mSet.push_back(aux_int);
@@ -235,9 +295,15 @@ namespace STK
     BSetQuestion::SetType::const_iterator i;
     INT_32 aux_int;
 
+    // write predictor
+    aux_int = mPred;
+    rStream.write(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
+
+    // write set size
     aux_int = mSet.size();
     rStream.write(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
 
+    // write set records
     for (i = mSet.begin(); i != mSet.end(); ++i) {
       aux_int = *i ? 1 : 0;
       rStream.write(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));

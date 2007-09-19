@@ -7,6 +7,7 @@
 #include "BDTree_IO.h"
 
 #include <vector>
+#include <limits>
 
 
 namespace STK
@@ -96,10 +97,13 @@ namespace STK
   };
 
 
+  /** 
+   * @brief Generalized distribution representation
+   */
   class Distribution
   {
   public:
-    typedef FLOAT ProbType;
+    typedef double ProbType;
 
     Distribution() 
     :  mN(0)
@@ -172,7 +176,7 @@ namespace STK
 //     * b = #(s) / (#(s)+r)
 //     */
 //    virtual void
-//    Smooth(const Distribution& rDistr, FLOAT r);
+//    Smooth(const Distribution& rDistr, double r);
 //
 //    ProbType 
 //    operator [] (const NGram::TokenType& rToken);
@@ -186,8 +190,8 @@ namespace STK
   class VecDistribution : public Distribution
   {
   public:
-    typedef FLOAT ProbType;
-    typedef std::vector<FLOAT> Container;
+    typedef double ProbType;
+    typedef std::vector<double> Container;
 
     VecDistribution() 
     : Distribution(), mVec()
@@ -245,12 +249,47 @@ namespace STK
     static const ProbType
     SplitEntropy(const VecDistribution& rD1, const VecDistribution& rD2);
 
-
+    /** 
+     * @brief Computes distribution from collection of grams
+     * @param first iterator to the begining of the NGram* container
+     * @param last iterator to the endo of th NGram* container
+     */
     template <class InputIterator>
       void
       ComputeFromNGrams(InputIterator first, InputIterator last);
 
+    /** 
+     * @brief Computes distribution from collection of grams
+     * @param first iterator to the begining of the NGram* container
+     * @param last iterator to the endo of th NGram* container
+     */
+    template <class InputIterator>
+      void
+      ComputeFromNGramSubsets(InputIterator first, InputIterator last);
 
+    void
+    ComputeFromNGramSubsets(const NGramSubsets& rSubsets);
+
+    /** 
+     * @brief Normalizes distribution to probabilities
+     */
+    void
+    Fix();
+
+    /** 
+     * @brief Sets all records to 0
+     */
+    void 
+    Reset();
+
+    /** 
+     * @brief Merges another distribution
+     * @param rDistr distribution to merge with
+     */
+    void
+    Merge(const VecDistribution& rDistr);
+
+      
     /** 
      * @brief Smoothes distribution by another distribution
      * 
@@ -264,11 +303,13 @@ namespace STK
      * b = #(s) / (#(s)+r)
      */
     virtual void
-    Smooth(const VecDistribution& rDistr, FLOAT r);
+    Smooth(const VecDistribution& rDistr, double r);
 
 
-    ProbType 
+    ProbType
     operator [] (const NGram::TokenType& rToken);
+
+    friend class BDTree;
 
   private:
     Container          mVec; ///< Data distribution vector
@@ -287,19 +328,50 @@ namespace STK
     BDTreeBuildTraits() :
     mMinReduction(0.001),
     mMinInData(0),
-    mNPred(3),
+    mOrder(3),
+    mMaxDepth(std::numeric_limits<int>::max()),
+    mCurDepth(0),
     mSmoothR(0.0),
-    mVerbosity(1)
+    mAdaptR(0.0),
+    mVerbosity(1),
+    mMMItoggle(false),
+    mMultiScript(false)
     {}
 
     double    mMinReduction;    ///< Minimum entropy reduction
     double    mMinInData;       ///< Minimum input data mass
-    int       mNPred;           ///< Number of predictors
+    int       mOrder;           ///< Number of predictors
+    int       mMaxDepth;        ///< Maximum tree depth (root is depth 0)
+    int       mCurDepth;        ///< Maximum tree depth (root is depth 0)
 
     double    mSmoothR;         ///< Bottom-up recursive smoothing r-factor
+    double    mAdaptR;          ///< Adapt smoothing r-factor
     int       mVerbosity;       ///< Verbosity level
 
+    bool      mMMItoggle;
+    double    mMinMMIIncrease;
+
+    bool      mMultiScript;
   }; //class BDTreeAttributes
+
+
+  /** 
+   * @brief Holds some statistics about the tree
+   */
+  struct BDTreeInfo
+  {
+    BDTreeInfo()
+    : mAverageEntropy(0.0), mTotalData(0.0), mTotalNodes(0), mTotalLeaves(0)
+    {}
+
+    ~BDTreeInfo()
+    {}
+
+    double  mAverageEntropy;
+    double  mTotalData;
+    size_t  mTotalNodes;
+    size_t  mTotalLeaves;
+  };
 
 
   /** 
@@ -325,7 +397,7 @@ namespace STK
      * @param rData self described
      * @param rTraits BDTreeBuildTraits structure specifying building parameters
      */
-    BDTree(NGramSubset& rData, BDTreeBuildTraits& rTraits, 
+    BDTree(NGramSubsets& rData, BDTreeBuildTraits& rTraits, BDTree* pParent, 
         const std::string& rPrefix);
 
     /** 
@@ -334,7 +406,7 @@ namespace STK
      * @param rStream stream to read
      * @param rHeader header containing file info
      */
-     BDTree(std::istream& rStream, BDTreeHeader& rHeader);
+    BDTree(std::istream& rStream, BDTreeHeader& rHeader);
 
 
     /** 
@@ -354,6 +426,13 @@ namespace STK
 
 
     //..........................................................................
+    void
+    LoadFile(const std::string& rName);
+
+    void
+    SaveFile(const std::string& rName);
+
+
     /** 
      * @brief Reads the tree definition from a stream
      * 
@@ -379,8 +458,24 @@ namespace STK
      * @param rNGrams NGram counts to use
      */
     void
-    BuildFromNGrams(NGramSubset& rNGrams, BDTreeBuildTraits& rTraits,
-        const std::string& rPrefix);
+    BuildFromNGrams(NGramSubsets& rNGrams,  BDTreeBuildTraits& rTraits, 
+        BDTree* pParent, const std::string& rPrefix);
+
+
+    void
+    GetInfo(BDTreeInfo& rInfo, const BDTree* pParent) const;
+
+    /** 
+     * @brief Finds "optimal" split question for this node
+     * 
+     * @param rNGrams data set
+     * @param rTraits tree building parameters
+     * @param pSplitEnt fill with split entropy
+     * 
+     * @return pointer to new question if succeede, otherwise NULL
+     */
+    BSetQuestion*
+    FindSimpleQuestion(NGramSubsets& rNGrams, BDTreeBuildTraits& rTraits, double* pSplitEnt) ;
 
 
     /** 
@@ -393,7 +488,7 @@ namespace STK
      * @return pointer to new question if succeede, otherwise NULL
      */
     BSetQuestion*
-    FindSimpleQuestion(NGramSubset& rNGrams, BDTreeBuildTraits& rTraits, FLOAT* pSplitEnt) ;
+    FindSimpleQuestion_MMI(NGramSubsets& rNGrams, BDTreeBuildTraits& rTraits, double* pSplitMMI) ;
 
 
     /** 
@@ -403,7 +498,7 @@ namespace STK
      *
      * NOTE: Smoothing is not done on-line. It has to be precomputed using ComputeBackoffDists
      */
-    FLOAT 
+    double 
     ScoreNGram(const NGram& rNGram);
 
     /** 
@@ -414,7 +509,7 @@ namespace STK
      * 
      * @return utterance score
      */
-    FLOAT
+    double
     ScoreNGramSubset(const NGramSubset& rNGrams);
 
     /** 
@@ -426,7 +521,34 @@ namespace STK
      * See Distribution::Smooth(...) for details
      */
     void
-    ComputeBackoffDists(BDTree* pParent, FLOAT r);
+    ComputeBackoffDists(BDTree* pParent, double r);
+
+    /** 
+     * @brief Recomputes distribution in non-leaf nodes
+     */
+    void
+    RecomputeDists();
+
+    /** 
+     * @brief Adapts leaf distributions using new data and smoothing factor
+     * 
+     * @param rNGrams adaptation data
+     * @param r 
+     *
+     * Pnew(s) = b*Pthis(s) + (1-b)*Porig(s) 
+     *   where
+     * Pthis = #(s) / #(all_symbols_in_leaf), 
+     *   and
+     * b = #(s) / (#(s)+r)
+     */
+    void
+    AdaptLeafDists(const NGramSubset& rNGrams, double r);
+
+    /** 
+     * @brief Flatens distributions in all leaves
+     */
+    void
+    ResetLeaves();
 
     /** 
      * @brief Dumps the question to a stream
@@ -439,7 +561,11 @@ namespace STK
 
   private:
     BSetQuestion*
-    FindSubset_Greedy(NGramSubset& rNGrams, BDTreeBuildTraits& rTraits, FLOAT* pSplitEnt,
+    FindSubset_Greedy(NGramSubsets& rNGrams, BDTreeBuildTraits& rTraits, double* pSplitEnt,
+        int pred);
+
+    BSetQuestion*
+    FindSubset_Greedy_MMI(NGramSubsets& rNGrams, BDTreeBuildTraits& rTraits, double* pSplitMMI,
         int pred);
 
   private:

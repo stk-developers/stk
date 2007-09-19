@@ -143,12 +143,12 @@ namespace STK
   // //***************************************************************************/
   // void
   // MapDistribution::
-  // Smooth(const MapDistribution& rDistr, FLOAT r)
+  // Smooth(const MapDistribution& rDistr, double r)
   // {
   //   MapDistribution::Container::iterator i_this;
   //   MapDistribution::Container::const_iterator i_parent;
 
-  // } //Smooth(const MapDistribution& rDistr, FLOAT r)
+  // } //Smooth(const MapDistribution& rDistr, double r)
   
 
   //***************************************************************************/
@@ -157,8 +157,25 @@ namespace STK
   //***************************************************************************/
   void
   VecDistribution::
+  Fix()
+  {
+    if (mN > 0) {
+      VecDistribution::Container::iterator i;
+
+      for (i = mVec.begin(); i!=mVec.end(); ++i) {
+        *i /= mN;
+      }
+    }
+  }
+
+
+  //***************************************************************************/
+  //***************************************************************************/
+  void
+  VecDistribution::
   Dump(std::ostream& rStream, const std::string& rPrefix) const
   {
+    rStream << rPrefix << "Data count: " << mN << std::endl;
     rStream << rPrefix;
 
     VecDistribution::Container::const_iterator i;
@@ -179,7 +196,9 @@ namespace STK
     VecDistribution::Container::const_iterator i;
 
     for (i=mVec.begin(); i!=mVec.end(); ++i) {
-      e -= *i * log2(*i);
+      if (*i > 0) {
+        e -= static_cast<double>(*i) * log(static_cast<double>(*i));
+      }
     }
     
     return e;
@@ -199,6 +218,44 @@ namespace STK
   }
 
 
+  //***************************************************************************/
+  //***************************************************************************/
+  void
+  VecDistribution::
+  ComputeFromNGramSubsets(const NGramSubsets& rSubsets)
+  {
+    NGramSubsets::const_iterator i_subset;
+    Container::iterator j;
+    double mass = 0.0;
+      
+    // set probs to 0
+    for (j=mVec.begin(); j!=mVec.end(); ++j) {
+      *j = 0.0;
+    }
+
+    for (i_subset=rSubsets.begin(); i_subset!=rSubsets.end(); ++i_subset) {
+      NGramSubset::NGramContainer::const_iterator i_ngram;
+
+      // accumulate each dist and sum overal data mass
+      for (i_ngram=i_subset->mData.begin(); 
+           i_ngram!=i_subset->mData.end(); 
+           ++i_ngram) 
+      {
+        NGram::TokenType* p_token = &((**i_ngram)[0]);
+        NGram::ProbType   counts = (*i_ngram)->Counts();
+
+        mVec[*p_token] += counts;
+        mass           += counts;
+      }
+    }
+
+    // normalize
+    for (j=mVec.begin(); j!=mVec.end(); ++j) {
+      *j = *j / mass;
+    }
+
+    mN = mass;
+  }
 
 
   //***************************************************************************/
@@ -244,31 +301,80 @@ namespace STK
   //***************************************************************************/
   void
   VecDistribution::
-  Smooth(const VecDistribution& rDistr, FLOAT r)
+  Merge(const VecDistribution& rDistr)
   {
-    double norm = 0.0F;
+    double norm = 0.0;
     VecDistribution::Container::iterator i_this = mVec.begin();
     VecDistribution::Container::const_iterator i_parent = rDistr.mVec.begin();
 
     assert(mVec.size() == rDistr.mVec.size());
 
     while (i_this != mVec.end()) {
+      *i_this = mN * (*i_this) + rDistr.mN * (*i_parent);
+      norm += *i_this;
+
+      ++i_this;
+      ++i_parent;
+    } // while (i_this != mVec.end()) {
+
+    // normalize
+    if (norm > 0) {
+      for (i_this = mVec.begin(); i_this != mVec.end(); ++i_this) {
+        *i_this /= norm;
+      }
+    }
+
+    mN += rDistr.mN;
+  }
+
+  //***************************************************************************/
+  //***************************************************************************/
+  void
+  VecDistribution::
+  Reset() 
+  {
+    VecDistribution::Container::iterator i_this;
+
+    for (i_this = mVec.begin(); i_this != mVec.end(); ++i_this) {
+      *i_this = 0.0;
+    }
+
+    mN = 0.0;
+  }
+
+  //***************************************************************************/
+  //***************************************************************************/
+  void
+  VecDistribution::
+  Smooth(const VecDistribution& rDistr, double r)
+  {
+    double norm   = 0; //DBL_EPSILON;
+    double new_mn = 0; //DBL_EPSILON;
+    VecDistribution::Container::iterator        i_this   = mVec.begin();
+    VecDistribution::Container::const_iterator  i_parent = rDistr.mVec.begin();
+
+    assert(mVec.size() == rDistr.mVec.size());
+
+    while (i_this != mVec.end()) {
       // compute weight
-      double prob = *i_this;
-      double b = *i_this*mN / (*i_this*mN + r);
+      double b =  *i_this*mN / (*i_this*mN + r) ;
 
       *i_this = b * (*i_this) + (1-b) * (*i_parent);
-      norm += *i_this;
+      norm    += *i_this;
+      new_mn  += b * (*i_this * mN) + (1-b) * (*i_parent * rDistr.mN);
 
       ++i_this;
       ++i_parent;
     } // while (i_this != mVec.end() && i_parent != rDistr.mVec.end()) {
 
-    // normalize
-    while (i_this != mVec.end()) {
-      *i_this /= norm;
+    if (norm > 0) {
+      // normalize
+      for (i_this = mVec.begin(); i_this != mVec.end(); ++i_this) {
+        *i_this /= norm;
+      }
     }
-  } //Smooth(const VecDistribution& rDistr, FLOAT r)
+    mN = new_mn;
+  } //Smooth(const VecDistribution& rDistr, double r)
   
 
   //***************************************************************************/
@@ -276,12 +382,12 @@ namespace STK
   //***************************************************************************/
   //***************************************************************************/
   BDTree::
-  BDTree(NGramSubset& rData, BDTreeBuildTraits& rTraits,
-      const std::string& rPrefix)
-  : mDist(rData.Parent().pTargetTable()->Size()),
+  BDTree(NGramSubsets& rData, BDTreeBuildTraits& rTraits,
+      BDTree* pParent, const std::string& rPrefix)
+  : mDist(rData[0].Parent().pTargetTable()->Size()),
     mpBackoffDist(NULL)
   {
-    BuildFromNGrams(rData, rTraits, rPrefix);
+    BuildFromNGrams(rData, rTraits, pParent, rPrefix);
   }
 
 
@@ -325,10 +431,18 @@ namespace STK
   BDTree::
   ~BDTree()
   {
-    delete mpTree0;
-    delete mpTree1;
-    delete mpQuestion;
-    delete mpBackoffDist;
+    if (NULL != mpTree0) {
+      delete mpTree0;
+    }
+    if (NULL != mpTree1) {
+      delete mpTree1;
+    }
+    if (NULL != mpQuestion) {
+      delete mpQuestion;
+    }
+    if (NULL != mpBackoffDist) {
+      delete mpBackoffDist;
+    }
   }
 
 
@@ -336,18 +450,45 @@ namespace STK
   //***************************************************************************/
   void
   BDTree::
-  BuildFromNGrams(NGramSubset& rNGrams, BDTreeBuildTraits& rTraits,
-      const std::string& rPrefix)
+  BuildFromNGrams(NGramSubsets& rNGrams, BDTreeBuildTraits& rTraits,
+      BDTree* pParent, const std::string& rPrefix)
   {
-    FLOAT   total_entropy;
-    FLOAT   split_entropy;
-    double  entropy_red;
+    double    total_entropy;
+    double    split_entropy;
+    double    entropy_red;
+
+    double    total_mmi;
+    double    split_mmi;
+    double    mmi_inc;
     BQuestion* p_new_question = NULL;
+    int       depth = rTraits.mCurDepth;
 
     // compute distribution
-    mDist.ComputeFromNGrams(rNGrams.mData.begin(), rNGrams.mData.end());
+    //mDist.ComputeFromNGrams(rNGrams[0].mData.begin(), rNGrams[0].mData.end());
+    mDist.ComputeFromNGramSubsets(rNGrams);
+
+    if (NULL != pParent ) {
+      if (rTraits.mSmoothR > 0) {
+        mDist.Smooth(pParent->mDist, rTraits.mSmoothR);
+      }
+    }
+
+
     if (rTraits.mVerbosity > 0) {
-      std::cout << "BDTree::Info      " << rPrefix << "Data mass: " << mDist.Counts() << std::endl;
+      std::cout << "BDTree::Info      " << rPrefix << "Data mass: " << rNGrams.Mass() << std::endl;
+      std::cout << "BDTree::Info      " << rPrefix << "Depth:     " << depth << std::endl;
+    }
+
+    // check for max depth criterion
+    if (rTraits.mMaxDepth <= rTraits.mCurDepth) {
+      if (rTraits.mVerbosity > 0) {
+        std::cout << "BDTree::Info      " << rPrefix << "Leaf due to maximum depth criterion" << std::endl;
+      }
+
+      mpQuestion = NULL;
+      mpTree0    = NULL;
+      mpTree1    = NULL;
+      return;
     }
 
     // check for data sufficiency
@@ -362,41 +503,65 @@ namespace STK
       return;
     }
 
-    // compute entropy
-    total_entropy = rNGrams.Entropy();
-    // find best predictor and return split entropy
-    p_new_question = FindSimpleQuestion(rNGrams, rTraits, &split_entropy);
+    if (rTraits.mMMItoggle) {
+      // compute mmi
+      total_mmi       = rNGrams.MMI();
+      p_new_question  = FindSimpleQuestion_MMI(rNGrams, rTraits, &split_mmi);
+      mmi_inc         = split_mmi - total_mmi;
 
-    entropy_red = total_entropy - split_entropy;
-
-    if (rTraits.mVerbosity > 0) {
-      if (entropy_red == 0) {
-        std::cout << "BDTree::Info      " << rPrefix << "No predictor found " << std:: endl;
-        std::cout << "BDTree::Info      " << rPrefix << "Data Entropy:      " << total_entropy << std::endl;
-      }
-      else {
+      if (NULL != p_new_question) {
         p_new_question->Dump(std::cout, std::string("BDTree::Info      ")+rPrefix);
+        // compute entropy
+        total_entropy = rNGrams.ParallelEntropy();
+        split_entropy = rNGrams.ParallelSplitEntropy(*p_new_question);
+        entropy_red   = total_entropy - split_entropy;
         std::cout << "BDTree::Info      " << rPrefix << "Data Entropy:      " << total_entropy << std::endl;
         std::cout << "BDTree::Info      " << rPrefix << "Split Entropy:     " << split_entropy << std::endl;
         std::cout << "BDTree::Info      " << rPrefix << "Entropy reduction: " << entropy_red << std::endl;
+        std::cout << "BDTree::Info      " << rPrefix << "Data MI:           " << total_mmi << std::endl;
+        std::cout << "BDTree::Info      " << rPrefix << "Data split MI:     " << split_mmi << std::endl;
+        std::cout << "BDTree::Info      " << rPrefix << "MI Increase:       " << mmi_inc << std::endl;
+      }
+
+      if (rTraits.mVerbosity > 0) {
+      }
+    }
+    else {
+      // compute entropy
+      total_entropy = rNGrams.ParallelEntropy();
+      // find best predictor and return split entropy
+      p_new_question = FindSimpleQuestion(rNGrams, rTraits, &split_entropy);
+
+      entropy_red = total_entropy - split_entropy;
+
+      if (rTraits.mVerbosity > 0) {
+        if (entropy_red == 0) {
+          std::cout << "BDTree::Info      " << rPrefix << "No predictor found " << std:: endl;
+          std::cout << "BDTree::Info      " << rPrefix << "Data Entropy:      " << total_entropy << std::endl;
+        }
+        else {
+          p_new_question->Dump(std::cout, std::string("BDTree::Info      ")+rPrefix);
+          std::cout << "BDTree::Info      " << rPrefix << "Data Entropy:      " << total_entropy << std::endl;
+          std::cout << "BDTree::Info      " << rPrefix << "Split Entropy:     " << split_entropy << std::endl;
+          std::cout << "BDTree::Info      " << rPrefix << "Entropy reduction: " << entropy_red << std::endl;
+        }
       }
     }
 
-    // if entropy reduction still big enough, build each subtree
-    if (entropy_red >= rTraits.mMinReduction) {
-      NGramSubset* p_split_data0 = new NGramSubset;
-      NGramSubset* p_split_data1 = new NGramSubset;
+    if (rTraits.mMMItoggle && mmi_inc < rTraits.mMinMMIIncrease) {
+      if (rTraits.mVerbosity > 0) {
+        std::cout << "BDTree::Info      " << rPrefix << "Leaf due to minimum MI increase criterion" << std::endl;
+      }
 
-      mpQuestion  = p_new_question;
-      rNGrams.Split(*mpQuestion, *p_split_data0, *p_split_data1);
+      if (NULL != p_new_question) {
+        delete p_new_question;
+      }
 
-      mpTree0     = new BDTree(*p_split_data0, rTraits, rPrefix + "-  ");
-      mpTree1     = new BDTree(*p_split_data1, rTraits, rPrefix + "+  ");
-
-      delete p_split_data0;
-      delete p_split_data1;
-    } // else declare leaf
-    else { 
+      mpQuestion = NULL;
+      mpTree0    = NULL;
+      mpTree1    = NULL;
+    }
+    else if (entropy_red < rTraits.mMinReduction) {
       if (rTraits.mVerbosity > 0) {
         std::cout << "BDTree::Info      " << rPrefix << "Leaf due to minimum entropy reduction criterion" << std::endl;
       }
@@ -409,6 +574,46 @@ namespace STK
       mpTree0    = NULL;
       mpTree1    = NULL;
     }
+    // if entropy reduction && MI increase still big enough, build each subtree
+    else {
+      NGramSubsets* p_split_data0 = new NGramSubsets;
+      NGramSubsets* p_split_data1 = new NGramSubsets;
+
+      mpQuestion  = p_new_question;
+      rNGrams.Split(*mpQuestion, *p_split_data0, *p_split_data1);
+
+      rTraits.mCurDepth = depth + 1;
+      mpTree0     = new BDTree(*p_split_data0, rTraits, this, rPrefix + "-  ");
+      rTraits.mCurDepth = depth + 1;
+      mpTree1     = new BDTree(*p_split_data1, rTraits, this, rPrefix + "+  ");
+
+      delete p_split_data0;
+      delete p_split_data1;
+    } // else declare leaf
+  }
+
+
+  //***************************************************************************/
+  //***************************************************************************/
+  void
+  BDTree::
+  GetInfo(BDTreeInfo& rInfo, const BDTree* pParent) const
+  {
+    rInfo.mTotalNodes++;
+
+    if (!IsLeaf()) {
+      mpTree0->GetInfo(rInfo, this);
+      mpTree1->GetInfo(rInfo, this);
+
+      if (NULL == pParent) {
+        rInfo.mAverageEntropy /= rInfo.mTotalData;
+      }
+    }
+    else {
+      rInfo.mTotalLeaves++;
+      rInfo.mTotalData += mDist.Counts();
+      rInfo.mAverageEntropy += mDist.Counts() * mDist.Entropy();
+    }
   }
 
 
@@ -416,15 +621,15 @@ namespace STK
   //***************************************************************************/
   BSetQuestion*
   BDTree::
-  FindSimpleQuestion(NGramSubset& rNGrams, BDTreeBuildTraits& rTraits, FLOAT* pSplitEnt) 
+  FindSimpleQuestion(NGramSubsets& rNGrams, BDTreeBuildTraits& rTraits, double* pSplitEnt) 
   {
-    FLOAT          e = 0.0;
+    double          e = 0.0;
     double          best_e = -1.0;
     BSetQuestion*   p_best_question = NULL;
 
 
     // go through all predictors and find subset
-    for (int i=1; i<rTraits.mNPred; ++i) {
+    for (int i=1; i<rTraits.mOrder; ++i) {
       BSetQuestion* p_tmp_question = FindSubset_Greedy(rNGrams, rTraits, &e, i);
 
       if (e < best_e || best_e < 0) {
@@ -448,36 +653,60 @@ namespace STK
   //***************************************************************************/
   BSetQuestion*
   BDTree::
-  FindSubset_Greedy(NGramSubset& rNGrams, BDTreeBuildTraits& rTraits, FLOAT* pSplitEnt,
+  FindSimpleQuestion_MMI(NGramSubsets& rNGrams, BDTreeBuildTraits& rTraits, double* pSplitMMI) 
+  {
+    double          mmi = -10000;
+    double          best_mmi = mmi - 1.0;
+    BSetQuestion*   p_best_question = NULL;
+
+
+    // go through all predictors and find subset
+    for (int i=1; i<rTraits.mOrder; ++i) {
+      BSetQuestion* p_tmp_question = FindSubset_Greedy_MMI(rNGrams, rTraits, &mmi, i);
+
+      if (mmi > best_mmi) {
+        if (NULL != p_best_question) {
+          delete p_best_question;
+        }
+        best_mmi = mmi;
+        p_best_question = p_tmp_question;
+      } 
+    }
+
+    if (NULL != pSplitMMI ) {
+      *pSplitMMI = best_mmi;
+    }
+
+    return p_best_question;
+  }
+
+
+  //***************************************************************************/
+  //***************************************************************************/
+  BSetQuestion*
+  BDTree::
+  FindSubset_Greedy(NGramSubsets& rNGrams, BDTreeBuildTraits& rTraits, double* pSplitEnt,
       int pred) 
   {
     bool    inserted  = true;
     bool    deleted   = true;
-    double  e         = rNGrams.Entropy();
-    BSetQuestion* p_new_question = new BSetQuestion(pred, rNGrams.Parent().pTargetTable()->Size());
+    double  e         = rNGrams.ParallelEntropy();
+    int     vocab_size = rNGrams[0].Parent().pTargetTable()->Size();
+    int     i_vocab;
+    int     i_best_change;
+    BSetQuestion* p_new_question = new BSetQuestion(pred, vocab_size);
 
-    std::map<NGram::TokenType, int> vocab;
-    std::map<NGram::TokenType, int>::iterator i_vocab;
-    std::map<NGram::TokenType, int>::iterator i_best_change;
     
-    // collect vocabulary counts and total number of tokens
-    NGramSubset::NGramContainer::const_iterator i;
-
-    for (i=rNGrams.mData.begin(); i!=rNGrams.mData.end(); ++i) {
-      NGram::TokenType* p_token = &((**i)[pred]);;
-      vocab[*p_token] = 1;
-    }
-
     // continue probing if any change was made in the previous iteration
     while (inserted || deleted) {
       inserted      = false;
       deleted       = false;
 
       // probe insertions
-      for (i_vocab=vocab.begin(); i_vocab!=vocab.end(); ++i_vocab) {
-        if (!p_new_question->EvalRawToken(i_vocab->first)) {
-          p_new_question->Set(i_vocab->first);
-          double this_e = rNGrams.SplitEntropy(*p_new_question);
+      for (i_vocab=0; i_vocab<vocab_size; ++i_vocab) {
+        if (!p_new_question->EvalRawToken(i_vocab)) {
+          p_new_question->Set(i_vocab);
+          double this_e = rNGrams.ParallelSplitEntropy(*p_new_question);
 
           if (this_e < e) {
             e             = this_e;
@@ -485,21 +714,21 @@ namespace STK
             inserted      = true;
           }
 
-          p_new_question->Unset(i_vocab->first);
+          p_new_question->Unset(i_vocab);
         }
       }
 
       // commit insertion
       if (inserted) {
-        p_new_question->Set(i_best_change->first);
+        p_new_question->Set(i_best_change);
       }
 
       // probe deletions
-      for (i_vocab=vocab.begin(); i_vocab!=vocab.end(); ++i_vocab) {
+      for (i_vocab=0; i_vocab < vocab_size; ++i_vocab) {
         // only inspect positive questions
-        if (p_new_question->EvalRawToken(i_vocab->first)) {
-          p_new_question->Unset(i_vocab->first);
-          double this_e = rNGrams.SplitEntropy(*p_new_question);
+        if (p_new_question->EvalRawToken(i_vocab)) {
+          p_new_question->Unset(i_vocab);
+          double this_e = rNGrams.ParallelSplitEntropy(*p_new_question);
 
           if (this_e < e) {
             e             = this_e;
@@ -507,13 +736,13 @@ namespace STK
             deleted       = true;
           }
 
-          p_new_question->Set(i_vocab->first);
+          p_new_question->Set(i_vocab);
         }
       }
 
       // commit deletion
       if (deleted) {
-        p_new_question->Unset(i_best_change->first);
+        p_new_question->Unset(i_best_change);
       }
     }
 
@@ -528,7 +757,83 @@ namespace STK
 
   //***************************************************************************/
   //***************************************************************************/
-  FLOAT
+  BSetQuestion*
+  BDTree::
+  FindSubset_Greedy_MMI(NGramSubsets& rNGrams, BDTreeBuildTraits& rTraits, 
+      double* pSplitMMI, int pred) 
+  {
+    bool    inserted  = true;
+    bool    deleted   = true;
+    double  mmi       = rNGrams.MMI();
+    size_t  vocab_size = rNGrams[0].Parent().pTargetTable()->Size();
+    BSetQuestion* p_new_question = 
+      new BSetQuestion(pred, vocab_size);
+
+    size_t i_vocab;
+    size_t i_best_change;
+    
+
+    // continue probing if any change was made in the previous iteration
+    while (inserted || deleted) {
+      inserted      = false;
+      deleted       = false;
+
+      // probe insertions
+      for (i_vocab=0; i_vocab!=vocab_size; ++i_vocab) {
+        if (!p_new_question->EvalRawToken(i_vocab)) {
+          p_new_question->Set(i_vocab);
+          double this_mmi = rNGrams.SplitMMI(*p_new_question);
+
+          if (this_mmi > mmi) {
+            mmi           = this_mmi;
+            i_best_change = i_vocab;
+            inserted      = true;
+          }
+
+          p_new_question->Unset(i_vocab);
+        }
+      }
+
+      // commit insertion
+      if (inserted) {
+        p_new_question->Set(i_best_change);
+      }
+
+      // probe deletions
+      for (i_vocab=0; i_vocab!=vocab_size; ++i_vocab) {
+        // only inspect positive questions
+        if (p_new_question->EvalRawToken(i_vocab)) {
+          p_new_question->Unset(i_vocab);
+          double this_mmi = rNGrams.SplitMMI(*p_new_question);
+
+          if (this_mmi > mmi) {
+            mmi           = this_mmi;
+            i_best_change = i_vocab;
+            deleted       = true;
+          }
+
+          p_new_question->Set(i_vocab);
+        }
+      }
+
+      // commit deletion
+      if (deleted) {
+        p_new_question->Unset(i_best_change);
+      }
+    }
+
+    // update entropy if possible
+    if (NULL != pSplitMMI) {
+      *pSplitMMI = mmi;
+    }
+
+    return p_new_question;
+  }
+
+
+  //***************************************************************************/
+  //***************************************************************************/
+  double
   BDTree::
   ScoreNGram(const NGram& rNGram)
   {
@@ -549,12 +854,12 @@ namespace STK
 
   //***************************************************************************/
   //***************************************************************************/
-  FLOAT
+  double
   BDTree::
   ScoreNGramSubset(const NGramSubset& rNGrams)
   {
     NGramSubset::NGramContainer::const_iterator i;
-    double  score;
+    double  score = 0.0;
 
     for (i = rNGrams.mData.begin(); i != rNGrams.mData.end(); ++i) {
       double n_gram_score = ScoreNGram(**i);
@@ -562,7 +867,7 @@ namespace STK
     }
 
     return score;
-  } // ScoreNGramSubset(const NGramSubset& rNGrams, FLOAT r)
+  } // ScoreNGramSubset(const NGramSubset& rNGrams, double r)
 
 
   //***************************************************************************/
@@ -572,11 +877,19 @@ namespace STK
   Dump(std::ostream& rStream, const std::string& rPrefix) const
   {
     if (IsLeaf()) {
-      mDist.Dump(rStream, rPrefix);
+      if (NULL != mpBackoffDist) {
+        mpBackoffDist->Dump(rStream, rPrefix);
+      }
+      else {
+        mDist.Dump(rStream, rPrefix);
+      }
+
     }
     else {
       std::string new_pref;
       mpQuestion->Dump(rStream, rPrefix);
+
+      //mDist.Dump(rStream, rPrefix);
 
       new_pref = rPrefix + "-  ";
       mpTree0->Dump(rStream, new_pref);
@@ -586,16 +899,31 @@ namespace STK
     }
   }
 
+  //***************************************************************************/
+  //***************************************************************************/
+  void
+  BDTree::
+  RecomputeDists()
+  {
+    if (!IsLeaf()) {
+      mpTree0->RecomputeDists();
+      mpTree1->RecomputeDists();
+      mDist.Reset();
+      mDist.Merge(mpTree0->mDist);
+      mDist.Merge(mpTree1->mDist);
+      //mDist.Dump(std::cout, "xx");
+    }
+  }
 
   //***************************************************************************/
   //***************************************************************************/
   void
   BDTree::
-  ComputeBackoffDists(BDTree* pParent, FLOAT r)
+  ComputeBackoffDists(BDTree* pParent, double r)
   {
     mpBackoffDist = new VecDistribution(mDist);
 
-    if (NULL != pParent) {
+    if (NULL != pParent && r > 0) {
       mpBackoffDist->Smooth(*(pParent->mpBackoffDist), r);
     }
 
@@ -604,7 +932,63 @@ namespace STK
       mpTree1->ComputeBackoffDists(this, r);
     }
   }
+
+  //***************************************************************************/
+  //***************************************************************************/
+  void
+  BDTree::
+  AdaptLeafDists(const NGramSubset& rNGrams, double r)
+  {
+    NGramSubset::NGramContainer::const_iterator it;
+    std::set<BDTree*> leaf_map;
+    std::set<BDTree*>::iterator i_leaf;
+
+    // go through all data
+    for (it = rNGrams.mData.begin(); it != rNGrams.mData.end(); ++it) {
+      BDTree* p_node  = this;
+      NGram&  r_ngram = **it;
+      
+      while (!p_node->IsLeaf()) {
+        p_node = p_node->mpQuestion->Eval(r_ngram) ? p_node->mpTree1 : p_node->mpTree0;
+      } 
+
+      // store leaf for late post-processing
+      leaf_map.insert(p_node);
+
+      // if mpBackoff is not initialized yet
+      if (NULL == p_node->mpBackoffDist) {
+        p_node->mpBackoffDist = new VecDistribution(p_node->mDist);
+        p_node->mDist.mN      = 0.0;
+        p_node->mDist.Reset();
+      }
+
+      p_node->mDist.mVec[r_ngram[0]]  += r_ngram.Counts();
+      p_node->mDist.mN                += r_ngram.Counts();
+    }
+
+    // recompute all distributions
+    for (i_leaf = leaf_map.begin(); i_leaf != leaf_map.end(); ++i_leaf) {
+      (*i_leaf)->mDist.Fix();
+      if (r > 0) {
+        (*i_leaf)->mDist.Smooth(*((**i_leaf).mpBackoffDist), r);
+      }
+    }
+  }
   
+  //***************************************************************************/
+  //***************************************************************************/
+  void
+  BDTree::
+  ResetLeaves()
+  {
+    if (!IsLeaf()) {
+      mpTree0->ResetLeaves();
+      mpTree1->ResetLeaves();
+    }
+    else {
+      mDist.Reset();
+    }
+  }
 
   //***************************************************************************/
   //***************************************************************************/
