@@ -2067,7 +2067,7 @@ namespace STK
 
       for (i = 0; i < mNMixtures; i++)
       {
-        if(UT_EBW == pModelSet->mUpdateType)
+        if(UT_EBW == pModelSet->mUpdateType || pModelSet->mMapTau > 0.0)
         {
           // For MMI update from single combined num-den accumulator, we can use numerator counts.
           ///accum_sum += mpMixture[i].mWeightAccumDen;
@@ -2121,7 +2121,7 @@ namespace STK
       {
 
 //!!! In MPE update code, we do not update mixture with low counts
-//!!! Here, we remove mixture with low weight, but even if weights are not bo be re-estimated
+//!!! Here, we remove mixture with low weight, but even if weights are not to be re-estimated
 //!!! We should behave more consistently
 
         for (i = 0, k = 0; i < mNMixtures; i++, k++) 
@@ -3222,6 +3222,8 @@ namespace STK
                                   flags & MODEL_SET_WITH_TWO_ACCUM_SET ? 2 : 0;
     this->mTotalDelay           = 0;
     InitLogMath();
+    
+    this->mSaveGlobOpts         = true;
   
     //Reestimation params
     this->mMinOccurances        = 3;

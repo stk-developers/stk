@@ -304,7 +304,7 @@ int main(int argc, char *argv[])
   in_net_fmt.mEndTimeShift =
                  GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0);
   in_net_fmt.mNoAcousticLikes = 
-               !!GetParamBool(&cfgHash,SNAME":ADDACSCORES",     true);
+                !GetParamBool(&cfgHash,SNAME":ADDACSCORES",     false);
   baum_welch   = GetParamBool(&cfgHash,SNAME":EVALUATION",      false);
   swap_features=!GetParamBool(&cfgHash,SNAME":NATURALREADORDER",isBigEndian());
   gpFilterWldcrd=GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");

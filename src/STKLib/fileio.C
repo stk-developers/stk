@@ -64,35 +64,108 @@ namespace STK
   //***************************************************************************
   //***************************************************************************
   int 
-  WriteHTKFeature(FILE * pOutFp, FLOAT * pOut, size_t feaLen, bool swap) 
+  WriteHTKFeature(
+    FILE * pOutFp,
+    FLOAT * pOut,
+    size_t feaLen,
+    bool swap,
+    bool compress,
+    FLOAT* pScale, 
+    FLOAT* pBias)
   {
     size_t    i;
     size_t    cc = 0;
-    
-  #if !DOUBLEPRECISION
-    if (swap) 
-      for (i = 0; i < feaLen; i++) 
-        swap4(pOut[i]);
-    
-    cc = fwrite(pOut, sizeof(FLOAT_32), feaLen, pOutFp);
-    
-    if (swap) 
-      for (i = 0; i < feaLen; i++) 
-        swap4(pOut[i]);
-  #else
-    FLOAT_32 f;
-  
-    for (i = 0; i < feaLen; i++) 
+
+
+    if (compress) 
     {
-      f = pOut[i];
+      INT_16 s;
+        
+      for (i = 0; i < feaLen; i++) 
+      {
+	s = pOut[i] * pScale[i] - pBias[i];
+        if (swap) 
+	  swap2(s);
+	cc += fwrite(&s, sizeof(INT_16), 1, pOutFp);
+      }
+      
+    } else {
+  #if !DOUBLEPRECISION
       if (swap) 
-        swap4(f);
-      cc += fwrite(&f, sizeof(FLOAT_32), 1, pOutFp);
-    }
+        for (i = 0; i < feaLen; i++) 
+          swap4(pOut[i]);
+    
+        cc = fwrite(pOut, sizeof(FLOAT_32), feaLen, pOutFp);
+    
+      if (swap) 
+        for (i = 0; i < feaLen; i++) 
+          swap4(pOut[i]);
+  #else
+      FLOAT_32 f;
+  
+      for (i = 0; i < feaLen; i++) 
+      {
+        f = pOut[i];
+        if (swap) 
+          swap4(f);
+        cc += fwrite(&f, sizeof(FLOAT_32), 1, pOutFp);
+      }
   #endif
+    }
     return cc == feaLen ? 0 : -1;
   }
-  
+
+  int 
+  WriteHTKFeatures(
+    FILE *  pOutFp,
+    FLOAT * pOut,
+    int     nCoeffs,
+    int     nSamples,
+    int     samplePeriod,
+    int     targetKind,  
+    bool    swap) 
+  {
+    HtkHeader header;
+    int i, j;
+    float *pScale;
+    float *pBias;
+    
+    header.mNSamples = nSamples  + ((targetKind & PARAMKIND_C) ? 2 * sizeof(FLOAT_32) / sizeof(INT_16) : 0);
+    header.mSamplePeriod = samplePeriod;
+    header.mSampleSize = nCoeffs * ((targetKind & PARAMKIND_C) ?    sizeof(INT_16)   : sizeof(FLOAT_32));;
+    header.mSampleKind = targetKind;
+    
+    WriteHTKHeader (pOutFp, header, swap);
+
+    if(targetKind & PARAMKIND_C) {
+      pScale = (FLOAT*) malloc(nCoeffs * sizeof(FLOAT));
+      pBias = (FLOAT*)  malloc(nCoeffs * sizeof(FLOAT));
+      if (pScale == NULL || pBias == NULL) Error("Insufficient memory");
+      
+      for(i = 0; i < nCoeffs; i++) {
+        float xmin, xmax;
+	xmin = xmax = pOut[i];
+	for(j = 1; j < nSamples; j++) {
+	  if(pOut[j*nCoeffs+i] > xmax) xmax = pOut[j*nCoeffs+i];
+	  if(pOut[j*nCoeffs+i] < xmin) xmin = pOut[j*nCoeffs+i];
+	}
+	pScale[i] = (2*32767) / (xmax - xmin);
+        pBias[i]  = pScale[i] * (xmax + xmin) / 2;
+	
+	
+      }
+      if (WriteHTKFeature(pOutFp, pScale, nCoeffs, swap, false, 0, 0)
+      ||  WriteHTKFeature(pOutFp, pBias,  nCoeffs, swap, false, 0, 0)) {
+        return -1;
+      }
+    }
+    for(j = 0; j < nSamples; j++) {
+      if (WriteHTKFeature(pOutFp, &pOut[j*nCoeffs], nCoeffs, swap, targetKind & PARAMKIND_C, pScale, pBias)) {
+        return -1;
+      }
+    }
+    return 0;
+  }
   
   //***************************************************************************
   //***************************************************************************

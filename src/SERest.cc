@@ -336,6 +336,8 @@ int main(int argc, char* argv[])
     featureRepositoryList.front()->AddFile(argv[i]);
     swap(featureRepositoryList.front(), featureRepositoryList.back());
   }
+  gpFilterWldcrd=GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD","$");
+  gpScriptFilter=GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",  NULL);
   if (NULL != script) {
     AddFileListToFeatureRepositories(script, gpScriptFilter, featureRepositoryList);
   }
@@ -364,17 +366,17 @@ int main(int argc, char* argv[])
 //  in_lbl_fmt.right_extent =  100 * (long long) (0.5 + 1e5 *
   in_net_fmt.mEndTimeShift =
                  GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0);
-  gpFilterWldcrd= GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD","$");
-  gpScriptFilter= GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",  NULL);
-  gpHListFilter = GetParamStr(&cfgHash, SNAME":HMMLISTFILTER",  NULL);
-  gpMmfFilter   = GetParamStr(&cfgHash, SNAME":HMMDEFFILTER",   NULL);
+  in_net_fmt.mNoAcousticLikes =
+                !GetParamBool(&cfgHash,SNAME":ADDACSCORES",     false);
+  gpHListFilter =GetParamStr(&cfgHash, SNAME":HMMLISTFILTER",  NULL);
+  gpMmfFilter   =GetParamStr(&cfgHash, SNAME":HMMDEFFILTER",   NULL);
   label_filter = GetParamStr(&cfgHash, SNAME":HLABELFILTER",    NULL);
   net_filter   = GetParamStr(&cfgHash, SNAME":HNETFILTER",      NULL);
   dict_filter  = GetParamStr(&cfgHash, SNAME":HDICTFILTER",     NULL);
   gpMmfOFilter = GetParamStr(&cfgHash, SNAME":HMMDEFOFILTER",   NULL);
   dictionary   = GetParamStr(&cfgHash, SNAME":SOURCEDICT",      NULL);
   grammar_scale= GetParamFlt(&cfgHash, SNAME":LMSCALE",         1.0);
-  posterior_scale= GetParamFlt(&cfgHash, SNAME":POSTERIORSCALE", 1.0);
+  posterior_scale=GetParamFlt(&cfgHash,SNAME":POSTERIORSCALE", 1.0);
   outprb_scale = GetParamFlt(&cfgHash, SNAME":OUTPSCALE",       1.0);
   transp_scale = GetParamFlt(&cfgHash, SNAME":TRANSPSCALE",     1.0);
   pronun_scale = GetParamFlt(&cfgHash, SNAME":PRONUNSCALE",     1.0);
@@ -549,6 +551,15 @@ int main(int argc, char* argv[])
   {
     hset_prior = &hset;
   }
+
+  if (src_hmm_list) 
+    hset.ReadHMMList(src_hmm_list, src_hmm_dir ? src_hmm_dir : "", src_hmm_ext ? src_hmm_ext : "");
+    
+  if (alg_hmm_list) 
+    hset_alig->ReadHMMList(alg_hmm_list, alg_hmm_dir, alg_hmm_ext);
+    
+  if (pri_hmm_list) 
+    hset_prior->ReadHMMList(pri_hmm_list, pri_hmm_dir, pri_hmm_ext);
   
   hset.AttachPriors(hset_prior);
 
@@ -560,16 +571,7 @@ int main(int argc, char* argv[])
     
   if (UT_TwoAccumSetEBW == update_type && 0 == parallel_mode
   && feature_repo.QueueSize() != feature_repo_alig.QueueSize())
-    Error("Two accumulator set MMI update requires even number of accumulator files");
-    
-  if (src_hmm_list) 
-    hset.ReadHMMList(src_hmm_list, src_hmm_dir ? src_hmm_dir : "", src_hmm_ext ? src_hmm_ext : "");
-    
-  if (alg_hmm_list) 
-    hset_alig->ReadHMMList(alg_hmm_list, alg_hmm_dir, alg_hmm_ext);
-    
-  if (pri_hmm_list) 
-    hset_prior->ReadHMMList(pri_hmm_list, pri_hmm_dir, pri_hmm_ext);
+    Error("Two accumulator set MMI update requires even number of accumulator files");    
   
   nonCDphHash = hset.MakeCIPhoneHash();
 

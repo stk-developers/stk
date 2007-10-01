@@ -80,7 +80,8 @@ namespace STK
   
   
   int WriteHTKHeader  (FILE * fp_out, HtkHeader header, bool swap);
-  int WriteHTKFeature (FILE * fp_out, FLOAT *out, size_t fea_len, bool swap);
+  int WriteHTKFeature (FILE * fp_out, FLOAT *out, size_t fea_len, bool swap, bool compress, FLOAT* pScale, FLOAT* pBias);
+  int WriteHTKFeatures(FILE * pOutFp, FLOAT * pOut, int nCoeffs, int nSamples, int samplePeriod, int targetKind, bool swap);
   int ReadHTKHeader   (FILE * fp_in, HtkHeader *header, bool swap);
   int ReadHTKFeature  (FILE * fp_in, FLOAT *in, size_t fea_len, bool swap,
                        bool   decompress, FLOAT *A, FLOAT *B);

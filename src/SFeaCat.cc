@@ -290,17 +290,20 @@ int main(int argc, char *argv[])
     if ((ofp = fopen(p_out_file, "wb")) == NULL)
       Error("Cannot open output feature file: '%s'", p_out_file);
     
-    header.mSampleKind = p_input ? PARAMKIND_USER : targetKind;
-    header.mSampleSize = out_size * sizeof(float);
-    header.mNSamples -= hset.mTotalDelay;
+//    header.mSampleKind = p_input ? PARAMKIND_USER : targetKind;
+//    header.mSampleSize = out_size * sizeof(float);
+//    header.mNSamples -= hset.mTotalDelay;
 
     if (WriteHTKHeader(ofp, header, 1))
       Error("Cannot write to output feature file: '%s'", p_out_file);
     
     time = -hset.mTotalDelay;
     hset.ResetXformInstances();
+    
+    FLOAT *out_mx = (FLOAT*)  malloc((header.mNSamples - hset.mTotalDelay) * out_size * sizeof(FLOAT));
+    if (out_mx == NULL) Error("Insufficient memory");
 
-    for(i = 0; i < header.mNSamples + hset.mTotalDelay; i++) 
+    for(i = 0; i < header.mNSamples; i++) 
     {
 #ifndef USE_NEW_MATRIX      
       hset.UpdateStacks(obs_mx + i * vec_size, ++time, FORWARD);
@@ -316,14 +319,28 @@ int main(int argc, char *argv[])
       obs = XformPass(p_input, feature_matrix[i], time, FORWARD);
 #endif
 
-      if (WriteHTKFeature (ofp, obs, out_size, swap_fea_out)) 
-        Error("Cannot write to output feature file: '%s'", p_out_file);      
+      memcpy(out_mx + i * out_size, obs, sizeof(FLOAT) * out_size);
+
+//      if (WriteHTKFeature (ofp, obs, out_size, swap_fea_out)) 
+//        Error("Cannot write to output feature file: '%s'", p_out_file);      
     }
     
-    tot_frames += header.mNSamples;
+    if (WriteHTKFeatures(
+          ofp,
+	  out_mx,
+	  out_size,
+	  header.mNSamples - hset.mTotalDelay,
+	  header.mSamplePeriod,
+	  p_input ? (PARAMKIND_USER | targetKind & PARAMKIND_C) : targetKind,
+	  swap_fea_out)) 
+    {
+      Error("Cannot write to output feature file: '%s'", p_out_file);
+    }
+    free(out_mx);
+    tot_frames += header.mNSamples - hset.mTotalDelay;
 
     if(trace_flag & 1) 
-      TraceLog("[%d frames]", header.mNSamples);
+      TraceLog("[%d frames]", header.mNSamples - hset.mTotalDelay);
       
     fclose(ofp);
 #ifndef USE_NEW_MATRIX      
