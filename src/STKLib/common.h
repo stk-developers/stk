@@ -422,7 +422,7 @@ using namespace STK;
   
   int fprintHTKstr(FILE *fp, const char *str);
   int getHTKstr(char *str, char **endPtrOrErrMsg);
-  int skipHTKstr(char *str, const char **endPtrOrErrMsg);
+  int skipHTKstr(const char *str, const char **endPtrOrErrMsg);
   char *expandFilterCommand(const char *command, const char *filename);
   char *readline(FILE *fp, struct ReadlineData *data);
   

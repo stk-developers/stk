@@ -661,7 +661,7 @@ void fast_softmax_vec(double *in, double *out, int size)
   
   //***************************************************************************
   //***************************************************************************
-  int skipHTKstr(char *chrptr, const char **endPtrOrErrMsg)
+  int skipHTKstr(const char *chrptr, const char **endPtrOrErrMsg)
   {
     char termChar = '\0';
       

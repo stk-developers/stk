@@ -370,7 +370,7 @@ namespace STK
               {
                 // Count number of link definitions on the rest of the line and
                 // prealocate memory for links
-                char *pCh;
+                const char *pCh;
                 int nl = 1;
                 
                 if (skipHTKstr(valptr, &pCh)) 

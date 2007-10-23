@@ -76,7 +76,7 @@ void usage(char *progname)
 }
 
 #define SNAME "SEXPAND"
-char *optionStr =
+const char *optionStr =
 " -i r   TARGETMLF"
 " -l r   TARGETTRANSCDIR"
 //" -m n   RESPECTPRONVARS=TRUE"

@@ -52,6 +52,8 @@ using namespace STK;
 #include <map>
 std::map<char *,float> countMap;
 
+extern int STK::nbest_lattices;
+
 //******************************************************************************
 //******************************************************************************
 void usage(char *progname)
@@ -345,7 +347,6 @@ int main(int argc, char *argv[])
   mmf_dir      = GetParamStr(&cfgHash, SNAME":MMFDIR",          ".");
   mmf_mask     = GetParamStr(&cfgHash, SNAME":MMFMASK",         NULL);
 
-  extern int STK::nbest_lattices;
   STK::nbest_lattices = GetParamInt(&cfgHash, SNAME":NBEST",    0);
 
 
