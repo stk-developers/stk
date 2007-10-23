@@ -265,6 +265,45 @@ namespace STK
   //****************************************************************************
   //****************************************************************************
   template<typename _ElemT>
+    _ElemT
+    BasicVector<_ElemT>::
+    Sum() const
+    {
+      double sum = 0.0;
+
+      for (size_t i = 0; i < mLength; ++i) {
+        sum += mpData[i];
+      } 
+
+      return sum;
+    }
+
+
+  //****************************************************************************
+  //****************************************************************************
+  template<typename _ElemT>
+    _ElemT
+    BasicVector<_ElemT>::
+    LogSumExp() const
+    {
+      if (mLength > 0) {
+        double sum = mpData[0];
+
+        for (size_t i = 1; i < mLength; ++i) {
+          sum = LogAdd(sum, mpData[i]);
+        } 
+
+        return sum;
+      }
+      else {
+        return LOG_0;
+      }
+    }
+
+
+  //****************************************************************************
+  //****************************************************************************
+  template<typename _ElemT>
     std::ostream &
     operator << (std::ostream& rOut, BasicVector<_ElemT>& rV)
     {
@@ -272,7 +311,6 @@ namespace STK
       {
         rOut << rV[i] << " ";
       }
-      rOut << std::endl;
       
       return rOut;
     }

@@ -5,14 +5,17 @@
 #include "ContextSample.h"
 #include "BQuestion.h"
 #include "BDTree_IO.h"
+#include "BasicVector.h"
 
 #include <vector>
 #include <limits>
+#include <list>
 
 
 namespace STK
 {
   class BSetQuestion;
+  class BDTree;
 
 
   /** *************************************************************************
@@ -306,6 +309,22 @@ namespace STK
     Smooth(const VecDistribution& rDistr, double r);
 
 
+    /** 
+     * @brief Smoothes distribution by another distribution
+     * 
+     * @param rDistr Smoothing distribution
+     * @param r smoothing kludge/fudge factor
+     *
+     * Psmoothed(s) = b*Pthis(s) + (1-b)*PrDistr(s) 
+     *
+     *   where
+     *
+     * b = N / (N+r)
+     */
+    virtual void
+    MapAdapt(const VecDistribution& rDistr, double r);
+
+
     ProbType
     operator [] (const NGram::TokenType& rToken);
 
@@ -335,7 +354,10 @@ namespace STK
     mAdaptR(0.0),
     mVerbosity(1),
     mMMItoggle(false),
-    mMultiScript(false)
+    mMMIAlpha(1.0), 
+    mMMIEta(1.0), 
+    mMinMMIIncrease(0.0),
+    mMapAdapt(false)
     {}
 
     double    mMinReduction;    ///< Minimum entropy reduction
@@ -349,9 +371,11 @@ namespace STK
     int       mVerbosity;       ///< Verbosity level
 
     bool      mMMItoggle;
-    double    mMinMMIIncrease;
+    double    mMMIAlpha;        ///< MMI alpha constant
+    double    mMMIEta;          ///< MMI eta constant
+    double    mMinMMIIncrease;  ///< 
 
-    bool      mMultiScript;
+    bool      mMapAdapt;
   }; //class BDTreeAttributes
 
 
@@ -373,6 +397,14 @@ namespace STK
     size_t  mTotalLeaves;
   };
 
+
+  struct ChCoRecord {
+    NGramSubset*    mpNGrams;
+    BDTree*         mpModel;
+    BasicVector<double>  mWeights;
+  };
+
+  typedef std::list<ChCoRecord> ChCoDataCollection;
 
   /** 
    * @brief Binary decision tree
@@ -494,9 +526,11 @@ namespace STK
     /** 
      * @brief Scores a single n-gram
      * @param rNGram data to score
-     * @return Score based on the decision tree structure and precomputed smoothed probabilities
+     * @return Score based on the decision tree structure and precomputed 
+     * smoothed probabilities
      *
-     * NOTE: Smoothing is not done on-line. It has to be precomputed using ComputeBackoffDists
+     * NOTE: Smoothing is not done on-line. It has to be precomputed using 
+     * ComputeBackoffDists
      */
     double 
     ScoreNGram(const NGram& rNGram);
@@ -530,6 +564,17 @@ namespace STK
     RecomputeDists();
 
     /** 
+     * @brief Fills leaf distributions with clustered data counts
+     * 
+     * @param rNGrams the data
+     *
+     * NOTE: Use FillLeafSupervector function to stack the leaves to form one
+     * super vector
+     */
+    void
+    CollectCounts(const NGramSubset& rNGrams);
+
+    /** 
      * @brief Adapts leaf distributions using new data and smoothing factor
      * 
      * @param rNGrams adaptation data
@@ -542,7 +587,7 @@ namespace STK
      * b = #(s) / (#(s)+r)
      */
     void
-    AdaptLeafDists(const NGramSubset& rNGrams, double r);
+    AdaptLeafDists(const NGramSubset& rNGrams, BDTreeBuildTraits& rTraits);
 
     /** 
      * @brief Flatens distributions in all leaves
@@ -559,6 +604,13 @@ namespace STK
     void
     Dump(std::ostream& rStream, const std::string& rPrefix) const;
 
+
+    int
+    GetLeaves(std::vector<BDTree*>& rCollection);
+
+    void
+    FillLeafSupervector(BasicVector<double>& rVector, bool backoff);
+
   private:
     BSetQuestion*
     FindSubset_Greedy(NGramSubsets& rNGrams, BDTreeBuildTraits& rTraits, double* pSplitEnt,
@@ -567,6 +619,22 @@ namespace STK
     BSetQuestion*
     FindSubset_Greedy_MMI(NGramSubsets& rNGrams, BDTreeBuildTraits& rTraits, double* pSplitMMI,
         int pred);
+
+    static void
+    ChCo_AdaptWeightVector(
+        BasicVector<double>&        rVector, 
+        const Matrix<double>&       rXformMatrix, 
+        const BasicVector<double>&  rLM,
+        const BasicVector<double>&  rNGrams, 
+        int nIter, 
+        double eps);
+
+    static void
+    ChCo_AdaptXformMatrix(
+        Matrix<double>&             rMatrix, 
+        const ChCoDataCollection&   rData, 
+        int                         nIter, 
+        double                      eps);
 
   private:
     BDTree*           mpTree0;

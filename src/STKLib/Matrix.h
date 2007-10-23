@@ -211,6 +211,25 @@ namespace STK
       //########################################################################
       //########################################################################
       
+      ThisType &
+      DotMul(const ThisType& a);
+      
+      ThisType&
+      NormalizeRows();
+
+      /**
+       *  @brief Returns sum of all elements
+       */
+      const _ElemT&
+      Sum() const;
+
+      /**
+       *  @brief Performs log on all elements
+       *         result to this (elem by elem)
+       */
+      ThisType&
+      Log();
+
       /**
        *  @brief Performs fast sigmoid on row vectors
        *         result to this (elem by elem)

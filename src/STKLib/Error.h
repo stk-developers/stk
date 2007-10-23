@@ -123,17 +123,17 @@ namespace STK
   /**
    *  @brief Error throwing function
    */
-  void _Error_(const char *func, const char *file, int line, char *msg, ...);
+  void _Error_(const char *func, const char *file, int line, const char *msg, ...);
   
   /**
    *  @brief Warning handling function
    */
-  void _Warning_(const char *func, const char *file, int line, char *msg, ...);
+  void _Warning_(const char *func, const char *file, int line, const char *msg, ...);
     
   /**
    *  @brief Warning handlingfunction
    */
-  void TraceLog(char *msg, ...);
+  void TraceLog(const char *msg, ...);
 
 }; // namespace STK
 

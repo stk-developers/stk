@@ -31,6 +31,7 @@ namespace STK
 
     //..........................................................................
     NGram()
+    : mCounts(0), mOrder(0), mpTokens(NULL)
     {}
 
     ~NGram()
@@ -50,6 +51,10 @@ namespace STK
     operator[](const size_t index)
     { return mpTokens[index]; }
 
+    const int
+    Order() const
+    { return mOrder; }
+
     friend std::ostream&
     operator<<(std::ostream& rOstr, const NGram& rCS);
     
@@ -57,6 +62,7 @@ namespace STK
 
   private:
     ProbType      mCounts;    ///< Sample's weight
+    int           mOrder;     ///< NGram order
     TokenType*    mpTokens;   ///< Pointer to token array 
   }; // class NGram
 
@@ -114,6 +120,20 @@ namespace STK
   class NGramSubset
   {
   public:
+    struct NGramCompare {
+      NGramCompare() :mOrder(0)
+      {}
+
+      NGramCompare(size_t order) : mOrder(order)
+      {}
+
+      NGramCompare(const NGramCompare& rOrig) : mOrder(rOrig.mOrder)
+      {}
+
+      bool operator()(NGram* s1, NGram* s2) const;
+      size_t mOrder;
+    };
+
     typedef std::vector<NGram*> NGramContainer;
 
     NGramSubset()
@@ -154,6 +174,9 @@ namespace STK
     double
     Mass() const;
 
+    size_t
+    TokenCount() const
+    { return mData.size(); }
     /** 
      * @brief Splits data according to a given question
      * 
@@ -172,7 +195,7 @@ namespace STK
   protected:
     NGramContainer       mData;
     size_t               mOrder;
-    NGramPool*           mpPool;
+    NGramPool*           mpPool;        ///< parent data pool
   };
 
 
@@ -185,6 +208,9 @@ namespace STK
     double
     Mass() const;
 
+    size_t
+    TokenCount() const;
+
     void
     Destroy();
 
@@ -195,16 +221,18 @@ namespace STK
     ParallelEntropy() const;
 
     double
-    MMI() const;
+    MMI(double eta) const;
 
     double
     SplitEntropy(const BQuestion& rQuestion) const;
 
     double
-    ParallelSplitEntropy(const BQuestion& rQuestion) const;
+    ParallelSplitEntropy(const BQuestion& rQuestion, double* pMass0, 
+        double* pMass1) const;
 
     double
-    SplitMMI(const BQuestion& rQuestion) const;
+    SplitMMI(const BQuestion& rQuestion, double alpha, double eta,
+        double* pMass0, double* pMass1) const;
 
     void
     Split(const BQuestion& rQuestion, NGramSubsets& rData0, NGramSubsets& rData1);

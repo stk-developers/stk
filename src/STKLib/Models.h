@@ -1881,7 +1881,7 @@ namespace STK
   extern const char *   gpHListFilter;                        ///< HMM list Filter command
   extern FunctionTable  gFuncTable[];                         ///< FuncXform table (keyword Id to function mapping)
   extern size_t         gFuncTableSize;                       ///< Number of records in gFuncTable
-  extern char *         gpKwds[KID_MaxKwdID];                 ///< MMF keyword table
+  extern const char *   gpKwds[KID_MaxKwdID];                 ///< MMF keyword table
 
                   
   /**

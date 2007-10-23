@@ -19,7 +19,7 @@ namespace STK
 {
   //****************************************************************************
   //****************************************************************************
-  void _Error_(const char *func, const char *file, int line, char *msg, ...) 
+  void _Error_(const char *func, const char *file, int line, const char *msg, ...) 
   {
     va_list ap;
     va_start(ap, msg);
@@ -33,7 +33,7 @@ namespace STK
   
   //****************************************************************************
   //****************************************************************************
-  void _Warning_(const char *func, const char *file, int line, char *msg, ...) 
+  void _Warning_(const char *func, const char *file, int line, const char *msg, ...) 
   {
     va_list ap;
     va_start(ap, msg);
@@ -46,7 +46,7 @@ namespace STK
   
   //****************************************************************************
   //****************************************************************************
-  void TraceLog(char *msg, ...) 
+  void TraceLog(const char *msg, ...) 
   {
     va_list ap;
     va_start(ap, msg);

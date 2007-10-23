@@ -349,6 +349,93 @@ namespace STK
   template<typename _ElemT>
     Matrix<_ElemT> &
     Matrix<_ElemT>::
+    DotMul(const ThisType& a)
+    {
+      size_t i;
+      size_t j;
+
+      for (i = 0; i < mMRows; ++i) {
+        for (j = 0; j < mMCols; ++j) {
+          (*this)[i][j] *= a[i][j];
+        }
+      }
+      return *this;
+    }
+  
+  //****************************************************************************
+  //****************************************************************************
+  template<typename _ElemT>
+    const _ElemT &
+    Matrix<_ElemT>::
+    Sum() const
+    {
+      double sum = 0.0;
+      
+      for (size_t i = 0; i < Rows(); ++i) {
+        for (size_t j = 0; j < Cols(); ++i) {
+          sum += (*this)[i][j];
+        }
+      }
+
+      return sum; 
+    }
+
+  //****************************************************************************
+  //****************************************************************************
+  template<typename _ElemT>
+    Matrix<_ElemT> &
+    Matrix<_ElemT>::
+    NormalizeRows()
+    {
+      size_t i;
+      size_t j;
+
+      for (i = 0; i < mMRows; ++i) {
+        double sum = 0.0;
+
+        for (j = 0; j < mMCols; ++j) {
+          sum += (*this)[i][j];
+        }
+
+        for (j = 0; j < mMCols; ++j) {
+          (*this)[i][j] /= sum;
+        }
+      }
+      return *this;
+    }
+  
+  //****************************************************************************
+  //****************************************************************************
+  template<typename _ElemT>
+    Matrix<_ElemT> &
+    Matrix<_ElemT>::
+    Log()
+    {
+      size_t i;
+      size_t j;
+
+      for (i = 0; i < mMRows; ++i) {
+        for (j = 0; j < mMCols; ++j) {
+          if ((*this)[i][j] > DBL_EPSILON) {
+            (*this)[i][j] = log((*this)[i][j]);
+          }
+          else if ((*this)[i][j] < -DBL_EPSILON) {
+            STK::Error("Sigmoid only implemented for float");
+          }
+          else {
+            (*this)[i][j] = LOG_0;
+          }
+        }
+      }
+      return *this;
+    }
+  
+
+  //****************************************************************************
+  //****************************************************************************
+  template<typename _ElemT>
+    Matrix<_ElemT> &
+    Matrix<_ElemT>::
     FastRowSigmoid()
     {
       STK::Error("Sigmoid only implemented for float");

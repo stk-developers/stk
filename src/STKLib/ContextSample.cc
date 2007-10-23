@@ -1,10 +1,15 @@
 #include "ContextSample.h"
 #include "BasicVector.h"
+#include "Matrix.h"
 #include "stkstream.h"
 
 #include <sstream>
 #include <exception>
 #include <utility>
+#include <algorithm>
+#include <string>
+
+#include <boost/tokenizer.hpp>
 
 namespace STK {
   //***************************************************************************/
@@ -14,7 +19,7 @@ namespace STK {
   IToA(const int index) const
   {
     if (index >= mIntMap.size()) {
-      throw std::runtime_error("Index out of bound");
+      throw std::runtime_error(std::string("Index ") + " out of bound");
     }
     return mIntMap[index];
   } // IToA(..)
@@ -30,7 +35,7 @@ namespace STK {
 
     if (it == mStrMap.end()) {
       if (mStrictMode) {
-        throw std::runtime_error("Symbol not found");
+        throw std::runtime_error(std::string("Symbol") + rString + " not found");
       }
       else {
         int new_i = mStrMap.size();
@@ -55,7 +60,7 @@ namespace STK {
 
       // testing...
       if (!stream.good()) {
-        std::runtime_error("Cannot open vocabulary file");
+        throw std::runtime_error(std::string("Cannot open vocabulary file ") + rFName);
       }
 
       LoadFromStream(stream);
@@ -159,18 +164,26 @@ namespace STK {
       std::string       line_buf;
       std::string       tmp_token;
       std::vector<std::string> token_chunk(Order());
-      double            counts;
+      std::set<NGram*, NGramSubset::NGramCompare> ngram_map;
+      std::set<NGram*, NGramSubset::NGramCompare>::iterator i_ngram;
+      double            counts=0;
       int               token_counter = 0;
+      NGram*            tmp_sample = NULL;
 
       // this could speed things up
       line_buf.reserve(LINE_BUF_DEFAULT_MIN_LENGTH);
       tmp_token.reserve(CONTEXT_SAMPLE_DEFAULT_MIN_LENGTH);
+
+      // copy the original data to a map container, which is faster for 
+      // insertion and update
+      ngram_map.insert(mData.begin(), mData.end());
 
       // read till the end of file
       while (!rStream.eof()) 
       {
         // read one line and store in stringstream for parsing
         std::getline(rStream, line_buf);
+
         rStream >> std::ws;
         std::stringstream line_buf_stream(line_buf);
 
@@ -183,6 +196,31 @@ namespace STK {
           line_buf_stream >> token_chunk[i];
         }
 
+        // tokenzie the line
+        // boost::tokenizer<> toks(line_buf);
+        // boost::tokenizer<>::iterator i_toks = toks.begin();
+        // boost::tokenizer<>::iterator i_toks_next = i_toks;
+        // i_toks_next++;
+
+        // // token_chunk.clear();
+        // // token_chunk.reserve(Order() + 1);
+
+        // NGram* new_ngram = this->pNewNGram();
+
+        // // fill token chunk with tokens
+        // size_t i;
+        // for (i=Order()-1; i_toks_next != toks.end() && i >= 0; ++i_toks, --i, ++i_toks_next) {
+        //   token_chunk[i] = *i_toks;
+        // }
+
+        // // check for number of tokens
+        // if (i != -1 || i_toks_next != toks.end()) {
+        //   continue;
+        // }
+
+        // std::stringstream wtok(*i_toks_next);
+        // wtok >> counts;
+
         line_buf_stream >> counts;
         line_buf_stream >> std::ws;
 
@@ -194,14 +232,12 @@ namespace STK {
           continue;
         }
 
-        // this mechanizm should provide some speedup, TODO: check this
-        if (mData.size()+1 < mData.capacity()) {
-          //mData.reserve(mData.capacity() * 2); 
-        }
-        
+        assert (counts >= 0);
+
         // create new NGram
-        NGram* tmp_sample = this->pNewNGram();
-        tmp_sample->mCounts = counts * weight ;
+        if (NULL == tmp_sample) {
+          tmp_sample = this->pNewNGram();
+        }
         
         // copy the chunk to the new NGram Token array
         std::vector<std::string>::reverse_iterator it; 
@@ -212,10 +248,28 @@ namespace STK {
           (*tmp_sample)[token_index] = x;
         }
 
-        mData.push_back(tmp_sample);
+        tmp_sample->mCounts = counts * weight ;
 
+        // if we have the ngram in the map, just add the counts
+        if ((i_ngram = ngram_map.find(tmp_sample)) != ngram_map.end()) {
+          (**i_ngram).mCounts += tmp_sample->mCounts;
+        }
+        else {
+          ngram_map.insert(ngram_map.end(),tmp_sample);
+          tmp_sample = NULL;
+        }
+        
         ++token_counter;
       } // while (!eof)
+
+      // create new data vector out of the updated map container
+      mData.clear();
+      mData.insert(mData.begin(), ngram_map.begin(), ngram_map.end());
+
+      // clear the temporary sample if last record was of different order
+      if (NULL != tmp_sample) {
+        delete tmp_sample;
+      }
     }
     catch (std::runtime_error& rError) 
     {
@@ -236,19 +290,26 @@ namespace STK {
   AddFromFile(const std::string& rFileName, const double& weight)
   {
     try {
-      std::cout << "Processing " << rFileName << std::endl;
-      // open stream
-      IStkStream stream(rFileName.c_str());
+      if (weight > 0) {
+        std::cout << "Processing " << rFileName << std::endl;
+        // open stream
+        IStkStream stream(rFileName.c_str());
 
-      // testing...
-      if (!stream.good()) {
-        std::runtime_error("Cannot open N-gram counts file");
+        // testing...
+        if (!stream.good()) {
+          throw std::runtime_error(std::string("Cannot open N-gram counts file ") +
+              rFileName);
+        }
+
+        // stream.seekg(0);
+        AddFromStream(stream, weight);
+
+        stream.close();
       }
-
-      stream.seekg(0);
-      AddFromStream(stream, weight);
-
-      stream.close();
+      else {
+        std::cout << "Skipping " << rFileName << " because weight is too low" 
+          << std::endl;
+      }
     }
     catch (std::runtime_error& rError) {
       RethrowMessage("");
@@ -262,8 +323,9 @@ namespace STK {
   NGramPool::
   pNewNGram() 
   {
-    NGram* tmp_sample = new NGram();
-    tmp_sample->mpTokens = new NGram::TokenType[Order()];
+    NGram* tmp_sample     = new NGram();
+    tmp_sample->mpTokens  = new NGram::TokenType[Order()];
+    tmp_sample->mOrder    = Order();
 
     return tmp_sample;
   }
@@ -294,15 +356,6 @@ namespace STK {
   } // FindNGram(const NGram* pNGram)
 
 
-  const bool
-  NGramPool::
-  CompareNGram(const NGram* pFirst, const NGram* pSecond) const
-  {
-    for (int i=0; i<Order(); ++i) {
-      // TODO
-    }
-  }
-
   //****************************************************************************
   //****************************************************************************
   //****************************************************************************
@@ -321,6 +374,28 @@ namespace STK {
     return mass;
   }
 
+
+  //****************************************************************************
+  //****************************************************************************
+  bool
+  NGramSubset::NGramCompare::
+  operator()(NGram* s1, NGram* s2) const
+  {
+    size_t i;
+    assert(s1->Order() == s2->Order());
+
+    for (i = 0; i < s1->Order(); ++i) {
+      if ((*s1)[i] < (*s2)[i]) {
+        return true;
+      }
+      else if ((*s1)[i] > (*s2)[i]) {
+        return false;
+      }
+    }
+    return false;
+  }
+
+
   //****************************************************************************
   //****************************************************************************
   void
@@ -338,10 +413,10 @@ namespace STK {
     NGramContainer::iterator i;
     for (i = mData.begin(); i != mData.end(); ++i) {
       if (rQuestion.Eval(**i)) {
-        rData1.mData.push_back(*i);
+        rData1.mData.insert(rData1.mData.end(), *i);
       }
       else {
-        rData0.mData.push_back(*i);
+        rData0.mData.insert(rData0.mData.end(), *i);
       }
     }
   }    
@@ -447,7 +522,8 @@ namespace STK {
   //****************************************************************************
   double
   NGramSubsets::
-  SplitMMI(const BQuestion& rQuestion) const
+  SplitMMI(const BQuestion& rQuestion, double alpha, double eta,
+      double* pMass0, double* pMass1) const
   {
     size_t          vocab_size = this->front().mpPool->pTargetTable()->Size();
     size_t          i;
@@ -457,30 +533,13 @@ namespace STK {
     double          N1_all = 0.0;
 
     NGramSubsets::const_iterator        i_subset;
-    BasicVector<double>                 vocab_all0(vocab_size);
-    BasicVector<double>                 vocab_all1(vocab_size);
-    std::vector< BasicVector<double>* > vocabs0(this->size());
-    std::vector< BasicVector<double>* > vocabs1(this->size());
-    std::vector< BasicVector<double>* >::iterator i_vocabs0;
-    std::vector< BasicVector<double>* >::iterator i_vocabs1;
 
-    // initialize the vocabs
-    for (i_vocabs0 = vocabs0.begin(); i_vocabs0 != vocabs0.end(); ++i_vocabs0) {
-      *i_vocabs0 = new BasicVector<double>(vocab_size);
-    }
-
-    for (i_vocabs1 = vocabs1.begin(); i_vocabs1 != vocabs1.end(); ++i_vocabs1) {
-      *i_vocabs1 = new BasicVector<double>(vocab_size);
-    }
+    Matrix<double> m_vocab0(this->size(), vocab_size);
+    Matrix<double> m_vocab1(this->size(), vocab_size);
 
     // collect counts for each language and overal count for all langs
-    for (i_subset=this->begin(), i_vocabs0=vocabs0.begin(), i_vocabs1=vocabs1.begin(); 
-        i_subset!=this->end(); 
-        ++i_subset, ++i_vocabs0, ++i_vocabs1) 
+    for (i_subset=this->begin(), i=0; i_subset!=this->end(); ++i_subset, i++) 
     {
-      double          N0 = 0.0;
-      double          N1 = 0.0;
-
       // collect vocabulary counts and total number of tokens
       NGramSubset::NGramContainer::const_iterator it;
       for (it=i_subset->mData.begin(); it!=i_subset->mData.end(); ++it) 
@@ -489,58 +548,53 @@ namespace STK {
         NGram::ProbType   counts = (*it)->Counts();
 
         if (! rQuestion.Eval(**it)) {
-          vocab_all0[*p_token]    += counts;
-          (**i_vocabs0)[*p_token] += counts;
+          m_vocab0[i][*p_token]   += counts;
           N0_all                  += counts;
-          N0                      += counts;
         }
         else {
-          (**i_vocabs1)[*p_token] += counts;
-          vocab_all1[*p_token]    += counts;
+          m_vocab1[i][*p_token]   += counts;
           N1_all                  += counts;
-          N1                      += counts;
-        }
-      }
-
-      // normalize the stats
-      // for (i=0; i<vocab_size; ++i) {
-      //   (**i_vocabs0)[i] /= N0;
-      //   (**i_vocabs1)[i] /= N1;
-      // }
-    }
-
-    // normalize the overals
-    for (i=0; i<vocab_size; ++i) {
-      vocab_all0[i] /= N0_all;
-      vocab_all1[i] /= N1_all;
-    }
-
-    // compute the MI's
-    for (i_vocabs0=vocabs0.begin(), i_vocabs1=vocabs1.begin(); 
-        i_vocabs0!=vocabs0.end(); 
-        ++i_vocabs0, ++i_vocabs1) 
-    {
-      for (i = 0; i < vocab_size; ++i) {
-        (**i_vocabs0)[i] /= N0_all;
-        (**i_vocabs1)[i] /= N1_all;
-
-        if ((**i_vocabs0)[i] > 0.0 && vocab_all0[i] > 0.0) {
-          e0 += (**i_vocabs0)[i] * log((**i_vocabs0)[i]) 
-              - (**i_vocabs0)[i] * log(vocab_all0[i]);
-        }
-        if ((**i_vocabs1)[i] > 0.0 && vocab_all1[i] > 0.0) {
-          e1 += (**i_vocabs1)[i] * log((**i_vocabs1)[i]) 
-              - (**i_vocabs1)[i] * log(vocab_all1[i]);
         }
       }
     }
 
-    for (i_vocabs0 = vocabs0.begin(); i_vocabs0 != vocabs0.end(); ++i_vocabs0) {
-      delete *i_vocabs0;
+    // TODO: smoothing here
+    Matrix<double> m_probs0(m_vocab0);
+    m_probs0.NormalizeRows().Log();
+
+    Matrix<double> m_probs1(m_vocab1);
+    m_probs1.NormalizeRows().Log();
+
+    for (i = 0; i < this->size(); ++ i){
+      BasicVector<double> aux_vec(this->size());
+
+      double aux_sum0 = 0.0;
+      double aux_sum1 = 0.0;
+      double mul_const0 = 1.0;
+      double mul_const1 = 1.0;
+      
+      for (size_t j = 0 ; j < m_vocab0.Cols(); ++j) {
+        aux_sum0 += m_vocab0[i][j];
+        aux_sum1 += m_vocab1[i][j];
+      }
+
+      mul_const0 = eta / (1+alpha* (aux_sum0 -1));
+      mul_const1 = eta / (1+alpha* (aux_sum1 -1));
+      
+      aux_vec.AddCMVMul(mul_const0, m_probs0, m_vocab0[i]);
+      e0 += aux_vec[i] - aux_vec.LogSumExp();
+
+      aux_vec.Clear();
+
+      aux_vec.AddCMVMul(mul_const1, m_probs1, m_vocab1[i]);
+      e1 += aux_vec[i] - aux_vec.LogSumExp();
     }
 
-    for (i_vocabs1 = vocabs1.begin(); i_vocabs1 != vocabs1.end(); ++i_vocabs1) {
-      delete *i_vocabs1;
+    if (NULL != pMass0) {
+      *pMass0 = N0_all;
+    }
+    if (NULL != pMass1) {
+      *pMass1 = N1_all;
     }
 
     // return averaged MI's
@@ -548,71 +602,149 @@ namespace STK {
   }
 
 
+  // //****************************************************************************
+  // //****************************************************************************
+  // double
+  // NGramSubsets::
+  // SplitMMI(const BQuestion& rQuestion, double eta) const
+  // {
+  //   size_t          vocab_size = this->front().mpPool->pTargetTable()->Size();
+  //   size_t          i;
+  //   double          e0 = 0.0;
+  //   double          e1 = 0.0;
+  //   double          N0_all = 0.0;
+  //   double          N1_all = 0.0;
+
+  //   NGramSubsets::const_iterator        i_subset;
+  //   BasicVector<double>                 vocab_all0(vocab_size);
+  //   BasicVector<double>                 vocab_all1(vocab_size);
+  //   std::vector< BasicVector<double>* > vocabs0(this->size());
+  //   std::vector< BasicVector<double>* > vocabs1(this->size());
+  //   std::vector< BasicVector<double>* >::iterator i_vocabs0;
+  //   std::vector< BasicVector<double>* >::iterator i_vocabs1;
+
+  //   // initialize the vocabs
+  //   for (i_vocabs0 = vocabs0.begin(); i_vocabs0 != vocabs0.end(); ++i_vocabs0) {
+  //     *i_vocabs0 = new BasicVector<double>(vocab_size);
+  //   }
+
+  //   for (i_vocabs1 = vocabs1.begin(); i_vocabs1 != vocabs1.end(); ++i_vocabs1) {
+  //     *i_vocabs1 = new BasicVector<double>(vocab_size);
+  //   }
+
+  //   // collect counts for each language and overal count for all langs
+  //   for (i_subset=this->begin(), i_vocabs0=vocabs0.begin(), i_vocabs1=vocabs1.begin(); 
+  //       i_subset!=this->end(); 
+  //       ++i_subset, ++i_vocabs0, ++i_vocabs1) 
+  //   {
+  //     double          N0 = 0.0;
+  //     double          N1 = 0.0;
+
+  //     // collect vocabulary counts and total number of tokens
+  //     NGramSubset::NGramContainer::const_iterator it;
+  //     for (it=i_subset->mData.begin(); it!=i_subset->mData.end(); ++it) 
+  //     {
+  //       NGram::TokenType* p_token = &((**it)[0]);;
+  //       NGram::ProbType   counts = (*it)->Counts();
+
+  //       if (! rQuestion.Eval(**it)) {
+  //         vocab_all0[*p_token]    += counts;
+  //         (**i_vocabs0)[*p_token] += counts;
+  //         N0_all                  += counts;
+  //         N0                      += counts;
+  //       }
+  //       else {
+  //         (**i_vocabs1)[*p_token] += counts;
+  //         vocab_all1[*p_token]    += counts;
+  //         N1_all                  += counts;
+  //         N1                      += counts;
+  //       }
+  //     }
+
+  //     // normalize the stats
+  //     // for (i=0; i<vocab_size; ++i) {
+  //     //   (**i_vocabs0)[i] /= N0;
+  //     //   (**i_vocabs1)[i] /= N1;
+  //     // }
+  //   }
+
+  //   // normalize the overals
+  //   for (i=0; i<vocab_size; ++i) {
+  //     vocab_all0[i] /= N0_all;
+  //     vocab_all1[i] /= N1_all;
+  //   }
+
+  //   // compute the MI's
+  //   for (i_vocabs0=vocabs0.begin(), i_vocabs1=vocabs1.begin(); 
+  //       i_vocabs0!=vocabs0.end(); 
+  //       ++i_vocabs0, ++i_vocabs1) 
+  //   {
+  //     for (i = 0; i < vocab_size; ++i) {
+  //       (**i_vocabs0)[i] /= N0_all;
+  //       (**i_vocabs1)[i] /= N1_all;
+
+  //       if ((**i_vocabs0)[i] > 0.0 && vocab_all0[i] > 0.0) {
+  //         e0 += (**i_vocabs0)[i] * log((**i_vocabs0)[i]) 
+  //             - (**i_vocabs0)[i] * log(vocab_all0[i]);
+  //       }
+  //       if ((**i_vocabs1)[i] > 0.0 && vocab_all1[i] > 0.0) {
+  //         e1 += (**i_vocabs1)[i] * log((**i_vocabs1)[i]) 
+  //             - (**i_vocabs1)[i] * log(vocab_all1[i]);
+  //       }
+  //     }
+  //   }
+
+  //   for (i_vocabs0 = vocabs0.begin(); i_vocabs0 != vocabs0.end(); ++i_vocabs0) {
+  //     delete *i_vocabs0;
+  //   }
+
+  //   for (i_vocabs1 = vocabs1.begin(); i_vocabs1 != vocabs1.end(); ++i_vocabs1) {
+  //     delete *i_vocabs1;
+  //   }
+
+  //   // return averaged MI's
+  //   return (N0_all * e0 + N1_all * e1) / (N0_all + N1_all);
+  // }
+
+
   //****************************************************************************
   //****************************************************************************
   double
   NGramSubsets::
-  MMI() const
+  MMI(double eta) const
   {
     size_t          vocab_size = this->front().mpPool->pTargetTable()->Size();
     size_t          i;
     double          e = 0.0;
-    double          N_all = 0.0;
 
     NGramSubsets::const_iterator        i_subset;
-    BasicVector<double>                 vocab_all(vocab_size);
-    std::vector< BasicVector<double>* > vocabs(this->size());
-    std::vector< BasicVector<double>* >::iterator i_vocabs;
 
-    // initialize the vocabs
-    for (i_vocabs = vocabs.begin(); i_vocabs != vocabs.end(); ++i_vocabs) {
-      *i_vocabs = new BasicVector<double>(vocab_size);
-    }
+    Matrix<double> m_vocab(this->size(), vocab_size);
 
     // collect counts for each language and overal count for all langs
-    for (i_subset=this->begin(), i_vocabs=vocabs.begin();
+    for (i_subset=this->begin(), i=0;
          i_subset!=this->end(); 
-         ++i_subset, ++i_vocabs) 
+         ++i_subset, ++i) 
     {
-      double          N = 0.0;
-
       // collect vocabulary counts and total number of tokens
       NGramSubset::NGramContainer::const_iterator it;
       for (it=i_subset->mData.begin(); it!=i_subset->mData.end(); ++it) {
         NGram::TokenType* p_token = &((**it)[0]);;
         NGram::ProbType   counts = (*it)->Counts();
 
-        (**i_vocabs)[*p_token] += counts;
-        vocab_all[*p_token]    += counts;
-        N                      += counts;
-        N_all                  += counts;
-      }
-      
-      // normalize
-      // for (i=0; i<vocab_size; ++i) {
-      //   (**i_vocabs)[i] /= N;
-      // }
-    }
-
-    // normalize the overals
-    for (i=0; i<vocab_size; ++i) {
-      vocab_all[i] /= N_all;
-    }
-
-    // compute the MMI
-    for (i_vocabs=vocabs.begin(); i_vocabs!=vocabs.end(); ++i_vocabs) {
-      for (i = 0; i < vocab_size; ++i) {
-        (**i_vocabs)[i] /= N_all;
-        if ((**i_vocabs)[i] > 0.0 && vocab_all[i] > 0.0) {
-          e += (**i_vocabs)[i] * log((**i_vocabs)[i]) 
-             - (**i_vocabs)[i] * log(vocab_all[i]);
-        }
+        m_vocab[i][*p_token] += counts;
       }
     }
 
-    // delete vocabs
-    for (i_vocabs = vocabs.begin(); i_vocabs != vocabs.end(); ++i_vocabs) {
-      delete *i_vocabs;
+    m_vocab.NormalizeRows();
+    Matrix<double> m_probs(m_vocab);
+    m_probs.Log();
+
+    for (i = 0; i < this->size(); ++ i){
+      BasicVector<double> aux_vec(this->size());
+
+      aux_vec.AddCMVMul(eta, m_probs, m_vocab[i]);
+      e += aux_vec[i] - aux_vec.LogSumExp();
     }
 
     return e;
@@ -627,58 +759,36 @@ namespace STK {
   {
     size_t          vocab_size = this->front().mpPool->pTargetTable()->Size();
     size_t          i;
+    size_t          j;
     double          n_all = 0.0;
     double          e = 0.0;
 
     NGramSubsets::const_iterator        i_subset;
-    std::vector< BasicVector<double>* > vocabs(this->size());
-    std::vector< BasicVector<double>* >::iterator i_vocabs;
-
-    // initialize the vocabs
-    for (i_vocabs = vocabs.begin(); i_vocabs != vocabs.end(); ++i_vocabs) {
-      *i_vocabs = new BasicVector<double>(vocab_size);
-    }
+    Matrix<double> m_vocab(this->size(), vocab_size);
 
     // collect counts for each language and overal count for all langs
-    for (i_subset=this->begin(), i_vocabs=vocabs.begin();
+    for (i_subset=this->begin(), i = 0;
          i_subset!=this->end(); 
-         ++i_subset, ++i_vocabs) 
+         ++i_subset,  ++i) 
     {
-      double          N = 0.0;
-
       // collect vocabulary counts and total number of tokens
       NGramSubset::NGramContainer::const_iterator it;
       for (it=i_subset->mData.begin(); it!=i_subset->mData.end(); ++it) {
         NGram::TokenType* p_token = &((**it)[0]);;
         NGram::ProbType   counts = (*it)->Counts();
 
-        (**i_vocabs)[*p_token] += counts;
-        N                      += counts;
+        m_vocab[i][*p_token]   += counts;
         n_all                  += counts;
       }
-      
-      // normalize
-      // for (i=0; i<vocab_size; ++i) {
-      //   (**i_vocabs)[i] /= N;
-      // }
     }
 
-    // compute the MMI
-    for (i_vocabs=vocabs.begin(); i_vocabs!=vocabs.end(); ++i_vocabs) {
-      for (i = 0; i < vocab_size; ++i) {
-        // normalize
-        (**i_vocabs)[i] /= n_all;
-
-        // add to entropy
-        if ((**i_vocabs)[i] > 0.0) {
-          e += (**i_vocabs)[i] * log((**i_vocabs)[i]);
+    for (i = 0; i< m_vocab.Rows(); ++i) {
+      for (j = 0; j < m_vocab.Cols(); ++j) {
+        double p = m_vocab[i][j] / n_all;
+        if (p > 0.0) {
+          e += p * log(p);
         }
       }
-    }
-
-    // delete vocabs
-    for (i_vocabs = vocabs.begin(); i_vocabs != vocabs.end(); ++i_vocabs) {
-      delete *i_vocabs;
     }
 
     return -e;
@@ -689,38 +799,24 @@ namespace STK {
   //****************************************************************************
   double
   NGramSubsets::
-  ParallelSplitEntropy(const BQuestion& rQuestion) const
+  ParallelSplitEntropy(const BQuestion& rQuestion, double* pMass0, double* pMass1) const
   {
     size_t          vocab_size = this->front().mpPool->pTargetTable()->Size();
     size_t          i;
+    size_t          j;
     double          e0 = 0.0;
     double          e1 = 0.0;
     double          N0_all = 0.0;
     double          N1_all = 0.0;
 
     NGramSubsets::const_iterator        i_subset;
-    std::vector< BasicVector<double>* > vocabs0(this->size());
-    std::vector< BasicVector<double>* > vocabs1(this->size());
-    std::vector< BasicVector<double>* >::iterator i_vocabs0;
-    std::vector< BasicVector<double>* >::iterator i_vocabs1;
 
-    // initialize the vocabs
-    for (i_vocabs0 = vocabs0.begin(); i_vocabs0 != vocabs0.end(); ++i_vocabs0) {
-      *i_vocabs0 = new BasicVector<double>(vocab_size);
-    }
-
-    for (i_vocabs1 = vocabs1.begin(); i_vocabs1 != vocabs1.end(); ++i_vocabs1) {
-      *i_vocabs1 = new BasicVector<double>(vocab_size);
-    }
+    Matrix<double> m_vocab0(this->size(), vocab_size);
+    Matrix<double> m_vocab1(this->size(), vocab_size);
 
     // collect counts for each language and overal count for all langs
-    for (i_subset=this->begin(), i_vocabs0=vocabs0.begin(), i_vocabs1=vocabs1.begin(); 
-        i_subset!=this->end(); 
-        ++i_subset, ++i_vocabs0, ++i_vocabs1) 
+    for (i_subset=this->begin(), i = 0; i_subset!=this->end(); ++i_subset, ++i) 
     {
-      double          N0 = 0.0;
-      double          N1 = 0.0;
-
       // collect vocabulary counts and total number of tokens
       NGramSubset::NGramContainer::const_iterator it;
       for (it=i_subset->mData.begin(); it!=i_subset->mData.end(); ++it) 
@@ -728,48 +824,40 @@ namespace STK {
         NGram::TokenType* p_token = &((**it)[0]);;
         NGram::ProbType   counts = (*it)->Counts();
 
+        assert(counts >= 0);
+
         if (! rQuestion.Eval(**it)) {
-          (**i_vocabs0)[*p_token] += counts;
+          m_vocab0[i][*p_token]   += counts;
           N0_all                  += counts;
-          N0                      += counts;
         }
         else {
-          (**i_vocabs1)[*p_token] += counts;
+          m_vocab1[i][*p_token]   += counts;
           N1_all                  += counts;
-          N1                      += counts;
-        }
-      }
-
-      // normalize the stats
-      // for (i=0; i<vocab_size; ++i) {
-      //   (**i_vocabs0)[i] /= N0;
-      //   (**i_vocabs1)[i] /= N1;
-      // }
-    }
-
-    // compute the entropy
-    for (i_vocabs0=vocabs0.begin(), i_vocabs1=vocabs1.begin(); 
-        i_vocabs0!=vocabs0.end(); 
-        ++i_vocabs0, ++i_vocabs1) 
-    {
-      for (i = 0; i < vocab_size; ++i) {
-        if ((**i_vocabs0)[i] > 0.0) {
-          (**i_vocabs0)[i] /= N0_all;
-          e0 += (**i_vocabs0)[i] * log((**i_vocabs0)[i]);
-        }
-        if ((**i_vocabs1)[i] > 0.0) {
-          (**i_vocabs1)[i] /= N1_all;
-          e1 += (**i_vocabs1)[i] * log((**i_vocabs1)[i]);
         }
       }
     }
 
-    for (i_vocabs0 = vocabs0.begin(); i_vocabs0 != vocabs0.end(); ++i_vocabs0) {
-      delete *i_vocabs0;
+    for (i = 0; i < m_vocab0.Rows(); ++i) {
+      for (j = 0; j < m_vocab0.Cols(); ++j) {
+        double p0 = m_vocab0[i][j];
+        double p1 = m_vocab1[i][j];
+        
+        if (p0 > DBL_EPSILON && N0_all > DBL_EPSILON) {
+          p0 /= N0_all;
+          e0 += p0 * log(p0);
+        }
+        if (p1 > DBL_EPSILON && N1_all > DBL_EPSILON) {
+          p1 /= N1_all;
+          e1 += p1 * log(p1);
+        }
+      }
     }
 
-    for (i_vocabs1 = vocabs1.begin(); i_vocabs1 != vocabs1.end(); ++i_vocabs1) {
-      delete *i_vocabs1;
+    if (NULL != pMass0) {
+      *pMass0 = N0_all;
+    }
+    if (NULL != pMass1) {
+      *pMass1 = N1_all;
     }
 
     return -(N0_all * e0 + N1_all * e1) / (N0_all + N1_all);
@@ -829,11 +917,11 @@ namespace STK {
   {
     iterator it;
     for (it = this->begin(); it != this->end(); ++it) {
-      rData0.push_back(NGramSubset(it->Order()));
-      rData1.push_back(NGramSubset(it->Order()));
-      rData0.back().mpPool = it->mpPool;
-      rData1.back().mpPool = it->mpPool;
-      it->Split(rQuestion, rData0.back(), rData1.back());
+      iterator it0 = rData0.insert(rData0.end(),NGramSubset(it->Order()));
+      iterator it1 = rData1.insert(rData1.end(),NGramSubset(it->Order()));
+      it0->mpPool = it->mpPool;
+      it1->mpPool = it->mpPool;
+      it->Split(rQuestion, *it0, *it1);
     }
   }
 
@@ -846,9 +934,24 @@ namespace STK {
     double mass =0.0;
     const_iterator it;
     for (it = this->begin(); it != this->end(); ++it) {
-      mass+=it->Mass();
+      mass += it->Mass();
     }
     return mass;
+  }
+
+  //****************************************************************************
+  //****************************************************************************
+  size_t
+  NGramSubsets::
+  TokenCount() const
+  {
+    size_t token_count = 0;
+    const_iterator it;
+
+    for (it = this->begin(); it != this->end(); ++it) {
+      token_count += it->TokenCount();
+    }
+    return token_count;
   }
 
   //****************************************************************************
