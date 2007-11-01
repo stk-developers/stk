@@ -214,7 +214,6 @@ namespace STK
     bool viterbi)
   {
     Node*  p_start_node;
-    ;
     double      score(0.0);
 
     iterator   i_node(begin());
