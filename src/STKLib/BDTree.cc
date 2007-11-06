@@ -1112,7 +1112,8 @@ namespace STK
   //***************************************************************************/
   void
   BDTree::
-  FillLeafSupervector(BasicVector<double>& rVector, bool backoff)
+  FillLeafSupervector(BasicVector<double>& rVector, bool backoff,
+      bool includeCounts)
   {
     size_t vec_size;
     size_t vocab_size;
@@ -1126,7 +1127,8 @@ namespace STK
     // compute sizes
     n_leaves    = GetLeaves(leaves);
     vocab_size  = leaves.front()->mDist.mVec.size();
-    vec_size    = n_leaves * vocab_size;
+    vec_size    = includeCounts ? n_leaves * vocab_size + n_leaves 
+                                : n_leaves * vocab_size;
 
     // prepare new vector
     rVector.Destroy();
@@ -1145,6 +1147,12 @@ namespace STK
       {
         rVector[i] =  *i_prob;
         ++i;
+      }
+
+      if (includeCounts) {
+        rVector[i] = backoff ? (**i_leaf).mDist.Counts() 
+                             : (**i_leaf).mpBackoffDist->Counts() ;
+        i++;
       }
     }
   }

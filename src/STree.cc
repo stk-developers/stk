@@ -77,6 +77,7 @@ int main(int argc, char* argv[])
       ("adaptr",        po::value<double>(&new_tree_traits.mAdaptR),          "Adapt r factor")
       ("cfgfile,C",     po::value<string>(&config_file),                      "Configuration file")
       ("help",                                                                "Print more detailed help") 
+      ("includecounts",                                                       "In connection with outvectors - add leaf counts to each cluster") 
       ("maxdepth",      po::value<int>(&new_tree_traits.mMaxDepth),           "Maximum tree depth criterion")
       ("minentr",       po::value<double>(&new_tree_traits.mMinReduction),    "Minimum entropy reduction criterion")
       ("mindata",       po::value<double>(&new_tree_traits.mMinInData),       "Minimum input data criterion")
@@ -374,10 +375,9 @@ int main(int argc, char* argv[])
         // this vector will be filled with stacked leaf dists
         BasicVector<double> super_vector;
         // stack the leaves to the supervector
-        new_tree.FillLeafSupervector(super_vector, true);
+        new_tree.FillLeafSupervector(super_vector, true, var_map.count("includecounts"));
         // write to stream
         out_vector_stream << output_file << " " << super_vector << std::endl;
-
         out_vector_stream.close();
       }
 
@@ -615,7 +615,7 @@ int main(int argc, char* argv[])
         new_tree.CollectCounts(data_pool);
 
         // stack the leaves to the supervector
-        new_tree.FillLeafSupervector(super_vector, false);
+        new_tree.FillLeafSupervector(super_vector, false, false);
 
         // write to stream
         vector_stream << new_record.Logical() << " " << super_vector << std::endl;
@@ -745,7 +745,7 @@ AdaptModel(const BDTree& rOrig, const NGramSubset& rNGrams,
     // this vector will be filled with stacked leaf dists
     BasicVector<double> super_vector;
     // stack the leaves to the supervector
-    new_tree.FillLeafSupervector(super_vector, false);
+    new_tree.FillLeafSupervector(super_vector, false, false);
     // write to stream
     *pOutVectorStream << rFileName << " " << super_vector << std::endl;
   }

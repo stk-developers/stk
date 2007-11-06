@@ -605,11 +605,19 @@ namespace STK
     Dump(std::ostream& rStream, const std::string& rPrefix) const;
 
 
+    /** 
+     * @brief Returns this tree's leaves in a vector container
+     * 
+     * @param rCollection 
+     * 
+     * @return number of leaves
+     */
     int
     GetLeaves(std::vector<BDTree*>& rCollection);
 
     void
-    FillLeafSupervector(BasicVector<double>& rVector, bool backoff);
+    FillLeafSupervector(BasicVector<double>& rVector, bool backoff, 
+        bool includeCounts);
 
   private:
     BSetQuestion*
