@@ -537,7 +537,8 @@ ReadLabels(
 void CloseInputLabelFile(FILE *lfp, const char *out_MLF)
 {
   if (out_MLF == NULL) {
-    assert(my_fclose(lfp) == 0);
+    int c = my_fclose(lfp); 
+    assert(c == 0);
 /*    if (lfp != stdout) {
       if (transc_filter) pclose(lfp);
       else                 fclose(lfp);

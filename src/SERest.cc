@@ -333,8 +333,8 @@ int main(int argc, char* argv[])
   }
   // the rest of the parameters are the feature files
   for (; i < argc; i++) {
-    featureRepositoryList.front()->AddFile(argv[i]);
     swap(featureRepositoryList.front(), featureRepositoryList.back());
+    featureRepositoryList.front()->AddFile(argv[i]);
   }
   gpFilterWldcrd=GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD","$");
   gpScriptFilter=GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",  NULL);
@@ -700,9 +700,9 @@ int main(int argc, char* argv[])
   }
   
 
-  for (feature_repo.Rewind(); 
+  for (feature_repo.Rewind(),feature_repo_alig.Rewind(); 
       !feature_repo.EndOfList(); 
-      (one_pass_reest ? feature_repo_alig.MoveNext(),0: 0),
+      (one_pass_reest || (0 == parallel_mode && UT_TwoAccumSetEBW == update_type) ? feature_repo_alig.MoveNext(),0: 0),
       feature_repo.MoveNext())
   {
 //    FeatureRepository::ListIterator aux_alig_name(feature_repo.pCurrentRecord());
