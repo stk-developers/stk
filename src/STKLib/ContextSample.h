@@ -79,7 +79,7 @@ namespace STK
     typedef std::vector<std::string>  IntMapType;
 
     VocabularyTable()
-    : mStrMap(), mIntMap()
+    : mStrMap(), mIntMap(), mStrictMode(true)
     {}
 
     /// int to string conversion

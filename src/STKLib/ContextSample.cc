@@ -35,7 +35,7 @@ namespace STK {
 
     if (it == mStrMap.end()) {
       if (mStrictMode) {
-        throw std::runtime_error(std::string("Symbol") + rString + " not found");
+        throw std::runtime_error(std::string("Symbol ") + rString + " not found");
       }
       else {
         int new_i = mStrMap.size();
