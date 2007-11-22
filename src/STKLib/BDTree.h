@@ -89,6 +89,9 @@ namespace STK
     void
     Unset(const NGram::TokenType& rToken);
 
+    void
+    RandomShuffle(const NGram::TokenType& rToken);
+
     bool
     EvalRawToken(const NGram::TokenType& rToken) const;
 
@@ -357,7 +360,9 @@ namespace STK
     mMMIAlpha(1.0), 
     mMMIEta(1.0), 
     mMinMMIIncrease(0.0),
-    mMapAdapt(false)
+    mMapAdapt(false),
+    mRandomizeTree(false),
+    mMorphologicalPredictors(false)
     {}
 
     double    mMinReduction;    ///< Minimum entropy reduction
@@ -376,6 +381,10 @@ namespace STK
     double    mMinMMIIncrease;  ///< 
 
     bool      mMapAdapt;
+    
+    bool      mRandomizeTree;
+    bool      mMorphologicalPredictors;
+    
   }; //class BDTreeAttributes
 
 
@@ -545,6 +554,17 @@ namespace STK
      */
     double
     ScoreNGramSubset(const NGramSubset& rNGrams);
+
+    /** 
+     * @brief For given set of N-grams scores the probabilities and outputs in ARPA-like format (though unnormalized in conventional way since only needed subset of all trigrams is scored)
+     * 
+     * @param rNGrams N-gram data
+     * @param lm_stream output stream
+     * @param rOrder N-gram order
+     * 
+     */
+    void 
+    OutputNGramSubsetARPA(const NGramSubset& rNGrams, VocabularyTable& voc_table, std::ostream& lm_stream, int rOrder);
 
     /** 
      * @brief Computes smoothed probabilities using smoothing factor r

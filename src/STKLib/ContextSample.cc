@@ -791,6 +791,8 @@ namespace STK {
       }
     }
 
+    m_vocab.Destroy();
+
     return -e;
   }
 
@@ -862,7 +864,6 @@ namespace STK {
 
     return -(N0_all * e0 + N1_all * e1) / (N0_all + N1_all);
   }
-
 
 
   //****************************************************************************

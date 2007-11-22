@@ -1,0 +1,4 @@
+# To configure for debuging:
+ ./configure --enable-sse CXXFLAGS="-g -O0"
+
+

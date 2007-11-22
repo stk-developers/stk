@@ -66,8 +66,13 @@ int main(int argc, char* argv[])
     string                  score_output;
     string                  source_model_name;
     string                  source_model_list_name;
+    string                  target_ARPA_fname;
+    bool                    output_ARPA = false;
 
     InitLogMath();
+
+    //srandom((unsigned int)time(NULL));
+    srand((unsigned)time(0));
 
     // command line options only
     po::options_description generic_options("Command line options");
@@ -95,7 +100,10 @@ int main(int argc, char* argv[])
       ("srcmdllst",     po::value<string>(&source_model_list_name),           "Source model list file name")
       ("tgtmdl",        po::value<string>(&target_model_name),                "Target model file name")
       ("tgtvoc",        po::value<string>(&target_vocab_fname),               "Target vocabulary file [same as predictor]")
-      ;
+      ("randtree",      po::value<bool>(&new_tree_traits.mRandomizeTree),     "Use random question set split and predictor position selection when growing the tree. Exchange algorithm is used")
+      ("outputARPA",    po::value<bool>(&output_ARPA),                        "Output scored N-grams in ARPA format")
+      ("outARPAfile",   po::value<string>(&target_ARPA_fname),                "Target ARPA format LM")
+      ("morphpred",     po::value<bool>(&new_tree_traits.mMorphologicalPredictors),   "Use morphological predictors (for word models)"); 
 
     // config file options only
     po::options_description config_options("Configuration");
@@ -329,8 +337,23 @@ int main(int argc, char* argv[])
         score_stream << new_record.Logical() << " " << data.Mass();
 
         for (i_model=model_list.begin(); i_model!=model_list.end(); ++i_model) {
-          double e = (*i_model)->ScoreNGramSubset(data);
-          score_stream << " " << e;
+	  if(output_ARPA)
+	  {
+	    OStkStream lm_stream(target_ARPA_fname.c_str());
+	    if (!lm_stream.good()) 
+	    {
+	      throw runtime_error(string("Error opening output file ") + 
+                target_ARPA_fname);
+	    }
+            (*i_model)->OutputNGramSubsetARPA(data, predictor_vocabulary, lm_stream, new_tree_traits.mOrder);
+
+	    lm_stream.close();
+	  }
+	  else
+	  {
+	    double e = (*i_model)->ScoreNGramSubset(data);
+            score_stream << " " << e;
+	  }
         }
         // end line
         score_stream << std::endl;

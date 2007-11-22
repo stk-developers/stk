@@ -50,6 +50,7 @@ namespace STK
   //   }
   //   
   //   return e;
+
   // }
 
 
@@ -555,6 +556,7 @@ namespace STK
         // compute entropy
         total_entropy = rNGrams.ParallelEntropy();
         split_entropy = rNGrams.ParallelSplitEntropy(*p_new_question, NULL, NULL);
+        
         entropy_red   = total_entropy - split_entropy;
 
         std::cout << "BDTree::Info      " << rPrefix << "Data Entropy:      " << total_entropy << std::endl;
@@ -672,19 +674,41 @@ namespace STK
     double          e = 0.0;
     double          best_e = -1.0;
     BSetQuestion*   p_best_question = NULL;
+    int random_value;
 
+    // choose predictor randomly for a random tree
+//    if(rTraits.mRandomizeTree)
+//    {
+//      random_value = rand();
+//      if(random_value > RAND_MAX/2)
+//	int i = 1;
+//      else
+//	int i = 2;
+//
+//      BSetQuestion* p_tmp_question = FindSubset_Greedy(rNGrams, rTraits, &e, i);
+//
+//      if (e < best_e || best_e < 0) {
+//        if (NULL != p_best_question) {
+//          delete p_best_question;
+//        }
+//        best_e = e;
+//        p_best_question = p_tmp_question;
+//      } 
+//    }
+//    else
+    {
+      // go through all predictors and find subset
+      for (int i=1; i<rTraits.mOrder; ++i) {
+        BSetQuestion* p_tmp_question = FindSubset_Greedy(rNGrams, rTraits, &e, i);
 
-    // go through all predictors and find subset
-    for (int i=1; i<rTraits.mOrder; ++i) {
-      BSetQuestion* p_tmp_question = FindSubset_Greedy(rNGrams, rTraits, &e, i);
-
-      if (e < best_e || best_e < 0) {
-        if (NULL != p_best_question) {
-          delete p_best_question;
-        }
-        best_e = e;
-        p_best_question = p_tmp_question;
-      } 
+        if (e < best_e || best_e < 0) {
+          if (NULL != p_best_question) {
+            delete p_best_question;
+          }
+          best_e = e;
+          p_best_question = p_tmp_question;
+        } 
+      }
     }
 
     if (NULL != pSplitEnt ) {
@@ -737,6 +761,7 @@ namespace STK
     bool    inserted  = true;
     bool    deleted   = true;
     double  e         = rNGrams.ParallelEntropy();
+    double  this_e;
     int     vocab_size = rNGrams[0].Parent().pTargetTable()->Size();
     int     i_vocab;
     int     i_best_change;
@@ -745,6 +770,214 @@ namespace STK
     BSetQuestion* p_new_question = new BSetQuestion(pred, vocab_size);
 
     
+    // It's not only this - we also implement Exchange algorithm there for finding the best question (as described in Peng Xu thesis)
+    // It should be pretty fast 
+    if(rTraits.mRandomizeTree)
+    {
+      // NB!!! if vocab_size and node_vocab_size are different (we reduce the matrices somehow), some things must be changed in the below code
+      int node_vocab_size = vocab_size;
+      // This is a helper matrices V*V for two complementary subsets, inferred from the question. Columns: words to be predicted, Rows: words in predictor position (-1 or -2), Cells: corresponding counts
+      // NB!!! Frankly, it should be a 3-dimention matrix, if different languages are used. Should change later
+      Matrix<double> helper0_matrix(node_vocab_size, node_vocab_size);
+      Matrix<double> helper1_matrix(node_vocab_size, node_vocab_size);
+      // Here we store "marginal counts" for the matrices above, for us not to sum everything up all the time
+      BasicVector<double> marginal0_counts_present(node_vocab_size);
+      BasicVector<double> marginal0_counts_predictor(node_vocab_size);
+      BasicVector<double> marginal1_counts_present(node_vocab_size);
+      BasicVector<double> marginal1_counts_predictor(node_vocab_size);
+      int it_marginal;
+
+      NGramSubsets::const_iterator        i_subset;
+
+      // make initial rundom shuffle of the question set
+      for(i_vocab=0; i_vocab<vocab_size; ++i_vocab)
+        p_new_question->RandomShuffle(i_vocab);
+
+      // construct helper matrix
+      // collect counts for each language and overal count for all langs
+      for (i_subset=rNGrams.begin(); i_subset!=rNGrams.end(); ++i_subset) 
+      {
+	// iterate over all N-grams at this particular node
+	NGramSubset::NGramContainer::const_iterator it;
+	for (it=i_subset->mData.begin(); it!=i_subset->mData.end(); ++it) 
+	{
+	  NGram::TokenType* present_token = &((**it)[0]);
+	  NGram::TokenType* predictor_token = &((**it)[pred]);
+	  NGram::ProbType   counts = (*it)->Counts();
+
+	  assert(counts >= 0);
+
+	  if (!p_new_question->Eval(**it)) 
+	    helper0_matrix[*predictor_token][*present_token] += counts;
+	  else if(p_new_question->Eval(**it))
+	    helper1_matrix[*predictor_token][*present_token] += counts;
+	}
+      }
+      // Create marginal vectors from the counts
+      for(it_marginal = 0; it_marginal < marginal0_counts_present.Length(); ++it_marginal)
+      {
+	for(i_vocab = 0; i_vocab < node_vocab_size; ++i_vocab)
+	{
+	  marginal0_counts_present[it_marginal] += helper0_matrix[i_vocab][it_marginal];
+	  marginal1_counts_present[it_marginal] += helper1_matrix[i_vocab][it_marginal];
+	  marginal0_counts_predictor[it_marginal] += helper0_matrix[it_marginal][i_vocab];
+	  marginal1_counts_predictor[it_marginal] += helper1_matrix[it_marginal][i_vocab];
+	}
+      }
+      // calculate initial total counts associated with each set under split - C(A) and C(A_)
+      mass1 = marginal1_counts_predictor.Sum();
+      mass0 = marginal0_counts_predictor.Sum();
+
+      // Move elements from one set to another to find the best question (Exchange algorithm)
+      //double this_e = rNGrams.ParallelSplitEntropy(*p_new_question, &mass0, &mass1);
+      
+      while (inserted || deleted) 
+      {
+	inserted      = false;
+	deleted       = false;
+        int i_predictor, i_present;
+	double count_mass_moved, log_likelihood_sum;
+
+	// move from A_ to A (insertion) - we try to insert as many as possible
+	for(i_predictor = 0; i_predictor < vocab_size; ++i_predictor) // NB!!! if vocab_size and node_vocab_size are different (we reduce the matrices somehow), then there things must be changed 
+	{
+	  count_mass_moved = 0.0;
+	  log_likelihood_sum = 0.0;
+
+	  if (!p_new_question->EvalRawToken(i_predictor)) 
+	  {
+	    p_new_question->Set(i_predictor);
+	    // if we inserted an element to the set A, we should modify helper matrices.
+	    for(i_present = 0; i_present < node_vocab_size; ++i_present)
+	    {
+	      helper1_matrix[i_predictor][i_present] = helper0_matrix[i_predictor][i_present];
+	      marginal1_counts_present[i_present] += helper0_matrix[i_predictor][i_present];
+	      marginal0_counts_present[i_present] -= helper0_matrix[i_predictor][i_present];	      
+
+	      count_mass_moved += helper0_matrix[i_predictor][i_present];
+	      helper0_matrix[i_predictor][i_present] = 0.0;
+	    }
+	    mass1 += count_mass_moved;
+	    mass0 -= count_mass_moved;
+	   
+	    marginal1_counts_predictor[it_marginal] = count_mass_moved;
+	    marginal0_counts_predictor[it_marginal] = 0.0;
+	    
+	    // Now we are ready to  calculate log-likelihood with the new question (one element moved) in a fast way
+	    // Formula sum_w[C(w,A)logC(w,A) + C(w,A_complement)logC(w,A_complement)] - C(A)logC(A) - C(A_complement)logC(A_complement)
+	    // Iterate over all words in 0 position
+	    for(i_present = 0; i_present < node_vocab_size; ++i_present)
+	    {
+	      if(marginal1_counts_present[i_present] && marginal0_counts_present[i_present])
+	      {
+		log_likelihood_sum += marginal1_counts_present[i_present]*log(marginal1_counts_present[i_present]);
+		log_likelihood_sum += marginal0_counts_present[i_present]*log(marginal0_counts_present[i_present]);
+	      }
+	    }
+	    log_likelihood_sum -= mass1 * log(mass1);
+	    log_likelihood_sum -= mass0 * log(mass0);
+
+	    // now we get log-likelihood. We can either maximize this or minimize entropy. The switch to entropy is:
+	    this_e=-log_likelihood_sum/(mass1 + mass0);
+
+	    // Let the question be inserted and save changes - i.e. matrices are modified after each insertion
+	    if (this_e < e && mass0 >= rTraits.mMinInData && mass1 >= rTraits.mMinInData) 
+	      e = this_e;
+	    // If reduction is insignificant, cancel the insertion - i.e. modify back the matrices
+	    else
+	    {
+	      p_new_question->Unset(i_predictor);
+
+	      for(i_present = 0; i_present < node_vocab_size; ++i_present)
+	      {
+		helper0_matrix[i_predictor][i_present] = helper1_matrix[i_predictor][i_present];
+		marginal0_counts_present[i_present] += helper1_matrix[i_predictor][i_present];
+		marginal1_counts_present[i_present] -= helper1_matrix[i_predictor][i_present];	      
+
+		// we know how much was moved, since we're just putting back
+		//count_mass_moved += helper0_matrix[i_predictor][i_present];
+		helper1_matrix[i_predictor][i_present] = 0.0;
+	      }
+	      mass0 += count_mass_moved;
+	      mass1 -= count_mass_moved;
+	   
+	      marginal0_counts_predictor[it_marginal] = count_mass_moved;
+	      marginal1_counts_predictor[it_marginal] = 0.0;
+	    }
+	  }
+	}
+	// move from A to A_ (deletion) - we try to delete from A as many as possible
+	for(i_predictor = 0; i_predictor < vocab_size; ++i_predictor) // NB!!! if vocab_size and node_vocab_size are different (we reduce the matrices somehow), then there things must be changed 
+	{
+	  count_mass_moved = 0.0;
+	  log_likelihood_sum = 0.0;
+
+	  if (p_new_question->EvalRawToken(i_predictor)) 
+	  {
+	    p_new_question->Unset(i_predictor);
+	    // if we deleted an element to the set A, we should modify helper matrices.
+	    for(i_present = 0; i_present < node_vocab_size; ++i_present)
+	    {
+	      helper0_matrix[i_predictor][i_present] = helper1_matrix[i_predictor][i_present];
+	      marginal0_counts_present[i_present] += helper1_matrix[i_predictor][i_present];
+	      marginal1_counts_present[i_present] -= helper1_matrix[i_predictor][i_present];	      
+
+	      count_mass_moved += helper1_matrix[i_predictor][i_present];
+	      helper1_matrix[i_predictor][i_present] = 0.0;
+	    }
+	    mass0 += count_mass_moved;
+	    mass1 -= count_mass_moved;
+	   
+	    marginal0_counts_predictor[it_marginal] = count_mass_moved;
+	    marginal1_counts_predictor[it_marginal] = 0.0;
+	    
+	    // Now we are ready to  calculate log-likelihood with the new question (one element moved) in a fast way
+	    // Formula sum_w[C(w,A)logC(w,A) + C(w,A_complement)logC(w,A_complement)] - C(A)logC(A) - C(A_complement)logC(A_complement)
+	    // Iterate over all words in 0 position
+	    for(i_present = 0; i_present < node_vocab_size; ++i_present)
+	    {
+	      if(marginal1_counts_present[i_present] && marginal0_counts_present[i_present])
+	      {
+		log_likelihood_sum += marginal1_counts_present[i_present]*log(marginal1_counts_present[i_present]);
+		log_likelihood_sum += marginal0_counts_present[i_present]*log(marginal0_counts_present[i_present]);
+	      }						    
+	    }
+	    log_likelihood_sum -= mass1 * log(mass1);
+	    log_likelihood_sum -= mass0 * log(mass0);
+
+	    // now we get log-likelihood. We can either maximize this or minimize entropy. The switch to entropy is:
+	    this_e=-log_likelihood_sum/(mass1 + mass0);
+
+	    // Let the question be inserted and save changes - i.e. matrices are modified after each insertion
+	    if (this_e < e && mass0 >= rTraits.mMinInData && mass1 >= rTraits.mMinInData) 
+	      e = this_e;
+	    // If reduction is insignificant, cancel the deletion - i.e. modify back the matrices
+	    else
+	    {
+	      p_new_question->Set(i_predictor);
+
+	      for(i_present = 0; i_present < node_vocab_size; ++i_present)
+	      {
+		helper1_matrix[i_predictor][i_present] = helper0_matrix[i_predictor][i_present];
+		marginal1_counts_present[i_present] += helper0_matrix[i_predictor][i_present];
+		marginal0_counts_present[i_present] -= helper0_matrix[i_predictor][i_present];	      
+
+		// we know how much was moved, since we're just putting back
+		//count_mass_moved += helper0_matrix[i_predictor][i_present];
+		helper0_matrix[i_predictor][i_present] = 0.0;
+	      }
+	      mass1 += count_mass_moved;
+	      mass0 -= count_mass_moved;
+	   
+	      marginal1_counts_predictor[it_marginal] = count_mass_moved;
+	      marginal0_counts_predictor[it_marginal] = 0.0;
+	    }
+	  }
+	}
+      }
+    }
+    else
+    {
     // continue probing if any change was made in the previous iteration
     while (inserted || deleted) {
       inserted      = false;
@@ -754,6 +987,7 @@ namespace STK
       for (i_vocab=0; i_vocab<vocab_size; ++i_vocab) {
         if (!p_new_question->EvalRawToken(i_vocab)) {
           p_new_question->Set(i_vocab);
+
           double this_e = rNGrams.ParallelSplitEntropy(*p_new_question, &mass0, &mass1);
 
           if (this_e < e && mass0 >= rTraits.mMinInData && 
@@ -778,7 +1012,9 @@ namespace STK
         // only inspect positive questions
         if (p_new_question->EvalRawToken(i_vocab)) {
           p_new_question->Unset(i_vocab);
+
           double this_e = rNGrams.ParallelSplitEntropy(*p_new_question, &mass0, &mass1);
+
 
           if (this_e < e && mass0 >= rTraits.mMinInData && 
               mass1 >= rTraits.mMinInData) 
@@ -796,6 +1032,7 @@ namespace STK
       if (deleted) {
         p_new_question->Unset(i_best_change);
       }
+    }
     }
 
     // update entropy if possible
@@ -932,6 +1169,38 @@ namespace STK
 
     return score;
   } // ScoreNGramSubset(const NGramSubset& rNGrams, double r)
+
+
+  //***************************************************************************/
+  //***************************************************************************/
+  void
+  BDTree::
+  OutputNGramSubsetARPA(const NGramSubset& rNGrams, VocabularyTable& voc_table, std::ostream& lm_stream, int rOrder)
+  {
+    NGramSubset::NGramContainer::const_iterator i;
+    double  score = 0.0;
+    int j, voc_index;
+    std::string word_string;
+
+    for (i = rNGrams.mData.begin(); i != rNGrams.mData.end(); ++i) {
+      double n_gram_score = ScoreNGram(**i);
+
+      // we don't score the n-grams, whose prob is 0
+      if (n_gram_score > 0) {
+        score += (*i)->Counts() * log(n_gram_score);
+      }
+
+      lm_stream << n_gram_score << " ";
+      for(j = 1; j <= rOrder; j++)
+      {
+	voc_index = (**i)[rOrder - j];
+	word_string = voc_table.IToA(voc_index);
+	lm_stream << word_string << " ";
+      }
+
+      lm_stream << std::endl;
+    }
+  }
 
 
   //***************************************************************************/
@@ -1231,6 +1500,19 @@ namespace STK
     mSet[rToken] = 0;
   }
 
+  //***************************************************************************/
+  //***************************************************************************/
+  void
+  BSetQuestion::
+  RandomShuffle(const NGram::TokenType& rToken)
+  {
+    int rand_value;
+    rand_value = rand();
+    if(rand_value < RAND_MAX/2)
+      mSet[rToken] = 0;
+    else
+      mSet[rToken] = 1;
+  }
   //***************************************************************************/
   //***************************************************************************/
   bool
