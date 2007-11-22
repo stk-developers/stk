@@ -38,9 +38,11 @@ namespace STK
   //***************************************************************************
   int fprintBase62(FILE *fp, int v)
   {
-    int i = 0;
-    char str[16];
-    char *tab="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    int         i = 0;
+    char        str[16];
+    const char* tab = 
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
     if (v == 0) {
       fputc(tab[0], fp);
       return 1;

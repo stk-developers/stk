@@ -355,8 +355,9 @@ namespace STK
      *  Tip:  When using std::string to hold the filename, you must use
      *  .c_str() before passing it to this constructor.
      */
-    OStkStream(const string& fName, ios::openmode m=ios::out, const string & filter=""):
-      stkios(fName, m, filter) {}
+    OStkStream(const char* pFName, ios::openmode m=ios::out, const char* pFilter="")
+    : stkios() 
+    {this->open(pFName, ios::out, pFilter);}
 
     /**
     *  @brief  Opens an external file.

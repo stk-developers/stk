@@ -152,7 +152,7 @@ void fast_softmax_vec(double *in, double *out, int size)
   const char*     gpParmOFilter;
 
     
-  static char*    gpParmKindNames[] = 
+  static const char* gpParmKindNames[] = 
   {
     "WAVEFORM",
     "LPC",
@@ -325,7 +325,7 @@ void fast_softmax_vec(double *in, double *out, int size)
     }
   
     if (diff < gMinLogDiff) {
-        return  x;
+      return  x;
     }
   
     return x + log(1.0 + exp(diff));
@@ -661,7 +661,7 @@ void fast_softmax_vec(double *in, double *out, int size)
   
   //***************************************************************************
   //***************************************************************************
-  int skipHTKstr(char *chrptr, char **endPtrOrErrMsg)
+  int skipHTKstr(const char *chrptr, const char **endPtrOrErrMsg)
   {
     char termChar = '\0';
       
@@ -785,7 +785,7 @@ void fast_softmax_vec(double *in, double *out, int size)
   }
   
   
-  static char *HModules[] = {
+  static const char *HModules[] = {
   "HADAPT","HAUDIO","HFB",   "HLABEL","HMAP", "HMEM",  "HMODEL","HNET",  "HPARM",
   "HREC",  "HSHELL","HTRAIN","HWAVE", "LCMAP","LGBASE","LMODEL","LPCALC","LWMAP"};
   
@@ -1320,7 +1320,7 @@ void fast_softmax_vec(double *in, double *out, int size)
     bool         option_must_follow = false;
     char         param[1024];
     char *       value;
-    char *       optfmt;
+    const char * optfmt;
     const char * optarg;
     char *       chptr;
     char *       bptr;
@@ -1483,9 +1483,11 @@ void fast_softmax_vec(double *in, double *out, int size)
     mWeight  = 1.0;
     
     // some slash-backslash replacement hack
-    for (size_t i = 0; i < mLogical.size(); i++)
-      if (mLogical[i] == '\\') 
+    for (size_t i = 0; i < mLogical.size(); i++) {
+      if (mLogical[i] == '\\') {
         mLogical[i] = '/';
+      }
+    }
         
     // read sentence weight definition if any ( physical_file.fea[s,e]{weight} )
     if ((pos = mLogical.find('{')) != std::string::npos)

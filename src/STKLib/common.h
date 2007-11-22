@@ -205,6 +205,7 @@ typedef union
 #define INT_16   short
 #define INT_32   int
 #define FLOAT_32 float
+#define DOUBLE_64 double
 
 #define LOG_INC(a, b) ((a) = LogAdd((a),(b)))
 
@@ -229,7 +230,7 @@ typedef union
 #define PARAMKIND_C   0002000 /// is compressed
 #define PARAMKIND_Z   0004000 /// has zero mean static coef.
 #define PARAMKIND_K   0010000 /// has CRC checksum
-#define PARAMKIND_0   0020000 /// has 0'th cepstral coef.  cccccc
+#define PARAMKIND_0   0020000 /// has 0'th cepstral coef.
 #define PARAMKIND_V   0040000 /// has VQ codebook index
 #define PARAMKIND_T   0100000 /// has triple delta coefficients
 
@@ -314,6 +315,7 @@ using namespace STK;
   };
   
   
+
   /** **************************************************************************
    ** **************************************************************************
    */
@@ -420,7 +422,7 @@ using namespace STK;
   
   int fprintHTKstr(FILE *fp, const char *str);
   int getHTKstr(char *str, char **endPtrOrErrMsg);
-  int skipHTKstr(char *str, char **endPtrOrErrMsg);
+  int skipHTKstr(const char *str, const char **endPtrOrErrMsg);
   char *expandFilterCommand(const char *command, const char *filename);
   char *readline(FILE *fp, struct ReadlineData *data);
   

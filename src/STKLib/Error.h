@@ -24,6 +24,8 @@
 #define Error(...) _Error_(__func__, __FILE__, __LINE__, __VA_ARGS__)
 #define Warning(...) _Warning_(__func__, __FILE__, __LINE__, __VA_ARGS__)
 
+#define RethrowMessage(x) {std::cerr << "Rethrown at (" << __FILE__ << ":" \
+  << __LINE__ << ") " << __func__  << x << std::endl;}
 
 namespace STK
 {
@@ -121,17 +123,17 @@ namespace STK
   /**
    *  @brief Error throwing function
    */
-  void _Error_(const char *func, const char *file, int line, char *msg, ...);
+  void _Error_(const char *func, const char *file, int line, const char *msg, ...);
   
   /**
    *  @brief Warning handling function
    */
-  void _Warning_(const char *func, const char *file, int line, char *msg, ...);
+  void _Warning_(const char *func, const char *file, int line, const char *msg, ...);
     
   /**
    *  @brief Warning handlingfunction
    */
-  void TraceLog(char *msg, ...);
+  void TraceLog(const char *msg, ...);
 
 }; // namespace STK
 

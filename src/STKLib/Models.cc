@@ -2389,14 +2389,23 @@ namespace STK
     switch(p_xform->mXformType)
     {
       case XT_LINEAR:
-        static_cast<LinearXform *>(p_xform)->mPredefinedID = PLTID_NONE;
+      {
+        LinearXform *p_lxform = static_cast<LinearXform *>(p_xform);
+        p_lxform->mPredefinedID = PLTID_NONE;
         break;
+      }
       case XT_WINDOW:
-        static_cast<WindowXform *>(p_xform)->mUsePredefVector = false;
+      {
+        WindowXform *p_wxform = static_cast<WindowXform *>(p_xform);
+        p_wxform->mUsePredefVector = false;
         break;
+      }
       case XT_BIAS:
-        static_cast<BiasXform *>(p_xform)->mUsePredefVector = false;
+      {
+        BiasXform *p_bxform = static_cast<BiasXform *>(p_xform);
+        p_bxform->mUsePredefVector = false;
         break;        
+      }
     }
   }
       

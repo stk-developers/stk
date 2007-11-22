@@ -370,7 +370,7 @@ namespace STK
               {
                 // Count number of link definitions on the rest of the line and
                 // prealocate memory for links
-                char *pCh;
+                const char *pCh;
                 int nl = 1;
                 
                 if (skipHTKstr(valptr, &pCh)) 
@@ -1144,7 +1144,6 @@ namespace STK
       typedef typename _NetworkType::Node    _node_type;
 //      float                                   lm_scale(lmScale);
       FLOAT                                   tot_log_like;
-
     
       // use the mAux field to index the nodes
       for (n = 0, p_node = rNetwork.Begin(); p_node != rNetwork.End(); ++p_node)

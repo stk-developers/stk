@@ -105,6 +105,72 @@ namespace STK
   template<>
     BasicVector<float>&
     BasicVector<float>::
+    AddCMtVMul(const float c, const Matrix<float>& rM, const BasicVector<float>& rV)
+    {
+#ifdef HAVE_ATLAS
+      cblas_sgemv(CblasRowMajor, CblasTrans, rM.Rows(), rM.Cols(), c, rM.pData(), 
+                  rM.Stride(), rV.cpData(), 1, 1.0F, this->mpData, 1);
+#else
+      Error("Method not implemented without BLAS");
+#endif
+      return *this;
+    }
+
+  //****************************************************************************
+  //****************************************************************************
+  template<>
+    BasicVector<double>&
+    BasicVector<double>::
+    AddCMtVMul(const double c, const Matrix<double>& rM, const BasicVector<double>& rV)
+    {
+#ifdef HAVE_ATLAS
+      cblas_dgemv(CblasRowMajor, CblasTrans, rM.Rows(), rM.Cols(), c, rM.pData(), 
+                  rM.Stride(), rV.cpData(), 1, 1.0F, this->mpData, 1);
+#else
+      Error("Method not implemented without BLAS");
+#endif
+      return *this;
+    }
+    
+  
+  //****************************************************************************
+  //****************************************************************************
+  template<>
+    BasicVector<float>&
+    BasicVector<float>::
+    AddCMtVMul(const float c, const Matrix<float>& rM, const float* pV)
+    {
+#ifdef HAVE_ATLAS
+      cblas_sgemv(CblasRowMajor, CblasTrans, rM.Rows(), rM.Cols(), c, rM.pData(), 
+                  rM.Stride(), pV, 1, 1.0F, this->mpData, 1);
+#else
+      Error("Method not implemented without BLAS");
+#endif
+      return *this;
+    }
+
+  //****************************************************************************
+  //****************************************************************************
+  template<>
+    BasicVector<double>&
+    BasicVector<double>::
+    AddCMtVMul(const double c, const Matrix<double>& rM, const double* pV)
+    {
+#ifdef HAVE_ATLAS
+      cblas_dgemv(CblasRowMajor, CblasTrans, rM.Rows(), rM.Cols(), c, rM.pData(), 
+                  rM.Stride(), pV, 1, 1.0F, this->mpData, 1);
+#else
+      Error("Method not implemented without BLAS");
+#endif
+      return *this;
+    }
+    
+  
+  //****************************************************************************
+  //****************************************************************************
+  template<>
+    BasicVector<float>&
+    BasicVector<float>::
     AddCMVMul(const float c, const Matrix<float>& rM, const float* pV)
     {
 #ifdef HAVE_ATLAS

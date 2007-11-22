@@ -78,7 +78,7 @@ void usage(char *progname)
 }
 
 #define SNAME "SEXPAND"
-char *optionStr =
+const char *optionStr =
 " -i r   TARGETMLF"
 " -l r   TARGETTRANSCDIR"
 //" -m n   RESPECTPRONVARS=TRUE"
@@ -494,9 +494,11 @@ int main(int argc, char *argv[])
                           word_penalty, model_penalty, grammar_scale, posterior_scale);
         }
       }
+
       if(poster_prune > 0.0 || out_net_fmt.mPosteriors) {  
         my_net.FreePosteriors();
       }
+
 
       CloseOutputLabelFile(out_MLF_fp, out_MLF_fn);
       my_net.Clear();

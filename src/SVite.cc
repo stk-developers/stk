@@ -52,6 +52,8 @@ using namespace STK;
 #include <map>
 std::map<char *,float> countMap;
 
+extern int STK::nbest_lattices;
+
 //******************************************************************************
 //******************************************************************************
 void usage(char *progname)

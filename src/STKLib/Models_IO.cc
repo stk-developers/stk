@@ -8,7 +8,7 @@ namespace STK
   const char *    gpCurrentMmfName;
   bool            gHmmReadBinary;
   bool            gStringUnget          = false;
-  char *          gpKwds[KID_MaxKwdID]  = {0};
+  const char *    gpKwds[KID_MaxKwdID]  = {0};
   
   
   
@@ -196,7 +196,7 @@ namespace STK
 
   //***************************************************************************
   //***************************************************************************  
-  void PutString(FILE *fp, bool binary, char *msg, ...)
+  void PutString(FILE *fp, bool binary, const char *msg, ...)
   {
     va_list ap;
     va_start(ap, msg);

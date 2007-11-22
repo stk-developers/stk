@@ -152,6 +152,16 @@ namespace STK
       AddCMVMul(const _ElemT c, const Matrix<_ElemT>& rM, 
                 const _ElemT* pV);
                 
+      /// this = this + c * rM * rV 
+      BasicVector<_ElemT>&
+      AddCMtVMul(const _ElemT c, const Matrix<_ElemT>& rM, 
+                 const BasicVector<_ElemT>& rV);
+
+      /// this = this + c * rM * rV 
+      BasicVector<_ElemT>&
+      AddCMtVMul(const _ElemT c, const Matrix<_ElemT>& rM, 
+                 const _ElemT* pV);
+
       /// Adds a diagonal after Matrix-Matrix Multiplication
       BasicVector<_ElemT>&
       AddDiagCMMMul(const _ElemT c, const Matrix<_ElemT>& rMa, 
@@ -168,7 +178,14 @@ namespace STK
       BasicVector<_ElemT>&
       MatrixRowStack(const Matrix<_ElemT>& rMa);
       
-      
+      /// Returns sum of the elements
+      _ElemT
+      Sum() const; 
+
+      /// Returns log(sum(exp())) without exp overflow
+      _ElemT
+      LogSumExp() const;
+
       //########################################################################
       //########################################################################
       
@@ -245,6 +262,28 @@ namespace STK
     BasicVector<double>&
     BasicVector<double>::
     AddCMVMul(const double c, const Matrix<double>& rV, const BasicVector<double>& rV);
+    
+
+  template<>
+    BasicVector<float>&
+    BasicVector<float>::
+    AddCMtVMul(const float c, const Matrix<float>& rV, const BasicVector<float>& rV);
+
+  template<>
+    BasicVector<double>&
+    BasicVector<double>::
+    AddCMtVMul(const double c, const Matrix<double>& rV, const BasicVector<double>& rV);
+    
+
+  template<>
+    BasicVector<float>&
+    BasicVector<float>::
+    AddCMtVMul(const float c, const Matrix<float>& rV, const float* pV);
+
+  template<>
+    BasicVector<double>&
+    BasicVector<double>::
+    AddCMtVMul(const double c, const Matrix<double>& rV, const double* pV);
     
 
   template<>

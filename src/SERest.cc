@@ -295,6 +295,8 @@ int main(int argc, char* argv[])
   }  
   swap_features_alig =
   swap_features=!GetParamBool(&cfgHash,SNAME":NATURALREADORDER",isBigEndian());
+  swap_features_alig =
+  swap_features=!GetParamBool(&cfgHash,SNAME":NATURALREADORDER",isBigEndian());
   script =(char*)GetParamStr(&cfgHash, SNAME":SCRIPT",          NULL);
   parallel_mode= GetParamInt(&cfgHash, SNAME":PARALLELMODE",   -1);
   one_pass_reest=GetParamBool(&cfgHash,SNAME":SINGLEPASSTRN",   false);
