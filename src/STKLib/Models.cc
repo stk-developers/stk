@@ -1654,6 +1654,9 @@ namespace STK
     else
     {
       mpAccums = NULL;
+#ifdef STK_MEMALIGN_MANUAL
+      mpAccumsFree = NULL;
+#endif
     }
     
     mpXformStatAccum          = NULL;
@@ -1817,6 +1820,9 @@ namespace STK
     else
     {
       mpAccums = NULL;
+#ifdef STK_MEMALIGN_MANUAL
+      mpAccumsFree = NULL;
+#endif
     }
     
     //mVectorSize               = vectorSize;    

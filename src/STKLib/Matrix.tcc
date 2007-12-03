@@ -93,6 +93,7 @@ namespace STK
       if (NULL != mpData) free(mpData);
 #else
       if (NULL != mpFreeData) free(mpFreeData);
+      mpFreeData = NULL;
 #endif
 
       mpData = NULL;
