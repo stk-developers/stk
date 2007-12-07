@@ -243,6 +243,21 @@ namespace STK
        */
       ThisType &
       FastRowSoftmax();
+
+      /**
+       *  @brief Performs sigmoid on row vectors
+       *         result to this (elem by elem)
+       */
+      ThisType &
+      RowSigmoid();
+      
+      /**
+       *  @brief Performs softmax on row vectors
+       *         result to this (elem by elem)
+       */
+      ThisType &
+      RowSoftmax();
+
       
       /**
        *  @brief Performs matrix inversion
@@ -483,7 +498,16 @@ namespace STK
     Matrix<double> &
     Matrix<double>::
     FastRowSigmoid();
+
+  template<>
+    Matrix<float> &
+    Matrix<float>::
+    RowSigmoid();
     
+  template<>
+    Matrix<double> &
+    Matrix<double>::
+    RowSigmoid();    
   
   template<>
     Matrix<float> &
@@ -508,6 +532,16 @@ namespace STK
     Matrix<double>::
     FastRowSoftmax();
   
+  template<>
+    Matrix<float> &
+    Matrix<float>::
+    RowSoftmax();
+  
+  template<>
+    Matrix<double> &
+    Matrix<double>::
+    RowSoftmax();
+
   
   template<>
     Matrix<float> &

@@ -402,10 +402,19 @@ void fast_softmax_vec(double *in, double *out, int size)
   //***************************************************************************
   //***************************************************************************
   void 
-  sigmoid_vec(FLOAT* pIn, FLOAT* pOut, int size)
+  sigmoid_vec(float* pIn, float* pOut, int size)
   {
-    while (size--) *pOut++ = 1.0/(1.0 + _EXP(-*pIn++));
+    while (size--) *pOut++ = 1.0/(1.0 + expf(-*pIn++));
   }
+
+  //***************************************************************************
+  //***************************************************************************
+  void 
+  sigmoid_vec(double* pIn, double* pOut, int size)
+  {
+    while (size--) *pOut++ = 1.0/(1.0 + exp(-*pIn++));
+  }
+
   
   //***************************************************************************
   //***************************************************************************
@@ -432,11 +441,32 @@ void fast_softmax_vec(double *in, double *out, int size)
   
   //***************************************************************************
   //***************************************************************************
-  void softmax_vec(FLOAT* pIn, FLOAT* pOut, int size)
+  void softmax_vec(float* pIn, float* pOut, int size)
   {
+    float maxa = i_max_double(pIn, size);
     int i;
-    FLOAT sum = 0.0;
-    for (i = 0; i < size; i++) sum += pOut[i] = _EXP(pIn[i]);
+    float sum = 0.0;
+    for (i = 0; i < size; i++)
+    {
+       pOut[i] = expf(pIn[i] - maxa);
+       sum += pOut[i];
+    }
+    sum = 1.0 / sum;
+    for (i = 0; i < size; i++) pOut[i] *= sum;
+  }
+
+  //***************************************************************************
+  //***************************************************************************
+  void softmax_vec(double* pIn, double* pOut, int size)
+  {
+    double maxa = i_max_double(pIn, size);
+    int i;
+    double sum = 0.0;
+    for (i = 0; i < size; i++)
+    {
+       pOut[i] = exp(pIn[i] - maxa);
+       sum += pOut[i];
+    }
     sum = 1.0 / sum;
     for (i = 0; i < size; i++) pOut[i] *= sum;
   }

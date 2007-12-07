@@ -378,11 +378,15 @@ using namespace STK;
   
   bool isBigEndian();
   
-  void sigmoid_vec(FLOAT *in, FLOAT *out, int size);
   void exp_vec(FLOAT *in, FLOAT *out, int size);
   void log_vec(FLOAT *in, FLOAT *out, int size);
   void sqrt_vec(FLOAT *in, FLOAT *out, int size);
-  void softmax_vec(FLOAT *in, FLOAT *out, int size);
+
+  void softmax_vec(float *in, float *out, int size);
+  void sigmoid_vec(float *in, float *out, int size);
+
+  void softmax_vec(double *in, double *out, int size);
+  void sigmoid_vec(double *in, double *out, int size);
   
   void fast_softmax_vec(float *in, float *out, int size);
   void fast_sigmoid_vec(float *in, float *out, int size);

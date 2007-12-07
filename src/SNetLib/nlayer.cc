@@ -33,10 +33,10 @@ void SNet::NLayer::BunchLinear(){
 void SNet::NLayer::BunchNonLinear(){
   // Using fast exponentials
   if(mOutFunc == KID_Sigmoid){
-    mpOut->FastRowSigmoid();
+    mpOut->RowSigmoid();
   }
   else if(mOutFunc == KID_SoftMax){
-    mpOut->FastRowSoftmax();
+    mpOut->RowSoftmax();
   }
   else {
     Error("This out function is not implemented. Only Sigmoid and SoftMax supported so far.");

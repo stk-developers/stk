@@ -301,6 +301,7 @@ int main(int argc, char *argv[])
     hset.ResetXformInstances();
     
     FLOAT *out_mx = (FLOAT*)  malloc((header.mNSamples - hset.mTotalDelay) * out_size * sizeof(FLOAT));
+
     if (out_mx == NULL) Error("Insufficient memory");
 
     for(i = 0; i < header.mNSamples; i++) 
@@ -318,8 +319,7 @@ int main(int argc, char *argv[])
 #else
       obs = XformPass(p_input, feature_matrix[i], time, FORWARD);
 #endif
-
-      memcpy(out_mx + i * out_size, obs, sizeof(FLOAT) * out_size);
+      memcpy(out_mx + (time - 1) * out_size, obs, sizeof(FLOAT) * out_size);
 
 //      if (WriteHTKFeature (ofp, obs, out_size, swap_fea_out)) 
 //        Error("Cannot write to output feature file: '%s'", p_out_file);      
@@ -363,5 +363,12 @@ int main(int argc, char *argv[])
     free(file_name);
   }
   
+  for (unsigned int i = 0; i < cfg_hash.mNEntries; i++)
+    free(cfg_hash.mpEntry[i]->data);
+
+  my_hdestroy_r(&cfg_hash, 1);
+
+  free(rhfbuff.mpLastFileName);
+
   return 0;
 }

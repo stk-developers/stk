@@ -38,6 +38,36 @@ namespace STK
       return *this;
     }
   
+
+  //***************************************************************************
+  //***************************************************************************
+  template<>
+    Matrix<float> &
+    Matrix<float>::
+    RowSigmoid()
+    {
+      for(size_t row = 0; row < this->Rows(); row++)
+      {
+        sigmoid_vec((*this)[row], (*this)[row], this->Cols());
+      }
+      return *this;
+    }
+  
+  
+  //***************************************************************************
+  //***************************************************************************
+  template<>
+    Matrix<double> &
+    Matrix<double>::
+    RowSigmoid()
+    {
+      for(size_t row = 0; row < this->Rows(); row++)
+      {
+        sigmoid_vec((*this)[row], (*this)[row], this->Cols());
+      }
+      return *this;
+    }
+
   
   //***************************************************************************
   //***************************************************************************
@@ -554,4 +584,32 @@ namespace STK
       }
       return *this;
     }
+
+  //***************************************************************************
+  //***************************************************************************
+  template<>
+    Matrix<float> &
+    Matrix<float>::
+    RowSoftmax()
+    {
+      for(size_t row = 0; row < this->Rows(); row++){
+        softmax_vec((*this)[row], (*this)[row], this->Cols());
+      }
+      return *this;
+    }
+          
+  
+  //***************************************************************************
+  //***************************************************************************
+  template<>
+    Matrix<double> &
+    Matrix<double>::
+    RowSoftmax()
+    {
+      for(size_t row = 0; row < this->Rows(); row++){
+        softmax_vec((*this)[row], (*this)[row], this->Cols());
+      }
+      return *this;
+    }
+
 }; //namespace STK
