@@ -14,8 +14,220 @@
 
 namespace STK
 {
+  class SparceBigramMatrix;
   class BSetQuestion;
   class BDTree;
+
+
+  /** *************************************************************************
+   *  *************************************************************************
+   * @brief Cell in sparse bigram matrix
+   */
+  class SparseBigramCell {
+  public:
+    typedef double CountType;
+
+    SparseBigramCell() : mColumn(0), mCellCount(0)
+    {};
+
+    SparseBigramCell(int ColumnNumber, CountType CurrentCount)
+      : mColumn(ColumnNumber), mCellCount(CurrentCount)
+    {};
+
+    ~SparseBigramCell()
+    {};
+
+    /** 
+     * @brief Gets column index in sparse bigram matrix
+     */
+    int
+    GetColumn() const
+    { return mColumn; }
+
+    /** 
+     * @brief Gets count value in sparse bigram matrix
+     */
+    CountType
+    GetCount() const
+    { return mCellCount; }
+
+    /** 
+     * @brief Increments count of a cell in sparse bigram matrix
+     * 
+     * @param AddCount value count should be incremented by
+     */
+    CountType
+    IncrementCount(CountType AddCount)
+    { mCellCount += AddCount; return mCellCount; }
+
+    /** 
+     * @brief Move an element from one class to another (update both sparse matrix classes)
+     * 
+     * @param ColumnNumber
+     * @param CurrentCount
+     */
+    void
+    SetCell(int ColumnNumber, CountType CurrentCount)
+    { mColumn = ColumnNumber; mCellCount = CurrentCount; }
+
+  private:
+    int          mColumn;
+    CountType    mCellCount;
+  };
+
+  /** *************************************************************************
+   *  *************************************************************************
+   * @brief Sparce bigram matrix representation
+   */
+  class SparseBigramMatrix {
+  public:
+    //typedef double CountType;
+    typedef std::vector<NGram::ProbType> ContainerProb;
+    typedef std::vector<int> ContainerInt;
+    typedef SparseBigramCell* SparseBigramCellPntr;
+
+    SparseBigramMatrix() : mPresentVocabSize(0), mPredictorVocabSize(0), mSizeVector(), mMarginalCountsPresent(), mMarginalCountsPredictor(), mPointerVector(), mTotalSum(0)
+    {};
+
+    SparseBigramMatrix(int vocab_size)
+      : mPresentVocabSize(vocab_size), mPredictorVocabSize(vocab_size), mSizeVector(vocab_size), mMarginalCountsPresent(vocab_size), mMarginalCountsPredictor(vocab_size), mPointerVector(vocab_size), mTotalSum(0)
+    {
+      int i;
+      for(i = 0; i < vocab_size; i++)
+      {
+	mSizeVector[i] = 0;
+	mMarginalCountsPresent[i] = 0;
+	mMarginalCountsPredictor[i] = 0;
+	//mPointerVector[i] = 0;
+      }
+    };
+
+      SparseBigramMatrix(int present_size, int predictor_size)
+      : mPresentVocabSize(present_size), mPredictorVocabSize(predictor_size), mSizeVector(predictor_size), mMarginalCountsPresent(present_size), mMarginalCountsPredictor(predictor_size), mPointerVector(predictor_size), mTotalSum(0)
+    {
+      int i;
+      for(i = 0; i < predictor_size; i++)
+      {
+	mSizeVector[i] = 0;
+	mMarginalCountsPredictor[i] = 0;
+      }
+      for(i = 0; i < present_size; i++)
+	mMarginalCountsPresent[i] = 0;
+    };
+
+    ~SparseBigramMatrix();
+
+    /** 
+     * @brief Creates vector that tells how many different N-grams we have for each fixed predictor position
+     * 
+     * @param rNGrams N-gram set we have at the node
+     * @param rQuestion Current question at given node
+     * @param pred Predictor position
+     * @param YesAnswer 1 if we work with  left (answer=yes) subset, 0 otherwise
+      */
+    void
+    CreateSizeVector(const NGramSubset& rNGrams, const BSetQuestion& rQuestion, int pred, bool YesAnswer);
+
+    /** 
+     * @brief Allocate memory for sparce bigram matrix
+     * 
+     * @param rNGrams N-gram set we have at the node
+     * @param rQuestion Current question at given node
+     * @param YesAnswer 1 if we work with  left (answer=yes) subset, 0 otherwise
+     */
+    void
+    AllocateMem();
+
+    /** 
+     * @brief Fills sparse bigram matrix from N-gram counts
+     * 
+     * @param rNGrams N-gram set we have at the node
+     * @param rQuestion Current question at given node
+     * @param pred Predictor position
+     * @param YesAnswer 1 if we work with  left (answer=yes) subset, 0 otherwise
+     */
+    void
+    Fill(const NGramSubset& rNGrams, const BSetQuestion& rQuestion, const int pred, const bool YesAnswer);
+
+    /** 
+     * @brief Move an element from one class to another (update both sparse matrix classes)
+     * 
+     * @param MoveFromThisSet the set from which we move basic element to current object
+     * @param Predictor Current word in predictor we ask question about
+     */
+    double
+    InsertBasicElement(SparseBigramMatrix& MoveFromThisSet, const int Predictor);
+
+    /** 
+     * @brief Count Log-likelihood for the split
+     * 
+     * @param MoveFromThisSet Second set with which we count log-likelihood
+     */
+    double
+    CountLogLikelihood(const SparseBigramMatrix& MoveFromThisSet) const;
+
+    /** 
+     * @brief Count Log-likelihood for the split
+     * 
+     * @param MoveFromThisSet Second set with which we count log-likelihood
+     */
+    int
+    GetSizeVectorCell(int position) const
+    { return mSizeVector[position]; }
+
+    int
+    GetPresVocabSize() const
+    { return mPresentVocabSize; }
+
+    int
+    GetPredVocabSize() const
+    { return mPredictorVocabSize; }
+
+    NGram::ProbType
+    GetTotalCountSum() const
+    { return mTotalSum; }
+
+  private:
+    int             mPresentVocabSize;
+    int             mPredictorVocabSize;
+    ContainerInt    mSizeVector;
+    NGram::ProbType mTotalSum;
+    ContainerProb   mMarginalCountsPresent;
+    ContainerProb   mMarginalCountsPredictor;
+    std::vector<SparseBigramCellPntr> mPointerVector;
+  };
+
+  /** *************************************************************************
+   *  *************************************************************************
+   * @brief Info on different sections of vocabulary containing different morphologicalunits
+   */
+  class MorphVocabSection
+  {
+  public:
+    MorphVocabSection(): mFirst(0), mLast(0)
+      {};
+
+    MorphVocabSection(int frst, int lst): mFirst(frst), mLast(lst)
+      {};
+
+    MorphVocabSection(NGramSubsets& rNGrams, int pred);
+
+    ~MorphVocabSection()
+      {};
+
+    int Size()
+    { return mLast - mFirst + 1; }
+
+    int FirstElem()
+    { return mFirst; }
+
+    int LastElem()
+    { return mLast; }
+
+  private:
+    int mFirst;
+    int mLast;
+  };
 
 
   /** *************************************************************************
@@ -382,8 +594,8 @@ namespace STK
 
     bool      mMapAdapt;
     
-    bool      mRandomizeTree;
-    bool      mMorphologicalPredictors;
+    bool       mRandomizeTree;
+    bool       mMorphologicalPredictors;
     
   }; //class BDTreeAttributes
 
@@ -433,12 +645,13 @@ namespace STK
     BDTree(const BDTree& rOrig);
 
     /** 
-     * @brief Builds a new tree
+     * @brief Builds a new tree using heldout data as stopping criterium
      * 
-     * @param rData self described
-     * @param rTraits BDTreeBuildTraits structure specifying building parameters
+     * @param rData        self described
+     * @param rHeldoutData NGram heldout data
+     * @param rTraits      BDTreeBuildTraits structure specifying building parameters
      */
-    BDTree(NGramSubsets& rData, BDTreeBuildTraits& rTraits, BDTree* pParent, 
+    BDTree(NGramSubsets& rData, NGramSubsets* rHeldoutData, BDTreeBuildTraits& rTraits, BDTree* pParent, 
         const std::string& rPrefix);
 
     /** 
@@ -499,9 +712,18 @@ namespace STK
      * @param rNGrams NGram counts to use
      */
     void
-    BuildFromNGrams(NGramSubsets& rNGrams,  BDTreeBuildTraits& rTraits, 
+    BuildFromNGrams(NGramSubsets& rNGrams, NGramSubsets* rHeldoutNGrams,  BDTreeBuildTraits& rTraits, 
         BDTree* pParent, const std::string& rPrefix);
 
+    /** 
+     * @brief Builds the tree from the given NGram subset using heldout data as stopping criterium
+     * 
+     * @param rNGrams NGram counts to use
+     * @param rHeldoutData  heldout N-grams
+     */
+    void 
+    BuildFromNGrams(NGramSubsets& rNGrams,  NGramPool& rHeldoutData, BDTreeBuildTraits& rTraits, 
+        BDTree* pParent, const std::string& rPrefix);
 
     void
     GetInfo(BDTreeInfo& rInfo, const BDTree* pParent) const;
@@ -564,7 +786,7 @@ namespace STK
      * 
      */
     void 
-    OutputNGramSubsetARPA(const NGramSubset& rNGrams, VocabularyTable& voc_table, std::ostream& lm_stream, int rOrder);
+    OutputNGramSubsetARPA(const NGramSubset& rNGrams, std::ostream& lm_stream, int rOrder);
 
     /** 
      * @brief Computes smoothed probabilities using smoothing factor r

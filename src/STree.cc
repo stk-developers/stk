@@ -68,6 +68,13 @@ int main(int argc, char* argv[])
     string                  source_model_list_name;
     string                  target_ARPA_fname;
     bool                    output_ARPA = false;
+    string                  heldout_data_fname;
+    NGramSubsets*           heldout_collection_pntr = NULL;
+    //VocabularyTable*        word_vocabulary = NULL;
+    //VocabularyTable*        stem_vocabulary = NULL;
+    //VocabularyTable*        flex_vocabulary = NULL;
+    //VocabularyTable*        POS_vocabulary = NULL;
+    //VocabularyTable*        tag_vocabulary = NULL;
 
     InitLogMath();
 
@@ -103,6 +110,8 @@ int main(int argc, char* argv[])
       ("randtree",      po::value<bool>(&new_tree_traits.mRandomizeTree),     "Use random question set split and predictor position selection when growing the tree. Exchange algorithm is used")
       ("outputARPA",    po::value<bool>(&output_ARPA),                        "Output scored N-grams in ARPA format")
       ("outARPAfile",   po::value<string>(&target_ARPA_fname),                "Target ARPA format LM")
+      ("heldoutdata",   po::value<string>(&heldout_data_fname),               "Heldout data that can be used as stopping criteria at the training phase")
+      //("morphvocscript,S", po::value<string>(),                               "Morphological vocabularies script")
       ("morphpred",     po::value<bool>(&new_tree_traits.mMorphologicalPredictors),   "Use morphological predictors (for word models)"); 
 
     // config file options only
@@ -194,6 +203,23 @@ int main(int argc, char* argv[])
         target_vocabulary->LoadFromFile(target_vocab_fname);
       }
 
+      NGramSubsets heldout_collection;
+      NGramPool heldout_pool(new_tree_traits.mOrder);
+      // if file with heldout data is specified, then read it
+      if (var_map.count("heldoutdata")) 
+      {
+        // Create the stats file
+        heldout_pool.setPredictorVocab(&predictor_vocabulary);
+        heldout_pool.setTargetVocab(target_vocabulary);
+        heldout_pool.AddFromFile(heldout_data_fname, 1);
+
+        std::cout << "Heldout data mass: " << heldout_pool.Mass() << std::endl;
+        std::cout << "Heldout token count: " << heldout_pool.TokenCount() << std::endl;
+
+        heldout_collection.push_back(heldout_pool);
+	heldout_collection_pntr = &heldout_collection;
+      }
+
       NGramSubsets data_collection;
       std::map<std::string,NGramPool> data_pools;
       std::map<std::string,NGramPool>::iterator i_data_pools;
@@ -246,7 +272,7 @@ int main(int argc, char* argv[])
       }
 
       // train new tree
-      BDTree new_tree(data_collection, new_tree_traits, NULL, "");
+      BDTree new_tree(data_collection, heldout_collection_pntr, new_tree_traits, NULL, "");
       
       OStkStream model_stream(target_model_name.c_str());
       if (!model_stream.good()) {
@@ -266,6 +292,7 @@ int main(int argc, char* argv[])
       new_tree.Write(model_stream, file_header);
       // close stream
       model_stream.close();
+
 
       BDTreeInfo tree_info;
       new_tree.GetInfo(tree_info, NULL);
@@ -345,7 +372,7 @@ int main(int argc, char* argv[])
 	      throw runtime_error(string("Error opening output file ") + 
                 target_ARPA_fname);
 	    }
-            (*i_model)->OutputNGramSubsetARPA(data, predictor_vocabulary, lm_stream, new_tree_traits.mOrder);
+            (*i_model)->OutputNGramSubsetARPA(data, lm_stream, new_tree_traits.mOrder);
 
 	    lm_stream.close();
 	  }
@@ -482,6 +509,11 @@ int main(int argc, char* argv[])
       // Create the stats file
       data_pools.back().setPredictorVocab(&predictor_vocabulary);
       data_pools.back().setTargetVocab(target_vocabulary);
+      //data_pools.back().setWordVocab(word_vocabulary);
+      //data_pools.back().setStemVocab(stem_vocabulary);
+      //data_pools.back().setFlexVocab(flex_vocabulary);
+      //data_pools.back().setPOSVocab(POS_vocabulary);
+      //data_pools.back().setTagVocab(tag_vocabulary);
 
       // load the data 
       string script_file = var_map["script"].as<string >();

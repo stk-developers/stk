@@ -191,6 +191,8 @@ namespace STK
     friend class VecDistribution;
     friend class NGramSubsets;
     friend class BDTree;
+    friend class SparseBigramMatrix;
+    friend class MorphVocabSection;
 
   protected:
     NGramContainer       mData;
@@ -288,10 +290,10 @@ namespace STK
     pPredictorTable() const 
     { return mpPredictorTable; }
 
-
     const VocabularyTable*
     pTargetTable() const 
     { return mpTargetTable; }
+
 
     /** 
      * @brief Search for a given NGram

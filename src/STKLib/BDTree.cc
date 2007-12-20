@@ -423,14 +423,13 @@ namespace STK
   //***************************************************************************/
   //***************************************************************************/
   BDTree::
-  BDTree(NGramSubsets& rData, BDTreeBuildTraits& rTraits,
+  BDTree(NGramSubsets& rData, NGramSubsets* rHeldoutData, BDTreeBuildTraits& rTraits,
       BDTree* pParent, const std::string& rPrefix)
   : mDist(rData[0].Parent().pTargetTable()->Size()),
     mpBackoffDist(NULL)
   {
-    BuildFromNGrams(rData, rTraits, pParent, rPrefix);
+    BuildFromNGrams(rData, rHeldoutData, rTraits, pParent, rPrefix);
   }
-
 
   //***************************************************************************/
   //***************************************************************************/
@@ -491,17 +490,17 @@ namespace STK
   //***************************************************************************/
   void
   BDTree::
-  BuildFromNGrams(NGramSubsets& rNGrams, BDTreeBuildTraits& rTraits,
+  BuildFromNGrams(NGramSubsets& rNGrams, NGramSubsets* rHeldoutNGrams, BDTreeBuildTraits& rTraits,
       BDTree* pParent, const std::string& rPrefix)
   {
-    double    total_entropy;
-    double    split_entropy;
-    double    entropy_red;
+    double    total_entropy, heldout_total_entropy;
+    double    split_entropy, heldout_split_entropy;
+    double    entropy_red, heldout_entropy_red;
 
     double    total_mmi;
     double    split_mmi;
     double    mmi_inc;
-    BQuestion* p_new_question = NULL;
+    BSetQuestion* p_new_question = NULL;
     int       depth = rTraits.mCurDepth;
 
     // compute distribution
@@ -580,6 +579,15 @@ namespace STK
       // find best predictor and return split entropy
       p_new_question = FindSimpleQuestion(rNGrams, rTraits, &split_entropy);
 
+      if(rHeldoutNGrams != NULL)
+      {
+	double mass0, mass1;
+        // compute heldout entropy before split
+        heldout_total_entropy = rHeldoutNGrams->ParallelEntropy();
+	heldout_split_entropy = rHeldoutNGrams->ParallelSplitEntropy(*p_new_question, &mass0, &mass1);
+	heldout_entropy_red   = heldout_total_entropy - heldout_split_entropy;
+      }
+
       entropy_red = total_entropy - split_entropy;
 
       if (rTraits.mVerbosity > 0) {
@@ -588,10 +596,16 @@ namespace STK
           std::cout << "BDTree::Info      " << rPrefix << "Data Entropy:      " << total_entropy << std::endl;
         }
         else {
-          p_new_question->Dump(std::cout, std::string("BDTree::Info      ")+rPrefix);
+	  if(rTraits.mRandomizeTree)
+	    std::cout << "BDTree::Info      " << rPrefix << "Predictor:      " << p_new_question->Predictor()<< std::endl;	    
+	  else
+	    p_new_question->Dump(std::cout, std::string("BDTree::Info      ")+rPrefix);
+
           std::cout << "BDTree::Info      " << rPrefix << "Data Entropy:      " << total_entropy << std::endl;
           std::cout << "BDTree::Info      " << rPrefix << "Split Entropy:     " << split_entropy << std::endl;
           std::cout << "BDTree::Info      " << rPrefix << "Entropy reduction: " << entropy_red << std::endl;
+	  if(rHeldoutNGrams != NULL)
+	    std::cout << "BDTree::Info      " << rPrefix << "Heldout entropy reduction: " << heldout_entropy_red << std::endl;
         }
       }
     }
@@ -609,9 +623,16 @@ namespace STK
       mpTree0    = NULL;
       mpTree1    = NULL;
     }
-    else if (entropy_red < rTraits.mMinReduction) {
-      if (rTraits.mVerbosity > 0) {
-        std::cout << "BDTree::Info      " << rPrefix << "Leaf due to minimum entropy reduction criterion" << std::endl;
+    else if (entropy_red == 0
+      || rHeldoutNGrams != NULL && heldout_entropy_red <= 0 
+      || rHeldoutNGrams == NULL && entropy_red < rTraits.mMinReduction) 
+    {
+      if (rTraits.mVerbosity > 0) 
+      {
+	if(rHeldoutNGrams != NULL)
+	  std::cout << "BDTree::Info      " << rPrefix << "Leaf due to heldout data entropy reduction criterion" << std::endl;
+	else
+	  std::cout << "BDTree::Info      " << rPrefix << "Leaf due to minimum entropy reduction criterion" << std::endl;
       }
 
       if (NULL != p_new_question) {
@@ -630,13 +651,27 @@ namespace STK
       mpQuestion  = p_new_question;
       rNGrams.Split(*mpQuestion, *p_split_data0, *p_split_data1);
 
+      NGramSubsets* p_split_hld_data0 = NULL;
+      NGramSubsets* p_split_hld_data1 = NULL;
+      if(rHeldoutNGrams != NULL)
+      {
+        p_split_hld_data0 = new NGramSubsets;
+        p_split_hld_data1 = new NGramSubsets;
+        rHeldoutNGrams->Split(*mpQuestion, *p_split_hld_data0, *p_split_hld_data1);
+      }
+
+
       rTraits.mCurDepth = depth + 1;
-      mpTree0     = new BDTree(*p_split_data0, rTraits, this, rPrefix + "-  ");
+      mpTree0     = new BDTree(*p_split_data0, p_split_hld_data0, rTraits, this, rPrefix + "-  ");
       rTraits.mCurDepth = depth + 1;
-      mpTree1     = new BDTree(*p_split_data1, rTraits, this, rPrefix + "+  ");
+      mpTree1     = new BDTree(*p_split_data1, p_split_hld_data1, rTraits, this, rPrefix + "+  ");
 
       delete p_split_data0;
       delete p_split_data1;
+
+      delete p_split_hld_data0;
+      delete p_split_hld_data1;
+
     } // else declare leaf
   }
 
@@ -761,72 +796,65 @@ namespace STK
     bool    inserted  = true;
     bool    deleted   = true;
     double  e         = rNGrams.ParallelEntropy();
-    double  this_e;
-    int     vocab_size = rNGrams[0].Parent().pTargetTable()->Size();
-    int     i_vocab;
-    int     i_best_change;
-    double  mass0;
-    double  mass1;
-    BSetQuestion* p_new_question = new BSetQuestion(pred, vocab_size);
+    double  this_e, log_likelihood, this_log_likelihood;
+    double  mass0, mass1;
 
+    //int     vocab_size = rNGrams[0].Parent().pTargetTable()->Size();
+    int     target_vocab_size = rNGrams[0].Parent().pTargetTable()->Size();
+    int     vocab_size = rNGrams[0].Parent().pPredictorTable()->Size();
+
+    int     i_vocab, vocab_start, vocab_end;
+    int     i_best_change;
+    int     node_vocab_size;
+    BSetQuestion* p_new_question = new BSetQuestion(pred, vocab_size);
     
     // It's not only this - we also implement Exchange algorithm there for finding the best question (as described in Peng Xu thesis)
-    // It should be pretty fast 
-    if(rTraits.mRandomizeTree)
+    // It should be pretty fast. Implemented only for trigrams
+    if(rTraits.mRandomizeTree && rTraits.mOrder >= 3)
     {
-      // NB!!! if vocab_size and node_vocab_size are different (we reduce the matrices somehow), some things must be changed in the below code
-      int node_vocab_size = vocab_size;
-      // This is a helper matrices V*V for two complementary subsets, inferred from the question. Columns: words to be predicted, Rows: words in predictor position (-1 or -2), Cells: corresponding counts
-      // NB!!! Frankly, it should be a 3-dimention matrix, if different languages are used. Should change later
-      Matrix<double> helper0_matrix(node_vocab_size, node_vocab_size);
-      Matrix<double> helper1_matrix(node_vocab_size, node_vocab_size);
-      // Here we store "marginal counts" for the matrices above, for us not to sum everything up all the time
-      BasicVector<double> marginal0_counts_present(node_vocab_size);
-      BasicVector<double> marginal0_counts_predictor(node_vocab_size);
-      BasicVector<double> marginal1_counts_present(node_vocab_size);
-      BasicVector<double> marginal1_counts_predictor(node_vocab_size);
-      int it_marginal;
-
       NGramSubsets::const_iterator        i_subset;
 
-      // make initial rundom shuffle of the question set
-      for(i_vocab=0; i_vocab<vocab_size; ++i_vocab)
-        p_new_question->RandomShuffle(i_vocab);
+      // NB!!! if vocab_size and node_vocab_size are different (we reduce the matrices somehow), some things must be changed in the below code
+      
+      // Wwe detect wich kinf of predictor we deal with and find corresponding vocabulary subset
+      if(rTraits.mMorphologicalPredictors)
+      {
+	MorphVocabSection VocabSection(rNGrams, pred);
+	node_vocab_size =  VocabSection.Size();
+	vocab_start = VocabSection.FirstElem();
+	vocab_end = VocabSection.LastElem();
+      }
+      else
+      {
+	node_vocab_size = vocab_size;
+	vocab_start = 0;
+	vocab_end = vocab_size-1;
+      }
 
-      // construct helper matrix
+      // make initial rundom shuffle of the question set
+      //for(i_vocab = vocab_start; i_vocab <= vocab_end; ++i_vocab)
+      //p_new_question->RandomShuffle(i_vocab);
+
+      // construct helper "sparce" matrix
+      SparseBigramMatrix BigramMatrix0(target_vocab_size, vocab_size), BigramMatrix1(target_vocab_size, vocab_size);
+
+      // first iterate over ngrams and count, how many units do we have in each row (corresponding to predictor) and allocate memory
+
       // collect counts for each language and overal count for all langs
       for (i_subset=rNGrams.begin(); i_subset!=rNGrams.end(); ++i_subset) 
       {
-	// iterate over all N-grams at this particular node
-	NGramSubset::NGramContainer::const_iterator it;
-	for (it=i_subset->mData.begin(); it!=i_subset->mData.end(); ++it) 
-	{
-	  NGram::TokenType* present_token = &((**it)[0]);
-	  NGram::TokenType* predictor_token = &((**it)[pred]);
-	  NGram::ProbType   counts = (*it)->Counts();
+	BigramMatrix0.CreateSizeVector(*i_subset, *p_new_question, pred, false);
+	BigramMatrix1.CreateSizeVector(*i_subset, *p_new_question, pred, true);
 
-	  assert(counts >= 0);
+	BigramMatrix0.AllocateMem();
+	BigramMatrix1.AllocateMem();
 
-	  if (!p_new_question->Eval(**it)) 
-	    helper0_matrix[*predictor_token][*present_token] += counts;
-	  else if(p_new_question->Eval(**it))
-	    helper1_matrix[*predictor_token][*present_token] += counts;
-	}
+	BigramMatrix0.Fill(*i_subset, *p_new_question, pred, false);
+	BigramMatrix1.Fill(*i_subset, *p_new_question, pred, true);
+
+	log_likelihood = BigramMatrix0.CountLogLikelihood(BigramMatrix1);
       }
-      // Create marginal vectors from the counts
-      for(it_marginal = 0; it_marginal < marginal0_counts_present.Length(); ++it_marginal)
-      {
-	for(i_vocab = 0; i_vocab < node_vocab_size; ++i_vocab)
-	{
-	  marginal0_counts_present[it_marginal] += helper0_matrix[i_vocab][it_marginal];
-	  marginal1_counts_present[it_marginal] += helper1_matrix[i_vocab][it_marginal];
-	  marginal0_counts_predictor[it_marginal] += helper0_matrix[it_marginal][i_vocab];
-	  marginal1_counts_predictor[it_marginal] += helper1_matrix[it_marginal][i_vocab];
-	}
-      }
-      // calculate initial total counts associated with each set under split - C(A) and C(A_)
-      mass1 = marginal1_counts_predictor.Sum();
-      mass0 = marginal0_counts_predictor.Sum();
+
 
       // Move elements from one set to another to find the best question (Exchange algorithm)
       //double this_e = rNGrams.ParallelSplitEntropy(*p_new_question, &mass0, &mass1);
@@ -835,142 +863,62 @@ namespace STK
       {
 	inserted      = false;
 	deleted       = false;
-        int i_predictor, i_present;
-	double count_mass_moved, log_likelihood_sum;
+        int i_predictor;
 
 	// move from A_ to A (insertion) - we try to insert as many as possible
-	for(i_predictor = 0; i_predictor < vocab_size; ++i_predictor) // NB!!! if vocab_size and node_vocab_size are different (we reduce the matrices somehow), then there things must be changed 
+	for(i_predictor = vocab_start; i_predictor <= vocab_end; ++i_predictor) // NB!!! if vocab_size and node_vocab_size are different (we reduce the matrices somehow), then there things must be changed 
 	{
-	  count_mass_moved = 0.0;
-	  log_likelihood_sum = 0.0;
-
-	  if (!p_new_question->EvalRawToken(i_predictor)) 
+	  if (!p_new_question->EvalRawToken(i_predictor) && BigramMatrix0.GetSizeVectorCell(i_predictor)) 
 	  {
 	    p_new_question->Set(i_predictor);
-	    // if we inserted an element to the set A, we should modify helper matrices.
-	    for(i_present = 0; i_present < node_vocab_size; ++i_present)
-	    {
-	      helper1_matrix[i_predictor][i_present] = helper0_matrix[i_predictor][i_present];
-	      marginal1_counts_present[i_present] += helper0_matrix[i_predictor][i_present];
-	      marginal0_counts_present[i_present] -= helper0_matrix[i_predictor][i_present];	      
 
-	      count_mass_moved += helper0_matrix[i_predictor][i_present];
-	      helper0_matrix[i_predictor][i_present] = 0.0;
-	    }
-	    mass1 += count_mass_moved;
-	    mass0 -= count_mass_moved;
-	   
-	    marginal1_counts_predictor[it_marginal] = count_mass_moved;
-	    marginal0_counts_predictor[it_marginal] = 0.0;
+	    this_log_likelihood = BigramMatrix1.InsertBasicElement(BigramMatrix0, i_predictor);
 	    
-	    // Now we are ready to  calculate log-likelihood with the new question (one element moved) in a fast way
-	    // Formula sum_w[C(w,A)logC(w,A) + C(w,A_complement)logC(w,A_complement)] - C(A)logC(A) - C(A_complement)logC(A_complement)
-	    // Iterate over all words in 0 position
-	    for(i_present = 0; i_present < node_vocab_size; ++i_present)
-	    {
-	      if(marginal1_counts_present[i_present] && marginal0_counts_present[i_present])
-	      {
-		log_likelihood_sum += marginal1_counts_present[i_present]*log(marginal1_counts_present[i_present]);
-		log_likelihood_sum += marginal0_counts_present[i_present]*log(marginal0_counts_present[i_present]);
-	      }
-	    }
-	    log_likelihood_sum -= mass1 * log(mass1);
-	    log_likelihood_sum -= mass0 * log(mass0);
-
 	    // now we get log-likelihood. We can either maximize this or minimize entropy. The switch to entropy is:
-	    this_e=-log_likelihood_sum/(mass1 + mass0);
+	    mass0 = BigramMatrix0.GetTotalCountSum();
+	    mass1 = BigramMatrix1.GetTotalCountSum();
+	    this_e = -this_log_likelihood  / (mass0 + mass1);
 
 	    // Let the question be inserted and save changes - i.e. matrices are modified after each insertion
 	    if (this_e < e && mass0 >= rTraits.mMinInData && mass1 >= rTraits.mMinInData) 
+	    {
 	      e = this_e;
+	      inserted = true;
+	    }
 	    // If reduction is insignificant, cancel the insertion - i.e. modify back the matrices
 	    else
 	    {
 	      p_new_question->Unset(i_predictor);
-
-	      for(i_present = 0; i_present < node_vocab_size; ++i_present)
-	      {
-		helper0_matrix[i_predictor][i_present] = helper1_matrix[i_predictor][i_present];
-		marginal0_counts_present[i_present] += helper1_matrix[i_predictor][i_present];
-		marginal1_counts_present[i_present] -= helper1_matrix[i_predictor][i_present];	      
-
-		// we know how much was moved, since we're just putting back
-		//count_mass_moved += helper0_matrix[i_predictor][i_present];
-		helper1_matrix[i_predictor][i_present] = 0.0;
-	      }
-	      mass0 += count_mass_moved;
-	      mass1 -= count_mass_moved;
-	   
-	      marginal0_counts_predictor[it_marginal] = count_mass_moved;
-	      marginal1_counts_predictor[it_marginal] = 0.0;
+	      BigramMatrix0.InsertBasicElement(BigramMatrix1, i_predictor);
 	    }
 	  }
 	}
-	// move from A to A_ (deletion) - we try to delete from A as many as possible
-	for(i_predictor = 0; i_predictor < vocab_size; ++i_predictor) // NB!!! if vocab_size and node_vocab_size are different (we reduce the matrices somehow), then there things must be changed 
-	{
-	  count_mass_moved = 0.0;
-	  log_likelihood_sum = 0.0;
 
-	  if (p_new_question->EvalRawToken(i_predictor)) 
+	// move from A to A_ (deletion) - we try to delete as many as possible
+	for(i_predictor = vocab_start; i_predictor < vocab_end; ++i_predictor) // NB!!! if vocab_size and node_vocab_size are different (we reduce the matrices somehow), then there things must be changed 
+	{
+	  if (p_new_question->EvalRawToken(i_predictor) && BigramMatrix1.GetSizeVectorCell(i_predictor)) 
 	  {
 	    p_new_question->Unset(i_predictor);
-	    // if we deleted an element to the set A, we should modify helper matrices.
-	    for(i_present = 0; i_present < node_vocab_size; ++i_present)
-	    {
-	      helper0_matrix[i_predictor][i_present] = helper1_matrix[i_predictor][i_present];
-	      marginal0_counts_present[i_present] += helper1_matrix[i_predictor][i_present];
-	      marginal1_counts_present[i_present] -= helper1_matrix[i_predictor][i_present];	      
 
-	      count_mass_moved += helper1_matrix[i_predictor][i_present];
-	      helper1_matrix[i_predictor][i_present] = 0.0;
-	    }
-	    mass0 += count_mass_moved;
-	    mass1 -= count_mass_moved;
-	   
-	    marginal0_counts_predictor[it_marginal] = count_mass_moved;
-	    marginal1_counts_predictor[it_marginal] = 0.0;
+	    this_log_likelihood = BigramMatrix0.InsertBasicElement(BigramMatrix1, i_predictor);
 	    
-	    // Now we are ready to  calculate log-likelihood with the new question (one element moved) in a fast way
-	    // Formula sum_w[C(w,A)logC(w,A) + C(w,A_complement)logC(w,A_complement)] - C(A)logC(A) - C(A_complement)logC(A_complement)
-	    // Iterate over all words in 0 position
-	    for(i_present = 0; i_present < node_vocab_size; ++i_present)
-	    {
-	      if(marginal1_counts_present[i_present] && marginal0_counts_present[i_present])
-	      {
-		log_likelihood_sum += marginal1_counts_present[i_present]*log(marginal1_counts_present[i_present]);
-		log_likelihood_sum += marginal0_counts_present[i_present]*log(marginal0_counts_present[i_present]);
-	      }						    
-	    }
-	    log_likelihood_sum -= mass1 * log(mass1);
-	    log_likelihood_sum -= mass0 * log(mass0);
-
 	    // now we get log-likelihood. We can either maximize this or minimize entropy. The switch to entropy is:
-	    this_e=-log_likelihood_sum/(mass1 + mass0);
+	    mass0 = BigramMatrix0.GetTotalCountSum();
+	    mass1 = BigramMatrix1.GetTotalCountSum();
+	    this_e = -this_log_likelihood  / (mass0 + mass1);
 
 	    // Let the question be inserted and save changes - i.e. matrices are modified after each insertion
 	    if (this_e < e && mass0 >= rTraits.mMinInData && mass1 >= rTraits.mMinInData) 
+	    {
 	      e = this_e;
-	    // If reduction is insignificant, cancel the deletion - i.e. modify back the matrices
+	      deleted = true;
+	    }
+	    // If reduction is insignificant, cancel the insertion - i.e. modify back the matrices
 	    else
 	    {
 	      p_new_question->Set(i_predictor);
-
-	      for(i_present = 0; i_present < node_vocab_size; ++i_present)
-	      {
-		helper1_matrix[i_predictor][i_present] = helper0_matrix[i_predictor][i_present];
-		marginal1_counts_present[i_present] += helper0_matrix[i_predictor][i_present];
-		marginal0_counts_present[i_present] -= helper0_matrix[i_predictor][i_present];	      
-
-		// we know how much was moved, since we're just putting back
-		//count_mass_moved += helper0_matrix[i_predictor][i_present];
-		helper0_matrix[i_predictor][i_present] = 0.0;
-	      }
-	      mass1 += count_mass_moved;
-	      mass0 -= count_mass_moved;
-	   
-	      marginal1_counts_predictor[it_marginal] = count_mass_moved;
-	      marginal0_counts_predictor[it_marginal] = 0.0;
+	      BigramMatrix1.InsertBasicElement(BigramMatrix0, i_predictor);
 	    }
 	  }
 	}
@@ -1175,26 +1123,39 @@ namespace STK
   //***************************************************************************/
   void
   BDTree::
-  OutputNGramSubsetARPA(const NGramSubset& rNGrams, VocabularyTable& voc_table, std::ostream& lm_stream, int rOrder)
+  OutputNGramSubsetARPA(const NGramSubset& rNGrams, std::ostream& lm_stream, int rOrder)
   {
+    const double log_e_10 = 2.30258;
     NGramSubset::NGramContainer::const_iterator i;
-    double  score = 0.0;
-    int j, voc_index;
+    const VocabularyTable *predictor_voc_table, *target_voc_table;
+    target_voc_table = rNGrams.Parent().pTargetTable();
+    predictor_voc_table = rNGrams.Parent().pPredictorTable();
+
+    double  score = 0.0, log_score;
+    int j;
+    NGram::TokenType voc_index;
     std::string word_string;
 
     for (i = rNGrams.mData.begin(); i != rNGrams.mData.end(); ++i) {
       double n_gram_score = ScoreNGram(**i);
 
-      // we don't score the n-grams, whose prob is 0
-      if (n_gram_score > 0) {
-        score += (*i)->Counts() * log(n_gram_score);
+      if(n_gram_score == 0)
+	log_score = -99;
+      else
+      {
+	log_score = log(n_gram_score);
+	log_score /= log_e_10;
       }
 
-      lm_stream << n_gram_score << " ";
+      lm_stream << log_score << " ";
       for(j = 1; j <= rOrder; j++)
       {
 	voc_index = (**i)[rOrder - j];
-	word_string = voc_table.IToA(voc_index);
+	if((rOrder - j) == 0)
+	  word_string = target_voc_table->IToA(voc_index);
+	else
+	  word_string = predictor_voc_table->IToA(voc_index);
+
 	lm_stream << word_string << " ";
       }
 
@@ -1575,6 +1536,256 @@ namespace STK
   BSetQuestion::
   DumpImplicit() const
   { Dump(std::cout, "Implicit dump "); }
+
+
+
+  //***************************************************************************/
+  //***************************************************************************/
+  SparseBigramMatrix::~SparseBigramMatrix()
+  {
+    int i;
+    for(i = 0; i < mPredictorVocabSize; i++)
+      delete [] mPointerVector[i];
+  }
+
+  //***************************************************************************/
+  //***************************************************************************/
+  void
+  SparseBigramMatrix::CreateSizeVector(const NGramSubset& rNGrams, const BSetQuestion& rQuestion, int pred, bool YesAnswer)
+  {
+    int i;
+    int vocab_size = rNGrams.Parent().pPredictorTable()->Size();
+    bool already_seen;
+    BasicVector< NGram::TokenType> seen_contexts(vocab_size);
+    NGram::TokenType prev_present_token = -1;
+
+    // iterate over all N-grams at this particular node
+    NGramSubset::NGramContainer::const_iterator it;
+    for (it=rNGrams.mData.begin(); it!=rNGrams.mData.end(); ++it) 
+    {
+      already_seen = false;
+      NGram::TokenType* predictor_token = &((**it)[pred]);
+      NGram::TokenType* present_token = &((**it)[0]);
+      NGram::ProbType   counts = (*it)->Counts();
+
+      assert(counts > 0); 
+
+      // The N-grams are all sorted accordind to most current words (first present words, then -1 context etc.). We take benefit of this since we must count not different N-grams but N-1 grams with different predictors
+
+      // we start reading N-grams with different present word
+      if(*present_token != prev_present_token)
+      {
+	prev_present_token = *present_token;
+	seen_contexts.Clear();
+      }
+      else if(seen_contexts[*predictor_token])
+	already_seen = true;
+
+
+      if(!already_seen)
+      {
+	if(YesAnswer && rQuestion.Eval(**it)
+	  || !YesAnswer && !rQuestion.Eval(**it))
+	{ 
+	  mSizeVector[*predictor_token]++;
+
+	  seen_contexts[*predictor_token] = 1;
+	}
+      }
+    }
+  }
+
+  //***************************************************************************/
+  //***************************************************************************/
+  void
+  SparseBigramMatrix::AllocateMem()
+  {
+    int i, size;
+    for(i = 0; i < mPredictorVocabSize; i++)  
+    {
+      size = mSizeVector[i];
+      //this->mPointerVector[i] = 0;
+      if(size)
+	mPointerVector[i] = new SparseBigramCell[size];
+      else 
+	mPointerVector[i] = NULL;
+    }
+
+  }
+
+  //***************************************************************************/
+  //***************************************************************************/ 
+  void
+  SparseBigramMatrix::Fill(const NGramSubset& rNGrams, const BSetQuestion& rQuestion, const int pred, const bool YesAnswer)
+  {
+    // iterate over all N-grams at this particular node
+    NGramSubset::NGramContainer::const_iterator it;
+    int i;
+    bool bigram_found;
+
+    for (it=rNGrams.mData.begin(); it!=rNGrams.mData.end(); ++it) 
+    {
+      NGram::TokenType* present_token = &((**it)[0]);
+      NGram::TokenType* predictor_token = &((**it)[pred]);
+      NGram::ProbType   counts = (*it)->Counts();
+
+      assert(counts > 0); 
+
+      if(YesAnswer && rQuestion.Eval(**it)
+	  || !YesAnswer && !rQuestion.Eval(**it))
+      {
+	bigram_found = false;
+	for(i = 0; i < mSizeVector[*predictor_token]; i++)
+	{
+	  // do we start from zero or 1????
+	  int current_column = (this->mPointerVector[*predictor_token] + i)->GetColumn();
+	  int current_count  = (this->mPointerVector[*predictor_token] + i)->GetCount();
+
+	  if(current_count == 0)
+	    break;
+
+	  else if(*present_token == current_column)
+	  {
+	    (this->mPointerVector[*predictor_token] + i)->IncrementCount(counts);
+	    mMarginalCountsPresent[*present_token] += counts;
+	    mMarginalCountsPredictor[*predictor_token] += counts;
+	    mTotalSum += counts;
+	    bigram_found = true;
+
+	    break;
+	  }
+	}
+
+	if(!bigram_found)
+	{
+	  assert(i < mSizeVector[*predictor_token]);
+
+	  (this->mPointerVector[*predictor_token] + i)->SetCell(*present_token, counts);
+	  mMarginalCountsPresent[*present_token] += counts;
+	  mMarginalCountsPredictor[*predictor_token] += counts;
+	  mTotalSum += counts;
+	}
+      }
+    }
+  }
+
+  //***************************************************************************/
+  //***************************************************************************/  
+  double
+  SparseBigramMatrix::InsertBasicElement(SparseBigramMatrix& MoveFromThisSet, const int Predictor)
+  {
+    int i, helper;
+    double log_likelihood_sum = 0;
+    double counts_moved = 0;
+    SparseBigramCell *AuxCopy;
+
+
+    // Iterate over all elements in the basic element (i.e. over all present words) to be inserted
+    for(i = 0; i < MoveFromThisSet.mSizeVector[Predictor]; i++)
+    {
+      // do we start from zero or 1????
+      int current_column = (MoveFromThisSet.mPointerVector[Predictor] + i)->GetColumn();
+      int current_count  = (MoveFromThisSet.mPointerVector[Predictor] + i)->GetCount();
+
+      assert(current_count > 0);
+
+      MoveFromThisSet.mMarginalCountsPresent[current_column] -= current_count;
+      this->mMarginalCountsPresent[current_column] += current_count;
+      counts_moved += current_count;
+    }
+
+    this->mTotalSum += counts_moved;
+    MoveFromThisSet.mTotalSum -= counts_moved;
+    // Actually we do not use predctor marginal count vector
+    MoveFromThisSet.mMarginalCountsPredictor[Predictor] -= counts_moved;
+
+    assert(MoveFromThisSet.mMarginalCountsPredictor[Predictor] == 0);
+
+    this->mMarginalCountsPredictor[Predictor] += counts_moved;
+
+    assert(this->mMarginalCountsPredictor[Predictor] == counts_moved);
+
+    // update size vectors
+    helper = this->mSizeVector[Predictor];
+    this->mSizeVector[Predictor] =  MoveFromThisSet.mSizeVector[Predictor];
+    MoveFromThisSet.mSizeVector[Predictor] = helper;
+    // We updated marginal count matrices and TotalSum, now move whole basic elements
+    AuxCopy = this->mPointerVector[Predictor];
+    this->mPointerVector[Predictor] = MoveFromThisSet.mPointerVector[Predictor];
+    MoveFromThisSet.mPointerVector[Predictor] = AuxCopy;
+      
+    log_likelihood_sum = this->CountLogLikelihood(MoveFromThisSet);
+
+    return log_likelihood_sum;
+  }
+
+  //***************************************************************************/
+  //***************************************************************************/  
+  double
+  SparseBigramMatrix::CountLogLikelihood(const SparseBigramMatrix& SecondSet) const
+  {
+    int i;
+    double log_likelihood = 0, count_A, count_A_, total_A, total_A_;
+
+    // Formula sum_w[C(w,A)logC(w,A) + C(w,A_complement)logC(w,A_complement)] - C(A)logC(A) - C(A_complement)logC(A_complement)      
+    // Iterate over all elements in the basic element (i.e. over all present words) to be inserted
+    for(i = 0; i < mPresentVocabSize; i++)
+    {
+      count_A  = this->mMarginalCountsPresent[i];
+      count_A_ = SecondSet.mMarginalCountsPresent[i];
+
+      if(count_A > 0)
+       log_likelihood += count_A  * log(count_A);
+      if(count_A_ > 0)
+	log_likelihood += count_A_ * log(count_A_);
+    }
+    total_A  = this->mTotalSum;
+    total_A_ = SecondSet.mTotalSum;
+
+    assert(total_A >= 0 && total_A_ >= 0);
+
+    log_likelihood -= total_A  * log(total_A);
+    log_likelihood -= total_A_ * log(total_A_);
+
+    return log_likelihood;
+  }
+
+  //***************************************************************************/
+  //***************************************************************************/  
+  MorphVocabSection:: MorphVocabSection(NGramSubsets& rNGrams, int pred)
+  {
+    int i, vocab_total;
+    std::string factor_type, wrd;
+    NGram::TokenType ngram_token;
+    NGramSubset::NGramContainer::const_iterator it;
+
+    it = rNGrams[0].mData.begin();
+    ngram_token = (**it)[pred];
+
+    vocab_total = rNGrams[0].Parent().pPredictorTable()->Size();
+    factor_type = rNGrams[0].Parent().pPredictorTable()->IToA(ngram_token);
+
+    mFirst = 0;
+
+    for(i =0 ; i < vocab_total; i++)
+    {
+      wrd = rNGrams[0].Parent().pPredictorTable()->IToA(i);
+      if(factor_type[0] == wrd[0])
+      {
+	if(mFirst == 0)
+	  mFirst = i;
+
+	mLast  = i;
+      }
+      else
+      {
+	if(mFirst != 0)
+	  break;
+	else
+	  continue;
+      }
+    }
+  }
 
 
 } // namespace STK

@@ -243,8 +243,14 @@ namespace STK {
         std::vector<std::string>::reverse_iterator it; 
         size_t token_index = 0;
 
-        for (it = token_chunk.rbegin(); it!=token_chunk.rend(); ++it, ++token_index) {
-          int x = mpPredictorTable->AToI(*it); 
+        for (it = token_chunk.rbegin(); it!=token_chunk.rend(); ++it, ++token_index) 
+	{
+	  int x;
+          if(token_index == 0)
+	    x = mpTargetTable->AToI(*it);
+	  else
+	    x = mpPredictorTable->AToI(*it);
+	    
           (*tmp_sample)[token_index] = x;
         }
 
