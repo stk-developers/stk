@@ -28,7 +28,7 @@ void ReadDictionary(
   int line_no = 0;
   FILE *fp;
   Word *word;
-  char *word_name, *model_name, *chrptr;
+  char *word_name, *model_name, *chrptr, *tchrptr;
   Pronun *new_pronun;
 
   if ((fp = my_fopen(dictFileName, "rt", dict_filter)) == NULL) {
@@ -41,6 +41,8 @@ void ReadDictionary(
     if (strlen(line) == sizeof(line)-1) {
       Error("Line is too long (%s:%d)", dictFileName, line_no);
     }
+    
+    line[strlen(line)-1] = '\0'; // remove final '\n' caracter
     if (getHTKstr(word_name = line, &chrptr)) {
       Error("%s (%s:%d)", chrptr, dictFileName, line_no);
     }
@@ -89,7 +91,12 @@ void ReadDictionary(
       new_pronun->outSymbol = *model_name != '\0' ?  strdup(model_name) : NULL;
     }
 
-    new_pronun->prob = strtod(chrptr, &chrptr);
+    new_pronun->prob = strtod(chrptr, &tchrptr);
+    
+    if(tchrptr != chrptr) {
+      new_pronun->prob = log(new_pronun->prob);
+      chrptr = tchrptr;
+    }
 
     while (*chrptr) {
       if (getHTKstr(model_name = chrptr, &chrptr)) {

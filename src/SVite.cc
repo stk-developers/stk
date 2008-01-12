@@ -290,7 +290,7 @@ int main(int argc, char *argv[])
   expOptions.mStrictTiming
                = GetParamBool(&cfgHash,SNAME":EXACTTIMEMERGE",  false);
   expOptions.mNoWeightPushing
-               =!GetParamBool(&cfgHash,SNAME":WEIGHTPUSHING",   true);
+               =!GetParamBool(&cfgHash,SNAME":WEIGHTPUSHING",   false);
   expOptions.mNoOptimization
                =!GetParamBool(&cfgHash,SNAME":MINIMIZENET",     expOptions.mCDPhoneExpansion
                                                                 ? true : false);
@@ -832,6 +832,14 @@ int main(int argc, char *argv[])
         for (i = 0; i < feature_matrix.Rows(); i++) 
         {
           decoder.ViterbiStep(feature_matrix[i]);
+          if (trace_flag & 4 && i >= hset.mTotalDelay) {
+            TraceLog("Optimum @%-4d HMM: %s (:external:)  %d/%d %5.3f", 
+                     p_decoder->mTime, 
+                     p_decoder->mpBestNode->mC.mpHmm->mpMacro->mpName,
+                     p_decoder->mNActiveModelsForObservation,
+                     p_decoder->mNActiveTokensForObservation,
+                     p_decoder->mpBestToken->mLike/p_decoder->mTime);
+          }
         }
         
         like = decoder.ViterbiDone(&labels, &lattice);
@@ -851,6 +859,14 @@ int main(int argc, char *argv[])
         for (i = 0; i < feature_matrix.Rows(); i++) 
         {
           compact_decoder.ViterbiStep(feature_matrix[i]);
+          if (trace_flag & 4 && i > hset.mTotalDelay) {
+            TraceLog("Optimum @%-4d HMM: %s (:external:)  %d/%d %5.3f", 
+                     p_decoder->mTime, 
+                     p_decoder->mpBestNode->mC.mpHmm->mpMacro->mpName,
+                     p_decoder->mNActiveModelsForObservation,
+                     p_decoder->mNActiveTokensForObservation,
+                     p_decoder->mpBestToken->mLike/(i-hset.mTotalDelay));
+          }
         }
         
         like = compact_decoder.ViterbiDone(&labels, &lattice);
@@ -889,11 +905,10 @@ int main(int argc, char *argv[])
           fprintf(stdout, "%s ", label->mpName);
       }
 
-      TraceLog(" ==  [%d frames] %f", n_frames, like / n_frames);
-
-//      TraceLog(" ==  [%d frames] %f (Act: %f/%f)", n_frames, like / n_frames,
-//                   (float) p_decoder->mNActiveModelsForUtterance / n_frames, 
-//                   (float) p_decoder->mNActiveTokensForUtterance / n_frames);
+//      TraceLog(" ==  [%d frames] %f", n_frames, like / n_frames);
+      TraceLog(" ==  [%d frames] %f (Act: %.1f/%.1f)", n_frames, like / n_frames,
+                   (float) p_decoder->mNActiveModelsForUtterance / n_frames, 
+                   (float) p_decoder->mNActiveTokensForUtterance / n_frames);
     }
 
     if (!lattice.IsEmpty())
