@@ -115,6 +115,8 @@ namespace STK
     return cc == feaLen ? 0 : -1;
   }
 
+  //***************************************************************************
+  //***************************************************************************
   int 
   WriteHTKFeatures(
     FILE *  pOutFp,
@@ -164,6 +166,64 @@ namespace STK
         return -1;
       }
     }
+    return 0;
+  }
+  
+
+  //***************************************************************************
+  //***************************************************************************
+  int 
+  WriteHTKFeatures(
+    FILE *  pOutFp,
+    int     samplePeriod,
+    int     targetKind,  
+    bool    swap,
+    Matrix<FLOAT>&        rFeatureMatrix)
+  {
+    HtkHeader header;
+    int i, j;
+    float *p_scale;
+    float *p_bias;
+    size_t n_samples = rFeatureMatrix.Rows();
+    size_t n_coeffs  = rFeatureMatrix.Cols();
+    
+    header.mNSamples = n_samples  + ((targetKind & PARAMKIND_C) ? 2 * sizeof(FLOAT_32) / sizeof(INT_16) : 0);
+    header.mSamplePeriod = samplePeriod;
+    header.mSampleSize = n_coeffs * ((targetKind & PARAMKIND_C) ?    sizeof(INT_16)   : sizeof(FLOAT_32));;
+    header.mSampleKind = targetKind;
+    
+    WriteHTKHeader (pOutFp, header, swap);
+
+    if(targetKind & PARAMKIND_C) {
+      p_scale = (FLOAT*) malloc(n_coeffs * sizeof(FLOAT));
+      p_bias = (FLOAT*)  malloc(n_coeffs * sizeof(FLOAT));
+      if (p_scale == NULL || p_bias == NULL) Error("Insufficient memory");
+      
+      for(i = 0; i < n_coeffs; i++) {
+        float xmin, xmax;
+	xmin = xmax = rFeatureMatrix[0][i];
+
+	for(j = 1; j < n_samples; j++) {
+	  if(rFeatureMatrix[j][i] > xmax) xmax = rFeatureMatrix[j][i];
+	  if(rFeatureMatrix[j][i] < xmin) xmin = rFeatureMatrix[j][i];
+	}
+
+	p_scale[i] = (2*32767) / (xmax - xmin);
+        p_bias[i]  = p_scale[i] * (xmax + xmin) / 2;
+      }
+
+      if (WriteHTKFeature(pOutFp, p_scale, n_coeffs, swap, false, 0, 0)
+      ||  WriteHTKFeature(pOutFp, p_bias,  n_coeffs, swap, false, 0, 0)) {
+        return -1;
+      }
+    }
+
+    for(j = 0; j < n_samples; j++) {
+      if (WriteHTKFeature(pOutFp, rFeatureMatrix[j], n_coeffs, swap, targetKind & PARAMKIND_C, p_scale, p_bias)) {
+        return -1;
+      }
+    }
+
     return 0;
   }
   
@@ -784,7 +844,7 @@ namespace STK
   //***************************************************************************
   //***************************************************************************
   bool ReadHTKFeatures(
-    char*                 pFileName,
+    const char*           pFileName,
     bool                  swap,
     int                   extLeft,
     int                   extRight,
@@ -798,7 +858,6 @@ namespace STK
     RHFBuffer*            pBuff,
     Matrix<FLOAT>&        rFeatureMatrix)
   {
-    //FLOAT*                fea_mx;
     int                   from_frame;
     int                   to_frame;
     int                   tot_frames;
@@ -822,15 +881,18 @@ namespace STK
     char*                 chptr;
     //IStkStream            istr;
   
+    char                  p_file_name[strlen(pFileName) + 1];
+    strcpy(p_file_name, pFileName);
+
     // remove final spaces from file name
-    for (i = strlen(pFileName) - 1; i >= 0 && isspace(pFileName[i]); i--)
+    for (i = strlen(p_file_name) - 1; i >= 0 && isspace(p_file_name[i]); i--)
     { 
-      pFileName[i] = '\0';
+      p_file_name[i] = '\0';
     }
       
    
     // read frame range definition if any ( physical_file.fea[s,e] )
-    if ((chptr = strrchr(pFileName, '[')) == NULL ||
+    if ((chptr = strrchr(p_file_name, '[')) == NULL ||
         ((i=0), sscanf(chptr, "[%d,%d]%n", &from_frame, &to_frame, &i), chptr[i] != '\0')) 
     {
       chptr = NULL;
@@ -839,9 +901,9 @@ namespace STK
     if (chptr != NULL) 
       *chptr = '\0';
   
-    if ((strcmp(pFileName, "-"))
+    if ((strcmp(p_file_name, "-"))
     &&  (pBuff->mpLastFileName != NULL) 
-    &&  (!strcmp(pBuff->mpLastFileName, pFileName))) 
+    &&  (!strcmp(pBuff->mpLastFileName, p_file_name))) 
     {
       *pHeader = pBuff->last_header;
     } 
@@ -857,23 +919,23 @@ namespace STK
       }
       
       
-      if (!strcmp(pFileName, "-")) 
+      if (!strcmp(p_file_name, "-")) 
         pBuff->mpFp = stdin;
       else 
-        pBuff->mpFp = fopen(pFileName, "rb");
+        pBuff->mpFp = fopen(p_file_name, "rb");
       
       if (pBuff->mpFp == NULL) 
-        Error("Cannot open feature file: '%s'", pFileName);
+        Error("Cannot open feature file: '%s'", p_file_name);
       
       /*
-      istr.open(pFileName, ios::binary);
+      istr.open(p_file_name, ios::binary);
       if (!istr.good())
-        Error("Cannot open feature file: '%s'", pFileName);
+        Error("Cannot open feature file: '%s'", p_file_name);
       pBuff->mpFp = istr.file();  
       */
       
       if (ReadHTKHeader(pBuff->mpFp, pHeader, swap)) 
-        Error("Invalid HTK header in feature file: '%s'", pFileName);
+        Error("Invalid HTK header in feature file: '%s'", p_file_name);
       
       if (pHeader->mSampleKind & PARAMKIND_C) 
       {
@@ -889,12 +951,12 @@ namespace STK
         e |= ReadHTKFeature(pBuff->mpFp, pBuff->B, coefs, swap, 0, 0, 0);
         
         if (e) 
-          Error("Cannot read feature file: '%s'", pFileName);
+          Error("Cannot read feature file: '%s'", p_file_name);
         
         pHeader->mNSamples -= 2 * sizeof(FLOAT_32) / sizeof(INT_16);
       }
       
-      if ((pBuff->mpLastFileName = strdup(pFileName)) == NULL) 
+      if ((pBuff->mpLastFileName = strdup(p_file_name)) == NULL) 
         Error("Insufficient memory");
       
       pBuff->last_header = * pHeader;
@@ -942,7 +1004,7 @@ namespace STK
     if (src_vec_size * coef_size != pHeader->mSampleSize) 
     {
       Error("Invalid HTK header in feature file: '%s'. "
-            "mSampleSize do not match with parmKind", pFileName);
+            "mSampleSize do not match with parmKind", p_file_name);
     }
     
     if (derivOrder < 0) 
@@ -975,7 +1037,7 @@ namespace STK
     extRight    -= i;
   
     if (from_frame > to_frame || from_frame >= pHeader->mNSamples || to_frame < 0)
-      Error("Invalid frame range for feature file: '%s'", pFileName);
+      Error("Invalid frame range for feature file: '%s'", p_file_name);
     
     tot_frames = to_frame - from_frame + 1 + extLeft + extRight;
     
@@ -1028,7 +1090,7 @@ namespace STK
       }
       
       if (e) 
-        Error("Cannot read feature file: '%s' frame %d/%d", pFileName, i, to_frame - from_frame + 1);
+        Error("Cannot read feature file: '%s' frame %d/%d", p_file_name, i, to_frame - from_frame + 1);
     }
   
     // From now, coefs includes also trg_0 + trg_E !

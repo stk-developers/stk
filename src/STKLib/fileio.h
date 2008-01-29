@@ -88,6 +88,13 @@ namespace STK
   
   int Mkdir4File(const char * file_name);
   
+  int 
+  WriteHTKFeatures(
+    FILE *  pOutFp,
+    int     samplePeriod,
+    int     targetKind,  
+    bool    swap,
+    Matrix<FLOAT>&        rFeatureMatrix);
   
   FLOAT*
   ReadHTKFeatures(
@@ -106,7 +113,7 @@ namespace STK
 
   bool 
   ReadHTKFeatures(
-    char*                 pFileName,
+    const char*           pFileName,
     bool                  swap,
     int                   extLeft,
     int                   extRight,

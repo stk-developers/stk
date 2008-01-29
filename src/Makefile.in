@@ -36,12 +36,14 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 @USE_SNET_FALSE@bin_PROGRAMS = SExpand$(EXEEXT) SERest$(EXEEXT) \
 @USE_SNET_FALSE@	SVite$(EXEEXT) SFeaCat$(EXEEXT) \
-@USE_SNET_FALSE@	SLRatio$(EXEEXT) SResults$(EXEEXT) \
-@USE_SNET_FALSE@	SRover$(EXEEXT) STree$(EXEEXT)
+@USE_SNET_FALSE@	SFeaStack$(EXEEXT) SLRatio$(EXEEXT) \
+@USE_SNET_FALSE@	SResults$(EXEEXT) SRover$(EXEEXT) \
+@USE_SNET_FALSE@	STree$(EXEEXT)
 @USE_SNET_TRUE@bin_PROGRAMS = SExpand$(EXEEXT) SERest$(EXEEXT) \
 @USE_SNET_TRUE@	SVite$(EXEEXT) SFeaCat$(EXEEXT) \
-@USE_SNET_TRUE@	SLRatio$(EXEEXT) SResults$(EXEEXT) \
-@USE_SNET_TRUE@	SRover$(EXEEXT) STree$(EXEEXT) SNet$(EXEEXT)
+@USE_SNET_TRUE@	SFeaStack$(EXEEXT) SLRatio$(EXEEXT) \
+@USE_SNET_TRUE@	SResults$(EXEEXT) SRover$(EXEEXT) \
+@USE_SNET_TRUE@	STree$(EXEEXT) SNet$(EXEEXT)
 subdir = src
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -71,6 +73,10 @@ am_SFeaCat_OBJECTS = SFeaCat.$(OBJEXT)
 SFeaCat_OBJECTS = $(am_SFeaCat_OBJECTS)
 SFeaCat_LDADD = $(LDADD)
 SFeaCat_DEPENDENCIES = $(am__DEPENDENCIES_2)
+am_SFeaStack_OBJECTS = SFeaStack.$(OBJEXT)
+SFeaStack_OBJECTS = $(am_SFeaStack_OBJECTS)
+SFeaStack_LDADD = $(LDADD)
+SFeaStack_DEPENDENCIES = $(am__DEPENDENCIES_2)
 am_SLRatio_OBJECTS = SLRatio.$(OBJEXT)
 SLRatio_OBJECTS = $(am_SLRatio_OBJECTS)
 SLRatio_LDADD = $(LDADD)
@@ -104,12 +110,13 @@ CXXLD = $(CXX)
 CXXLINK = $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) \
 	-o $@
 SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFeaCat_SOURCES) \
-	$(SLRatio_SOURCES) $(SNet_SOURCES) $(SResults_SOURCES) \
-	$(SRover_SOURCES) $(STree_SOURCES) $(SVite_SOURCES)
-DIST_SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFeaCat_SOURCES) \
-	$(SLRatio_SOURCES) $(am__SNet_SOURCES_DIST) \
+	$(SFeaStack_SOURCES) $(SLRatio_SOURCES) $(SNet_SOURCES) \
 	$(SResults_SOURCES) $(SRover_SOURCES) $(STree_SOURCES) \
 	$(SVite_SOURCES)
+DIST_SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFeaCat_SOURCES) \
+	$(SFeaStack_SOURCES) $(SLRatio_SOURCES) \
+	$(am__SNet_SOURCES_DIST) $(SResults_SOURCES) $(SRover_SOURCES) \
+	$(STree_SOURCES) $(SVite_SOURCES)
 RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	html-recursive info-recursive install-data-recursive \
 	install-exec-recursive install-info-recursive \
@@ -254,6 +261,7 @@ SERest_SOURCES = SERest.cc
 SVite_SOURCES = SVite.cc
 SExpand_SOURCES = SExpand.cc
 SFeaCat_SOURCES = SFeaCat.cc
+SFeaStack_SOURCES = SFeaStack.cc
 SLRatio_SOURCES = SLRatio.cc
 SResults_SOURCES = SResults.cc
 SRover_SOURCES = SRover.cc
@@ -339,6 +347,9 @@ SExpand$(EXEEXT): $(SExpand_OBJECTS) $(SExpand_DEPENDENCIES)
 SFeaCat$(EXEEXT): $(SFeaCat_OBJECTS) $(SFeaCat_DEPENDENCIES) 
 	@rm -f SFeaCat$(EXEEXT)
 	$(CXXLINK) $(SFeaCat_LDFLAGS) $(SFeaCat_OBJECTS) $(SFeaCat_LDADD) $(LIBS)
+SFeaStack$(EXEEXT): $(SFeaStack_OBJECTS) $(SFeaStack_DEPENDENCIES) 
+	@rm -f SFeaStack$(EXEEXT)
+	$(CXXLINK) $(SFeaStack_LDFLAGS) $(SFeaStack_OBJECTS) $(SFeaStack_LDADD) $(LIBS)
 SLRatio$(EXEEXT): $(SLRatio_OBJECTS) $(SLRatio_DEPENDENCIES) 
 	@rm -f SLRatio$(EXEEXT)
 	$(CXXLINK) $(SLRatio_LDFLAGS) $(SLRatio_OBJECTS) $(SLRatio_LDADD) $(LIBS)
@@ -367,6 +378,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SERest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SExpand.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SFeaCat.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SFeaStack.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SLRatio.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SNet.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SResults.Po@am__quote@

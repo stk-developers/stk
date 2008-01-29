@@ -1,6 +1,7 @@
 #include <STKLib/common.h>
 #include <STKLib/stkstream.h>
 #include <STKLib/BDTree.h>
+#include <STKLib/MlfStream.h>
 
 #include <algorithm>
 #include <boost/program_options.hpp>
@@ -52,6 +53,22 @@ int main(int argc, char* argv[])
 {
   try 
   {
+    // std::ifstream testifstream("/mnt/matylda4/glembek/LRE2007/DATA/counts/lattices/LVCSR/ENGLISH_NN_TRAIN/P2/lattices.phnrec/counts_lattices.mlf");
+    // IMlfStream ns(testifstream);
+    // ns.Index();
+    // std::cerr << "Just hashed" << std::endl;
+    // ns.Open("cosi/kdesi/xgvw");
+    // // cout << ns.rdbuf();
+    // ns.Close();
+
+    // ns.Open("cosi/kdesi/JA-154.hometown");
+    // cout << ns.rdbuf();
+    // ns.Close();
+
+    // testifstream.close();
+
+    // return 0;
+    
     // general-purpose variables
     bool                    htk_compatible = false;
     string                  config_file;
@@ -90,6 +107,8 @@ int main(int argc, char* argv[])
       ("cfgfile,C",     po::value<string>(&config_file),                      "Configuration file")
       ("help",                                                                "Print more detailed help") 
       ("includecounts",                                                       "In connection with outvectors - add leaf counts to each cluster") 
+      ("indexmlf",      po::value<bool>()->default_value(true),               "If true (default) perform indexing of MLF before reading") 
+      ("inputmlf,I",    po::value<string>(),                                  "Source data MLF")
       ("maxdepth",      po::value<int>(&new_tree_traits.mMaxDepth),           "Maximum tree depth criterion")
       ("minentr",       po::value<double>(&new_tree_traits.mMinReduction),    "Minimum entropy reduction criterion")
       ("mindata",       po::value<double>(&new_tree_traits.mMinInData),       "Minimum input data criterion")
@@ -184,7 +203,7 @@ int main(int argc, char* argv[])
 
       // check the params
       if (target_model_name.empty()) {
-        throw runtime_error("Target model (--targetmodel) not specified");
+        throw runtime_error("Target model (--tgtmdl) not specified");
       }
 
       // load the predictor vocabulary
@@ -226,7 +245,36 @@ int main(int argc, char* argv[])
 
       new_tree_traits.mMMItoggle = var_map.count("MMIsplit") ? true : false;
 
-      // load the data 
+      // load the data .........................................................
+      //
+      // source streams
+      IStkStream input_mlf;
+      IMlfStream mlf_data_stream(input_mlf);
+      IStkStream reg_data_stream;
+
+      // this will be a general stream to read from
+      std::istream* p_in_data_stream;  
+
+      // initialize MLF if necessary
+      if (var_map.count("inputmlf")) {
+        std::string input_mlf_file = var_map["inputmlf"].as<string >();
+
+        input_mlf.open(input_mlf_file.c_str());
+        if (! input_mlf.good()) {
+          throw runtime_error(string("Error opening master label file ") +
+              input_mlf_file);
+        }
+
+        // index the MLF if desired
+        if (var_map["indexmlf"].as<bool>()) {
+          std::cout << "Indexing MLF " << input_mlf_file << " ... " << std::flush;
+          mlf_data_stream.Index();
+          std::cout << "DONE" << std::endl;
+        }
+      }
+
+
+      // retreive the script file name
       string script_file = var_map["script"].as<string >();
 
       // parse script file
@@ -240,6 +288,7 @@ int main(int argc, char* argv[])
       // browse the list
       string line_buf;
       while (!list_stream.eof()) {
+        // read list record
         std::getline(list_stream, line_buf);
         list_stream >> std::ws;
 
@@ -255,16 +304,48 @@ int main(int argc, char* argv[])
           i_data_pools->second.setTargetVocab(target_vocabulary);
         }
 
+        // message
         std::cout << "To logical " << new_record.Logical() << " adding physical "
           << new_record.Physical() << " with weight " << new_record.Weight() << std::endl;
 
-        // parse the file
-        i_data_pools->second.AddFromFile(new_record.Physical(), new_record.Weight());
+
+        if (var_map.count("inputmlf")) {
+          // we'll be adding from stream if MLF specified
+          mlf_data_stream.Open(new_record.Physical());
+          if (!mlf_data_stream.good()) {
+            throw runtime_error(string("Error opening label file ") +
+                new_record.Physical());
+          }
+          p_in_data_stream = &mlf_data_stream;
+        }
+        else {
+          // we'll be adding from stream if MLF specified
+          reg_data_stream.open(new_record.Physical().c_str());
+          if (!mlf_data_stream.good()) {
+            throw runtime_error(string("Error opening label file ") +
+                new_record.Physical());
+          }
+          p_in_data_stream = &mlf_data_stream;
+        }
+
+        // add the data
+        i_data_pools->second.AddFromStream(*p_in_data_stream, new_record.Weight());
+
+        if (var_map.count("inputmlf")) {
+          // Need to close for proper work
+          mlf_data_stream.Close();
+        }
+        else {
+          reg_data_stream.close();
+        }
+
+        // write some info
         std::cout << "Data mass: " << i_data_pools->second.Mass() << std::endl;
         std::cout << "Token count: " << i_data_pools->second.TokenCount() << std::endl;
       }
 
       list_stream.close();
+
 
       for (i_data_pools=data_pools.begin(); i_data_pools != data_pools.end(); ++i_data_pools) {
         std::cout << "Creating collection for " << i_data_pools->first << std::endl;
@@ -333,6 +414,35 @@ int main(int argc, char* argv[])
       data.setPredictorVocab(&predictor_vocabulary);
       data.setTargetVocab(target_vocabulary);
 
+      // load the data .........................................................
+      //
+      // source streams
+      IStkStream input_mlf;
+      IMlfStream mlf_data_stream(input_mlf);
+      IStkStream reg_data_stream;
+
+      // this will be a general stream to read from
+      std::istream* p_in_data_stream;  
+
+      // initialize MLF if necessary
+      if (var_map.count("inputmlf")) {
+        std::string input_mlf_file = var_map["inputmlf"].as<string >();
+
+        input_mlf.open(input_mlf_file.c_str());
+        if (! input_mlf.good()) {
+          throw runtime_error(string("Error opening master label file ") +
+              input_mlf_file);
+        }
+
+        // index the MLF if desired
+        if (var_map["indexmlf"].as<bool>()) {
+          std::cout << "Indexing MLF " << input_mlf_file << "...";
+          mlf_data_stream.Index();
+          std::cout << " DONE" << std::endl;
+        }
+      }
+
+
       // load the data 
       string script_file = var_map["script"].as<string >();
 
@@ -356,8 +466,36 @@ int main(int argc, char* argv[])
         list_stream >> std::ws;
 
         FileListElem new_record(line_buf);
+
+        if (var_map.count("inputmlf")) {
+          // we'll be adding from stream if MLF specified
+          mlf_data_stream.Open(new_record.Physical());
+          if (!mlf_data_stream.good()) {
+            throw runtime_error(string("Error opening label file ") +
+                new_record.Physical());
+          }
+          p_in_data_stream = &mlf_data_stream;
+        }
+        else {
+          // we'll be adding from stream if MLF specified
+          reg_data_stream.open(new_record.Physical().c_str());
+          if (!mlf_data_stream.good()) {
+            throw runtime_error(string("Error opening label file ") +
+                new_record.Physical());
+          }
+          p_in_data_stream = &mlf_data_stream;
+        }
+
         // parse data file
-        data.AddFromFile(new_record.Physical(), new_record.Weight());
+        data.AddFromStream(*p_in_data_stream, new_record.Weight());
+
+        if (var_map.count("inputmlf")) {
+          // Need to close for proper work
+          mlf_data_stream.Close();
+        }
+        else {
+          reg_data_stream.close();
+        }
 
         // write intro
         // file name and number of frames
@@ -515,6 +653,36 @@ int main(int argc, char* argv[])
       //data_pools.back().setPOSVocab(POS_vocabulary);
       //data_pools.back().setTagVocab(tag_vocabulary);
 
+
+      // load the data .........................................................
+      //
+      // source streams
+      IStkStream input_mlf;
+      IMlfStream mlf_data_stream(input_mlf);
+      IStkStream reg_data_stream;
+
+      // this will be a general stream to read from
+      std::istream* p_in_data_stream;  
+
+      // initialize MLF if necessary
+      if (var_map.count("inputmlf")) {
+        std::string input_mlf_file = var_map["inputmlf"].as<string >();
+
+        input_mlf.open(input_mlf_file.c_str());
+        if (! input_mlf.good()) {
+          throw runtime_error(string("Error opening master label file ") +
+              input_mlf_file);
+        }
+
+        // index the MLF if desired
+        if (var_map["indexmlf"].as<bool>()) {
+          std::cout << "Indexing MLF " << input_mlf_file << "...";
+          mlf_data_stream.Index();
+          std::cout << " DONE" << std::endl;
+        }
+      }
+
+
       // load the data 
       string script_file = var_map["script"].as<string >();
 
@@ -555,8 +723,34 @@ int main(int argc, char* argv[])
         std::cout << "To logical " << new_record.Logical() << " adding physical "
           << new_record.Physical() << " with weight " << new_record.Weight() << std::endl;
 
+        if (var_map.count("inputmlf")) {
+          // we'll be adding from stream if MLF specified
+          mlf_data_stream.Open(new_record.Physical());
+          if (!mlf_data_stream.good()) {
+            throw runtime_error(string("Error opening label file ") +
+                new_record.Physical());
+          }
+          p_in_data_stream = &mlf_data_stream;
+        }
+        else {
+          // we'll be adding from stream if MLF specified
+          reg_data_stream.open(new_record.Physical().c_str());
+          if (!mlf_data_stream.good()) {
+            throw runtime_error(string("Error opening label file ") +
+                new_record.Physical());
+          }
+          p_in_data_stream = &mlf_data_stream;
+        }
+
         // parse the file
-        data_pools.back().AddFromFile(new_record.Physical(), new_record.Weight());
+        data_pools.back().AddFromStream(*p_in_data_stream, new_record.Weight());
+
+        if (var_map.count("inputmlf")) {
+          mlf_data_stream.Close();
+        }
+        else {
+          reg_data_stream.close();
+        }
 
         // if target was not specified, we immediately adapt
         // TODO: not very good, maybe we prefer to collect the names first, 

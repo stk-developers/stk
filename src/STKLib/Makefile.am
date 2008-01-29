@@ -33,7 +33,8 @@ libSTKLib_a_DEPENDENCIES = $(HSEARCH_R_OBJ)
 libSTKLib_a_SOURCES = BasicVector.cc BasicVector.h BasicVector.tcc \
 		BDTree.cc BDTree_IO.cc BDTree.h BDTree.tcc \
 		ContextSample.cc ContextSample.h Error.cc  \
-		Error.h Features.cc Features.h Matrix.cc Matrix.h Matrix.tcc Models.cc  \
+		Error.h Features.cc Features.h Matrix.cc Matrix.h Matrix.tcc \
+		MlfStream.h MlfStream.cc MlfStream.tcc Models.cc  \
 		Models.h Models_IO.cc Net.h Net.cc Net.tcc Decoder.cc Decoder.tcc \
 		Decoder.h DecoderNetwork.cc DecoderNetwork.h DecoderNetwork_IO.cc DecoderNetwork_IO.tcc ZNorm.cc  \
 		ZNorm.h common.C common.h dict.C dict.h fileio.h filmatch.C filmatch.h     \

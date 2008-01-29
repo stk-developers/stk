@@ -63,9 +63,9 @@ am_libSTKLib_a_OBJECTS = libSTKLib_a-BasicVector.$(OBJEXT) \
 	libSTKLib_a-BDTree.$(OBJEXT) libSTKLib_a-BDTree_IO.$(OBJEXT) \
 	libSTKLib_a-ContextSample.$(OBJEXT) \
 	libSTKLib_a-Error.$(OBJEXT) libSTKLib_a-Features.$(OBJEXT) \
-	libSTKLib_a-Matrix.$(OBJEXT) libSTKLib_a-Models.$(OBJEXT) \
-	libSTKLib_a-Models_IO.$(OBJEXT) libSTKLib_a-Net.$(OBJEXT) \
-	libSTKLib_a-Decoder.$(OBJEXT) \
+	libSTKLib_a-Matrix.$(OBJEXT) libSTKLib_a-MlfStream.$(OBJEXT) \
+	libSTKLib_a-Models.$(OBJEXT) libSTKLib_a-Models_IO.$(OBJEXT) \
+	libSTKLib_a-Net.$(OBJEXT) libSTKLib_a-Decoder.$(OBJEXT) \
 	libSTKLib_a-DecoderNetwork.$(OBJEXT) \
 	libSTKLib_a-DecoderNetwork_IO.$(OBJEXT) \
 	libSTKLib_a-ZNorm.$(OBJEXT) libSTKLib_a-common.$(OBJEXT) \
@@ -214,7 +214,8 @@ libSTKLib_a_DEPENDENCIES = $(HSEARCH_R_OBJ)
 libSTKLib_a_SOURCES = BasicVector.cc BasicVector.h BasicVector.tcc \
 		BDTree.cc BDTree_IO.cc BDTree.h BDTree.tcc \
 		ContextSample.cc ContextSample.h Error.cc  \
-		Error.h Features.cc Features.h Matrix.cc Matrix.h Matrix.tcc Models.cc  \
+		Error.h Features.cc Features.h Matrix.cc Matrix.h Matrix.tcc \
+		MlfStream.h MlfStream.cc MlfStream.tcc Models.cc  \
 		Models.h Models_IO.cc Net.h Net.cc Net.tcc Decoder.cc Decoder.tcc \
 		Decoder.h DecoderNetwork.cc DecoderNetwork.h DecoderNetwork_IO.cc DecoderNetwork_IO.tcc ZNorm.cc  \
 		ZNorm.h common.C common.h dict.C dict.h fileio.h filmatch.C filmatch.h     \
@@ -305,6 +306,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-Features.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-Lattice.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-Matrix.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-MlfStream.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-Models.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-Models_IO.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-Net.Po@am__quote@
@@ -428,6 +430,20 @@ libSTKLib_a-Matrix.obj: Matrix.cc
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Matrix.cc' object='libSTKLib_a-Matrix.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -c -o libSTKLib_a-Matrix.obj `if test -f 'Matrix.cc'; then $(CYGPATH_W) 'Matrix.cc'; else $(CYGPATH_W) '$(srcdir)/Matrix.cc'; fi`
+
+libSTKLib_a-MlfStream.o: MlfStream.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -MT libSTKLib_a-MlfStream.o -MD -MP -MF "$(DEPDIR)/libSTKLib_a-MlfStream.Tpo" -c -o libSTKLib_a-MlfStream.o `test -f 'MlfStream.cc' || echo '$(srcdir)/'`MlfStream.cc; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libSTKLib_a-MlfStream.Tpo" "$(DEPDIR)/libSTKLib_a-MlfStream.Po"; else rm -f "$(DEPDIR)/libSTKLib_a-MlfStream.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='MlfStream.cc' object='libSTKLib_a-MlfStream.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -c -o libSTKLib_a-MlfStream.o `test -f 'MlfStream.cc' || echo '$(srcdir)/'`MlfStream.cc
+
+libSTKLib_a-MlfStream.obj: MlfStream.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -MT libSTKLib_a-MlfStream.obj -MD -MP -MF "$(DEPDIR)/libSTKLib_a-MlfStream.Tpo" -c -o libSTKLib_a-MlfStream.obj `if test -f 'MlfStream.cc'; then $(CYGPATH_W) 'MlfStream.cc'; else $(CYGPATH_W) '$(srcdir)/MlfStream.cc'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libSTKLib_a-MlfStream.Tpo" "$(DEPDIR)/libSTKLib_a-MlfStream.Po"; else rm -f "$(DEPDIR)/libSTKLib_a-MlfStream.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='MlfStream.cc' object='libSTKLib_a-MlfStream.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -c -o libSTKLib_a-MlfStream.obj `if test -f 'MlfStream.cc'; then $(CYGPATH_W) 'MlfStream.cc'; else $(CYGPATH_W) '$(srcdir)/MlfStream.cc'; fi`
 
 libSTKLib_a-Models.o: Models.cc
 @am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -MT libSTKLib_a-Models.o -MD -MP -MF "$(DEPDIR)/libSTKLib_a-Models.Tpo" -c -o libSTKLib_a-Models.o `test -f 'Models.cc' || echo '$(srcdir)/'`Models.cc; \

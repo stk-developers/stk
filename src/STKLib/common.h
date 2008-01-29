@@ -529,6 +529,13 @@ using namespace STK;
               const std::string & rWildcard,
               char*               pSubstr);
   
+  /** 
+   * @brief Wrap to the getHTKstr
+   * @param rIn instring
+   * @param rOut outstring
+   */
+  void
+  ParseHTKString(const std::string & rIn, std::string & rOut);
   
   /**
    * @brief Splits the string into tokens based on the specified separator

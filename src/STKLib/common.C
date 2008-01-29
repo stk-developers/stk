@@ -1706,7 +1706,7 @@ void fast_softmax_vec(double *in, double *out, int size)
   bool
   ProcessMask(const std::string & rString,
               const std::string & rWildcard,
-                    char*         pSubstr)
+              char*               pSubstr)
   {
     char *  substr;
     int     percent_count        = 0;
