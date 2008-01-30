@@ -1,6 +1,9 @@
 
 #include "Features.h"
+
+#if defined(HAVE_BOOST)
 #include <boost/tokenizer.hpp>
+#endif
 
 namespace STK
 {
