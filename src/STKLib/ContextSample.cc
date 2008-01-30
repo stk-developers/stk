@@ -9,7 +9,6 @@
 #include <algorithm>
 #include <string>
 
-#include <boost/tokenizer.hpp>
 
 namespace STK {
   //***************************************************************************/

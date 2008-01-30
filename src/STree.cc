@@ -3,8 +3,8 @@
 #include <STKLib/BDTree.h>
 #include <STKLib/MlfStream.h>
 
+
 #include <algorithm>
-#include <boost/program_options.hpp>
 #include <cctype>
 #include <fstream>
 #include <iostream>
@@ -12,6 +12,11 @@
 #include <string>
 #include <list>
 
+#if !defined HAVE_BOOST
+# error Requires BOOST
+#endif
+
+#include <boost/program_options.hpp>
 
 // ............................................................................
 // shorten namespace to program options
@@ -53,22 +58,6 @@ int main(int argc, char* argv[])
 {
   try 
   {
-    // std::ifstream testifstream("/mnt/matylda4/glembek/LRE2007/DATA/counts/lattices/LVCSR/ENGLISH_NN_TRAIN/P2/lattices.phnrec/counts_lattices.mlf");
-    // IMlfStream ns(testifstream);
-    // ns.Index();
-    // std::cerr << "Just hashed" << std::endl;
-    // ns.Open("cosi/kdesi/xgvw");
-    // // cout << ns.rdbuf();
-    // ns.Close();
-
-    // ns.Open("cosi/kdesi/JA-154.hometown");
-    // cout << ns.rdbuf();
-    // ns.Close();
-
-    // testifstream.close();
-
-    // return 0;
-    
     // general-purpose variables
     bool                    htk_compatible = false;
     string                  config_file;

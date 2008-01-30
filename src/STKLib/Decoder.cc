@@ -37,7 +37,6 @@
 #include <iostream>
 #include <sstream>
 
-#include <boost/tokenizer.hpp>
 
 #ifdef MOTIF
 #include "imagesc.h"

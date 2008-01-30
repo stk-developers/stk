@@ -18,6 +18,7 @@ namespace STK
     const char* pFilter, 
     std::queue<FeatureRepository *> &featureRepositoryList)
   {
+#if defined(HAVE_BOOST)
     IStkStream            l_stream;
     std::string           file_name(pFileName);
 
@@ -56,6 +57,7 @@ namespace STK
       }
       l_stream.close();
     }
+#endif
   } // AddFileList(const std::string & rFileName)
 
 
@@ -106,6 +108,7 @@ namespace STK
   FeatureRepository::
   AddFileList(const char* pFileName, const char* pFilter)
   {
+#if defined(HAVE_BOOST)
     IStkStream            l_stream;
     std::string           file_name(pFileName);
 
@@ -139,6 +142,7 @@ namespace STK
       }
       l_stream.close();
     }
+#endif
   } // AddFileList(const std::string & rFileName)
 
   
