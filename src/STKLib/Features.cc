@@ -1,9 +1,6 @@
 
 #include "Features.h"
-
-#if defined(HAVE_BOOST)
-#include <boost/tokenizer.hpp>
-#endif
+#include "Tokenizer.h"
 
 namespace STK
 {
@@ -21,26 +18,27 @@ namespace STK
     const char* pFilter, 
     std::queue<FeatureRepository *> &featureRepositoryList)
   {
-#if defined(HAVE_BOOST)
     IStkStream            l_stream;
-    std::string           file_name(pFileName);
-
-    boost::char_separator<char> sep(",");
-    boost::tokenizer<boost::char_separator<char> > file_list(file_name, sep);
-    boost::tokenizer<boost::char_separator<char> >::iterator  p_file_name;
+    std::string           file_name;
+    Tokenizer             file_list(pFileName, ",");
+    Tokenizer::iterator   p_file_name;
 
     //:TODO: error if empty featureRepositoryList
     
     for (p_file_name = file_list.begin(); p_file_name != file_list.end(); ++p_file_name)
     {
+      // get rid of initial and trailing blanks
+      Trim(*p_file_name);
+
+      // open file name
       l_stream.open(p_file_name->c_str(), std::ios::in, pFilter);
       
-      if (!l_stream.good())
-      {
+      if (!l_stream.good()) {
         //:TODO:
         // Warning or error ... Why warning? -Lukas
         Error("Cannot not open list file %s", p_file_name->c_str());
       }
+
       // read all lines and parse them
       for(;;)
       {
@@ -60,7 +58,6 @@ namespace STK
       }
       l_stream.close();
     }
-#endif
   } // AddFileList(const std::string & rFileName)
 
 
@@ -111,16 +108,16 @@ namespace STK
   FeatureRepository::
   AddFileList(const char* pFileName, const char* pFilter)
   {
-#if defined(HAVE_BOOST)
     IStkStream            l_stream;
-    std::string           file_name(pFileName);
+    std::string           file_name;
+    Tokenizer             file_list(pFileName, ",");
+    Tokenizer::iterator   p_file_name;
 
-    boost::char_separator<char> sep(",");
-    boost::tokenizer<boost::char_separator<char> > file_list(file_name, sep);
-    boost::tokenizer<boost::char_separator<char> >::iterator  p_file_name;
-    
     for (p_file_name = file_list.begin(); p_file_name != file_list.end(); ++p_file_name)
     {
+      // get rid of spaces
+      Trim(*p_file_name);
+
       // open the file
       l_stream.open(p_file_name->c_str(), std::ios::in, pFilter);
       
@@ -145,7 +142,6 @@ namespace STK
       }
       l_stream.close();
     }
-#endif
   } // AddFileList(const std::string & rFileName)
 
   

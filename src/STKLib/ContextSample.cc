@@ -195,31 +195,6 @@ namespace STK {
           line_buf_stream >> token_chunk[i];
         }
 
-        // tokenzie the line
-        // boost::tokenizer<> toks(line_buf);
-        // boost::tokenizer<>::iterator i_toks = toks.begin();
-        // boost::tokenizer<>::iterator i_toks_next = i_toks;
-        // i_toks_next++;
-
-        // // token_chunk.clear();
-        // // token_chunk.reserve(Order() + 1);
-
-        // NGram* new_ngram = this->pNewNGram();
-
-        // // fill token chunk with tokens
-        // size_t i;
-        // for (i=Order()-1; i_toks_next != toks.end() && i >= 0; ++i_toks, --i, ++i_toks_next) {
-        //   token_chunk[i] = *i_toks;
-        // }
-
-        // // check for number of tokens
-        // if (i != -1 || i_toks_next != toks.end()) {
-        //   continue;
-        // }
-
-        // std::stringstream wtok(*i_toks_next);
-        // wtok >> counts;
-
         line_buf_stream >> counts;
         line_buf_stream >> std::ws;
 

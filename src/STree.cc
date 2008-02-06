@@ -2,6 +2,7 @@
 #include <STKLib/stkstream.h>
 #include <STKLib/BDTree.h>
 #include <STKLib/MlfStream.h>
+#include <STKLib/Tokenizer.h>
 
 
 #include <algorithm>

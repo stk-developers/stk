@@ -93,7 +93,8 @@ namespace STK
     rStream.write(BDTreeHeader::INTRO, 10);
     rStream.put(mBinary ? 'b' : 'a');
 
-    mHeaderSize = rStream.tellp() - stream_pos + 6*sizeof(INT_32);
+    mHeaderSize = rStream.tellp();
+    mHeaderSize -= stream_pos + (std::streampos)(6*sizeof(INT_32));
 
     if (mBinary) {
       aux_int = mHeaderSize;

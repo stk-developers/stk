@@ -39,4 +39,5 @@ libSTKLib_a_SOURCES = BasicVector.cc BasicVector.h BasicVector.tcc \
 		Decoder.h DecoderNetwork.cc DecoderNetwork.h DecoderNetwork_IO.cc DecoderNetwork_IO.tcc ZNorm.cc  \
 		ZNorm.h common.C common.h dict.C dict.h fileio.h filmatch.C filmatch.h     \
 		fileio.C getopt.C getopt.h labels.C labels.h stkstream.h stkstream.tcc   \
+		Tokenizer.h Tokenizer.cc \
 		Lattice.cc Lattice.h SigP.cc SigP.h

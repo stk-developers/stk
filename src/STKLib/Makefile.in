@@ -71,8 +71,8 @@ am_libSTKLib_a_OBJECTS = libSTKLib_a-BasicVector.$(OBJEXT) \
 	libSTKLib_a-ZNorm.$(OBJEXT) libSTKLib_a-common.$(OBJEXT) \
 	libSTKLib_a-dict.$(OBJEXT) libSTKLib_a-filmatch.$(OBJEXT) \
 	libSTKLib_a-fileio.$(OBJEXT) libSTKLib_a-getopt.$(OBJEXT) \
-	libSTKLib_a-labels.$(OBJEXT) libSTKLib_a-Lattice.$(OBJEXT) \
-	libSTKLib_a-SigP.$(OBJEXT)
+	libSTKLib_a-labels.$(OBJEXT) libSTKLib_a-Tokenizer.$(OBJEXT) \
+	libSTKLib_a-Lattice.$(OBJEXT) libSTKLib_a-SigP.$(OBJEXT)
 libSTKLib_a_OBJECTS = $(am_libSTKLib_a_OBJECTS)
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
@@ -220,6 +220,7 @@ libSTKLib_a_SOURCES = BasicVector.cc BasicVector.h BasicVector.tcc \
 		Decoder.h DecoderNetwork.cc DecoderNetwork.h DecoderNetwork_IO.cc DecoderNetwork_IO.tcc ZNorm.cc  \
 		ZNorm.h common.C common.h dict.C dict.h fileio.h filmatch.C filmatch.h     \
 		fileio.C getopt.C getopt.h labels.C labels.h stkstream.h stkstream.tcc   \
+		Tokenizer.h Tokenizer.cc \
 		Lattice.cc Lattice.h SigP.cc SigP.h
 
 all: all-am
@@ -311,6 +312,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-Models_IO.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-Net.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-SigP.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-Tokenizer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-ZNorm.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-common.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-dict.Po@am__quote@
@@ -626,6 +628,20 @@ libSTKLib_a-labels.obj: labels.C
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='labels.C' object='libSTKLib_a-labels.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -c -o libSTKLib_a-labels.obj `if test -f 'labels.C'; then $(CYGPATH_W) 'labels.C'; else $(CYGPATH_W) '$(srcdir)/labels.C'; fi`
+
+libSTKLib_a-Tokenizer.o: Tokenizer.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -MT libSTKLib_a-Tokenizer.o -MD -MP -MF "$(DEPDIR)/libSTKLib_a-Tokenizer.Tpo" -c -o libSTKLib_a-Tokenizer.o `test -f 'Tokenizer.cc' || echo '$(srcdir)/'`Tokenizer.cc; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libSTKLib_a-Tokenizer.Tpo" "$(DEPDIR)/libSTKLib_a-Tokenizer.Po"; else rm -f "$(DEPDIR)/libSTKLib_a-Tokenizer.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Tokenizer.cc' object='libSTKLib_a-Tokenizer.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -c -o libSTKLib_a-Tokenizer.o `test -f 'Tokenizer.cc' || echo '$(srcdir)/'`Tokenizer.cc
+
+libSTKLib_a-Tokenizer.obj: Tokenizer.cc
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -MT libSTKLib_a-Tokenizer.obj -MD -MP -MF "$(DEPDIR)/libSTKLib_a-Tokenizer.Tpo" -c -o libSTKLib_a-Tokenizer.obj `if test -f 'Tokenizer.cc'; then $(CYGPATH_W) 'Tokenizer.cc'; else $(CYGPATH_W) '$(srcdir)/Tokenizer.cc'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libSTKLib_a-Tokenizer.Tpo" "$(DEPDIR)/libSTKLib_a-Tokenizer.Po"; else rm -f "$(DEPDIR)/libSTKLib_a-Tokenizer.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Tokenizer.cc' object='libSTKLib_a-Tokenizer.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -c -o libSTKLib_a-Tokenizer.obj `if test -f 'Tokenizer.cc'; then $(CYGPATH_W) 'Tokenizer.cc'; else $(CYGPATH_W) '$(srcdir)/Tokenizer.cc'; fi`
 
 libSTKLib_a-Lattice.o: Lattice.cc
 @am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -MT libSTKLib_a-Lattice.o -MD -MP -MF "$(DEPDIR)/libSTKLib_a-Lattice.Tpo" -c -o libSTKLib_a-Lattice.o `test -f 'Lattice.cc' || echo '$(srcdir)/'`Lattice.cc; \

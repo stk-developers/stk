@@ -10,10 +10,10 @@
  *                                                                         *
  ***************************************************************************/
 
-#define SVN_DATE       "$Date: 2007-12-07 19:04:03 +0100 (Fri, 07 Dec 2007) $"
-#define SVN_AUTHOR     "$Author: schwarzp $"
-#define SVN_REVISION   "$Revision: 222 $"
-#define SVN_ID         "$Id: SFeaCat.cc 222 2007-12-07 18:04:03Z schwarzp $"
+#define SVN_DATE       "$Date: $"
+#define SVN_AUTHOR     "$Author: $"
+#define SVN_REVISION   "$Revision: $"
+#define SVN_ID         "$Id: $"
 
 #define MODULE_VERSION "2.0.7 "__TIME__" "__DATE__" "SVN_ID  
 
@@ -83,13 +83,9 @@ int main(int argc, char *argv[])
   FILE*                   sfp;
   FILE*                   ofp = NULL;
   
-#ifndef USE_NEW_MATRIX  
-  FLOAT*                  obs_mx;
-#else
   Matrix<FLOAT>           feature_matrix1;
   Matrix<FLOAT>           feature_matrix2;
   Matrix<FLOAT>           feature_matrix3;
-#endif
   
   FLOAT*                  obs;
   HtkHeader               header1;

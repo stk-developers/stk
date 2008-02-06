@@ -197,8 +197,9 @@ namespace STK
    * We define some implicit stkbuf class
    */
   ///@{
+#ifndef _GLIBCPP_USE_WCHAR_T
   typedef basic_stkbuf<char>          stkbuf;
-#ifdef _GLIBCPP_USE_WCHAR_T
+#else 
   typedef basic_stkbuf<wchar_t>       stkbuf;           ///< @isiosfwd
 #endif
   /// @}
