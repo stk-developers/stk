@@ -26,6 +26,7 @@
 #include "STKLib/labels.h"
 #include "STKLib/stkstream.h"
 #include "STKLib/Features.h"
+#include "STKLib/MlfStream.h"
 
 
 #include <cstdlib>
@@ -48,6 +49,10 @@
 using namespace std;
 using namespace STK;
 
+
+
+//******************************************************************************
+//******************************************************************************
 void usage(char *progname)
 {
   char *tchrptr;
@@ -92,7 +97,7 @@ void usage(char *progname)
 }
 
 #define SNAME "SEREST"
-char *optionStr =
+const char *optionStr =
 " -d r   SOURCEMODELDIR"
 " -m r   MINEGS"
 " -o r   TARGETMODELEXT"
@@ -116,6 +121,22 @@ char *optionStr =
 " -V n   PRINTVERSION=TRUE"
 " -X r   SOURCETRANSCEXT";
 
+
+/** 
+ * @brief Helping function for reading the weight vector from a Mlf stream
+ * @param rStream refference to the stream to be opened
+ * @param pName logical file name
+ * @param pMask mask to extract mlf name
+ * @param Ext   extension (NOT USED)
+ * @param pVector vector to be filled
+ */
+void
+ReadFrameWeightVector(IMlfStream& rStream, const char* pName, const char* pMask,
+    const char* Ext, BasicVector<FLOAT>* pVector) ;
+
+
+//******************************************************************************
+//******************************************************************************
 int main(int argc, char* argv[]) 
 {
   ModelSet                        hset;
@@ -147,12 +168,6 @@ int main(int argc, char* argv[])
   FLOAT                           totLogLike      = 0;
   FLOAT                           totLogPosterior = 0;
   int                             totFrames       = 0;
-
-//  FileListElem*                   feature_files = NULL;
-//  int                             nfeature_files = 0;
-//  FileListElem*                   file_name = NULL;
-//  FileListElem**                  last_file = &feature_files;
-
   int                             update_mask = 0;
 
   double                          word_penalty;
@@ -251,22 +266,22 @@ int main(int argc, char* argv[])
   double                          I_max_occup;
   
   AccumType                       accum_type;
-  bool                expand_predef_xforms;
+  bool                            expand_predef_xforms;
   
   Matrix<FLOAT>                   feature_matrix;
   Matrix<FLOAT>*                  feature_matrix_alig = NULL;
   
+  const char*                     frame_weight_mlf;
+  const char*                     frame_weight_mask;
+  const char*                     frame_weight_ext;
+  std::ifstream                   frame_weight_stream_base;
+  IMlfStream                      frame_weight_stream(frame_weight_stream_base);
+  BasicVector<FLOAT>*             p_weight_vector = NULL;
   
-  enum UpdateType update_type;
-  enum Update_Mode {UM_UPDATE=1, UM_DUMP=2, UM_BOTH=UM_UPDATE|UM_DUMP} update_mode;
-  enum TranscriptionFormat {TF_HTK, TF_STK, TF_ERR} in_transc_fmt;
-  int notInDictAction = (NotInDictActionType) WORD_NOT_IN_DIC_UNSET;
-  
-/*  RHFBuffer               rhfbuff           = {0};
-  RHFBuffer               rhfbuff_alig      = {0};
-  
-  rhfbuff.mpLastFileName = NULL;
-  rhfbuff_alig.mpLastFileName = NULL;*/
+  enum  UpdateType update_type;
+  enum  Update_Mode {UM_UPDATE=1, UM_DUMP=2, UM_BOTH=UM_UPDATE|UM_DUMP} update_mode;
+  enum  TranscriptionFormat {TF_HTK, TF_STK, TF_ERR} in_transc_fmt;
+  int   notInDictAction = (NotInDictActionType) WORD_NOT_IN_DIC_UNSET;
   
   ExpansionOptions        expOptions        = {0};
   STKNetworkOutputFormat  in_net_fmt        = {0};
@@ -275,10 +290,9 @@ int main(int argc, char* argv[])
 
 
   // show help if no arguments specified
-  if (argc == 1) 
+  if (argc == 1) {
     usage(argv[0]);
-
-
+  }
   
   if (!my_hcreate_r(100,  &dictHash)
    || !my_hcreate_r(100,  &phoneHash)
@@ -289,6 +303,7 @@ int main(int argc, char* argv[])
   
   i = ParseOptions(argc, argv, optionStr, SNAME, &cfgHash);
   htk_compat   = GetParamBool(&cfgHash,SNAME":HTKCOMPAT",       false);  
+
   if (htk_compat) {
     if (argc == i) Error("HMM list file name expected");
     InsertConfigParam(&cfgHash,        SNAME":SOURCEHMMLIST", argv[i++], '-');
@@ -300,46 +315,48 @@ int main(int argc, char* argv[])
   script =(char*)GetParamStr(&cfgHash, SNAME":SCRIPT",          NULL);
   parallel_mode= GetParamInt(&cfgHash, SNAME":PARALLELMODE",   -1);
   one_pass_reest=GetParamBool(&cfgHash,SNAME":SINGLEPASSTRN",   false);
+
   if (parallel_mode == 0) {
     one_pass_reest = false;
   }
-  update_type   = (UpdateType) GetParamEnum(&cfgHash,SNAME":UPDATETYPE",   UT_ML,
-                              "ML",UT_ML,"MPE",UT_EBW,"MMI",UT_TwoAccumSetEBW, NULL);
 
-  targetKind   = GetDerivParams(&cfgHash, &deriv_order, &deriv_win_lengths,
-                                &start_frm_ext, &end_frm_ext,
-                                &cmn_path, &cmn_file, &cmn_mask,
-                                &cvn_path, &cvn_file, &cvn_mask, &cvg_file,
-                                SNAME":", one_pass_reest ? 2 : 0);
+  update_type = (UpdateType) GetParamEnum(&cfgHash,SNAME":UPDATETYPE",   
+      UT_ML, "ML",UT_ML,"MPE",UT_EBW,"MMI",UT_TwoAccumSetEBW, NULL);
 
-  feature_repo.Init(swap_features, start_frm_ext, end_frm_ext,
-                    targetKind, deriv_order, deriv_win_lengths,
-		    cmn_path, cmn_mask, cvn_path, cvn_mask, cvg_file);
+  targetKind  = GetDerivParams(&cfgHash, &deriv_order, &deriv_win_lengths,
+      &start_frm_ext, &end_frm_ext, &cmn_path, &cmn_file, &cmn_mask, &cvn_path,
+      &cvn_file, &cvn_mask, &cvg_file, SNAME":", one_pass_reest ? 2 : 0);
+
+  feature_repo.Init(swap_features, start_frm_ext, end_frm_ext, targetKind,
+      deriv_order, deriv_win_lengths, cmn_path, cmn_mask, cvn_path, cvn_mask,
+      cvg_file);
 		    
   std::queue<FeatureRepository *> featureRepositoryList;
   featureRepositoryList.push(&feature_repo);
 
   if (one_pass_reest || (0 == parallel_mode && UT_TwoAccumSetEBW == update_type)) {
-    targetKind_alig = GetDerivParams(&cfgHash, &deriv_order_alig, &deriv_win_lengths_alig,
-                                     &start_frm_ext_alig, &end_frm_ext_alig,
-                                     &cmn_path_alig, &cmn_file_alig, &cmn_mask_alig,
-                                     &cvn_path_alig, &cvn_file_alig, &cvn_mask_alig,
-                                     &cvg_file_alig, SNAME":", 1);
+    targetKind_alig = GetDerivParams(&cfgHash, &deriv_order_alig,
+        &deriv_win_lengths_alig, &start_frm_ext_alig, &end_frm_ext_alig,
+        &cmn_path_alig, &cmn_file_alig, &cmn_mask_alig, &cvn_path_alig,
+        &cvn_file_alig, &cvn_mask_alig, &cvg_file_alig, SNAME":", 1);
 
-    feature_repo_alig.Init(swap_features_alig, start_frm_ext_alig, end_frm_ext_alig,
-                           targetKind_alig, deriv_order_alig, deriv_win_lengths_alig,
-			   cmn_path_alig, cmn_mask_alig, cvn_path_alig, cvn_mask_alig,
-                           cvg_file_alig);
+    feature_repo_alig.Init(swap_features_alig, start_frm_ext_alig, 
+        end_frm_ext_alig, targetKind_alig, deriv_order_alig, 
+        deriv_win_lengths_alig, cmn_path_alig, cmn_mask_alig, cvn_path_alig,
+        cvn_mask_alig, cvg_file_alig);
 			   
     featureRepositoryList.push(&feature_repo_alig);
   }
+
   // the rest of the parameters are the feature files
   for (; i < argc; i++) {
     swap(featureRepositoryList.front(), featureRepositoryList.back());
     featureRepositoryList.front()->AddFile(argv[i]);
   }
+
   gpFilterWldcrd=GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD","$");
   gpScriptFilter=GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",  NULL);
+
   if (NULL != script) {
     AddFileListToFeatureRepositories(script, gpScriptFilter, featureRepositoryList);
   }
@@ -428,27 +445,32 @@ int main(int argc, char* argv[])
   karkulka     = GetParamBool(&cfgHash,SNAME":CWUPDATE",        false);
   expand_predef_xforms = GetParamBool(&cfgHash,SNAME":EXPANDPREDEFXFORMS", true);
   
-  update_mode  = (Update_Mode) GetParamEnum(&cfgHash,SNAME":UPDATEMODE",    UM_UPDATE,
-                   "UPDATE",UM_UPDATE,"DUMP",UM_DUMP,"BOTH",UM_BOTH, NULL);
+  update_mode  = (Update_Mode) GetParamEnum(&cfgHash,SNAME":UPDATEMODE",   
+      UM_UPDATE, "UPDATE",UM_UPDATE,"DUMP",UM_DUMP,"BOTH",UM_BOTH, NULL);
 
-  accum_type   = (AccumType) GetParamEnum(&cfgHash,SNAME":ACCUMULATORTYPE", AT_ML,
-                              "ML",AT_ML,"MPE", AT_MPE, "MMI", AT_MMI,"MCE",AT_MCE,"MFE",AT_MFE, NULL);
-
+  accum_type   = (AccumType) GetParamEnum(&cfgHash,SNAME":ACCUMULATORTYPE", 
+      AT_ML, "ML",AT_ML,"MPE", AT_MPE, "MMI", AT_MMI,"MCE",AT_MCE,"MFE",AT_MFE,
+      NULL);
 
   sig_slope    = GetParamFlt(&cfgHash, SNAME":MCESIGSLOPE",    -1.0); // -1.0 ~ off
   E_constant   = GetParamFlt(&cfgHash, SNAME":EBWCONSTANTE",    2.0);
   h_constant   = GetParamFlt(&cfgHash, SNAME":EBWCONSTANTH",    2.0);
   I_smoothing  = GetParamFlt(&cfgHash, SNAME":ISMOOTHING",      200.0);
   J_smoothing  = GetParamBool(&cfgHash,SNAME":JSMOOTHING",      false);
-  MAP_tau      = GetParamFlt(&cfgHash, SNAME":MAPTAU",          update_type == UT_ML ? 10 : 0);
+  MAP_tau      = GetParamFlt(&cfgHash, SNAME":MAPTAU",          
+      update_type == UT_ML ? 10 : 0);
   min_occup    = GetParamFlt(&cfgHash, SNAME":MINOCC",          0.0);
   I_max_occup  = GetParamFlt(&cfgHash, SNAME":IMAXOCCUP",       -1.0);
 
-  in_transc_fmt= (TranscriptionFormat) GetParamEnum(&cfgHash,SNAME":SOURCETRANSCFMT",
-                              !network_file && htk_compat ? TF_HTK : TF_STK,
-                              "HTK", TF_HTK, "STK", TF_STK, NULL);
+  in_transc_fmt= (TranscriptionFormat) GetParamEnum(&cfgHash,
+      SNAME":SOURCETRANSCFMT", !network_file && htk_compat ? TF_HTK : TF_STK, 
+      "HTK", TF_HTK, "STK", TF_STK, NULL);
 
   cchrptr      = GetParamStr(&cfgHash, SNAME":UPDATE",  "");
+
+  frame_weight_mlf  = GetParamStr(&cfgHash, SNAME":FRAMEWEIGHTMLF",  NULL);
+  frame_weight_mask = GetParamStr(&cfgHash, SNAME":FRAMEWEIGHTMASK",  NULL);
+  frame_weight_ext  = GetParamStr(&cfgHash, SNAME":FRAMEWEIGHTEXT",  NULL);
     
   for (; *cchrptr; cchrptr++)
   {
@@ -474,39 +496,35 @@ int main(int argc, char* argv[])
   }
 
   // initialize basic ModelSet
-  hset.Init(update_type == UT_TwoAccumSetEBW ? MODEL_SET_WITH_TWO_ACCUM_SET : MODEL_SET_WITH_ACCUM);
+  hset.Init(update_type == UT_TwoAccumSetEBW ? MODEL_SET_WITH_TWO_ACCUM_SET :
+      MODEL_SET_WITH_ACCUM);
   hset.mUpdateMask          = update_mask;
 
   // ***************************************************************************
   // Cluster adaptive training update
-  if (update_mask & UM_CWEIGHTS)
-  {
+  if (update_mask & UM_CWEIGHTS) {
     hset.mClusterWeightsOutPath = mmf_karkulka;
   }
 
   bool print_all_options = GetParamBool(&cfgHash,SNAME":PRINTALLOPTIONS", false);
   
-  if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", false)) 
+  if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", false)) {
     PrintConfig(&cfgHash);
+  }
   
-  if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", false)) 
+  if (GetParamBool(&cfgHash, SNAME":PRINTVERSION", false)) {
     puts("Version: "MODULE_VERSION"\n");
-  
+  }
 
   GetParamBool(&cfgHash, SNAME":NFRAMEOUTPNORM", false);
 
-
-  if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", false)) 
-  {
+  if (!GetParamBool(&cfgHash,SNAME":ACCEPTUNUSEDPARAM", false)) {
     CheckCommandLineParamUse(&cfgHash);
   }
   
-  if (print_all_options) 
-  {
+  if (print_all_options) {
     print_registered_parameters();
   }
-
-
     
 
   if (NULL != src_mmf)
@@ -554,14 +572,18 @@ int main(int argc, char* argv[])
     hset_prior = &hset;
   }
 
-  if (src_hmm_list) 
-    hset.ReadHMMList(src_hmm_list, src_hmm_dir ? src_hmm_dir : "", src_hmm_ext ? src_hmm_ext : "");
+  if (src_hmm_list) {
+    hset.ReadHMMList(src_hmm_list, src_hmm_dir ? src_hmm_dir : "", src_hmm_ext 
+        ? src_hmm_ext : "");
+  }
     
-  if (alg_hmm_list) 
+  if (alg_hmm_list) {
     hset_alig->ReadHMMList(alg_hmm_list, alg_hmm_dir, alg_hmm_ext);
+  }
     
-  if (pri_hmm_list) 
+  if (pri_hmm_list) {
     hset_prior->ReadHMMList(pri_hmm_list, pri_hmm_dir, pri_hmm_ext);
+  }
   
   hset.AttachPriors(hset_prior);
 
@@ -701,16 +723,32 @@ int main(int argc, char* argv[])
     hset.mUpdateMask &= ~(UM_MEAN | UM_VARIANCE);
   }
   
+  // if frame_weight_mlf specified, we will open the MLF and for each file,
+  // read the per-frame weight for reestimation
+  if (NULL != frame_weight_mlf) {
+    frame_weight_stream_base.open(frame_weight_mlf);
 
+    if (! frame_weight_stream_base.good()) {
+      Error("Could not open frame weight file '%s'", frame_weight_mlf);
+    }
+
+    p_weight_vector = new BasicVector<FLOAT>();
+  }
+
+
+  //............................................................................
+  // go through all feature files and parse them
   for (feature_repo.Rewind(),feature_repo_alig.Rewind(); 
       !feature_repo.EndOfList(); 
-      (one_pass_reest || (0 == parallel_mode && UT_TwoAccumSetEBW == update_type) ? feature_repo_alig.MoveNext(),0: 0),
+      (one_pass_reest || (0 == parallel_mode && UT_TwoAccumSetEBW == update_type) 
+       ? feature_repo_alig.MoveNext(),0: 0),
       feature_repo.MoveNext())
   {
 //    FeatureRepository::ListIterator aux_alig_name(feature_repo.pCurrentRecord());
 
     if (trace_flag & 1) {
-      if (one_pass_reest || (0 == parallel_mode && UT_TwoAccumSetEBW == update_type)) {
+      if (one_pass_reest || (0 == parallel_mode && UT_TwoAccumSetEBW ==
+            update_type)) {
 // get the name of the following feature file
 //        aux_alig_name++;
 
@@ -772,10 +810,11 @@ int main(int argc, char* argv[])
         if (hset_alig->mInputVectorSize != static_cast<int>
             (feature_repo_alig.CurrentHeader().mSampleSize / sizeof(float))) 
         {
-          Error("Vector size [%d] in '%s' is incompatible with alignment HMM set [%d]",
-                feature_repo_alig.CurrentHeader().mSampleSize/sizeof(float),
-                feature_repo_alig.Current().Physical().c_str(),
-                hset_alig->mInputVectorSize);
+          Error("Vector size [%d] in '%s' is incompatible with alignment HMM "
+              "set [%d]",
+              feature_repo_alig.CurrentHeader().mSampleSize/sizeof(float),
+              feature_repo_alig.Current().Physical().c_str(),
+              hset_alig->mInputVectorSize);
         }
       }
 
@@ -831,11 +870,13 @@ int main(int argc, char* argv[])
       {
         static string lastSpeakerMMF;
         string speakerMMF;
-        ProcessMask(feature_repo_alig.Current().Logical().c_str(), mmf_mask_alig, speakerMMF);
+        ProcessMask(feature_repo_alig.Current().Logical().c_str(), 
+            mmf_mask_alig, speakerMMF);
         
         if(lastSpeakerMMF != speakerMMF) 
         {
-          hset_alig->ParseMmf((string(mmf_dir_alig) + "/" + speakerMMF).c_str(), NULL);
+          hset_alig->ParseMmf((string(mmf_dir_alig) + "/" + speakerMMF).c_str(),
+              NULL);
           lastSpeakerMMF = speakerMMF;
         }
       }
@@ -877,13 +918,16 @@ int main(int argc, char* argv[])
               dictionary ? &dictHash : &phoneHash,
               dictionary ? UL_ERROR : UL_INSERT, 
               in_net_fmt,
-              feature_repo.CurrentHeader().mSamplePeriod, // :TODO: mSamplePeriod should be probably taken from feature_repo_alig
+              // :TODO: mSamplePeriod should be probably taken from 
+              // feature_repo_alig
+              feature_repo.CurrentHeader().mSamplePeriod, 
               label_file, 
               src_mlf, 
               NULL);
               
 //          my_net.BuildFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
-          decoder.rNetwork().BuildFromLabels(labels, dictionary ? NT_WORD : NT_PHONE);
+          decoder.rNetwork().BuildFromLabels(labels, dictionary ? NT_WORD :
+              NT_PHONE);
 
           ReleaseLabels(labels);
         } 
@@ -895,7 +939,9 @@ int main(int argc, char* argv[])
               &phoneHash, 
               notInDictAction, 
               in_net_fmt,
-              feature_repo.CurrentHeader().mSamplePeriod, // :TODO: mSamplePeriod should be probably taken from feature_repo_alig 
+              // :TODO: mSamplePeriod should be probably taken from
+              // feature_repo_alig 
+              feature_repo.CurrentHeader().mSamplePeriod, 
               label_file, 
               src_mlf, false, decoder.rNetwork());
         } 
@@ -922,9 +968,9 @@ int main(int argc, char* argv[])
 //        decoder.Init(p_node, hset_alig, &hset);
 
         decoder.Init(hset_alig, &hset/*, compactNetworkRepresentation*/);
-
         CloseInputLabelFile(ilfp, src_mlf);
       }
+
       decoder.mTimePruning     = time_pruning;
       decoder.mWPenalty        = word_penalty;
       decoder.mMPenalty        = model_penalty;
@@ -949,6 +995,18 @@ int main(int argc, char* argv[])
         prn_limit      /= n_frames;
       }
 
+      // read frame weight vector if desired
+      if (NULL != frame_weight_mlf) {
+        // resize the vector
+        p_weight_vector->Init(feature_matrix.Rows());
+
+        // read the values
+        ::ReadFrameWeightVector(frame_weight_stream, 
+            feature_repo.Current().Logical().c_str(), frame_weight_mask,
+            frame_weight_ext, p_weight_vector); 
+      }
+
+
       FLOAT P;
       for (;;) 
       {
@@ -969,9 +1027,9 @@ int main(int argc, char* argv[])
         {
           P = !viterbiTrain
             ? decoder.BaumWelchReest(*feature_matrix_alig, feature_matrix, 
-                n_frames, feature_repo.Current().Weight())
+                n_frames, feature_repo.Current().Weight(), p_weight_vector)
             : decoder.ViterbiReest  (*feature_matrix_alig, feature_matrix, 
-                n_frames, feature_repo.Current().Weight());
+                n_frames, feature_repo.Current().Weight(), p_weight_vector);
         }
         
         if (P > LOG_MIN)
@@ -1151,15 +1209,67 @@ int main(int argc, char* argv[])
   if (src_mlf) 
     fclose(ilfp);
                                                               
-/*  if (NULL != rhfbuff.mpFp)
-    fclose(rhfbuff.mpFp);
-  
-  if (NULL != rhfbuff_alig.mpFp)
-    fclose(rhfbuff_alig.mpFp);*/
-    
-    
+  // delete weight vector if in use
+  if (NULL != p_weight_vector) {
+    delete p_weight_vector;
+  }
+
   return 0;
 }
+
+
+//******************************************************************************
+//******************************************************************************
+void
+ReadFrameWeightVector(IMlfStream& rStream, const char* pName, const char* pMask,
+    const char* Ext, BasicVector<FLOAT>* pVector) 
+{
+  std::string cur_name  = "";
+  size_t      i         = 0;
+  FLOAT       weight    = 1.0;
+
+  // if mask specified, parse the file name, otherwise have it the same as the
+  // logical
+  if(pMask != NULL) {
+    ProcessMask(pName, pMask, cur_name);
+  }
+  else {
+    cur_name = pName;
+  }
+
+  // try to open the mlf stream
+  rStream.Open(cur_name);
+
+  if (!rStream.good()) {
+    Error("Error opening weight vector file '%s'", cur_name.c_str());
+  }
+  rStream >> std::ws;
+
+  // read till EOF
+  while (!rStream.eof()) {
+    // try to read the value
+    rStream >> weight >> std::ws;
+    
+    if (i == pVector->Length()) {
+      Error("File '%s' vector size [%d] does not match feature file size [%d]",
+          cur_name.c_str(), i, pVector->Length());
+    }
+
+    // assign value and move to next position
+    pVector[i] = weight;
+    ++i;
+  }
+
+  if (i != pVector->Length()) {
+    pVector->Destroy();
+    Error("File '%s' vector size [%d] does not match feature file size [%d]",
+        cur_name.c_str(), i, pVector->Length());
+
+  }
+
+  rStream.Close();
+}
+
 
 /* Accepted parameters
 ACCEPTUNUSEDPARAM

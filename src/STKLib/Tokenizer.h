@@ -2,19 +2,20 @@
 #include <string>
 
 namespace STK {
+  /** 
+   * @brief General string tokenizer
+   */
   class Tokenizer 
   : public std::list<std::string>
   {
   public:
-    typedef std::list<std::string> ListBaseType;
-
     // Constructors and Destructors ............................................
-    Tokenizer(const char* pSeparator)
-    : std::list<std::string>(), mSeparator(pSeparator)
+    Tokenizer(const char* pSeparator, bool skipEmpty = false)
+    : std::list<std::string>(), mSeparator(pSeparator), mSkipEmpty(skipEmpty)
     {}
 
-    Tokenizer(const char* pString, const char* pSeparator)
-    : std::list<std::string>(), mSeparator(pSeparator)
+    Tokenizer(const char* pString, const char* pSeparator, bool skipEmpty = false)
+    : std::list<std::string>(), mSeparator(pSeparator), mSkipEmpty(skipEmpty)
     { AddString(pString); }
 
     ~Tokenizer()
@@ -37,6 +38,7 @@ namespace STK {
 
   private:
     std::string mSeparator;   ///< holds the list of separators
+    bool        mSkipEmpty;   ///< if true, multiple separators will be regarded as one
   }; // class Tokenizer
 }; // namespace STK
 

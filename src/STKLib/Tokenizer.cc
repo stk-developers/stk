@@ -1,5 +1,4 @@
 #include "Tokenizer.h"
-#include <iostream>
 
 
 namespace STK
@@ -23,19 +22,21 @@ namespace STK
     while(old_pos < std::string::npos) {
       // find the next separator
       cur_pos = aux_string.find_first_of(mSeparator, old_pos);
-      std::cout << cur_pos << std::endl;
 
-      // extract token
-      aux_record.insert(0, pString, old_pos, cur_pos - old_pos);
+      // we don't have to want empty records
+      if (!(cur_pos == old_pos && mSkipEmpty)) {
+        // extract token
+        aux_record.insert(0, pString, old_pos, cur_pos - old_pos);
 
-      // insert to list
-      this->push_back(aux_record);
+        // insert to list
+        this->push_back(aux_record);
+
+        // we don't need the contents of the token
+        aux_record.erase();
+      }
 
       // update old position so that it points behind the separator
       old_pos = cur_pos < std::string::npos ? cur_pos + 1 : cur_pos;
-
-      // we don't need the contents of the token
-      aux_record.erase();
     }
   }
 

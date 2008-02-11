@@ -1320,7 +1320,8 @@ namespace STK
       const Matrix<FLOAT>&  rObsMx, 
       const Matrix<FLOAT>&  rObsMx2, 
       int                   nFrames, 
-      FLOAT                 weight)
+      FLOAT                 weight,
+      BasicVector<FLOAT>*   pWeightVector)
     {
       int                     t;
       WordLinkRecord *        wlr;
@@ -1385,8 +1386,8 @@ namespace STK
     
       for (mTime = -p_hmms_alig->mTotalDelay; mTime < 0; mTime++) 
       {
-        //FLOAT *obs = rObsMx+p_hmms_alig->mInputVectorSize*(mTime+p_hmms_alig->mTotalDelay);
-        FLOAT *obs = rObsMx[mTime+p_hmms_alig->mTotalDelay];
+        FLOAT *obs          = rObsMx[mTime+p_hmms_alig->mTotalDelay];
+
         p_hmms_alig->UpdateStacks(obs, mTime, FORWARD);
       }
     
@@ -1432,14 +1433,16 @@ namespace STK
           //FLOAT *obs2 = pObsMx2 + p_hmms_upd->mInputVectorSize*(mTime+p_hmms_upd->mTotalDelay);
           FLOAT *obs  = rObsMx [mTime+p_hmms_alig->mTotalDelay];
           FLOAT *obs2 = rObsMx2[mTime+p_hmms_upd->mTotalDelay];
-          
+          FLOAT frame_weight  = (NULL == pWeightVector) ? 1.0 :
+            (*pWeightVector)[mTime + p_hmms_alig->mTotalDelay];
     
           p_hmms_alig->UpdateStacks(obs, mTime, FORWARD);
           
           if (p_hmms_alig != p_hmms_upd)
             p_hmms_upd->UpdateStacks(obs2, mTime, FORWARD);
           
-          ReestState(node, currstate-1, 0.0, 1.0*weight, obs, obs2);
+          ReestState(node, currstate-1, 0.0, 1.0*weight * frame_weight, obs, 
+              obs2);
         }
       }
     
@@ -2877,7 +2880,8 @@ extern std::map<string,FLOAT> state_posteriors;
   template<typename _NetworkType>
     FLOAT 
     Decoder<_NetworkType>::
-    BaumWelchReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, int nFrames, FLOAT weight)
+    BaumWelchReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, 
+        int nFrames, FLOAT weight, BasicVector<FLOAT>* pWeightVector)
     {
       struct FWBWRet          fwbw;
       FLOAT                   P;
@@ -2897,7 +2901,8 @@ extern std::map<string,FLOAT> state_posteriors;
         return LOG_0;
     
 #ifdef MOTIF
-      FLOAT* ocprob = (FLOAT*) malloc(mNumberOfNetStates * (nFrames+1) * sizeof(FLOAT));
+      FLOAT* ocprob = (FLOAT*) malloc(mNumberOfNetStates * (nFrames+1) *
+          sizeof(FLOAT));
       for (i=0; i<mNumberOfNetStates * (nFrames+1); i++) ocprob[i] = 0;
 #endif
     
@@ -2931,7 +2936,6 @@ extern std::map<string,FLOAT> state_posteriors;
         }
       }
     
-    
       // mpMixPCache might be used to cache likelihoods of mixtures of target
       // models. Reallocate the cache to fit mixtures of both models and reset it.
       k = HIGHER_OF(p_hmms_upd->mNMixtures, p_hmms_alig->mNMixtures);
@@ -2950,11 +2954,10 @@ extern std::map<string,FLOAT> state_posteriors;
     // Update accumulators
       for (mTime = 0; mTime < nFrames; mTime++) 
       { //for every frame
-        //FLOAT* obs  = pObsMx +p_hmms_alig->mInputVectorSize*(mTime+p_hmms_alig->mTotalDelay);
-        //FLOAT* obs2 = pObsMx2+p_hmms_upd->mInputVectorSize*(mTime+p_hmms_upd->mTotalDelay);
-        
         FLOAT* obs  = rObsMx [mTime + p_hmms_alig->mTotalDelay];
         FLOAT* obs2 = rObsMx2[mTime + p_hmms_upd->mTotalDelay];
+        FLOAT  frame_weight = (NULL == pWeightVector) ? 1.0 :
+             (*pWeightVector)[mTime + p_hmms_alig->mTotalDelay];
         
         p_hmms_alig->UpdateStacks(obs, mTime, FORWARD);
         
@@ -2984,7 +2987,7 @@ extern std::map<string,FLOAT> state_posteriors;
               for (i = 0; i < Nq - 1; i++) 
               {
                 LOG_INC(aqacc[i * Nq + Nq-1], aq[i * Nq + Nq-1]  * mTranScale +
-                                            (st[i].mAlpha + st[Nq-1].mBeta - P) * mOcpScale);
+                    (st[i].mAlpha + st[Nq-1].mBeta - P) * mOcpScale);
               }
             }
     
@@ -2993,7 +2996,8 @@ extern std::map<string,FLOAT> state_posteriors;
               if (st[j].mAlpha + st[j].mBeta - P > MIN_LOG_WEGIHT) 
               {
 #ifdef MOTIF
-              ocprob[mNumberOfNetStates * (mTime+1) + i_node->mC.mEmittingStateId + j]
+                ocprob[mNumberOfNetStates * (mTime+1) + 
+                  i_node->mC.mEmittingStateId + j]
   //            = i_node->mC.mPhoneAccuracy;
                 = exp(st[j].mAlpha+st[j].mBeta-P) *
                   ((1-2*static_cast<int>(st[j].mAlphaAccuracy.negative)) * exp(st[j].mAlphaAccuracy.logvalue - st[j].mAlpha) +
@@ -3043,7 +3047,7 @@ extern std::map<string,FLOAT> state_posteriors;
                   &(*i_node), 
                   j - 1,
                   (st[j].mAlpha + st[j].mBeta - P)  * mOcpScale,
-                  update_dir*weight, 
+                  update_dir*weight*frame_weight, 
                   obs, 
                   obs2);
               }

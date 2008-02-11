@@ -361,10 +361,12 @@ namespace STK
           int nFrames, FLOAT weight, FLOAT sigSlope);
               
       FLOAT
-      ViterbiReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, int nFrames, FLOAT weight);
+      ViterbiReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, 
+          int nFrames, FLOAT weight, BasicVector<FLOAT>* pWeightVector);
       
       FLOAT
-      BaumWelchReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, int nFrames, FLOAT weight);
+      BaumWelchReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, 
+          int nFrames, FLOAT weight, BasicVector<FLOAT>* pWeightVector);
 
 
 
