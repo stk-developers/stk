@@ -313,6 +313,10 @@ namespace STK
         if (p_lnode->mC.mpAnr == NULL) 
           p_lnode->mC.mpAnr = new ActiveNodeRecord(p_lnode);
 
+#ifndef NDEBUG
+        p_lnode->mC.mpAnr->mActivationTime = mTime;
+        p_lnode->mC.mpAnr->mNodeNumber = p_lnode-pFirst();
+#endif
           
         if (p_lnode->mC.mpAnr->mActiveNodeFlag > 0) 
           continue;
@@ -403,6 +407,10 @@ namespace STK
       if(pNode->mC.mpAnr == NULL)
       {
         pNode->mC.mpAnr = new ActiveNodeRecord(pNode);
+#ifndef NDEBUG
+        pNode->mC.mpAnr->mActivationTime = mTime;
+        pNode->mC.mpAnr->mNodeNumber = pNode-pFirst();
+#endif
       }
       else
       {
@@ -490,7 +498,9 @@ namespace STK
 
         if (p_lnode->mC.mpAnr->mpNextActiveNode)
           p_lnode->mC.mpAnr->mpNextActiveNode->mC.mpAnr->mpPrevActiveNode = p_lnode->mC.mpAnr->mpPrevActiveNode;
-
+#ifndef NDEBUG
+        p_lnode->mC.mpAnr->ReportActivity(mTime);
+#endif
         delete p_lnode->mC.mpAnr;
         p_lnode->mC.mpAnr = NULL;
     
@@ -545,8 +555,10 @@ namespace STK
       } else {
         assert(mpActiveNodes == pNode);
         mpActiveNodes = pNode->mC.mpAnr->mpNextActiveNode;
-      }
-      
+      }      
+#ifndef NDEBUG
+      pNode->mC.mpAnr->ReportActivity(mTime);
+#endif
       delete pNode->mC.mpAnr;
       pNode->mC.mpAnr = NULL;
     

@@ -635,6 +635,9 @@ namespace STK
         int numOfTokens = mpNode->mC.mType & NT_MODEL ? mpNode->mC.mpHmm->mNStates : 1;
         mpTokens        = new Token[numOfTokens];
         mpExitToken     = &mpTokens[numOfTokens-1];
+#ifndef NDEBUG
+      mTokensEntered =  mTokensExited = 0;
+#endif
       }
       
       ~ActiveNodeRecord() 
@@ -653,6 +656,19 @@ namespace STK
       Token*            mpExitToken;
       Token*            mpTokens;
       Token*            mpBestToken;
+#ifndef NDEBUG
+      int               mTokensEntered;
+      int               mTokensExited;
+      int               mNodeNumber;
+      int               mActivationTime;
+      void ReportActivity(int time) { 
+        printf("Type:%d Name:%s Num:%d Start:%d End:%d Tokens:%d/%d\n", 
+               mpNode->mC.mType,
+               mpNode->mC.mType == 1 ? ( mpNode->mC.mpPronun == NULL ? "NULL" : mpNode->mC.mpPronun->mpWord->mpName) :
+               mpNode->mC.mType == 2 ? mpNode->mC.mpHmm->mpMacro->mpName :
+               "<unk>",
+               mNodeNumber, mActivationTime, time, mTokensEntered, mTokensExited); }
+#endif
     };
   // class ActiveNodeRecord
   //***************************************************************************
