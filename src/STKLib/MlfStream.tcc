@@ -126,7 +126,7 @@ namespace STK
     Open(const std::string& rFileName)
     {
       // retreive position
-      pos_type pos = mOStream.tellp();
+      std::streampos pos = mOStream.tellp();
 
       // write the initial "filename" in parantheses
       mOStream << '"' << rFileName << '"' << std::endl;
@@ -205,7 +205,7 @@ namespace STK
     Index()
     {
       // retreive position
-      pos_type orig_pos   = mIStream.tellg();
+      std::streampos orig_pos   = mIStream.tellg();
       int      orig_state = mState;
 
       // for streams like stdin, pos will by definition be -1, so we can only 
@@ -243,7 +243,7 @@ namespace STK
       }
 
       // if we can, we will try to index the label
-      pos_type pos = mIStream.tellg();
+      std::streampos pos = mIStream.tellg();
 
       // we might be at a definition already, so first move one line further
       FillLineBuffer();
@@ -258,7 +258,7 @@ namespace STK
         // if we can, we will try to index the label
         pos = mIStream.tellg();
 
-        if (pos != -1) {
+        if (pos != static_cast<const std::streampos>(-1)) {
           std::string line_buffer(mLineBuffer.begin(), mLineBuffer.end());
           ::ParseHTKString(line_buffer, rName);
           mLabels.Insert(rName, pos);
@@ -269,7 +269,7 @@ namespace STK
       else {
         // we have been hashing all the way through so we know that if this is 
         // is the EOF, we are done hashing this stream
-        if (pos != -1) {
+        if (pos != static_cast<const std::streampos>(-1)) {
           mIsHashed = true;
         }
 
@@ -336,7 +336,7 @@ namespace STK
       }
 
       // retreive position
-      pos_type    pos = mIStream.tellg();
+      std::streampos pos = mIStream.tellg();
       LabelRecord label_record;
 
       // for streams like stdin, pos will by definition be -1, so we can only 
