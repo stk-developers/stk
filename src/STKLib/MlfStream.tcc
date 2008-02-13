@@ -167,8 +167,8 @@ namespace STK
   > 
     BasicIMlfStreamBuf<_CharT, _Traits, _CharTA, ByteT, ByteAT>::
     BasicIMlfStreamBuf(IStreamReference rIStream, size_t bufferSize)
-    : mIsOpen(false), mIsHashed(false), mIStream(rIStream), mLineBuffer(), 
-      mIsEof(true)
+    : mIsOpen(false), mIsHashed(false), mState(IN_HEADER_STATE), 
+      mIStream(rIStream), mLineBuffer(), mIsEof(true)
     {
       // we reserve some place for the buffer...
       mLineBuffer.reserve(bufferSize);
@@ -205,65 +205,76 @@ namespace STK
     Index()
     {
       // retreive position
-      pos_type orig_pos = mIStream.tellg();
+      pos_type orig_pos   = mIStream.tellg();
+      int      orig_state = mState;
 
       // for streams like stdin, pos will by definition be -1, so we can only 
       // rely on sequential access and cannot hash it.
       if (-1 != orig_pos) {
-        std::basic_string<_CharT, _Traits> line_buffer;
-        std::basic_string<_CharT, _Traits> name;
-        bool        good_to_go = mIStream.good();
-        pos_type    pos;
-
-        // the reader will be a finite state automaton. We assume we are in the 
-        // initial state, at the "#!MLF!# record
-        int         state = 0;
-
-        // continue while we get to the end of the line
-        while (good_to_go) {
-          if (std::getline(mIStream, line_buffer)) {
-            switch (state) {
-              // reading header
-              case 0: 
-                // TODO: Probably add option to require the header and do
-                // something here
-
-              // reading label title
-              case 1:
-                // skip out the comments, especially the #!MLF!#
-                if (line_buffer[0] == '#') {
-                  continue;
-                }
-                else {
-                  pos = mIStream.tellg();
-                  ::ParseHTKString(line_buffer, name);
-                  mLabels.Insert(name, pos);
-
-                  // switch state to reading labels
-                  state = 2;
-                }
-                break;
-
-              // reading label body
-              case 2:
-                // skip all lines
-                if (line_buffer == ".") {
-                  state = 1;
-                }
-                continue;
-                break;
-
-            } // switch
-          } // if (std::getline(mIStream, line_buffer)) 
-          else { 
-            good_to_go = false;
-          }
-        } // while (good_to_go)
+        std::string aux_name;
+        // we will constantly jump to next definition. the function automatically
+        // hashes the stream if possible
+        while (JumpToNextDefinition(aux_name)) 
+        { }
 
         // move to the original position
         mIStream.clear();
         mIStream.seekg(orig_pos);
-        mIsHashed = true;
+        mState = orig_state;
+      }
+    }
+
+
+  //****************************************************************************
+  //****************************************************************************
+  template<
+    typename _CharT, 
+    typename _Traits,
+    typename _CharTA,
+    typename ByteT,
+    typename ByteAT
+  > 
+    bool
+    BasicIMlfStreamBuf<_CharT, _Traits, _CharTA, ByteT, ByteAT>::
+    JumpToNextDefinition(std::string& rName)
+    {
+      if (!mIStream.good()) {
+        return false;
+      }
+
+      // if we can, we will try to index the label
+      pos_type pos = mIStream.tellg();
+
+      // we might be at a definition already, so first move one line further
+      FillLineBuffer();
+
+      // read lines till we get to definition again
+      while (mIStream.good() && mState != IN_TITLE_STATE) {
+        FillLineBuffer();
+      }
+
+      // decide what happened
+      if (IN_TITLE_STATE == mState) {
+        // if we can, we will try to index the label
+        pos = mIStream.tellg();
+
+        if (pos != -1) {
+          std::string line_buffer(mLineBuffer.begin(), mLineBuffer.end());
+          ::ParseHTKString(line_buffer, rName);
+          mLabels.Insert(rName, pos);
+        }
+
+        return true;
+      }
+      else {
+        // we have been hashing all the way through so we know that if this is 
+        // is the EOF, we are done hashing this stream
+        if (pos != -1) {
+          mIsHashed = true;
+        }
+
+        // we are not in body state, so we just return false
+        return false;
       }
     }
 
@@ -281,13 +292,25 @@ namespace STK
     BasicIMlfStreamBuf<_CharT, _Traits, _CharTA, ByteT, ByteAT>::
     Close()
     {
-      mIsEof = true;
-
       if (!mIsOpen) {
+        mIsEof = true;
         return NULL;
       }
       else {
+        // if we try to close while in the body, we need to reach the end
+        if (mState == IN_BODY_STATE) {
+          while (mState == IN_BODY_STATE) {
+            FillLineBuffer();
+          }
+        }
+
+        // disable buffer mechanism
+        StreamBufType::setg(&(mLineBuffer.front()), &(mLineBuffer.front()), 
+            &(mLineBuffer.front()));
+
+        mIsEof  = true;
         mIsOpen = false;
+
         return this;
       }
     }
@@ -313,35 +336,52 @@ namespace STK
       }
 
       // retreive position
-      pos_type pos = mIStream.tellg();
+      pos_type    pos = mIStream.tellg();
+      LabelRecord label_record;
 
       // for streams like stdin, pos will by definition be -1, so we can only 
       // rely on sequential access. At this place, we decide what to do
-      if ((-1 == pos) || (!mIsHashed)) {
-      }
-      // this else = we DO have random access stream and it has been hashed
-      else { 
-        LabelRecord label_record;
-        if (mLabels.Find(rFileName, label_record)) {
-          mIStream.seekg(label_record.mStreamPos);
+      if ((-1 != pos) && (mLabels.Find(rFileName, label_record))) {
+        mIStream.seekg(label_record.mStreamPos);
+        mState = IN_TITLE_STATE;
 
-          // we don't want the other stream to be bad, so we transfer the 
-          // flagbits to this stream
-          if (!mIStream.good()) {
-            mIStream.clear();
-            mIsOpen = false;
-            return NULL;
-          }
-          else {
-            mIsOpen = true;
-            mIsEof = false;
-            return this;
-          }
-        }
-        else {
+        // we don't want the other stream to be bad, so we transfer the 
+        // flagbits to this stream
+        if (!mIStream.good()) {
+          mIStream.clear();
           mIsOpen = false;
           return NULL;
         }
+        else {
+          mIsOpen = true;
+          mIsEof = false;
+          return this;
+        }
+      }
+
+      // we don't have sequential stream and we didn't find the label, but
+      // we are hashed, so we can be sure, that we failed
+      else if ((-1 != pos) && mIsHashed) {
+        mIsOpen = false;
+        return NULL;
+      }
+
+      // we either have sequential stream or didn't find anything, but we can 
+      // still try to sequentially go and look for it
+      else {
+        std::string aux_name;
+        std::string aux_name2;
+
+        while (JumpToNextDefinition(aux_name)) {
+          if (ProcessMask(rFileName, aux_name, aux_name2)) {
+            mIsOpen = true;
+            mIsEof  = false;
+            return this;
+          }
+        }
+
+        mIsOpen = false;
+        return NULL;
       }
     }
 
@@ -379,6 +419,38 @@ namespace STK
         return _Traits::eof();
       }
 
+      // fill the line buffer and update my state
+      FillLineBuffer();
+
+      // if the whole line is just period or it's eof, declare EOF
+      if (mState == OUT_OF_BODY_STATE) {
+        mIsEof = true;
+        StreamBufType::setg(&(mLineBuffer.front()), &(mLineBuffer.front()), 
+            &(mLineBuffer.front()));
+        return _Traits::eof();
+      }
+
+      // restore the buffer mechanism
+      StreamBufType::setg(&(mLineBuffer.front()), &(mLineBuffer.front()),
+          &(mLineBuffer.back()) + 1);
+
+      return *StreamBufType::gptr();
+    }
+
+
+  //****************************************************************************
+  //****************************************************************************
+  template<
+    typename _CharT, 
+    typename _Traits,
+    typename _CharTA,
+    typename ByteT,
+    typename ByteAT
+  > 
+    void
+    BasicIMlfStreamBuf<_CharT, _Traits, _CharTA, ByteT, ByteAT>::
+    FillLineBuffer()
+    {
       // reset line buffer
       size_t capacity = mLineBuffer.capacity();
       mLineBuffer.clear();
@@ -395,30 +467,36 @@ namespace STK
         mLineBuffer.push_back(c);
       }
 
-      // maybe we didn't read anything
-      if (mLineBuffer.size() == 0) {
-        mIsEof = true;
-        StreamBufType::setg(&(mLineBuffer.front()), &(mLineBuffer.front()), 
-            &(mLineBuffer.front()));
-        return _Traits::eof();
+      // we will decide where we are
+      switch (mState) {
+        case IN_HEADER_STATE:
+
+        case OUT_OF_BODY_STATE:
+          if (mLineBuffer[0] != '#') {
+            mState = IN_TITLE_STATE;
+          }
+          break;
+
+        case IN_TITLE_STATE:
+          if (mLineBuffer[0] == '.' && (mLineBuffer.back() == '\n' || mIStream.eof())) {
+            mState = OUT_OF_BODY_STATE;
+          }
+          else {
+            mState = IN_BODY_STATE;
+          }
+          break;
+
+        case IN_BODY_STATE:
+          // period or EOF will end the file
+          if (mLineBuffer[0] == '.' && (mLineBuffer.back() == '\n' || mIStream.eof())) {
+            mState = OUT_OF_BODY_STATE;
+          }
+          if (mLineBuffer.size() == 0) {
+            mState = OUT_OF_BODY_STATE;
+          }
+          break;
       }
-
-      // if the whole line is just period, declare EOF
-      if (mLineBuffer[0] == '.' && (c == '\n' || mIStream.eof())) {
-        mIsEof = true;
-        StreamBufType::setg(&(mLineBuffer.front()), &(mLineBuffer.front()), 
-            &(mLineBuffer.front()));
-        return _Traits::eof();
-      }
-
-
-      // restore the buffer mechanism
-      StreamBufType::setg(&(mLineBuffer.front()), &(mLineBuffer.front()),
-          &(mLineBuffer.back()) + 1);
-
-      return *StreamBufType::gptr();
     }
-
 }; // namespace STK
 
 

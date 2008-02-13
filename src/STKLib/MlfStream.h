@@ -290,8 +290,15 @@ namespace STK
     class BasicIMlfStreamBuf 
     : public std::basic_streambuf<_CharT, _Traits> 
     {
-    public:
-      // necessary typedefs ....................................................
+    private:
+      // internal automaton states
+      static const int IN_HEADER_STATE   = 0;
+      static const int OUT_OF_BODY_STATE = 1;
+      static const int IN_TITLE_STATE    = 2;
+      static const int IN_BODY_STATE     = 3;
+
+
+    public: // necessary typedefs ..............................................
       typedef BasicIMlfStreamBuf<_CharT,_Traits,_CharTA,ByteT,ByteAT>
                             this_type; 
       typedef std::basic_istream<_CharT, _Traits>& IStreamReference;
@@ -308,6 +315,8 @@ namespace STK
       typedef std::vector<char_type, char_allocator_type > char_vector_type;
 
 
+    public:
+      // constructors and destructors ..........................................
       BasicIMlfStreamBuf(IStreamReference rIStream, size_t bufferSize = 1024);
 
       ~BasicIMlfStreamBuf();
@@ -355,12 +364,35 @@ namespace STK
       IsHashed() const
       { return mIsHashed; }
 
-    private:
+      /** 
+       * @brief Jumps to next label definition
+       * @param rName std::string to be filled with the label name
+       * @return true on success
+       *
+       * The procedure automatically tries to hash the labels.
+       */
+      bool
+      JumpToNextDefinition(std::string& rName);
+
+
+    private: // auxillary functions ............................................
+      /** 
+       * @brief Fills the line buffer with next line and updates the internal
+       * state of the finite automaton
+       */
+      void
+      FillLineBuffer();
+
+
+    private: // atributes ......................................................
+      // some flags
       bool              mIsOpen;
       bool              mIsHashed;
       bool              mIsEof;
 
-      _CharT            mLastChar;
+      /// internal state of the finite automaton
+      int               mState;
+
       IStreamReference  mIStream;
       LabelContainer    mLabels;
 

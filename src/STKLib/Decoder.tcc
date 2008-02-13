@@ -1370,8 +1370,9 @@ namespace STK
     
       p_hmms_alig->ResetXformInstances();
     
-      if (p_hmms_alig != p_hmms_upd)
+      if (p_hmms_alig != p_hmms_upd) {
         p_hmms_upd->ResetXformInstances();
+      }
     
       // invert order of WRLs
       wlr = rNetwork().pLast()->mC.mpAnr->mpExitToken->mpWlr;
@@ -1393,7 +1394,6 @@ namespace STK
     
       if (p_hmms_alig != p_hmms_upd) 
       {
-        //FLOAT *obs2 = pObsMx2+p_hmms_upd->mInputVectorSize*(mTime+p_hmms_upd->mTotalDelay);
         FLOAT *obs2 = rObsMx2[mTime+p_hmms_upd->mTotalDelay];
         
         for (mTime = -p_hmms_upd->mTotalDelay; mTime < 0; mTime++) 
@@ -1429,8 +1429,6 @@ namespace STK
         for (; mTime < wlr->mTime; mTime++) 
         {
           //for every frame of segment
-          //FLOAT *obs  = pObsMx  + p_hmms_alig->mInputVectorSize*(mTime+p_hmms_alig->mTotalDelay);
-          //FLOAT *obs2 = pObsMx2 + p_hmms_upd->mInputVectorSize*(mTime+p_hmms_upd->mTotalDelay);
           FLOAT *obs  = rObsMx [mTime+p_hmms_alig->mTotalDelay];
           FLOAT *obs2 = rObsMx2[mTime+p_hmms_upd->mTotalDelay];
           FLOAT frame_weight  = (NULL == pWeightVector) ? 1.0 :
@@ -2951,13 +2949,16 @@ extern std::map<string,FLOAT> state_posteriors;
         mpMixPCache[i].mTime = UNDEF_TIME;
       }
       
-    // Update accumulators
+      // Update accumulators
       for (mTime = 0; mTime < nFrames; mTime++) 
       { //for every frame
         FLOAT* obs  = rObsMx [mTime + p_hmms_alig->mTotalDelay];
         FLOAT* obs2 = rObsMx2[mTime + p_hmms_upd->mTotalDelay];
         FLOAT  frame_weight = (NULL == pWeightVector) ? 1.0 :
-             (*pWeightVector)[mTime + p_hmms_alig->mTotalDelay];
+             (*pWeightVector)[mTime];
+        // FLOAT  frame_weight = (NULL == pWeightVector) ? 1.0 :
+        //      (*pWeightVector)[mTime + p_hmms_alig->mTotalDelay];
+        std::cout << frame_weight << std::endl;
         
         p_hmms_alig->UpdateStacks(obs, mTime, FORWARD);
         
