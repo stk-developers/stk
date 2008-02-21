@@ -15,7 +15,7 @@
 
 #if !defined HAVE_BOOST
 # error Requires BOOST
-#endif
+#else
 
 #include <boost/program_options.hpp>
 
@@ -1002,4 +1002,6 @@ AdaptModel(const BDTree& rOrig, const NGramSubset& rNGrams,
     out_model_stream.close();
   }
 }
+
+#endif //boost 
 

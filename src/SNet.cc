@@ -454,17 +454,17 @@ int main(int argc, char *argv[])
       size_t j;
       FLOAT* obs = feature_matrix[i];
 
-      //Get next NN input vector by propagating vector from feature file
-      //through NNet_input transformation.
+      // Get next NN input vector by propagating vector from feature file
+      // through NNet_input transformation.
       obs = XformPass(NNet_input, obs, time, FORWARD);
       
-      //Input of NN is not yet read because of NNet_input delay
+      // Input of NN is not yet read because of NNet_input delay
       if (time <= 0) {
         continue;
       }
 
       if (outlabel_map) {
-        //Create NN output example vector from lables
+        // Create NN output example vector from lables
         for (j = 0; j < NNet_instance->OutSize(); j++) {
           obs_out[j] = 0;
         }
@@ -474,12 +474,14 @@ int main(int argc, char *argv[])
         }
 
         if (lbl_ptr && lbl_ptr->mStart <= time) {
-          obs_out[(int) lbl_ptr->mpData - 1] = 1;
+          // TODO: Don't know what this hack is... Find out!!! Caused
+          // troubles on 64bit compilation
+          obs_out[reinterpret_cast<size_t>(lbl_ptr->mpData) - 1] = 1;
         }
       } 
       else 
       {
-        //Get NN output example vector from obsMx_out matrix
+        // Get NN output example vector from obsMx_out matrix
         obs_out = feature_matrix_out[time-1];
       }
       

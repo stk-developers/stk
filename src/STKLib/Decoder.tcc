@@ -2423,7 +2423,7 @@ namespace STK
     
       if (p_out_p_cache == NULL) 
       {
-        Error("Insufficient memory");
+        Error("Insufficient memory (nFrames=%d, nStates=%d)", nFrames, hmms->mNStates);
       }
     
       // clear the cache
@@ -2939,13 +2939,11 @@ extern std::map<string,FLOAT> state_posteriors;
       k = HIGHER_OF(p_hmms_upd->mNMixtures, p_hmms_alig->mNMixtures);
       mpMixPCache = (Cache *) realloc(mpMixPCache, k * sizeof(Cache));
       
-      if (mpMixPCache == NULL)
-      { 
+      if (mpMixPCache == NULL) { 
         Error("Insufficient memory");
       }
       
-      for (i = 0; i < k; i++)
-      { 
+      for (i = 0; i < k; i++) { 
         mpMixPCache[i].mTime = UNDEF_TIME;
       }
       
@@ -2956,14 +2954,12 @@ extern std::map<string,FLOAT> state_posteriors;
         FLOAT* obs2 = rObsMx2[mTime + p_hmms_upd->mTotalDelay];
         FLOAT  frame_weight = (NULL == pWeightVector) ? 1.0 :
              (*pWeightVector)[mTime];
-        // FLOAT  frame_weight = (NULL == pWeightVector) ? 1.0 :
-        //      (*pWeightVector)[mTime + p_hmms_alig->mTotalDelay];
-        std::cout << frame_weight << std::endl;
         
         p_hmms_alig->UpdateStacks(obs, mTime, FORWARD);
         
-        if (p_hmms_alig != p_hmms_upd)
+        if (p_hmms_alig != p_hmms_upd) {
           p_hmms_upd->UpdateStacks(obs2, mTime, FORWARD);
+        }
     
         for (i_node = rNetwork().begin(); i_node != rNetwork().end(); ++i_node) 
         { //for every model

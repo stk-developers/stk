@@ -1234,12 +1234,13 @@ namespace STK
   
   //  puts("ReadXformInstance");
     keyword = GetString(fp, 1);
-    if (!strcmp(keyword, "~j")) 
-    {
+    if (!strcmp(keyword, "~j")) {
       keyword = GetString(fp, 1);
       
-      if ((macro = FindMacro(&mXformInstanceHash, keyword)) == NULL)
-        Error("Undefined reference to macro ~j %s (%s:%d)", keyword, gpCurrentMmfName, gCurrentMmfLine);
+      if ((macro = FindMacro(&mXformInstanceHash, keyword)) == NULL) {
+        Error("Undefined reference to macro ~j %s (%s:%d)", keyword, 
+            gpCurrentMmfName, gCurrentMmfLine);
+      }
       
       return (XformInstance *) macro->mpData;
     }
@@ -1253,27 +1254,30 @@ namespace STK
     if (CheckKwd(keyword, KID_MMFIDMask)) 
     {
       keyword = GetString(fp, 1);
-      if (strcmp(keyword, "*"))
-        Error("<MMFIdMask> different than '*' is not supported (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      if (strcmp(keyword, "*")) {
+        Error("<MMFIdMask> different than '*' is not supported (%s:%d)", 
+            gpCurrentMmfName, gCurrentMmfLine);
+      }
   
       keyword = GetString(fp, 1);
     }
   
     if ((i = ReadParmKind(keyword, true)) != -1) {
-      if (mParamKind != -1 && mParamKind != i) 
+      if (mParamKind != -1 && mParamKind != i) {
         Error("ParamKind mismatch (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      }
   
       keyword = GetString(fp, 1);
     }
   
-    if (CheckKwd(keyword, KID_LinXform)) 
-    {
+    if (CheckKwd(keyword, KID_LinXform)) {
       keyword = GetString(fp, 1);
   //    Error("Keyword <LinXform> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
     }
   
-    if (!CheckKwd(keyword, KID_VecSize))
+    if (!CheckKwd(keyword, KID_VecSize)) {
       Error("Keyword <VecSize> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+    }
   
     out_vec_size = GetInt(fp);
   
@@ -1327,7 +1331,9 @@ namespace STK
   }; //ReadXformInstance(FILE *fp, Macro *macro) 
   
   
-  //***************************************************************************
+
+  //****************************************************************************
+  //****************************************************************************
   Xform *
   ModelSet::
   ReadXform(FILE *fp, Macro *macro) 
@@ -1341,7 +1347,8 @@ namespace STK
     if (!strcmp(keyword, "~x")) {
       keyword = GetString(fp, 1);
       if ((macro = FindMacro(&mXformHash, keyword)) == NULL) {
-        Error("Undefined reference to macro ~x %s (%s:%d)", keyword, gpCurrentMmfName, gCurrentMmfLine);
+        Error("Undefined reference to macro ~x %s (%s:%d)", keyword, 
+            gpCurrentMmfName, gCurrentMmfLine);
       }
       return (Xform *) macro->mpData;
     }
@@ -1539,8 +1546,10 @@ namespace STK
         
         if (!CheckKwd(keyword, KID_Block)) 
         {
-          if (nblocks > 1) 
-            Error("Keyword <Block> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+          if (nblocks > 1) {
+            Error("Keyword <Block> expected (%s:%d)", gpCurrentMmfName, 
+                gCurrentMmfLine);
+          }
           
           UngetString();
           block_id = 1;
@@ -1550,8 +1559,10 @@ namespace STK
           block_id = GetInt(fp);
         }
   
-        if (block_id < 1 || static_cast<size_t>(block_id) > nblocks)
-          Error("Block number out of the range (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+        if (block_id < 1 || static_cast<size_t>(block_id) > nblocks) {
+          Error("Block number out of the range (%s:%d)", gpCurrentMmfName, 
+              gCurrentMmfLine);
+        }
   
         if (block[block_id-1] != NULL)
           Error("Redefinition of block (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
@@ -3486,7 +3497,8 @@ namespace STK
     else if (macro_type == mt_mean || macro_type == mt_variance) 
     {
       XformStatAccum *  xfsa = NULL;
-      UINT_32           size_inf;
+      //UINT_32           size_inf;
+      size_t            size_inf;
       UINT_32           nxfsa_inf;
       size_t            nxfsa = 0;
   
@@ -3681,20 +3693,20 @@ namespace STK
     ud.mWeight      = rFile.Weight();;
     ud.mMmi         = mmiDenominatorAccums;
   
-    for (;;) 
-    {
-      if (skip_accum) 
-      { // Skip to the begining of the next macro accumulator
-        for (;;) 
-        {
+    for (;;) {
+      // Skip to the begining of the next macro accumulator
+      if (skip_accum) { 
+        for (;;) {
+          // read until '~'
           while ((c = getc(fp)) != '~' && c != EOF)
-            ;
+          { }
           
-          if (c == EOF) 
+          if (c == EOF) {
             break;
+          }
             
           if (strchr("hsmuvtx", t = c = getc(fp)) &&
-            (c = getc(fp)) == ' ' && (c = getc(fp)) == '"')
+             (c = getc(fp)) == ' ' && (c = getc(fp)) == '"')
           {  
             break;
           }
@@ -3702,24 +3714,26 @@ namespace STK
           ungetc(c, fp);
         }
         
-        if (c == EOF) 
+        if (c == EOF) {
           break;
+        }
       } 
-      else 
-      {
-        if ((c = getc(fp)) == EOF) break;
+      else {
+        if ((c = getc(fp)) == EOF) {
+          break;
+        }
         
         if (c != '~'      || !strchr("hsmuvtx", t = getc(fp)) ||
           getc(fp) != ' ' || getc(fp) != '"') 
         {
-          Error("Incomatible accumulator file: '%s'", rFile.Physical().c_str());
+          Error("Incompatible accumulator file: '%s'", rFile.Physical().c_str());
         }
       }
   
-      for (i=0; (c = getc(fp))!=EOF && c!='"' && i<sizeof(macro_name)-1; i++) 
-      {
+      for (i=0; (c = getc(fp))!=EOF && c!='"' && i<sizeof(macro_name)-1; i++) {
         macro_name[i] = c;
       }
+
       macro_name[i] = '\0';
   
       hash = t == 'h' ? &mHmmHash :
@@ -3766,151 +3780,151 @@ namespace STK
 
   //****************************************************************************  
   //****************************************************************************  
-  void
-  ModelSet::
-  ReadAccums(const char * pFileName, 
-             float        weight,
-             long *       totFrames, 
-             FLOAT *      totLogLike, 
-             int          mmiDenominatorAccums)
-  {
-    IStkStream                in;
-    FILE*                     fp;
-    char                      macro_name[128];
-    MyHSearchData*            hash;
-    unsigned int              i;
-    int                       t = 0;
-    int                       c;
-    int                       skip_accum = 0;
-    INT_32                    occurances;
-    ReadAccumUserData         ud;
-    Macro*                    macro;
-    int                       mtm = MTM_PRESCAN | 
-                                    MTM_STATE |
-                                    MTM_MIXTURE |
-                                    MTM_MEAN |   
-                                    MTM_VARIANCE | 
-                                    MTM_TRANSITION;
+  //  void
+  //  ModelSet::
+  //  ReadAccums(const char * pFileName, 
+  //             float        weight,
+  //             long *       totFrames, 
+  //             FLOAT *      totLogLike, 
+  //             int          mmiDenominatorAccums)
+  //  {
+  //    IStkStream                in;
+  //    FILE*                     fp;
+  //    char                      macro_name[128];
+  //    MyHSearchData*            hash;
+  //    unsigned int              i;
+  //    int                       t = 0;
+  //    int                       c;
+  //    int                       skip_accum = 0;
+  //    INT_32                    occurances;
+  //    ReadAccumUserData         ud;
+  //    Macro*                    macro;
+  //    int                       mtm = MTM_PRESCAN | 
+  //                                    MTM_STATE |
+  //                                    MTM_MIXTURE |
+  //                                    MTM_MEAN |   
+  //                                    MTM_VARIANCE | 
+  //                                    MTM_TRANSITION;
+  //  
+  //    macro_name[sizeof(macro_name)-1] = '\0';
+  //  
+  //    // open the file
+  //    in.open(pFileName, ios::binary);
+  //    if (!in.good())
+  //    {
+  //      Error("Cannot open input accumulator file: '%s'", pFileName);
+  //    }
+  //    
+  //    fp = in.file();
+  //    
+  //    INT_32 i32;
+  //    if (fread(&i32,       sizeof(i32),  1, fp) != 1 ||
+  //        fread(totLogLike, sizeof(FLOAT), 1, fp) != 1) 
+  //    {
+  //      Error("Invalid accumulator file: '%s'", pFileName);
+  //    }
+  //    *totFrames = i32;
+  //    
+////      *totFrames  *= weight; // Not sure whether we should report weighted quantities or not
+////      *totLogLike *= weight;
+  //  
+  //    ud.mpFileName   = pFileName;
+  //    ud.mpFp         = fp;
+  //    ud.mpModelSet   = this;
+  //    ud.mWeight      = weight;
+  //    ud.mMmi         = mmiDenominatorAccums;
+  //  
+  //    for (;;) 
+  //    {
+  //      if (skip_accum) 
+  //      { // Skip to the begining of the next macro accumulator
+  //        for (;;) 
+  //        {
+  //          while ((c = getc(fp)) != '~' && c != EOF)
+  //            ;
+  //          
+  //          if (c == EOF) 
+  //            break;
+  //            
+  //          if (strchr("hsmuvtx", t = c = getc(fp)) &&
+  //            (c = getc(fp)) == ' ' && (c = getc(fp)) == '"')
+  //          {  
+  //            break;
+  //          }
+  //          
+  //          ungetc(c, fp);
+  //        }
+  //        
+  //        if (c == EOF) 
+  //          break;
+  //      } 
+  //      else 
+  //      {
+  //        if ((c = getc(fp)) == EOF) break;
+  //        
+  //        if (c != '~'      || !strchr("hsmuvtx", t = getc(fp)) ||
+  //          getc(fp) != ' ' || getc(fp) != '"') 
+  //        {
+  //          Error("Incomatible accumulator file: '%s'", pFileName);
+  //        }
+  //      }
+  //  
+  //      for (i=0; (c = getc(fp))!=EOF && c!='"' && i<sizeof(macro_name)-1; i++) 
+  //      {
+  //        macro_name[i] = c;
+  //      }
+  //      macro_name[i] = '\0';
+  //  
+  //      hash = t == 'h' ? &mHmmHash :
+  //             t == 's' ? &mStateHash :
+  //             t == 'm' ? &mMixtureHash :
+  //             t == 'u' ? &mMeanHash :
+  //             t == 'v' ? &mVarianceHash :
+  //             t == 't' ? &mTransitionHash : 
+  //             t == 'x' ? &mXformHash : NULL;
+  //  
+  //      assert(hash);
+  //      if ((macro = FindMacro(hash, macro_name)) == NULL) 
+  //      {
+  //        skip_accum = 1;
+  //        continue;
+  //      }
+  //  
+  //      skip_accum = 0;
+  //      if (fread(&occurances, sizeof(occurances), 1, fp) != 1) 
+  //      {
+  //        Error("Invalid accumulator file: '%s'", pFileName);
+  //      }
+  //      
+  //      if (!mmiDenominatorAccums) macro->mOccurances += occurances;
+  //      switch (t) 
+  //      {
+  //        case 'h': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
+  //        case 's': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
+  //        case 'm': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
+  //        case 'u': ReadAccum(mt_mean,       NULL, macro->mpData, &ud); break;
+  //        case 'v': ReadAccum(mt_variance,   NULL, macro->mpData, &ud); break;
+  //        case 't': ReadAccum(mt_transition, NULL, macro->mpData, &ud); break;
+  //        case 'x': ReadAccum(mt_Xform,      NULL, macro->mpData, &ud); break;
+  //        default:  assert(0);
+  //      }
+  //    }
+  //    
+  //    in.close();
+  //    //delete [] ud.mpFileName;
+  //    //free(ud.mpFileName);    
+  //  }; // ReadAccums(...)
   
-    macro_name[sizeof(macro_name)-1] = '\0';
-  
-    // open the file
-    in.open(pFileName, ios::binary);
-    if (!in.good())
-    {
-      Error("Cannot open input accumulator file: '%s'", pFileName);
-    }
     
-    fp = in.file();
-    
-    INT_32 i32;
-    if (fread(&i32,       sizeof(i32),  1, fp) != 1 ||
-        fread(totLogLike, sizeof(FLOAT), 1, fp) != 1) 
-    {
-      Error("Invalid accumulator file: '%s'", pFileName);
-    }
-    *totFrames = i32;
-    
-//    *totFrames  *= weight; // Not sure whether we should report weighted quantities or not
-//    *totLogLike *= weight;
-  
-    ud.mpFileName   = pFileName;
-    ud.mpFp         = fp;
-    ud.mpModelSet   = this;
-    ud.mWeight      = weight;
-    ud.mMmi         = mmiDenominatorAccums;
-  
-    for (;;) 
-    {
-      if (skip_accum) 
-      { // Skip to the begining of the next macro accumulator
-        for (;;) 
-        {
-          while ((c = getc(fp)) != '~' && c != EOF)
-            ;
-          
-          if (c == EOF) 
-            break;
-            
-          if (strchr("hsmuvtx", t = c = getc(fp)) &&
-            (c = getc(fp)) == ' ' && (c = getc(fp)) == '"')
-          {  
-            break;
-          }
-          
-          ungetc(c, fp);
-        }
-        
-        if (c == EOF) 
-          break;
-      } 
-      else 
-      {
-        if ((c = getc(fp)) == EOF) break;
-        
-        if (c != '~'      || !strchr("hsmuvtx", t = getc(fp)) ||
-          getc(fp) != ' ' || getc(fp) != '"') 
-        {
-          Error("Incomatible accumulator file: '%s'", pFileName);
-        }
-      }
-  
-      for (i=0; (c = getc(fp))!=EOF && c!='"' && i<sizeof(macro_name)-1; i++) 
-      {
-        macro_name[i] = c;
-      }
-      macro_name[i] = '\0';
-  
-      hash = t == 'h' ? &mHmmHash :
-             t == 's' ? &mStateHash :
-             t == 'm' ? &mMixtureHash :
-             t == 'u' ? &mMeanHash :
-             t == 'v' ? &mVarianceHash :
-             t == 't' ? &mTransitionHash : 
-             t == 'x' ? &mXformHash : NULL;
-  
-      assert(hash);
-      if ((macro = FindMacro(hash, macro_name)) == NULL) 
-      {
-        skip_accum = 1;
-        continue;
-      }
-  
-      skip_accum = 0;
-      if (fread(&occurances, sizeof(occurances), 1, fp) != 1) 
-      {
-        Error("Invalid accumulator file: '%s'", pFileName);
-      }
-      
-      if (!mmiDenominatorAccums) macro->mOccurances += occurances;
-      switch (t) 
-      {
-        case 'h': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
-        case 's': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
-        case 'm': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
-        case 'u': ReadAccum(mt_mean,       NULL, macro->mpData, &ud);          break;
-        case 'v': ReadAccum(mt_variance,   NULL, macro->mpData, &ud);          break;
-        case 't': ReadAccum(mt_transition, NULL, macro->mpData, &ud);          break;
-        case 'x': ReadAccum(mt_Xform,      NULL, macro->mpData, &ud);          break;
-        default:  assert(0);
-      }
-    }
-    
-    in.close();
-    //delete [] ud.mpFileName;
-    //free(ud.mpFileName);    
-  }; // ReadAccums(...)
-  
-    
-  //###########################################################################################################
-  //###########################################################################
-  //###########################################################################
+  //############################################################################
+  //############################################################################
+  //############################################################################
   // Accumulator OUTPUT
-  //###########################################################################
-  //###########################################################################
+  //############################################################################
+  //############################################################################
   
-  //*****************************************************************************
-  //*****************************************************************************
+  //****************************************************************************
+  //****************************************************************************
   void 
   WriteAccum(int macro_type, HMMSetNodeName nodeName,
              MacroData* pData, void *pUserData) 
@@ -3922,11 +3936,15 @@ namespace STK
     WriteAccumUserData*   ud = static_cast<WriteAccumUserData*>(pUserData);
     Macro*                macro = pData->mpMacro;
   
-    if (macro &&
-      (fprintf(ud->mpFp, "~%c \"%s\"", macro->mType, macro->mpName) < 0 ||
-       fwrite(&macro->mOccurances, sizeof(macro->mOccurances), 1, ud->mpFp) != 1)) 
-    {
-      Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
+    if (macro) {
+      INT_32 occurances = macro->mOccurances;
+
+      if ( fprintf(ud->mpFp, "~%c \"%s\"", macro->mType, macro->mpName) < 0 
+      ||   fwrite(&occurances, sizeof(INT_32), 1, ud->mpFp) != 1)
+       //fwrite(&macro->mOccurances, sizeof(macro->mOccurances), 1, ud->mpFp) != 1)) 
+      {
+        Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
+      }
     }
   
     if (macro_type == mt_mixture)

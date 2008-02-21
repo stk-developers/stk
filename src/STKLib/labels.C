@@ -486,7 +486,10 @@ ReadLabels(
 
     my_hsearch_r(e, FIND, &ep, label_hash);
 
-    if (stats != NULL) stats->nLabelsTotal++;
+    if (stats != NULL) {
+      stats->nLabelsTotal++;
+    }
+
     if (ep == NULL) {
       if (unknownLabels == UL_ERROR) {
         Error("Unknown label '%s' in label file %s", e.key, file_name);
@@ -512,7 +515,9 @@ ReadLabels(
         if (e.key == NULL || !my_hsearch_r(e, ENTER, &ep, label_hash)) {
           Error("Insufficient memory");
         }
-      } else Error("Fatal: Invalid UnknownLabelsAction value");
+      } else {
+        Error("Fatal: Invalid UnknownLabelsAction value");
+      }
     } else {
       current->mpData = ep->data;
       current->mpName = ep->key;

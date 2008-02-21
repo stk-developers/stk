@@ -1275,7 +1275,6 @@ ReadFrameWeightVector(IMlfStream& rStream, const char* pName, const char* pMask,
 
   }
 
-  std::cout << *pVector << std::endl;
   rStream.Close();
 }
 

@@ -21,6 +21,8 @@
 #  include "engine.h"
 #endif
 
+#include <map>
+#include <iostream>
 
 #define SQR(x) ((x) * (x))
 
@@ -33,6 +35,18 @@
 
 namespace STK
 {  
+  static std::map<void*, int> mStatCachePtrs;
+  static void
+  DumpStatCachePtrs() 
+  {
+    std::map<void*, int>::iterator i;
+
+    for (i = mStatCachePtrs.begin(); i != mStatCachePtrs.end(); ++i) {
+      std::cout << i->first << " " << i->second << std::endl;
+    }
+  }
+
+
   class ModelSetIOBase;
   class ModelSet;
   class MacroHash;  
@@ -1086,6 +1100,7 @@ namespace STK
    */
   class XformInstance : public MacroData 
   {
+  public:
   public:
     /**
      * @brief The constructor

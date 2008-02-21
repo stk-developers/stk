@@ -28,8 +28,13 @@
 #include <malloc.h>
 #include <math.h>
 
+#include <map>
+
+
+
 namespace STK
 {
+
   const char*     gpHListFilter;
   bool            gHmmsIgnoreMacroRedefinition = true;
   FLOAT           gWeightAccumDen;
@@ -454,25 +459,24 @@ namespace STK
     int                   time, 
     PropagDirectionType   dir)
   {
-    if (pXformInst == NULL) 
+    if (pXformInst == NULL) {
       return pInputVector;
+    }
   
-    if (time != UNDEF_TIME && pXformInst->mTime == time) 
-// oldvec:
-//      return pXformInst->mpOutputVector; 
+    if (time != UNDEF_TIME && pXformInst->mTime == time) {
       return pXformInst->pOutputData();
+    }
   
     pXformInst->mTime = time;
   
     // recursively pass previous transformations
-    if (pXformInst->mpInput)
+    if (pXformInst->mpInput) {
       pInputVector = XformPass(pXformInst->mpInput, pInputVector, time, dir);
+    }
   
     // evaluate this transformation
     pXformInst->mpXform->Evaluate(
         pInputVector,
-// oldvec:
-//        pXformInst->mpOutputVector,
         pXformInst->pOutputData(),
         pXformInst->mpMemory,
         dir);
@@ -581,9 +585,9 @@ namespace STK
         {
           XformStatCache *xfsc;
   
-          xfi->mpXformStatCache = (XformStatCache *)
-            realloc(xfi->mpXformStatCache,
-                    sizeof(XformStatCache) * ++xfi->mNumberOfXformStatCaches);
+          xfi->mpXformStatCache = static_cast<XformStatCache*>(
+              realloc(xfi->mpXformStatCache, sizeof(XformStatCache) * 
+                ++xfi->mNumberOfXformStatCaches));
   
           if (xfi->mpXformStatCache == NULL) {
             Error("Insufficient memory");
@@ -2273,8 +2277,18 @@ namespace STK
   {
     if (mpXformStatCache != NULL)
     {
+      std::map<void*,int>::iterator i = mStatCachePtrs.find(mpXformStatCache);
+      if (i == mStatCachePtrs.end()) {
+        mStatCachePtrs[mpXformStatCache] = 1;
+      }
+      else {
+        ++(i->second);
+      }
+        
       free(mpXformStatCache->mpStats);
       free(mpXformStatCache);
+
+      mpXformStatCache = NULL;
     }
     //delete [] mpOutputVector;
     delete [] mpMemory;
@@ -2304,8 +2318,8 @@ namespace STK
     
     if (mpInput != NULL) {
       if (!mpInput->mpMacro) {
-      if (n > 0) strncpy(chptr, ".input", n);
-        mpInput->Scan(mask, nodeName, action, pUserData);
+        if (n > 0) strncpy(chptr, ".input", n);
+          mpInput->Scan(mask, nodeName, action, pUserData);
       }
     }
   
@@ -2364,6 +2378,7 @@ namespace STK
           {
             if (n > 0) 
               snprintf(chptr, n, ".part[%d,%d]", (int) i+1, (int) j+1);
+
             cxf->mpLayer[i].mpBlock[j]->Scan(mask, nodeName, action, pUserData);
           }
         }
@@ -3779,7 +3794,7 @@ namespace STK
       if (!mCmllrStats) {
         Scan(MTM_MEAN | MTM_VARIANCE, nodeNameBuffer, WriteStatsForXform, &userData);
       } else {
-        int dim;
+        size_t dim;
         size_t out_size= userData.mpXform->mOutSize;
         size_t k_size  = userData.mpXform->mInSize;
         size_t G_size  = k_size*(k_size+1)/2;
@@ -3804,8 +3819,9 @@ namespace STK
         for(dim = 0; dim < out_size; dim++) {
           int cc = 0;
           FLOAT *out_vec = &userData.mpXform->mpCmllrStats[dim * stat_size];
+
           if (binary) {
-            int i;
+            size_t i;
             if (!isBigEndian()) {
               for (i = 0; i < k_size; i++) swapFLOAT(out_vec[i]);
             }          
@@ -3814,24 +3830,25 @@ namespace STK
             if (!isBigEndian()) 
               for (i = 0; i < k_size; i++) swapFLOAT(out_vec[i]);
           } else {
-            int j;
+            size_t j;
             for (j=0;j<k_size;j++) {
               cc |= fprintf(userData.mMeanFile.mpStatsP, FLOAT_FMT" ", out_vec[j]) < 0;
             }
             cc |= fputs("\n", userData.mMeanFile.mpStatsP) == EOF;
-           }
+          }
+
           if (cc) {
             Error("Cannot write to file %s", userData.mMeanFile.mpStatsN);
           }      
 
           out_vec = &userData.mpXform->mpCmllrStats[dim * stat_size + k_size];
           if (binary) {
-            int i;
+            size_t i;
             if (!isBigEndian()) for (i = 0; i < G_size; i++) swapFLOAT(out_vec[i]);
             cc |= fwrite(out_vec, sizeof(FLOAT), G_size, userData.mCovFile.mpStatsP) != G_size;
             if (!isBigEndian()) for (i = 0; i < G_size; i++) swapFLOAT(out_vec[i]);
           } else {
-            int k, j;
+            size_t k, j;
             for (k=0; k < k_size; k++) {
               for (j=0;j<=k;j++) {
                 cc |= fprintf(userData.mCovFile.mpStatsP, FLOAT_FMT" ", out_vec[k*(k+1)/2+j]) < 0;
@@ -3849,6 +3866,7 @@ namespace STK
           }      
         }
       }
+
       fclose(userData.mMeanFile.mpStatsP); fclose(userData.mMeanFile.mpOccupP);
       fclose(userData.mCovFile.mpStatsP);  fclose(userData.mCovFile.mpOccupP);
       free(userData.mMeanFile.mpStatsN);   free(userData.mMeanFile.mpOccupN);
@@ -4039,8 +4057,7 @@ namespace STK
     size_t      k;
     FILE *      fp;
   
-    if ((fp = fopen(pFileName, "wt")) == NULL) 
-    {
+    if ((fp = fopen(pFileName, "wt")) == NULL) {
       Error("Cannot open output file: '%s'", pFileName);
     }
   
