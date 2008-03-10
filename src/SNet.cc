@@ -84,7 +84,7 @@ void usage(char *progname)
 }
 
 #define SNAME "SNET"
-char *optionStr =
+const char *optionStr =
 " -o r   TARGETMODELEXT"
 " -B n   SAVEBINARY=TRUE"
 " -D n   PRINTCONFIG=TRUE" 

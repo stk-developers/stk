@@ -1570,16 +1570,19 @@ namespace STK
 
       assert(counts > 0); 
 
-      // The N-grams are all sorted accordind to most current words (first present words, then -1 context etc.). We take benefit of this since we must count not different N-grams but N-1 grams with different predictors
+      // The N-grams are all sorted accordind to most current words (first 
+      // present words, then -1 context etc.). We take benefit of this since 
+      // we must count not different N-grams but N-1 grams with different 
+      // predictors
 
       // we start reading N-grams with different present word
-      if(*present_token != prev_present_token)
-      {
+      if(*present_token != prev_present_token) {
 	prev_present_token = *present_token;
 	seen_contexts.Clear();
       }
-      else if(seen_contexts[*predictor_token])
+      else if(seen_contexts[*predictor_token]) {
 	already_seen = true;
+      }
 
 
       if(!already_seen)
@@ -1616,7 +1619,8 @@ namespace STK
   //***************************************************************************/
   //***************************************************************************/ 
   void
-  SparseBigramMatrix::Fill(const NGramSubset& rNGrams, const BSetQuestion& rQuestion, const int pred, const bool YesAnswer)
+  SparseBigramMatrix::Fill(const NGramSubset& rNGrams, 
+      const BSetQuestion& rQuestion, const int pred, const bool YesAnswer)
   {
     // iterate over all N-grams at this particular node
     NGramSubset::NGramContainer::const_iterator it;
@@ -1638,10 +1642,10 @@ namespace STK
 	for(i = 0; i < mSizeVector[*predictor_token]; i++)
 	{
 	  // do we start from zero or 1????
-	  int current_column = (this->mPointerVector[*predictor_token] + i)->GetColumn();
-	  int current_count  = (this->mPointerVector[*predictor_token] + i)->GetCount();
+	  int     current_column = (this->mPointerVector[*predictor_token] + i)->GetColumn();
+	  double  current_count  = (this->mPointerVector[*predictor_token] + i)->GetCount();
 
-	  if(current_count == 0)
+	  if (!(current_count > 0))
 	    break;
 
 	  else if(*present_token == current_column)
@@ -1672,7 +1676,8 @@ namespace STK
   //***************************************************************************/
   //***************************************************************************/  
   double
-  SparseBigramMatrix::InsertBasicElement(SparseBigramMatrix& MoveFromThisSet, const int Predictor)
+  SparseBigramMatrix::InsertBasicElement(SparseBigramMatrix& MoveFromThisSet, 
+      const int Predictor)
   {
     int i, helper;
     double log_likelihood_sum = 0;
@@ -1680,12 +1685,13 @@ namespace STK
     SparseBigramCell *AuxCopy;
 
 
-    // Iterate over all elements in the basic element (i.e. over all present words) to be inserted
+    // Iterate over all elements in the basic element (i.e. over all present 
+    // words) to be inserted
     for(i = 0; i < MoveFromThisSet.mSizeVector[Predictor]; i++)
     {
       // do we start from zero or 1????
-      int current_column = (MoveFromThisSet.mPointerVector[Predictor] + i)->GetColumn();
-      int current_count  = (MoveFromThisSet.mPointerVector[Predictor] + i)->GetCount();
+      int     current_column = (MoveFromThisSet.mPointerVector[Predictor] + i)->GetColumn();
+      double  current_count  = (MoveFromThisSet.mPointerVector[Predictor] + i)->GetCount();
 
       assert(current_count > 0);
 

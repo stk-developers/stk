@@ -109,7 +109,7 @@ void PutCandidateToLabels(LRTrace *lrt, FLOAT scoreThreshold, FILE *lfp,
 
 
 
-char *longopts =
+const char *longopts =
 " --accept-unused-param"
 " --acc-window         "
 " --allow-xwrd-exp     \n"
@@ -201,7 +201,7 @@ void usage(char *progname)
 }
 
 #define SNAME "SLRATIO"
-char *optionStr =
+const char *optionStr =
 " -d r   SOURCEMODELDIR"
 " -i r   TARGETMLF"
 " -l r   TARGETTRANSCDIR"

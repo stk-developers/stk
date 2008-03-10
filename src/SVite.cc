@@ -107,7 +107,7 @@ void usage(char *progname)
 }
 
 #define SNAME "SVITE"
-char *optionStr =
+const char *optionStr =
 " -a"
 " -d r   SOURCEMODELDIR"
 " -f n   STATEALIGNMENT=TRUE"

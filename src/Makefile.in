@@ -96,7 +96,7 @@ SRover_LDADD = $(LDADD)
 SRover_DEPENDENCIES = $(am__DEPENDENCIES_2)
 am_STree_OBJECTS = STree.$(OBJEXT)
 STree_OBJECTS = $(am_STree_OBJECTS)
-STree_DEPENDENCIES = $(am__DEPENDENCIES_2)
+STree_DEPENDENCIES = $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_1)
 am_SVite_OBJECTS = SVite.$(OBJEXT)
 SVite_OBJECTS = $(am_SVite_OBJECTS)
 SVite_LDADD = $(LDADD)
@@ -266,7 +266,7 @@ SLRatio_SOURCES = SLRatio.cc
 SResults_SOURCES = SResults.cc
 SRover_SOURCES = SRover.cc
 STree_SOURCES = STree.cc
-STree_LDADD = $(COMMONLIBS) -lboost_program_options
+STree_LDADD = $(COMMONLIBS) $(BOOST_PROGRAM_OPTIONS_LIB)
 # SWEChCoFast_SOURCES = SWEChCoFast.cc
 # SWE_SOURCES       = SWE.cc
 

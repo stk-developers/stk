@@ -67,7 +67,7 @@ void usage(char *progname)
 }
 
 #define SNAME "SFEACAT"
-char *optionStr =
+const char *optionStr =
 " -d r   SOURCEMODELDIR"
 " -l r   TARGETPARAMDIR"
 " -x r   SOURCEMODELEXT"

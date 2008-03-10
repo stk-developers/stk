@@ -70,7 +70,7 @@ SLRatio_SOURCES   = SLRatio.cc
 SResults_SOURCES  = SResults.cc
 SRover_SOURCES    = SRover.cc
 STree_SOURCES     = STree.cc
-STree_LDADD       = $(COMMONLIBS) -lboost_program_options
+STree_LDADD       = $(COMMONLIBS) $(BOOST_PROGRAM_OPTIONS_LIB)
 # SWEChCoFast_SOURCES = SWEChCoFast.cc
 # SWE_SOURCES       = SWE.cc
 
