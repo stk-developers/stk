@@ -2,6 +2,7 @@
 #define STK_StkStream_tcc
 
 #include "common.h"
+#include <cstring>
 #include <iostream>
 #pragma GCC system_header
 
@@ -38,7 +39,10 @@ namespace STK
 
 
   //******************************************************************************
-  template<typename _CharT, typename _Traits>
+  template<
+    typename _CharT, 
+    typename _Traits
+  > 
   basic_stkbuf<_CharT, _Traits> *
   basic_stkbuf<_CharT, _Traits>::
   close(void)
@@ -50,23 +54,23 @@ namespace STK
       std::basic_filebuf<_CharT, _Traits>::close();
 
       // and for different stream type we perform different closing
-      if (stream_type == basic_stkbuf::t_file)
+      if (mStreamType == basic_stkbuf::t_file)
       {
-        fclose(fileptr);
+        fclose(mpFilePtr);
       }
-      else if (stream_type == basic_stkbuf::t_pipe)
+      else if (mStreamType == basic_stkbuf::t_pipe)
       {
-        pclose(fileptr);
+        pclose(mpFilePtr);
       }
-      else if (stream_type == basic_stkbuf::t_stdio)
+      else if (mStreamType == basic_stkbuf::t_stdio)
       {
 
       }
       
-      fileptr     = NULL;
-      filename    = "";
-      mode        = ios_base::openmode(0);
-      stream_type = basic_stkbuf::t_undef;
+      mpFilePtr     = NULL;
+      mFilename    = "";
+      mMode        = std::ios_base::openmode(0);
+      mStreamType = basic_stkbuf::t_undef;
       return this;
     }
     else
@@ -74,16 +78,19 @@ namespace STK
   }
 
 
-  template<typename _CharT, typename _Traits>
+  template<
+    typename _CharT, 
+    typename _Traits
+  > 
   void
   basic_stkbuf<_CharT, _Traits>::
-  open_mode(ios_base::openmode __mode, int&, int&,  char* __c_mode)
+  open_mode(std::ios_base::openmode __mode, int&, int&,  char* __c_mode)
   {
-    bool __testb = __mode & ios_base::binary;
-    bool __testi = __mode & ios_base::in;
-    bool __testo = __mode & ios_base::out;
-    bool __testt = __mode & ios_base::trunc;
-    bool __testa = __mode & ios_base::app;
+    bool __testb = __mode & std::ios_base::binary;
+    bool __testi = __mode & std::ios_base::in;
+    bool __testo = __mode & std::ios_base::out;
+    bool __testt = __mode & std::ios_base::trunc;
+    bool __testa = __mode & std::ios_base::app;
 
     if (!__testi && __testo && !__testt && !__testa)
       strcpy(__c_mode, "w");
@@ -103,12 +110,15 @@ namespace STK
 
 
   //******************************************************************************
-  template<typename _CharT, typename _Traits>
+  template<
+    typename _CharT, 
+    typename _Traits
+  > 
   basic_stkbuf<_CharT, _Traits> *
   basic_stkbuf<_CharT, _Traits>::
-  open(const char* pFName, ios::openmode m, const char* pFilter)
+  open(const char* pFName, std::ios::openmode m, const char* pFilter)
   {
-    basic_stkbuf<_CharT, _Traits>* _ret = NULL;
+    basic_stkbuf<_CharT, _Traits>* p_ret = NULL;
 
     if (NULL == pFName)
       return NULL;
@@ -123,46 +133,46 @@ namespace STK
       // now we decide, what kind of file we open
       if (!strcmp(pFName,"-"))
       {
-        if      ((m & ios::in) && !(m & ios::out))
+        if      ((m & std::ios::in) && !(m & std::ios::out))
         {
-          fileptr = stdin;
-          mode = ios::in;
-          filename = pFName;
-          stream_type = t_stdio;
-          _ret = this;
+          mpFilePtr   = stdin;
+          mMode       = std::ios::in;
+          mFilename   = pFName;
+          mStreamType = t_stdio;
+          p_ret       = this;
         }
-        else if ((m & ios::out) && !(m & ios::in))
+        else if ((m & std::ios::out) && !(m & std::ios::in))
         {
-          fileptr = stdout;
-          mode = ios::out;
-          filename = pFName;
-          stream_type = t_stdio;
-          _ret = this;
+          mpFilePtr   = stdout;
+          mMode       = std::ios::out;
+          mFilename   = pFName;
+          mStreamType = t_stdio;
+          p_ret       = this;
         }
         else
-          _ret = NULL;
+          p_ret = NULL;
       }
       else if ( pFName[0] == '|' )
       {
         const char* command = pFName + 1;
 
-        if      ((m & ios::in) && !(m & ios::out)) m = ios::in;
-        else if ((m & ios::out) && !(m & ios::in)) m = ios::out;
+        if      ((m & std::ios::in) && !(m & std::ios::out)) m = std::ios::in;
+        else if ((m & std::ios::out) && !(m & std::ios::in)) m = std::ios::out;
         else return NULL;
 
         // we need to make some conversion
         // iostream -> stdio open mode string
         this->open_mode(m, __p_mode, __rw_mode, mstr);
 
-        if (fileptr = popen(command, mstr))
+        if (mpFilePtr = popen(command, mstr))
         {
-          filename = command;
-          mode     = m;
-          stream_type = t_pipe;
-          _ret = this;
+          mFilename   = command;
+          mMode       = m;
+          mStreamType = t_pipe;
+          p_ret       = this;
         }
         else
-          _ret = 0;
+          p_ret = 0;
       }
       else
       {
@@ -172,24 +182,23 @@ namespace STK
         {
           char* command = expandFilterCommand(pFilter, pFName);
 
-          if      ((m & ios::in) && !(m & ios::out)) m = ios::in;
-          else if ((m & ios::out) && !(m & ios::in)) m = ios::out;
+          if      ((m & std::ios::in) && !(m & std::ios::out)) m = std::ios::in;
+          else if ((m & std::ios::out) && !(m & std::ios::in)) m = std::ios::out;
           else return NULL;
 
           // we need to make some conversion
           // iostream -> stdio open mode string
           this->open_mode(m, __p_mode, __rw_mode, mstr);
 
-          if (fileptr = popen(command, mstr))
+          if (mpFilePtr = popen(command, mstr))
           {
-            filename = pFName;
-            this->filter = pFilter;
-            mode     = m;
-            stream_type = t_pipe;
-            _ret = this;
+            mFilename     = pFName;
+            mMode         = m;
+            mStreamType   = t_pipe;
+            p_ret         = this;
           }
           else
-            _ret = 0;
+            p_ret = 0;
         }
         else // if (!filter.empty())
         {
@@ -197,30 +206,33 @@ namespace STK
           // iostream -> stdio open mode string
           this->open_mode(m, __p_mode, __rw_mode, mstr);
 
-          if (fileptr = fopen(pFName, mstr))
+          if (mpFilePtr = fopen(pFName, mstr))
           {
-            filename = pFName;
-            mode     = m;
-            stream_type = t_file;
-            _ret = this;
+            mFilename   = pFName;
+            mMode       = m;
+            mStreamType = t_file;
+            p_ret       = this;
           }
-          else
-            _ret = NULL;
+          else {
+            p_ret = NULL;
+          }
         }
       }
 
       // here we perform what the stdio_filebuf would do
-      if (_ret)
-      {
-        superopen(fileptr, m);
+      if (p_ret) {
+        superopen(mpFilePtr, m);
       }
     } //if (!isopen)
 
-    return _ret;
+    return p_ret;
   }
 
   //******************************************************************************
-  template<typename _CharT, typename _Traits>
+  template<
+    typename _CharT, 
+    typename _Traits
+  > 
   void
   basic_stkbuf<_CharT, _Traits>::
   superopen(std::__c_file* __f, std::ios_base::openmode __mode,
