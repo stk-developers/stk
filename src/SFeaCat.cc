@@ -274,13 +274,13 @@ int main(int argc, char *argv[])
     }
     
     if(mmf_mask != NULL) {
-      static string lastSpeakerMMF;
-      string speakerMMF;
+      static std::string lastSpeakerMMF;
+      std::string speakerMMF;
       ProcessMask(file_name->logical, mmf_mask, speakerMMF);
         
       if(lastSpeakerMMF != speakerMMF) 
       {
-        hset.ParseMmf((string(mmf_dir) + "/" + speakerMMF).c_str(), NULL);
+        hset.ParseMmf((std::string(mmf_dir) + "/" + speakerMMF).c_str(), NULL);
         lastSpeakerMMF = speakerMMF;
       }
     }

@@ -196,7 +196,7 @@ int main(int argc, char *argv[])
   {
     for (script=strtok(script, ","); script != NULL; script=strtok(NULL, ",")) 
     {
-      IStkStream script_stream(script, ios::in, gpScriptFilter);
+      IStkStream script_stream(script, std::ios::in, gpScriptFilter);
 
       if (!script_stream.good()) {
         Error("Cannot open script file %s", script);

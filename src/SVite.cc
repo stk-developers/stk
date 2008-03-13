@@ -577,7 +577,7 @@ int main(int argc, char *argv[])
   { // Unsupervised training
     IStkStream                      input_stream;    
     
-    input_stream.open(network_file, ios::in, transc_filter ? transc_filter : "");
+    input_stream.open(network_file, std::ios::in, transc_filter ? transc_filter : "");
 
     
     if (!input_stream.good())
@@ -704,14 +704,14 @@ int main(int argc, char *argv[])
     // parse per-datafile models ...............................................
     if (mmf_mask != NULL) 
     {
-      static string    last_speaker_mmf;
-      string           speaker_mmf;
+      static std::string    last_speaker_mmf;
+      std::string           speaker_mmf;
 
       ProcessMask(feature_repo.Current().Logical(), mmf_mask, speaker_mmf);
         
       if (last_speaker_mmf != speaker_mmf) 
       {
-        hset.ParseMmf((string(mmf_dir) + "/" + speaker_mmf).c_str(), NULL);
+        hset.ParseMmf((std::string(mmf_dir) + "/" + speaker_mmf).c_str(), NULL);
         last_speaker_mmf = speaker_mmf;
       }
     }

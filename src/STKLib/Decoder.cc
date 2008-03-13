@@ -66,7 +66,7 @@ namespace STK
   
   
 int nbest_lattices = -1;
-std::map<string,FLOAT> state_posteriors;
+std::map<std::string,FLOAT> state_posteriors;
 
 
 /*

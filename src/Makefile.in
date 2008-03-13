@@ -38,12 +38,12 @@ POST_UNINSTALL = :
 @USE_SNET_FALSE@	SVite$(EXEEXT) SFeaCat$(EXEEXT) \
 @USE_SNET_FALSE@	SFeaStack$(EXEEXT) SLRatio$(EXEEXT) \
 @USE_SNET_FALSE@	SResults$(EXEEXT) SRover$(EXEEXT) \
-@USE_SNET_FALSE@	STree$(EXEEXT)
+@USE_SNET_FALSE@	STree$(EXEEXT) testme$(EXEEXT)
 @USE_SNET_TRUE@bin_PROGRAMS = SExpand$(EXEEXT) SERest$(EXEEXT) \
 @USE_SNET_TRUE@	SVite$(EXEEXT) SFeaCat$(EXEEXT) \
 @USE_SNET_TRUE@	SFeaStack$(EXEEXT) SLRatio$(EXEEXT) \
 @USE_SNET_TRUE@	SResults$(EXEEXT) SRover$(EXEEXT) \
-@USE_SNET_TRUE@	STree$(EXEEXT) SNet$(EXEEXT)
+@USE_SNET_TRUE@	STree$(EXEEXT) SNet$(EXEEXT) testme$(EXEEXT)
 subdir = src
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -101,6 +101,10 @@ am_SVite_OBJECTS = SVite.$(OBJEXT)
 SVite_OBJECTS = $(am_SVite_OBJECTS)
 SVite_LDADD = $(LDADD)
 SVite_DEPENDENCIES = $(am__DEPENDENCIES_2)
+am_testme_OBJECTS = testme.$(OBJEXT)
+testme_OBJECTS = $(am_testme_OBJECTS)
+testme_LDADD = $(LDADD)
+testme_DEPENDENCIES = $(am__DEPENDENCIES_2)
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
 am__depfiles_maybe = depfiles
@@ -112,11 +116,11 @@ CXXLINK = $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) \
 SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFeaCat_SOURCES) \
 	$(SFeaStack_SOURCES) $(SLRatio_SOURCES) $(SNet_SOURCES) \
 	$(SResults_SOURCES) $(SRover_SOURCES) $(STree_SOURCES) \
-	$(SVite_SOURCES)
+	$(SVite_SOURCES) $(testme_SOURCES)
 DIST_SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFeaCat_SOURCES) \
 	$(SFeaStack_SOURCES) $(SLRatio_SOURCES) \
 	$(am__SNet_SOURCES_DIST) $(SResults_SOURCES) $(SRover_SOURCES) \
-	$(STree_SOURCES) $(SVite_SOURCES)
+	$(STree_SOURCES) $(SVite_SOURCES) $(testme_SOURCES)
 RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	html-recursive info-recursive install-data-recursive \
 	install-exec-recursive install-info-recursive \
@@ -266,6 +270,7 @@ SLRatio_SOURCES = SLRatio.cc
 SResults_SOURCES = SResults.cc
 SRover_SOURCES = SRover.cc
 STree_SOURCES = STree.cc
+testme_SOURCES = testme.cc
 STree_LDADD = $(COMMONLIBS) $(BOOST_PROGRAM_OPTIONS_LIB)
 # SWEChCoFast_SOURCES = SWEChCoFast.cc
 # SWE_SOURCES       = SWE.cc
@@ -368,6 +373,9 @@ STree$(EXEEXT): $(STree_OBJECTS) $(STree_DEPENDENCIES)
 SVite$(EXEEXT): $(SVite_OBJECTS) $(SVite_DEPENDENCIES) 
 	@rm -f SVite$(EXEEXT)
 	$(CXXLINK) $(SVite_LDFLAGS) $(SVite_OBJECTS) $(SVite_LDADD) $(LIBS)
+testme$(EXEEXT): $(testme_OBJECTS) $(testme_DEPENDENCIES) 
+	@rm -f testme$(EXEEXT)
+	$(CXXLINK) $(testme_LDFLAGS) $(testme_OBJECTS) $(testme_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -385,6 +393,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SRover.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STree.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SVite.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/testme.Po@am__quote@
 
 .cc.o:
 @am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \

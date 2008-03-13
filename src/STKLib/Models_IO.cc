@@ -504,7 +504,7 @@ namespace STK
       filter = (NULL != gpMmfFilter) ? gpMmfFilter : "";
       
       // try to open the stream
-      input_stream.open(pFileName, ios::in|ios::binary, gpMmfFilter);
+      input_stream.open(pFileName, std::ios::in|std::ios::binary, gpMmfFilter);
       if (!input_stream.good())
       {
         Error("Cannot open input MMF %s", pFileName);
@@ -2434,7 +2434,7 @@ namespace STK
   
         MakeFileName(mmfile, pFileName ? pFileName : macro->mpFileName, pOutputDir, pOutputExt);
           
-        output_stream.open(mmfile, ios::binary, gpMmfOFilter);
+        output_stream.open(mmfile, std::ios::binary, gpMmfOFilter);
         if (!output_stream.good())
         { 
           Error("Cannot open output MMF %s", mmfile);
@@ -3667,7 +3667,7 @@ namespace STK
     macro_name[sizeof(macro_name)-1] = '\0';
   
     // open the file
-    in.open(rFile.Physical().c_str(), ios::binary);
+    in.open(rFile.Physical().c_str(), std::ios::binary);
     if (!in.good())
     {
       Error("Cannot open input accumulator file: '%s'", rFile.Physical().c_str());

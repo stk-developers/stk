@@ -54,7 +54,7 @@ INCLUDES    = $(ATLASINCLUDEDIR) -I. -I$(top_builddir) -I$(top_srcdir) \
 # These are the programs that we want to build in this directory
 # bin_PROGRAMS = SExpand SERest SVite $(SNETF) SFeaCat SLRatio SResults SRover 
 if USE_SNET
-bin_PROGRAMS = SExpand SERest SVite SFeaCat SFeaStack SLRatio SResults SRover STree SNet 
+bin_PROGRAMS = SExpand SERest SVite SFeaCat SFeaStack SLRatio SResults SRover STree SNet
 else
 bin_PROGRAMS = SExpand SERest SVite SFeaCat SFeaStack SLRatio SResults SRover STree
 endif

@@ -753,7 +753,7 @@ namespace STK
       
       
       // open the feature file
-      mStream.open(file_name.c_str(), ios::binary);
+      mStream.open(file_name.c_str(), std::ios::binary);
       if (!mStream.good())
       {
         Error("Cannot open feature file: '%s'", file_name.c_str());
