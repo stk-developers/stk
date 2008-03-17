@@ -312,7 +312,7 @@ int main(int argc, char* argv[])
           // we'll be adding from stream if MLF specified
           reg_data_stream.open(new_record.Physical().c_str());
           if (!reg_data_stream.good()) {
-            throw runtime_error(string("Error opening label file ") +
+            throw runtime_error(string("Error opening list file ") +
                 new_record.Physical());
           }
           p_in_data_stream = &reg_data_stream;
@@ -469,11 +469,11 @@ int main(int argc, char* argv[])
         else {
           // we'll be adding from stream if MLF specified
           reg_data_stream.open(new_record.Physical().c_str());
-          if (!mlf_data_stream.good()) {
-            throw runtime_error(string("Error opening label file ") +
+          if (!reg_data_stream.good()) {
+            throw runtime_error(string("Error opening list file ") +
                 new_record.Physical());
           }
-          p_in_data_stream = &mlf_data_stream;
+          p_in_data_stream = &reg_data_stream;
         }
 
         // parse data file
@@ -725,11 +725,11 @@ int main(int argc, char* argv[])
         else {
           // we'll be adding from stream if MLF specified
           reg_data_stream.open(new_record.Physical().c_str());
-          if (!mlf_data_stream.good()) {
-            throw runtime_error(string("Error opening label file ") +
+          if (!reg_data_stream.good()) {
+            throw runtime_error(string("Error opening list file ") +
                 new_record.Physical());
           }
-          p_in_data_stream = &mlf_data_stream;
+          p_in_data_stream = &reg_data_stream;
         }
 
         // parse the file
