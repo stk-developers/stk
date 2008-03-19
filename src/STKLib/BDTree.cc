@@ -596,7 +596,7 @@ namespace STK
           std::cout << "BDTree::Info      " << rPrefix << "Data Entropy:      " << total_entropy << std::endl;
         }
         else {
-	  if(rTraits.mRandomizeTree)
+	  if(rTraits.mLVCSR)
 	    std::cout << "BDTree::Info      " << rPrefix << "Predictor:      " << p_new_question->Predictor()<< std::endl;	    
 	  else
 	    p_new_question->Dump(std::cout, std::string("BDTree::Info      ")+rPrefix);
@@ -712,25 +712,27 @@ namespace STK
     int random_value;
 
     // choose predictor randomly for a random tree
-//    if(rTraits.mRandomizeTree)
-//    {
-//      random_value = rand();
-//      if(random_value > RAND_MAX/2)
-//	int i = 1;
-//      else
-//	int i = 2;
-//
-//      BSetQuestion* p_tmp_question = FindSubset_Greedy(rNGrams, rTraits, &e, i);
-//
-//      if (e < best_e || best_e < 0) {
-//        if (NULL != p_best_question) {
-//          delete p_best_question;
-//        }
-//        best_e = e;
-//        p_best_question = p_tmp_question;
-//      } 
-//    }
-//    else
+    if(rTraits.mRandomizeTree)
+    {
+      int rand_pred;
+
+      random_value = rand();
+      if(random_value >= (rTraits.mOrder - 1))
+        rand_pred = (random_value % (rTraits.mOrder - 1)) + 1;
+      else
+        rand_pred = random_value + 1;
+
+      BSetQuestion* p_tmp_question = FindSubset_Greedy(rNGrams, rTraits, &e, i);
+
+      if (e < best_e || best_e < 0) {
+        if (NULL != p_best_question) {
+          delete p_best_question;
+        }
+        best_e = e;
+        p_best_question = p_tmp_question;
+      } 
+    }
+    else
     {
       // go through all predictors and find subset
       for (int i=1; i<rTraits.mOrder; ++i) {
@@ -810,7 +812,7 @@ namespace STK
     
     // It's not only this - we also implement Exchange algorithm there for finding the best question (as described in Peng Xu thesis)
     // It should be pretty fast. Implemented only for trigrams
-    if(rTraits.mRandomizeTree && rTraits.mOrder >= 3)
+    if(rTraits.mLVCSR && rTraits.mOrder >= 3)
     {
       NGramSubsets::const_iterator        i_subset;
 
@@ -831,9 +833,10 @@ namespace STK
 	vocab_end = vocab_size-1;
       }
 
-      // make initial rundom shuffle of the question set
-      //for(i_vocab = vocab_start; i_vocab <= vocab_end; ++i_vocab)
-      //p_new_question->RandomShuffle(i_vocab);
+      // make initial rundom shuffle of the question set if it's a random tree
+      if(rTraits.mRandomizeTree)
+        for(i_vocab = vocab_start; i_vocab <= vocab_end; ++i_vocab)
+          p_new_question->RandomShuffle(i_vocab);
 
       // construct helper "sparce" matrix
       SparseBigramMatrix BigramMatrix0(target_vocab_size, vocab_size), BigramMatrix1(target_vocab_size, vocab_size);

@@ -75,6 +75,7 @@ int main(int argc, char* argv[])
     string                  source_model_list_name;
     string                  target_ARPA_fname;
     bool                    output_ARPA = false;
+    int                     binary_format = 0;
     string                  heldout_data_fname;
     NGramSubsets*           heldout_collection_pntr = NULL;
     //VocabularyTable*        word_vocabulary = NULL;
@@ -116,12 +117,14 @@ int main(int argc, char* argv[])
       ("srcmdllst",     po::value<string>(&source_model_list_name),           "Source model list file name")
       ("tgtmdl",        po::value<string>(&target_model_name),                "Target model file name")
       ("tgtvoc",        po::value<string>(&target_vocab_fname),               "Target vocabulary file [same as predictor]")
-      ("randtree",      po::value<bool>(&new_tree_traits.mRandomizeTree),     "Use random question set split and predictor position selection when growing the tree. Exchange algorithm is used")
+      ("LVCSR",         po::value<bool>(&new_tree_traits.mLVCSR),             "LVCSR mode: Sparce matrices are used with exchange algorithm")
+      ("randtree",      po::value<bool>(&new_tree_traits.mRandomizeTree),     "Use random question set split and predictor position selection when growing the tree")
       ("outputARPA",    po::value<bool>(&output_ARPA),                        "Output scored N-grams in ARPA format")
       ("outARPAfile",   po::value<string>(&target_ARPA_fname),                "Target ARPA format LM")
       ("heldoutdata",   po::value<string>(&heldout_data_fname),               "Heldout data that can be used as stopping criteria at the training phase")
       //("morphvocscript,S", po::value<string>(),                               "Morphological vocabularies script")
-      ("morphpred",     po::value<bool>(&new_tree_traits.mMorphologicalPredictors),   "Use morphological predictors (for word models)"); 
+      ("morphpred",     po::value<bool>(&new_tree_traits.mMorphologicalPredictors),   "Use morphological predictors (for word models)")
+      ("binformat",     po::value<int>(&binary_format),                       "Binary format used to store decision trees"); 
 
     // config file options only
     po::options_description config_options("Configuration");
@@ -354,6 +357,7 @@ int main(int argc, char* argv[])
       // fill the header
       BDTreeHeader file_header;
       file_header.mBinary = true;
+      file_header.mFileVersion = binary_format;
       file_header.mOrder  = new_tree_traits.mOrder;
       file_header.mVocabSize = predictor_vocabulary.Size();
 

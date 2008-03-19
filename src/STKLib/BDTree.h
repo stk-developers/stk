@@ -573,6 +573,7 @@ namespace STK
     mMMIEta(1.0), 
     mMinMMIIncrease(0.0),
     mMapAdapt(false),
+    mLVCSR(false),
     mRandomizeTree(false),
     mMorphologicalPredictors(false)
     {}
@@ -594,8 +595,9 @@ namespace STK
 
     bool      mMapAdapt;
     
-    bool       mRandomizeTree;
-    bool       mMorphologicalPredictors;
+    bool      mLVCSR;
+    bool      mRandomizeTree;
+    bool      mMorphologicalPredictors;
     
   }; //class BDTreeAttributes
 

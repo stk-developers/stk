@@ -28,7 +28,7 @@ namespace STK
   Read(std::istream& rStream, BDTreeHeader& rHeader)
   {
     DOUBLE_64 aux_double;
-    INT_32    i;
+    INT_32    i, j;
     INT_32    size;
 
     // read training data mass for this node (leaf)
@@ -37,16 +37,45 @@ namespace STK
 
     // read number of records for this distribution
     rStream.read(reinterpret_cast<char*>(&size), sizeof(size));
-    assert(size == rHeader.mVocabSize);
 
-    // reserve place
-    mVec.clear();
-    mVec.reserve(size);
+    // In case we use binary format for LM
+    if(rHeader.mFileVersion == 1)
+    {
+      DOUBLE_64 z = 0;
+      mVec.clear();
+      mVec.reserve(rHeader.mVocabSize);
 
-    // read all records
-    for (i = 0; i < size; ++i) {
-      rStream.read(reinterpret_cast<char*>(&aux_double), sizeof(aux_double));
-      mVec.push_back(aux_double);
+      bool current_zero = true;
+      // read records
+      for (i = 0; i < size; ++i) 
+      {
+        rStream.read(reinterpret_cast<char*>(&aux_double), sizeof(aux_double));
+
+        if(aux_double > 0 && aux_double <= 1)
+          mVec.push_back(aux_double);
+        // singular null is kept as null (not to mix with prob 1)
+        else if(aux_double == 0)
+            mVec.push_back(z);
+        else
+	{
+          for(j = 0; j < aux_double; j++)
+            mVec.push_back(z);
+	}
+      }
+    }
+    else
+    {
+      assert(size == rHeader.mVocabSize);
+
+      // reserve place
+      mVec.clear();
+      mVec.reserve(size);
+
+      // read all records
+      for (i = 0; i < size; ++i) {
+        rStream.read(reinterpret_cast<char*>(&aux_double), sizeof(aux_double));
+        mVec.push_back(aux_double);
+      }
     }
   }
 
@@ -64,13 +93,76 @@ namespace STK
     aux_double = mN;
     rStream.write(reinterpret_cast<char*>(&aux_double), sizeof(aux_double));
 
-    // write number of records in this distribution
-    aux_int = mVec.size();
-    rStream.write(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
 
-    for (i = mVec.begin(); i != mVec.end(); ++i) {
-      aux_double = *i;
-      rStream.write(reinterpret_cast<char*>(&aux_double), sizeof(aux_double));
+   // In case we use binary format for LM
+    if(rHeader.mFileVersion == 1)
+    {
+      // First count the size we have
+      // For the distribution, if we have several zeroes in the row - we encode this as an integer: 0 0 0 -> 3. Probabilities stay
+      DOUBLE_64 prev_i = 1;
+      int counter = 0; 
+      for (i = mVec.begin(); i != mVec.end(); ++i) 
+      {
+        aux_double = *i;
+        if(aux_double != 0 || aux_double == 0 && prev_i != 0)
+          counter++;
+
+        prev_i = aux_double;
+      }
+      // write number of records in this distribution
+      aux_int = counter;
+      rStream.write(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
+
+      // write set records
+      counter = 0;
+      prev_i = 0;
+      for (i = mVec.begin(); i != mVec.end(); ++i) 
+      {
+        aux_double = *i;
+
+        if(aux_double > 0)
+	{
+          if(prev_i == 0 && i != mVec.begin())
+	  {
+            // we leave singular null as null
+            if(counter == 1)
+              prev_i = (DOUBLE_64)0;
+            else
+              prev_i = (DOUBLE_64)counter;
+
+            rStream.write(reinterpret_cast<char*>(&prev_i), sizeof(prev_i));
+            counter = 0;
+          }
+
+          rStream.write(reinterpret_cast<char*>(&aux_double), sizeof(aux_double));
+	}
+        else
+          counter++;
+
+        if(i == mVec.end()-1 && aux_double == 0)
+	{
+          // we leave singular null as null
+          if(counter == 1)
+            aux_double = (DOUBLE_64)0;
+          else
+            aux_double = (DOUBLE_64)counter;
+
+          rStream.write(reinterpret_cast<char*>(&aux_double), sizeof(aux_double));
+	}
+
+        prev_i = aux_double;
+      }
+    }
+    else
+    {
+      // write number of records in this distribution
+      aux_int = mVec.size();
+      rStream.write(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
+
+      for (i = mVec.begin(); i != mVec.end(); ++i) {
+        aux_double = *i;
+        rStream.write(reinterpret_cast<char*>(&aux_double), sizeof(aux_double));
+      }
     }
   }
 
@@ -265,7 +357,7 @@ namespace STK
   Read(std::istream& rStream, BDTreeHeader& rHeader)
   {
     INT_32 aux_int;
-    INT_32 i;
+    INT_32 i, j, k;
     INT_32 size;
 
     // which predictor
@@ -274,22 +366,58 @@ namespace STK
 
     // number of records for set
     rStream.read(reinterpret_cast<char*>(&size), sizeof(size));
-    assert(size == rHeader.mVocabSize);
 
-    mSet.clear();
-    mSet.reserve(size);
+    // In case we use binary format for LM
+    if(rHeader.mFileVersion == 1)
+    {
+      mSet.clear();
+      mSet.reserve(rHeader.mVocabSize);
 
-    // read records
-    for (i = 0; i < size; ++i) {
-      rStream.read(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
-      mSet.push_back(aux_int);
+      bool current_zero = true;
+      // read records
+      for (i = 0; i < size; ++i) 
+      {
+        rStream.read(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
+        // there can be a leading "0" - we should just skip it
+        if(i == 0 && aux_int == 0)
+          ;
+        else
+	{
+          if(current_zero)
+            k = 0;
+          else
+            k = 1;
+
+          for(j = 0; j < aux_int; j++)
+            mSet.push_back(k);
+	}
+
+        if(current_zero)
+          current_zero = false;
+        else
+          current_zero = true;
+      }
     }
+    else
+    {
+      assert(size == rHeader.mVocabSize);
+
+      mSet.clear();
+      mSet.reserve(size);
+
+      // read records
+      for (i = 0; i < size; ++i) {
+        rStream.read(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
+        mSet.push_back(aux_int);
+      }
+      }
   }
 
 
   //***************************************************************************/
   //***************************************************************************/
   void
+
   BSetQuestion::
   Write(std::ostream& rStream, BDTreeHeader& rHeader)
   {
@@ -300,14 +428,60 @@ namespace STK
     aux_int = mPred;
     rStream.write(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
 
-    // write set size
-    aux_int = mSet.size();
-    rStream.write(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
-
-    // write set records
-    for (i = mSet.begin(); i != mSet.end(); ++i) {
-      aux_int = *i ? 1 : 0;
+    // In case we use binary format for LM
+    if(rHeader.mFileVersion == 1)
+    {
+      // First count the size we have
+      INT_32 prev_i = 0;
+      INT_32 counter = 1; // we always start from zero - even if there is none, we'll write "0"
+      for (i = mSet.begin(); i != mSet.end(); ++i) 
+      {
+        aux_int = *i ? 1 : 0;
+        if(prev_i != aux_int)
+	{
+          counter++;
+          prev_i = aux_int;
+	}
+      }
+      aux_int = counter;
+      // write set size
       rStream.write(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
+
+      // write set records
+      counter = 0;
+      prev_i = 0;
+      for (i = mSet.begin(); i != mSet.end(); ++i) 
+      {
+        aux_int = *i ? 1 : 0;
+        if(prev_i == aux_int)
+          counter++;
+        else
+	{
+          prev_i = counter;
+          rStream.write(reinterpret_cast<char*>(&prev_i), sizeof(prev_i));
+          counter = 1;
+          prev_i = aux_int;
+	}
+
+        if(i == mSet.end()-1)
+	{
+          aux_int = counter;
+          rStream.write(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
+	}
+      }
+
     }
+    else
+    {
+      aux_int = mSet.size();
+      // write set size
+      rStream.write(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
+
+      // write set records
+      for (i = mSet.begin(); i != mSet.end(); ++i) {
+        aux_int = *i ? 1 : 0;
+        rStream.write(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
+      }
+      }
   }
 } //namespace STK
