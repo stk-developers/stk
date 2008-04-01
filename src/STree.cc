@@ -123,7 +123,7 @@ int main(int argc, char* argv[])
       ("outARPAfile",   po::value<string>(&target_ARPA_fname),                "Target ARPA format LM")
       ("heldoutdata",   po::value<string>(&heldout_data_fname),               "Heldout data that can be used as stopping criteria at the training phase")
       //("morphvocscript,S", po::value<string>(),                               "Morphological vocabularies script")
-      ("morphpred",     po::value<bool>(&new_tree_traits.mMorphologicalPredictors),   "Use morphological predictors (for word models)")
+      ("morphpred",     po::value<int>(&new_tree_traits.mMorphologicalPredictors),   "Use morphological predictors (for word models)")
       ("binformat",     po::value<int>(&binary_format),                       "Binary format used to store decision trees"); 
 
     // config file options only
@@ -359,10 +359,15 @@ int main(int argc, char* argv[])
       file_header.mBinary = true;
       file_header.mFileVersion = binary_format;
       file_header.mOrder  = new_tree_traits.mOrder;
-      file_header.mVocabSize = predictor_vocabulary.Size();
+      file_header.mPredictorVocabSize = predictor_vocabulary.Size();
+      file_header.mVocabSize = target_vocabulary->Size();
 
       // output header
-      file_header.Write(model_stream);
+      if(file_header.mFileVersion)
+        file_header.Write_bin1(model_stream);
+      else
+        file_header.Write(model_stream);
+
       // output tree
       new_tree.Write(model_stream, file_header);
       // close stream
@@ -1000,7 +1005,12 @@ AdaptModel(const BDTree& rOrig, const NGramSubset& rNGrams,
           rFileName);
     }
 
-    file_header.Write(out_model_stream);
+    // output header
+    if(file_header.mFileVersion)
+      file_header.Write_bin1(out_model_stream);
+    else
+      file_header.Write(out_model_stream);
+
     new_tree.Write(out_model_stream, file_header);
 
     out_model_stream.close();

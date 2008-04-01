@@ -709,28 +709,94 @@ namespace STK
     double          e = 0.0;
     double          best_e = -1.0;
     BSetQuestion*   p_best_question = NULL;
-    int random_value;
 
     // choose predictor randomly for a random tree
     if(rTraits.mRandomizeTree)
     {
       int rand_pred;
+      srand((unsigned)time(0));
 
-      random_value = rand();
-      if(random_value >= (rTraits.mOrder - 1))
-        rand_pred = (random_value % (rTraits.mOrder - 1)) + 1;
-      else
-        rand_pred = random_value + 1;
 
-      BSetQuestion* p_tmp_question = FindSubset_Greedy(rNGrams, rTraits, &e, i);
-
-      if (e < best_e || best_e < 0) {
-        if (NULL != p_best_question) {
-          delete p_best_question;
+      // In case --morphpred=70 or anything, the value means that we keep those best predictors performing better that percentage to the best one
+      // and then randomly choose between them
+      if(rTraits.mMorphologicalPredictors > 1)
+      {
+        double* e_array = new double[rTraits.mOrder];
+        int i, counter = 0;
+        // go through all predictors and find subset
+        for (i=1; i<rTraits.mOrder; ++i) 
+        {
+          BSetQuestion* p_tmp_question = FindSubset_Greedy(rNGrams, rTraits, &e, i);
+          e_array[i-1] = e;
+          delete p_tmp_question;
         }
-        best_e = e;
-        p_best_question = p_tmp_question;
+        double min_e =  e_array[0], max_e = e_array[0], limit;
+        for(i = 0; i < rTraits.mOrder; i++)
+	{
+          if(e_array[i] > max_e)
+            max_e = e_array[i];
+          else if(e_array[i] < min_e)
+            min_e = e_array[i];
+        }
+        limit = (max_e - min_e) * rTraits.mMorphologicalPredictors / 100 + min_e;
+        int preds_above_limit = 0;
+        for(i = 0; i < rTraits.mOrder; i++)
+          if(e_array[i] >= limit)
+            preds_above_limit++;
+
+        // Now random value is in [1, preds_above_limit+1)
+        rand_pred = (int) ( ( (double)rand() / (  (double)(RAND_MAX) + (double)(1) ) ) * preds_above_limit ) + 1;
+        for(i = 0; i < rTraits.mOrder; i++)
+        {
+          if(e_array[i] >= limit)
+            counter++;
+          if(counter == rand_pred)
+	  {
+            p_best_question = FindSubset_Greedy(rNGrams, rTraits, &e, i);
+            best_e = e;
+          }
+	}
+        delete e_array;
+      }
+      // In case of morph trees with --morphpred=1 , we do always keep word-questions in random shuffle and choose one additional predictor randomly
+      else if(rTraits.mMorphologicalPredictors)
+      {
+        std::string factor_type, wrd;
+        NGram::TokenType ngram_token;
+        NGramSubset::NGramContainer::const_iterator it;
+
+        // go through all predictors and find subset
+        for (int i=1; i<rTraits.mOrder; ++i) 
+        {
+          it = rNGrams[0].mData.begin();
+          ngram_token = (**it)[i];
+          factor_type = rNGrams[0].Parent().pPredictorTable()->IToA(ngram_token);
+          if(i == rand_pred || factor_type[0] == 'W')
+	  {
+            BSetQuestion* p_tmp_question = FindSubset_Greedy(rNGrams, rTraits, &e, i);
+
+            if (e < best_e || best_e < 0) {
+              if (NULL != p_best_question) {
+                delete p_best_question;
+              }
+              best_e = e;
+              p_best_question = p_tmp_question;
+            }
+	  } 
+        }
+      }
+      else
+      {
+        BSetQuestion* p_tmp_question = FindSubset_Greedy(rNGrams, rTraits, &e, rand_pred);
+
+        if (e < best_e || best_e < 0) {
+          if (NULL != p_best_question) {
+            delete p_best_question;
+          }
+          best_e = e;
+          p_best_question = p_tmp_question;
       } 
+      }
     }
     else
     {
@@ -833,6 +899,8 @@ namespace STK
 	vocab_end = vocab_size-1;
       }
 
+      srand((unsigned)time(0));
+
       // make initial rundom shuffle of the question set if it's a random tree
       if(rTraits.mRandomizeTree)
         for(i_vocab = vocab_start; i_vocab <= vocab_end; ++i_vocab)
@@ -858,6 +926,15 @@ namespace STK
 	log_likelihood = BigramMatrix0.CountLogLikelihood(BigramMatrix1);
       }
 
+      int i_predictor;
+      // If we randomly put a 1 for some predictior, but there is no data for it at all - switch it to 0
+      for(i_predictor = vocab_start; i_predictor <= vocab_end; ++i_predictor)
+      {
+	if(p_new_question->EvalRawToken(i_predictor)
+            && !BigramMatrix0.GetSizeVectorCell(i_predictor) && !BigramMatrix1.GetSizeVectorCell(i_predictor))
+          p_new_question->Unset(i_predictor);
+      }
+
 
       // Move elements from one set to another to find the best question (Exchange algorithm)
       //double this_e = rNGrams.ParallelSplitEntropy(*p_new_question, &mass0, &mass1);
@@ -866,7 +943,6 @@ namespace STK
       {
 	inserted      = false;
 	deleted       = false;
-        int i_predictor;
 
 	// move from A_ to A (insertion) - we try to insert as many as possible
 	for(i_predictor = vocab_start; i_predictor <= vocab_end; ++i_predictor) // NB!!! if vocab_size and node_vocab_size are different (we reduce the matrices somehow), then there things must be changed 
@@ -1471,6 +1547,7 @@ namespace STK
   RandomShuffle(const NGram::TokenType& rToken)
   {
     int rand_value;
+
     rand_value = rand();
     if(rand_value < RAND_MAX/2)
       mSet[rToken] = 0;

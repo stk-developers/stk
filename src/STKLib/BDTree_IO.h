@@ -15,7 +15,8 @@ namespace STK
     int mHeaderSize;    ///< header size
     int mFileVersion;   ///< file version
     int mOrder;         ///< n-gram order
-    int mVocabSize;     ///< vocabulary size
+    int mVocabSize;     ///< target vocabulary size
+    int mPredictorVocabSize; // predictor vocabulary size
     int mBinary;        ///< true if binary, false if ASCII format
     int mExtra0;
     int mExtra1;
@@ -34,6 +35,13 @@ namespace STK
      */
     void
     Write(std::ostream& rStream);
+
+    /** 
+     * @brief Writes header to stream with additional Predictor vocab size parameter, used for LVCSR binary format
+     * @param rStream std::ostream
+     */
+    void
+    Write_bin1(std::ostream& rStream);
   }; //struct BDTreeHeader
 
 

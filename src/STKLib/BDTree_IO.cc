@@ -211,6 +211,54 @@ namespace STK
       throw std::runtime_error("ASCII format not supported yet");
     }
   }
+  //***************************************************************************/
+  // Write in binary format for LVCSR. In that case Target and Predictor vocabs 
+  // may differ, so we write both sizes
+  //***************************************************************************/
+
+  void
+  BDTreeHeader::
+  Write_bin1(std::ostream& rStream)
+  {
+    char    aux_char;
+    INT_32  aux_int;
+    std::streampos stream_pos;
+
+    stream_pos = rStream.tellp();
+
+    rStream.write(BDTreeHeader::INTRO, 10);
+    rStream.put(mBinary ? 'b' : 'a');
+
+    mHeaderSize = rStream.tellp();
+    mHeaderSize -= stream_pos + (std::streampos)(7*sizeof(INT_32));
+
+    if (mBinary) {
+      aux_int = mHeaderSize;
+      rStream.write(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
+      
+      aux_int = mFileVersion;
+      rStream.write(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
+      
+      aux_int = mOrder;
+      rStream.write(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
+      
+      aux_int = mVocabSize;
+      rStream.write(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
+
+      aux_int = mPredictorVocabSize;
+      rStream.write(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
+
+      aux_int = mExtra0;
+      rStream.write(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
+
+      aux_int = mExtra1;
+      rStream.write(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
+    }
+    else {
+      throw std::runtime_error("ASCII format not supported yet");
+    }
+  }
+
 
   //***************************************************************************/
   //***************************************************************************/
@@ -247,6 +295,14 @@ namespace STK
 
       rStream.read(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
       mVocabSize   = aux_int;
+
+      if(mFileVersion == 1)
+      {
+        rStream.read(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
+        mPredictorVocabSize   = aux_int;
+      }
+      else
+        mPredictorVocabSize   = mVocabSize;
 
       rStream.read(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
       mExtra0      = aux_int;
@@ -371,7 +427,7 @@ namespace STK
     if(rHeader.mFileVersion == 1)
     {
       mSet.clear();
-      mSet.reserve(rHeader.mVocabSize);
+      mSet.reserve(rHeader.mPredictorVocabSize);
 
       bool current_zero = true;
       // read records
@@ -400,7 +456,7 @@ namespace STK
     }
     else
     {
-      assert(size == rHeader.mVocabSize);
+      assert(size == rHeader.mPredictorVocabSize);
 
       mSet.clear();
       mSet.reserve(size);

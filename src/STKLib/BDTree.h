@@ -575,7 +575,7 @@ namespace STK
     mMapAdapt(false),
     mLVCSR(false),
     mRandomizeTree(false),
-    mMorphologicalPredictors(false)
+    mMorphologicalPredictors(0)
     {}
 
     double    mMinReduction;    ///< Minimum entropy reduction
@@ -597,7 +597,7 @@ namespace STK
     
     bool      mLVCSR;
     bool      mRandomizeTree;
-    bool      mMorphologicalPredictors;
+    int      mMorphologicalPredictors;
     
   }; //class BDTreeAttributes
 
