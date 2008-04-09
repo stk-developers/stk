@@ -730,30 +730,34 @@ namespace STK
           e_array[i-1] = e;
           delete p_tmp_question;
         }
-        double min_e =  e_array[0], max_e = e_array[0], limit;
-        for(i = 0; i < rTraits.mOrder; i++)
+        double min_e, max_e, limit;
+        min_e = e_array[0];
+        max_e = e_array[0];
+        for(i = 0; i < rTraits.mOrder-1; i++)
 	{
           if(e_array[i] > max_e)
             max_e = e_array[i];
           else if(e_array[i] < min_e)
             min_e = e_array[i];
         }
-        limit = (max_e - min_e) * rTraits.mMorphologicalPredictors / 100 + min_e;
-        int preds_above_limit = 0;
-        for(i = 0; i < rTraits.mOrder; i++)
-          if(e_array[i] >= limit)
-            preds_above_limit++;
+        // We're interested in lower entropy, that's why we do 100 - rTraits.mMorphologicalPredictors and then take everything that's lower
+        limit = (max_e - min_e) * (100 - rTraits.mMorphologicalPredictors) / 100 + min_e;
+        int preds_below_limit = 0;
+        for(i = 0; i < rTraits.mOrder-1; i++)
+          if(e_array[i] <= limit)
+            preds_below_limit++;
 
         // Now random value is in [1, preds_above_limit+1)
-        rand_pred = (int) ( ( (double)rand() / (  (double)(RAND_MAX) + (double)(1) ) ) * preds_above_limit ) + 1;
-        for(i = 0; i < rTraits.mOrder; i++)
+        rand_pred = (int) ( ( (double)rand() / (  (double)(RAND_MAX) + (double)(1) ) ) * preds_below_limit ) + 1;
+        for(i = 0; i < rTraits.mOrder-1; i++)
         {
-          if(e_array[i] >= limit)
+          if(e_array[i] <= limit)
             counter++;
           if(counter == rand_pred)
 	  {
-            p_best_question = FindSubset_Greedy(rNGrams, rTraits, &e, i);
+            p_best_question = FindSubset_Greedy(rNGrams, rTraits, &e, i+1);
             best_e = e;
+            break;
           }
 	}
         delete e_array;
@@ -761,6 +765,8 @@ namespace STK
       // In case of morph trees with --morphpred=1 , we do always keep word-questions in random shuffle and choose one additional predictor randomly
       else if(rTraits.mMorphologicalPredictors)
       {
+        rand_pred = (int) ( ( (double)rand() / (  (double)(RAND_MAX) + (double)(1) ) ) * (rTraits.mOrder-1) ) + 1;
+
         std::string factor_type, wrd;
         NGram::TokenType ngram_token;
         NGramSubset::NGramContainer::const_iterator it;
