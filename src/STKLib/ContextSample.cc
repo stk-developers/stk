@@ -281,6 +281,7 @@ namespace STK {
               rFileName);
         }
 
+        stream >> std::ws;
         // stream.seekg(0);
         AddFromStream(stream, weight);
 

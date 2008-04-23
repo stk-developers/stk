@@ -575,6 +575,8 @@ namespace STK
     mMapAdapt(false),
     mLVCSR(false),
     mRandomizeTree(false),
+    mRandomizePredictors(false),
+    mRandomizeQuestions(false),
     mMorphologicalPredictors(0)
     {}
 
@@ -597,7 +599,9 @@ namespace STK
     
     bool      mLVCSR;
     bool      mRandomizeTree;
-    int      mMorphologicalPredictors;
+    bool      mRandomizePredictors;
+    bool      mRandomizeQuestions;
+    int       mMorphologicalPredictors;
     
   }; //class BDTreeAttributes
 
@@ -861,6 +865,10 @@ namespace STK
 
     void
     FillLeafSupervector(BasicVector<double>& rVector, bool backoff, 
+        bool includeCounts);
+
+    void
+    PushLeafSupervector(const std::vector<double>& rVector, bool backoff, 
         bool includeCounts);
 
   private:

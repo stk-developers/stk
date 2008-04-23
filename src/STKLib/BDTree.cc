@@ -711,7 +711,7 @@ namespace STK
     BSetQuestion*   p_best_question = NULL;
 
     // choose predictor randomly for a random tree
-    if(rTraits.mRandomizeTree)
+    if(rTraits.mRandomizeTree && rTraits.mLVCSR)
     {
       int rand_pred;
       srand((unsigned)time(0));
@@ -801,8 +801,14 @@ namespace STK
           }
           best_e = e;
           p_best_question = p_tmp_question;
-      } 
+        } 
       }
+    }
+    else if(rTraits.mRandomizePredictors) {
+      int rand_pred = (int) (((double)rand() / ((double)(RAND_MAX) + 
+              (double)(1.0))) * (rTraits.mOrder - 1)) + 1;
+
+      p_best_question = FindSubset_Greedy(rNGrams, rTraits, &best_e, rand_pred);
     }
     else
     {
@@ -920,6 +926,7 @@ namespace STK
       // collect counts for each language and overal count for all langs
       for (i_subset=rNGrams.begin(); i_subset!=rNGrams.end(); ++i_subset) 
       {
+        std::cout << i_subset->Mass() << std::endl;
 	BigramMatrix0.CreateSizeVector(*i_subset, *p_new_question, pred, false);
 	BigramMatrix1.CreateSizeVector(*i_subset, *p_new_question, pred, true);
 
@@ -929,6 +936,8 @@ namespace STK
 	BigramMatrix0.Fill(*i_subset, *p_new_question, pred, false);
 	BigramMatrix1.Fill(*i_subset, *p_new_question, pred, true);
 
+        // Ondra asks: I don't understand this line, log_likelihood is not used any longer
+        // Why do we have to compute this???
 	log_likelihood = BigramMatrix0.CountLogLikelihood(BigramMatrix1);
       }
 
@@ -1011,61 +1020,79 @@ namespace STK
     }
     else
     {
-    // continue probing if any change was made in the previous iteration
-    while (inserted || deleted) {
-      inserted      = false;
-      deleted       = false;
+      if (rTraits.mRandomizeQuestions) {
+        BSetQuestion  aux_question(pred, vocab_size);
+        double        aux_mass_set;
+        double        aux_mass_unset = rNGrams.Mass();
 
-      // probe insertions
-      for (i_vocab=0; i_vocab<vocab_size; ++i_vocab) {
-        if (!p_new_question->EvalRawToken(i_vocab)) {
-          p_new_question->Set(i_vocab);
-
-          double this_e = rNGrams.ParallelSplitEntropy(*p_new_question, &mass0, &mass1);
-
-          if (this_e < e && mass0 >= rTraits.mMinInData && 
-              mass1 >= rTraits.mMinInData) 
-          {
-            e             = this_e;
-            i_best_change = i_vocab;
-            inserted      = true;
+        for(i_vocab = 0; i_vocab <= vocab_size; ++i_vocab) {
+          // probe the question. Does it do any data split???? ...
+          aux_question.Set(i_vocab);
+          rNGrams.ParallelSplitEntropy(aux_question, &aux_mass_set, &mass0);
+          aux_question.Unset(i_vocab);
+          
+          // ... if yes, then randomize it
+          if (aux_mass_set != aux_mass_unset) {
+            p_new_question->RandomShuffle(i_vocab);
           }
-
-          p_new_question->Unset(i_vocab);
         }
       }
 
-      // commit insertion
-      if (inserted) {
-        p_new_question->Set(i_best_change);
-      }
+      // continue probing if any change was made in the previous iteration
+      while (inserted || deleted) {
+        inserted      = false;
+        deleted       = false;
 
-      // probe deletions
-      for (i_vocab=0; i_vocab < vocab_size; ++i_vocab) {
-        // only inspect positive questions
-        if (p_new_question->EvalRawToken(i_vocab)) {
-          p_new_question->Unset(i_vocab);
+        // probe insertions
+        for (i_vocab=0; i_vocab<vocab_size; ++i_vocab) {
+          if (!p_new_question->EvalRawToken(i_vocab)) {
+            p_new_question->Set(i_vocab);
 
-          double this_e = rNGrams.ParallelSplitEntropy(*p_new_question, &mass0, &mass1);
+            double this_e = rNGrams.ParallelSplitEntropy(*p_new_question, &mass0, &mass1);
 
+            if (this_e < e && mass0 >= rTraits.mMinInData && 
+                mass1 >= rTraits.mMinInData) 
+            {
+              e             = this_e;
+              i_best_change = i_vocab;
+              inserted      = true;
+            }
 
-          if (this_e < e && mass0 >= rTraits.mMinInData && 
-              mass1 >= rTraits.mMinInData) 
-          {
-            e             = this_e;
-            i_best_change = i_vocab;
-            deleted       = true;
+            p_new_question->Unset(i_vocab);
           }
+        }
 
-          p_new_question->Set(i_vocab);
+        // commit insertion
+        if (inserted) {
+          p_new_question->Set(i_best_change);
+        }
+
+        // probe deletions
+        for (i_vocab=0; i_vocab < vocab_size; ++i_vocab) {
+          // only inspect positive questions
+          if (p_new_question->EvalRawToken(i_vocab)) {
+            p_new_question->Unset(i_vocab);
+
+            double this_e = rNGrams.ParallelSplitEntropy(*p_new_question, &mass0, &mass1);
+
+
+            if (this_e < e && mass0 >= rTraits.mMinInData && 
+                mass1 >= rTraits.mMinInData) 
+            {
+              e             = this_e;
+              i_best_change = i_vocab;
+              deleted       = true;
+            }
+
+            p_new_question->Set(i_vocab);
+          }
+        }
+
+        // commit deletion
+        if (deleted) {
+          p_new_question->Unset(i_best_change);
         }
       }
-
-      // commit deletion
-      if (deleted) {
-        p_new_question->Unset(i_best_change);
-      }
-    }
     }
 
     // update entropy if possible
@@ -1474,6 +1501,55 @@ namespace STK
 
   //***************************************************************************/
   //***************************************************************************/
+  void
+  BDTree::
+  PushLeafSupervector(const std::vector<double>& rVector, bool backoff,
+      bool includeCounts)
+  {
+    size_t vec_size;
+    size_t vocab_size;
+    size_t n_leaves;
+    size_t i = 0;
+
+    std::vector<BDTree*> leaves;
+    std::vector<BDTree*>::iterator i_leaf;
+    VecDistribution::Container::iterator i_prob;
+
+    // compute sizes
+    n_leaves    = GetLeaves(leaves);
+    vocab_size  = leaves.front()->mDist.mVec.size();
+    vec_size    = includeCounts ? n_leaves * vocab_size + n_leaves 
+                                : n_leaves * vocab_size;
+
+    // stack the leaves together and copy to the new supervector
+    for (i_leaf = leaves.begin(); i_leaf != leaves.end(); ++i_leaf) {
+      VecDistribution::Container::iterator i_prob_begin = backoff ? 
+        (**i_leaf).mpBackoffDist->mVec.begin() : (**i_leaf).mDist.mVec.begin();
+
+      VecDistribution::Container::iterator i_prob_end   = backoff ? 
+        (**i_leaf).mpBackoffDist->mVec.end() : (**i_leaf).mDist.mVec.end();
+
+      for (i_prob  = i_prob_begin; i_prob != i_prob_end; ++i_prob)
+      {
+        *i_prob = rVector[i];
+        ++i;
+      }
+
+      if (includeCounts) {
+        if (backoff) {
+          (**i_leaf).mpBackoffDist->mN = rVector[i];
+        }
+        else {
+          (**i_leaf).mDist.mN = rVector[i];
+        }
+
+        i++;
+      }
+    }
+  }
+
+  //***************************************************************************/
+  //***************************************************************************/
   // static
   void
   BDTree::
@@ -1654,7 +1730,10 @@ namespace STK
       NGram::TokenType* present_token = &((**it)[0]);
       NGram::ProbType   counts = (*it)->Counts();
 
-      assert(counts > 0); 
+      if (!(counts > 0)) {
+        continue;
+      }
+      // assert(counts > 0); 
 
       // The N-grams are all sorted accordind to most current words (first 
       // present words, then -1 context etc.). We take benefit of this since 
@@ -1719,7 +1798,10 @@ namespace STK
       NGram::TokenType* predictor_token = &((**it)[pred]);
       NGram::ProbType   counts = (*it)->Counts();
 
-      assert(counts > 0); 
+      if (!(counts > 0)) {
+        continue;
+      }
+      //assert(counts > 0); 
 
       if(YesAnswer && rQuestion.Eval(**it)
 	  || !YesAnswer && !rQuestion.Eval(**it))
@@ -1731,8 +1813,10 @@ namespace STK
 	  int     current_column = (this->mPointerVector[*predictor_token] + i)->GetColumn();
 	  double  current_count  = (this->mPointerVector[*predictor_token] + i)->GetCount();
 
-	  if (!(current_count > 0))
+          // Ondra asks: WHY break ????
+	  if (!(current_count > 0)) {
 	    break;
+          }
 
 	  else if(*present_token == current_column)
 	  {
@@ -1779,7 +1863,7 @@ namespace STK
       int     current_column = (MoveFromThisSet.mPointerVector[Predictor] + i)->GetColumn();
       double  current_count  = (MoveFromThisSet.mPointerVector[Predictor] + i)->GetCount();
 
-      assert(current_count > 0);
+      // assert(current_count > 0);
 
       MoveFromThisSet.mMarginalCountsPresent[current_column] -= current_count;
       this->mMarginalCountsPresent[current_column] += current_count;
@@ -1791,11 +1875,11 @@ namespace STK
     // Actually we do not use predctor marginal count vector
     MoveFromThisSet.mMarginalCountsPredictor[Predictor] -= counts_moved;
 
-    assert(MoveFromThisSet.mMarginalCountsPredictor[Predictor] == 0);
+    // assert(MoveFromThisSet.mMarginalCountsPredictor[Predictor] == 0);
 
     this->mMarginalCountsPredictor[Predictor] += counts_moved;
 
-    assert(this->mMarginalCountsPredictor[Predictor] == counts_moved);
+    // assert(this->mMarginalCountsPredictor[Predictor] == counts_moved);
 
     // update size vectors
     helper = this->mSizeVector[Predictor];
@@ -1827,17 +1911,28 @@ namespace STK
       count_A_ = SecondSet.mMarginalCountsPresent[i];
 
       if(count_A > 0)
-       log_likelihood += count_A  * log(count_A);
+        log_likelihood += count_A  * log(count_A);
       if(count_A_ > 0)
 	log_likelihood += count_A_ * log(count_A_);
     }
     total_A  = this->mTotalSum;
     total_A_ = SecondSet.mTotalSum;
 
+    // if (close_enough(total_A, 0.0, 10)) {
+    //   total_A = 0.0;
+    // }
+    // if (close_enough(total_A_, 0.0, 10)) {
+    //   total_A_ = 0.0;
+    // }
+
     assert(total_A >= 0 && total_A_ >= 0);
 
-    log_likelihood -= total_A  * log(total_A);
-    log_likelihood -= total_A_ * log(total_A_);
+    if(count_A > 0) {
+      log_likelihood -= count_A  * log(count_A);
+    }
+    if(count_A_ > 0) {
+      log_likelihood -= count_A_ * log(count_A_);
+    }
 
     return log_likelihood;
   }

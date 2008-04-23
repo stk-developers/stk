@@ -185,8 +185,7 @@ namespace STK
     rStream.write(BDTreeHeader::INTRO, 10);
     rStream.put(mBinary ? 'b' : 'a');
 
-    mHeaderSize = rStream.tellp();
-    mHeaderSize -= stream_pos + (std::streampos)(6*sizeof(INT_32));
+    mHeaderSize = (6*sizeof(INT_32));
 
     if (mBinary) {
       aux_int = mHeaderSize;
@@ -229,8 +228,7 @@ namespace STK
     rStream.write(BDTreeHeader::INTRO, 10);
     rStream.put(mBinary ? 'b' : 'a');
 
-    mHeaderSize = rStream.tellp();
-    mHeaderSize -= stream_pos + (std::streampos)(7*sizeof(INT_32));
+    mHeaderSize = 7*sizeof(INT_32);
 
     if (mBinary) {
       aux_int = mHeaderSize;
@@ -301,8 +299,9 @@ namespace STK
         rStream.read(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
         mPredictorVocabSize   = aux_int;
       }
-      else
+      else {
         mPredictorVocabSize   = mVocabSize;
+      }
 
       rStream.read(reinterpret_cast<char*>(&aux_int), sizeof(aux_int));
       mExtra0      = aux_int;

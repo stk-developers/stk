@@ -21,6 +21,16 @@ namespace STK
     int mExtra0;
     int mExtra1;
 
+    BDTreeHeader()
+    : mHeaderSize(sizeof(BDTreeHeader)), 
+      mFileVersion(0), 
+      mOrder(0),
+      mVocabSize(0),
+      mPredictorVocabSize(0),
+      mBinary(1),
+      mExtra0(0),
+      mExtra1(0)
+    { }
 
     /** 
      * @brief Reads header from open stream

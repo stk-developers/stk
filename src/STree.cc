@@ -97,9 +97,10 @@ int main(int argc, char* argv[])
       ("adaptr",        po::value<double>(&new_tree_traits.mAdaptR),          "Adapt r factor")
       ("cfgfile,C",     po::value<string>(&config_file),                      "Configuration file")
       ("help",                                                                "Print more detailed help") 
-      ("includecounts",                                                       "In connection with outvectors - add leaf counts to each cluster") 
+      ("includecounts",                                                       "In connection with outvectors and invector - augment each leaf with counts") 
       ("indexmlf",      po::value<bool>()->default_value(true),               "If true (default) perform indexing of MLF before reading") 
       ("inputmlf,I",    po::value<string>(),                                  "Source data MLF")
+      ("invector",      po::value<string>(),                                  "File with supervector of leaf distribution (see --action=pushleaves)")
       ("maxdepth",      po::value<int>(&new_tree_traits.mMaxDepth),           "Maximum tree depth criterion")
       ("minentr",       po::value<double>(&new_tree_traits.mMinReduction),    "Minimum entropy reduction criterion")
       ("mindata",       po::value<double>(&new_tree_traits.mMinInData),       "Minimum input data criterion")
@@ -109,6 +110,7 @@ int main(int argc, char* argv[])
       ("MMImininc",     po::value<double>(&new_tree_traits.mMinMMIIncrease),  "MMI max increase")
       ("scoreout",      po::value<string>(&score_output),                     "Score output file")
       ("order",         po::value<int>(&new_tree_traits.mOrder),              "Number of predictors")
+      ("outfileversion", po::value<int>(),                                    "Source data script")
       ("outvectors",    po::value<string>(),                                  "Cluster vector output file")
       ("predvoc",       po::value<string>(&predictor_vocab_fname),            "Predictor vocabulary file")
       ("script,S",      po::value<string>(),                                  "Source data script")
@@ -119,6 +121,8 @@ int main(int argc, char* argv[])
       ("tgtvoc",        po::value<string>(&target_vocab_fname),               "Target vocabulary file [same as predictor]")
       ("LVCSR",         po::value<bool>(&new_tree_traits.mLVCSR),             "LVCSR mode: Sparce matrices are used with exchange algorithm")
       ("randtree",      po::value<bool>(&new_tree_traits.mRandomizeTree),     "Use random question set split and predictor position selection when growing the tree")
+      ("randpred",      po::value<bool>(&new_tree_traits.mRandomizePredictors), "Use random predictor selection when growing the tree")
+      ("randquest",     po::value<bool>(&new_tree_traits.mRandomizeQuestions),"Use random question set split selection when growing the tree")
       ("outputARPA",    po::value<bool>(&output_ARPA),                        "Output scored N-grams in ARPA format")
       ("outARPAfile",   po::value<string>(&target_ARPA_fname),                "Target ARPA format LM")
       ("heldoutdata",   po::value<string>(&heldout_data_fname),               "Heldout data that can be used as stopping criteria at the training phase")
@@ -465,7 +469,7 @@ int main(int argc, char* argv[])
         list_stream >> std::ws;
 
         FileListElem new_record(line_buf);
-
+        
         if (var_map.count("inputmlf")) {
           // we'll be adding from stream if MLF specified
           mlf_data_stream.Open(new_record.Physical());
@@ -767,6 +771,17 @@ int main(int argc, char* argv[])
       if (target_specified) {
         data_collection.push_back(data_pools.back());
 
+        if (var_map.count("outfileversion")) {
+          file_header.mFileVersion = binary_format;
+        }
+        else if (binary_format) {
+          file_header.mFileVersion = binary_format;
+        }
+        else if (file_header.mFileVersion != 0 
+              || file_header.mFileVersion != 1) {
+          file_header.mFileVersion = 0;
+        }
+
         ::AdaptModel(new_tree, data_collection[0], target_model_name, 
             new_tree_traits, p_out_vector_stream, file_header);
       }
@@ -775,6 +790,106 @@ int main(int argc, char* argv[])
         p_out_vector_stream->close();
         delete p_out_vector_stream;
       }
+    }
+
+    //..........................................................................
+    // PUSH new values to the leaves from an ascii vector
+    else if (action == "pushleaves") {
+      if (source_model_name.empty()) {
+        throw runtime_error("Source model not specified");
+      }
+
+      if (target_model_name.empty()) {
+        throw runtime_error("Target model not specified");
+      }
+
+      // open stream
+      IStkStream model_stream(source_model_name.c_str());
+      if (!model_stream.good()) {
+        throw runtime_error(string("Error opening model file ") + 
+            source_model_name);
+      }
+
+      // load header
+      BDTreeHeader file_header;
+      file_header.Read(model_stream);
+      new_tree_traits.mOrder = file_header.mOrder;
+
+      // load tree
+      BDTree new_tree(model_stream, file_header);
+      model_stream.close();
+
+      BDTreeInfo tree_info;
+      new_tree.GetInfo(tree_info, NULL);
+
+      std::cout << "Vocabulary size:      " << file_header.mVocabSize << std::endl;
+      std::cout << "Total nodes:          " << tree_info.mTotalNodes << std::endl;
+      std::cout << "Total leaves:         " << tree_info.mTotalLeaves << std::endl;
+      std::cout << "Tree average entropy: " << tree_info.mAverageEntropy << std::endl;
+
+      // load leaf supervector .................................................
+      std::vector<double> super_vector(tree_info.mTotalLeaves * file_header.mVocabSize);
+      //super_vector.reserve();
+
+      if (!var_map.count("invector")) {
+        throw runtime_error("--invector was not specified");
+      }
+
+      // open the stream
+      std::string super_vector_file = var_map["invector"].as<string >();
+      IStkStream super_vector_stream(super_vector_file.c_str());
+      if (!super_vector_stream.good()) {
+        throw runtime_error(string("Error opening supervector file ") + 
+            super_vector_file);
+      }
+      super_vector_stream >> std::ws;
+
+      int i = 0;
+      while (!super_vector_stream.eof()) {
+        double aux_value;
+        super_vector_stream >> aux_value >> std::ws;
+        super_vector[i] = aux_value;
+        ++i;
+        std::cout << i << " - " << aux_value << std::flush << std::endl;
+      }
+
+      super_vector_stream.close();
+      std::cout << "Finished reading supervector" << std::flush << std::endl;
+
+      // MAIN THING HERE
+      // do the leaf update 
+      new_tree.PushLeafSupervector(super_vector, false, 
+          var_map.count("includecounts"));
+
+      if (var_map.count("outfileversion")) {
+        file_header.mFileVersion = binary_format;
+      }
+      else if (binary_format) {
+        file_header.mFileVersion = binary_format;
+      }
+      else if (file_header.mFileVersion != 0 
+            || file_header.mFileVersion != 1) {
+        file_header.mFileVersion = 0;
+      }
+
+      // write model 
+      OStkStream out_model_stream(target_model_name.c_str());
+      if (!out_model_stream.good()) {
+        throw runtime_error(string("Error opening target model file ") + 
+            target_model_name);
+      }
+
+      // output header
+      if(file_header.mFileVersion == 1) {
+        file_header.Write_bin1(out_model_stream);
+      }
+      else {
+        file_header.Write(out_model_stream);
+      }
+
+      // write the model and close stream
+      new_tree.Write(out_model_stream, file_header);
+      out_model_stream.close();
     }
 
     //..........................................................................
@@ -1006,7 +1121,7 @@ AdaptModel(const BDTree& rOrig, const NGramSubset& rNGrams,
     }
 
     // output header
-    if(file_header.mFileVersion)
+    if(file_header.mFileVersion == 1)
       file_header.Write_bin1(out_model_stream);
     else
       file_header.Write(out_model_stream);
