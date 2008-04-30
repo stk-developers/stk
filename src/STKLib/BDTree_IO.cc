@@ -365,10 +365,11 @@ namespace STK
       mpQuestion  = new BSetQuestion(rStream, rHeader);
       mpTree0     = new BDTree(rStream, rHeader);
       mpTree1     = new BDTree(rStream, rHeader);
+      mpDist      = NULL;
       mpBackoffDist = NULL;
     }
     else {
-      mDist.Read(rStream, rHeader);
+      mpDist      = new VecDistribution(rStream, rHeader);
       mpQuestion  = NULL;
       mpTree0     = NULL;
       mpTree1     = NULL;
@@ -393,7 +394,7 @@ namespace STK
     rStream.write(reinterpret_cast<char*>(&flag), sizeof(flag));
 
     if (IsLeaf()) {
-      mDist.Write(rStream, rHeader);
+      mpDist->Write(rStream, rHeader);
     }
     else {
       mpQuestion->Write(rStream, rHeader);

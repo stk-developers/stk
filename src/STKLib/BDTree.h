@@ -86,11 +86,17 @@ namespace STK
     typedef std::vector<int> ContainerInt;
     typedef SparseBigramCell* SparseBigramCellPntr;
 
-    SparseBigramMatrix() : mPresentVocabSize(0), mPredictorVocabSize(0), mSizeVector(), mMarginalCountsPresent(), mMarginalCountsPredictor(), mPointerVector(), mTotalSum(0)
-    {};
+    SparseBigramMatrix() 
+    : mPresentVocabSize(0), mPredictorVocabSize(0), mSizeVector(), 
+      mMarginalCountsPresent(), mMarginalCountsPredictor(), mPointerVector(), 
+      mTotalSum(0)
+    {}
 
     SparseBigramMatrix(int vocab_size)
-      : mPresentVocabSize(vocab_size), mPredictorVocabSize(vocab_size), mSizeVector(vocab_size), mMarginalCountsPresent(vocab_size), mMarginalCountsPredictor(vocab_size), mPointerVector(vocab_size), mTotalSum(0)
+    : mPresentVocabSize(vocab_size), mPredictorVocabSize(vocab_size), 
+      mSizeVector(vocab_size), mMarginalCountsPresent(vocab_size), 
+      mMarginalCountsPredictor(vocab_size), mPointerVector(vocab_size), 
+      mTotalSum(0)
     {
       int i;
       for(i = 0; i < vocab_size; i++)
@@ -100,10 +106,13 @@ namespace STK
 	mMarginalCountsPredictor[i] = 0;
 	//mPointerVector[i] = 0;
       }
-    };
+    }
 
-      SparseBigramMatrix(int present_size, int predictor_size)
-      : mPresentVocabSize(present_size), mPredictorVocabSize(predictor_size), mSizeVector(predictor_size), mMarginalCountsPresent(present_size), mMarginalCountsPredictor(predictor_size), mPointerVector(predictor_size), mTotalSum(0)
+    SparseBigramMatrix(int present_size, int predictor_size)
+    : mPresentVocabSize(present_size), mPredictorVocabSize(predictor_size), 
+      mSizeVector(predictor_size), mMarginalCountsPresent(present_size), 
+      mMarginalCountsPredictor(predictor_size), mPointerVector(predictor_size), 
+      mTotalSum(0)
     {
       int i;
       for(i = 0; i < predictor_size; i++)
@@ -113,12 +122,13 @@ namespace STK
       }
       for(i = 0; i < present_size; i++)
 	mMarginalCountsPresent[i] = 0;
-    };
+    }
 
     ~SparseBigramMatrix();
 
     /** 
-     * @brief Creates vector that tells how many different N-grams we have for each fixed predictor position
+     * @brief Creates vector that tells how many different N-grams we have for 
+     *        each fixed predictor position
      * 
      * @param rNGrams N-gram set we have at the node
      * @param rQuestion Current question at given node
@@ -126,7 +136,8 @@ namespace STK
      * @param YesAnswer 1 if we work with  left (answer=yes) subset, 0 otherwise
       */
     void
-    CreateSizeVector(const NGramSubset& rNGrams, const BSetQuestion& rQuestion, int pred, bool YesAnswer);
+    CreateSizeVector(const NGramSubset& rNGrams, const BSetQuestion& rQuestion, 
+        int pred, bool YesAnswer);
 
     /** 
      * @brief Allocate memory for sparce bigram matrix
@@ -422,6 +433,15 @@ namespace STK
     VecDistribution(const VecDistribution& rOrig)
     : Distribution(rOrig), mVec(rOrig.mVec)
     {}
+
+    /** 
+     * @brief Loads a new distr from a stream
+     * 
+     * @param rStream stream to read
+     * @param rHeader header containing file info
+     */
+    VecDistribution(std::istream& rStream, BDTreeHeader& rHeader);
+
     
     ~VecDistribution()
     {}
@@ -454,6 +474,10 @@ namespace STK
     void
     Write(std::ostream& rStream, BDTreeHeader& rHeader);
 
+
+    const size_t
+    Size() const 
+    { return mVec.size(); }
 
     /** 
      * @brief Returns the entropy of the distribution
@@ -632,6 +656,8 @@ namespace STK
   };
 
   typedef std::list<ChCoRecord> ChCoDataCollection;
+
+
 
   /** 
    * @brief Binary decision tree
@@ -900,7 +926,7 @@ namespace STK
     BDTree*           mpTree0;
     BDTree*           mpTree1;
     BQuestion*        mpQuestion;
-    VecDistribution   mDist;
+    VecDistribution*  mpDist;
     VecDistribution*  mpBackoffDist;
   }; // class BDTree
 } // namespace STK

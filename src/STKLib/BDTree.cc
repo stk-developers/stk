@@ -158,6 +158,15 @@ namespace STK
   //***************************************************************************/
   //***************************************************************************/
   //***************************************************************************/
+  VecDistribution::
+  VecDistribution(std::istream& rStream, BDTreeHeader& rHeader)
+  {
+    Read(rStream, rHeader);
+  }
+
+
+  //***************************************************************************/
+  //***************************************************************************/
   void
   VecDistribution::
   Fix()
@@ -425,8 +434,7 @@ namespace STK
   BDTree::
   BDTree(NGramSubsets& rData, NGramSubsets* rHeldoutData, BDTreeBuildTraits& rTraits,
       BDTree* pParent, const std::string& rPrefix)
-  : mDist(rData[0].Parent().pTargetTable()->Size()),
-    mpBackoffDist(NULL)
+  : mpDist(NULL), mpBackoffDist(NULL)
   {
     BuildFromNGrams(rData, rHeldoutData, rTraits, pParent, rPrefix);
   }
@@ -435,14 +443,15 @@ namespace STK
   //***************************************************************************/
   BDTree::
   BDTree(const BDTree& rOrig)
-  : mDist(rOrig.mDist)
   {
     if (!rOrig.IsLeaf()) {
+      mpDist      = NULL;
       mpTree0     = rOrig.mpTree0->Clone();
       mpTree1     = rOrig.mpTree1->Clone();
       mpQuestion  = rOrig.mpQuestion->Clone();
     }
     else {
+      mpDist      = new VecDistribution(*(rOrig.mpDist));
       mpTree0     = NULL;
       mpTree1     = NULL;
       mpQuestion  = NULL;
@@ -460,7 +469,7 @@ namespace STK
   //***************************************************************************/
   BDTree::
   BDTree(std::istream& rStream, BDTreeHeader& rHeader)
-  : mDist(rHeader.mVocabSize)
+  : mpDist(NULL), mpBackoffDist(NULL)
   {
     Read(rStream, rHeader);
   }
@@ -479,6 +488,9 @@ namespace STK
     }
     if (NULL != mpQuestion) {
       delete mpQuestion;
+    }
+    if (NULL != mpDist) {
+      delete mpDist;
     }
     if (NULL != mpBackoffDist) {
       delete mpBackoffDist;
@@ -502,17 +514,21 @@ namespace STK
     double    mmi_inc;
     BSetQuestion* p_new_question = NULL;
     int       depth = rTraits.mCurDepth;
+    size_t    vocab_size = rNGrams[0].Parent().pTargetTable()->Size();
+
 
     // compute distribution
-    //mDist.ComputeFromNGrams(rNGrams[0].mData.begin(), rNGrams[0].mData.end());
-    mDist.ComputeFromNGramSubsets(rNGrams);
+    // we compute it in all case, as we might want to smooth right away, for
+    // which we need the parent distribution
+    mpDist = new VecDistribution(vocab_size);
+    mpDist->ComputeFromNGramSubsets(rNGrams);
+
 
     if (NULL != pParent ) {
       if (rTraits.mSmoothR > 0) {
-        mDist.Smooth(pParent->mDist, rTraits.mSmoothR);
+        mpDist->Smooth(*(pParent->mpDist), rTraits.mSmoothR);
       }
     }
-
 
     if (rTraits.mVerbosity > 0) {
       std::cout << "BDTree::Info      " << rPrefix << "Data mass: " << rNGrams.Mass() << std::endl;
@@ -533,7 +549,7 @@ namespace STK
     }
 
     // check for data sufficiency
-    if (mDist.Counts() < rTraits.mMinInData) {
+    if (rNGrams.Mass() < rTraits.mMinInData) {
       if (rTraits.mVerbosity > 0) {
         std::cout << "BDTree::Info      " << rPrefix << "Leaf due to minimum input data criterion" << std::endl;
       }
@@ -672,6 +688,10 @@ namespace STK
       delete p_split_hld_data0;
       delete p_split_hld_data1;
 
+      if (NULL != mpDist) {
+        delete mpDist;
+        mpDist = NULL;
+      }
     } // else declare leaf
   }
 
@@ -694,8 +714,8 @@ namespace STK
     }
     else {
       rInfo.mTotalLeaves++;
-      rInfo.mTotalData += mDist.Counts();
-      rInfo.mAverageEntropy += mDist.Counts() * mDist.Entropy();
+      rInfo.mTotalData += mpDist->Counts();
+      rInfo.mAverageEntropy += mpDist->Counts() * mpDist->Entropy();
     }
   }
 
@@ -1204,7 +1224,7 @@ namespace STK
       return (*(p_node->mpBackoffDist))[rNGram[0]];
     }
     else {
-      return p_node->mDist[rNGram[0]];
+      return (*(p_node->mpDist))[rNGram[0]];
     }
   } // ScoreNGram(const NGram& rNGram)
 
@@ -1287,15 +1307,13 @@ namespace STK
         mpBackoffDist->Dump(rStream, rPrefix);
       }
       else {
-        mDist.Dump(rStream, rPrefix);
+        mpDist->Dump(rStream, rPrefix);
       }
 
     }
     else {
       std::string new_pref;
       mpQuestion->Dump(rStream, rPrefix);
-
-      //mDist.Dump(rStream, rPrefix);
 
       new_pref = rPrefix + "-  ";
       mpTree0->Dump(rStream, new_pref);
@@ -1314,10 +1332,12 @@ namespace STK
     if (!IsLeaf()) {
       mpTree0->RecomputeDists();
       mpTree1->RecomputeDists();
-      mDist.Reset();
-      mDist.Merge(mpTree0->mDist);
-      mDist.Merge(mpTree1->mDist);
-      //mDist.Dump(std::cout, "xx");
+      if (NULL == mpDist) {
+        mpDist = new VecDistribution(mpTree0->mpDist->Size());
+      }
+      mpDist->Reset();
+      mpDist->Merge(*(mpTree0->mpDist));
+      mpDist->Merge(*(mpTree1->mpDist));
     }
   }
 
@@ -1327,7 +1347,7 @@ namespace STK
   BDTree::
   ComputeBackoffDists(BDTree* pParent, double r)
   {
-    mpBackoffDist = new VecDistribution(mDist);
+    mpBackoffDist = new VecDistribution(*mpDist);
 
     if (NULL != pParent && r > 0) {
       mpBackoffDist->Smooth(*(pParent->mpBackoffDist), r);
@@ -1357,9 +1377,8 @@ namespace STK
       } 
 
       //std::cout << r_ngram[0] << std::endl;
-      p_node->mDist.mVec[r_ngram[0]]  += r_ngram.Counts();
-      p_node->mDist.mN                += r_ngram.Counts();
-      //p_node->mDist.Dump(std::cout, "");
+      p_node->mpDist->mVec[r_ngram[0]]  += r_ngram.Counts();
+      p_node->mpDist->mN                += r_ngram.Counts();
     }
   }
   
@@ -1388,30 +1407,30 @@ namespace STK
 
       // if mpBackoff is not initialized yet
       if (NULL == p_node->mpBackoffDist) {
-        p_node->mpBackoffDist = new VecDistribution(p_node->mDist);
-        p_node->mDist.mN      = 0.0;
-        p_node->mDist.Reset();
+        p_node->mpBackoffDist = new VecDistribution(*(p_node->mpDist));
+        p_node->mpDist->mN      = 0.0;
+        p_node->mpDist->Reset();
       }
 
-      p_node->mDist.mVec[r_ngram[0]]  += r_ngram.Counts();
-      p_node->mDist.mN                += r_ngram.Counts();
+      p_node->mpDist->mVec[r_ngram[0]]  += r_ngram.Counts();
+      p_node->mpDist->mN                += r_ngram.Counts();
     }
 
     if (rTraits.mMapAdapt) {
       // recompute all distributions
       for (i_leaf = leaf_map.begin(); i_leaf != leaf_map.end(); ++i_leaf) {
-        (*i_leaf)->mDist.Fix();
+        (*i_leaf)->mpDist->Fix();
         if (r > 0) {
-          (*i_leaf)->mDist.MapAdapt(*((**i_leaf).mpBackoffDist), r);
+          (*i_leaf)->mpDist->MapAdapt(*((**i_leaf).mpBackoffDist), r);
         }
       }
     }
     else {
       // recompute all distributions
       for (i_leaf = leaf_map.begin(); i_leaf != leaf_map.end(); ++i_leaf) {
-        (*i_leaf)->mDist.Fix();
+        (*i_leaf)->mpDist->Fix();
         if (r > 0) {
-          (*i_leaf)->mDist.Smooth(*((**i_leaf).mpBackoffDist), r);
+          (*i_leaf)->mpDist->Smooth(*((**i_leaf).mpBackoffDist), r);
         }
       }
     }
@@ -1428,7 +1447,7 @@ namespace STK
       mpTree1->ResetLeaves();
     }
     else {
-      mDist.Reset();
+      mpDist->Reset();
     }
   }
 
@@ -1468,7 +1487,7 @@ namespace STK
 
     // compute sizes
     n_leaves    = GetLeaves(leaves);
-    vocab_size  = leaves.front()->mDist.mVec.size();
+    vocab_size  = leaves.front()->mpDist->mVec.size();
     vec_size    = includeCounts ? n_leaves * vocab_size + n_leaves 
                                 : n_leaves * vocab_size;
 
@@ -1480,10 +1499,10 @@ namespace STK
     // stack the leaves together and copy to the new supervector
     for (i_leaf = leaves.begin(); i_leaf != leaves.end(); ++i_leaf) {
       VecDistribution::Container::iterator i_prob_begin = backoff ? 
-        (**i_leaf).mpBackoffDist->mVec.begin() : (**i_leaf).mDist.mVec.begin();
+        (**i_leaf).mpBackoffDist->mVec.begin() : (**i_leaf).mpDist->mVec.begin();
 
       VecDistribution::Container::iterator i_prob_end   = backoff ? 
-        (**i_leaf).mpBackoffDist->mVec.end() : (**i_leaf).mDist.mVec.end();
+        (**i_leaf).mpBackoffDist->mVec.end() : (**i_leaf).mpDist->mVec.end();
 
       for (i_prob  = i_prob_begin; i_prob != i_prob_end; ++i_prob)
       {
@@ -1492,7 +1511,7 @@ namespace STK
       }
 
       if (includeCounts) {
-        rVector[i] = backoff ? (**i_leaf).mDist.Counts() 
+        rVector[i] = backoff ? (**i_leaf).mpDist->Counts() 
                              : (**i_leaf).mpBackoffDist->Counts() ;
         i++;
       }
@@ -1517,17 +1536,17 @@ namespace STK
 
     // compute sizes
     n_leaves    = GetLeaves(leaves);
-    vocab_size  = leaves.front()->mDist.mVec.size();
+    vocab_size  = leaves.front()->mpDist->mVec.size();
     vec_size    = includeCounts ? n_leaves * vocab_size + n_leaves 
                                 : n_leaves * vocab_size;
 
     // stack the leaves together and copy to the new supervector
     for (i_leaf = leaves.begin(); i_leaf != leaves.end(); ++i_leaf) {
       VecDistribution::Container::iterator i_prob_begin = backoff ? 
-        (**i_leaf).mpBackoffDist->mVec.begin() : (**i_leaf).mDist.mVec.begin();
+        (**i_leaf).mpBackoffDist->mVec.begin() : (**i_leaf).mpDist->mVec.begin();
 
       VecDistribution::Container::iterator i_prob_end   = backoff ? 
-        (**i_leaf).mpBackoffDist->mVec.end() : (**i_leaf).mDist.mVec.end();
+        (**i_leaf).mpBackoffDist->mVec.end() : (**i_leaf).mpDist->mVec.end();
 
       for (i_prob  = i_prob_begin; i_prob != i_prob_end; ++i_prob)
       {
@@ -1540,7 +1559,7 @@ namespace STK
           (**i_leaf).mpBackoffDist->mN = rVector[i];
         }
         else {
-          (**i_leaf).mDist.mN = rVector[i];
+          (**i_leaf).mpDist->mN = rVector[i];
         }
 
         i++;

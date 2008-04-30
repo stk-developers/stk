@@ -283,6 +283,54 @@ namespace STK
   //****************************************************************************
   //****************************************************************************
   template<typename _ElemT>
+    BasicVector<_ElemT>&
+    BasicVector<_ElemT>::
+    AddColSum(const Matrix<_ElemT>& rM)
+    {
+      // note the double accumulator
+      double sum;
+
+      assert(mLength == rM.Cols());
+
+      for (size_t i = 0; i < mLength; ++i) {
+        sum = 0.0;
+        for (size_t j = 0; j < rM.Rows(); ++j) {
+          sum += rM[j][i];
+        }  
+        mpData[i] += sum;
+      } 
+
+      return *this;
+    }
+
+
+  //****************************************************************************
+  //****************************************************************************
+  template<typename _ElemT>
+    BasicVector<_ElemT>&
+    BasicVector<_ElemT>::
+    AddRowSum(const Matrix<_ElemT>& rM)
+    {
+      // note the double accumulator
+      double sum;
+
+      assert(mLength == rM.Rows());
+
+      for (size_t i = 0; i < mLength; ++i) {
+        sum = 0.0;
+        for (size_t j = 0; j < rM.Cols(); ++j) {
+          sum += rM[i][j];
+        }  
+        mpData[i] += sum;
+      } 
+
+      return *this;
+    }
+
+
+  //****************************************************************************
+  //****************************************************************************
+  template<typename _ElemT>
     _ElemT
     BasicVector<_ElemT>::
     LogSumExp() const

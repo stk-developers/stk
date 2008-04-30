@@ -182,6 +182,14 @@ namespace STK
       _ElemT
       Sum() const; 
 
+      /// Returns sum of the elements
+      BasicVector<_ElemT>&
+      AddRowSum(const Matrix<_ElemT>& rM); 
+
+      /// Returns sum of the elements
+      BasicVector<_ElemT>&
+      AddColSum(const Matrix<_ElemT>& rM); 
+
       /// Returns log(sum(exp())) without exp overflow
       _ElemT
       LogSumExp() const;
