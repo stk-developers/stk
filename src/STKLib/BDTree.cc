@@ -1953,10 +1953,10 @@ namespace STK
     assert(total_A >= 0 && total_A_ >= 0);
 
     if(count_A > 0) {
-      log_likelihood -= count_A  * log(count_A);
+      log_likelihood -= total_A  * log(total_A);
     }
     if(count_A_ > 0) {
-      log_likelihood -= count_A_ * log(count_A_);
+      log_likelihood -= total_A_ * log(total_A_);
     }
 
     return log_likelihood;
