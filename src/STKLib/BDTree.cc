@@ -517,15 +517,13 @@ namespace STK
     size_t    vocab_size = rNGrams[0].Parent().pTargetTable()->Size();
 
 
-    // compute distribution
-    // we compute it in all case, as we might want to smooth right away, for
-    // which we need the parent distribution
-    mpDist = new VecDistribution(vocab_size);
-    mpDist->ComputeFromNGramSubsets(rNGrams);
-
 
     if (NULL != pParent ) {
       if (rTraits.mSmoothR > 0) {
+        // compute distribution as we  want to smooth right away, for
+        // which we need the parent distribution
+        mpDist = new VecDistribution(vocab_size);
+        mpDist->ComputeFromNGramSubsets(rNGrams);
         mpDist->Smooth(*(pParent->mpDist), rTraits.mSmoothR);
       }
     }
@@ -542,6 +540,8 @@ namespace STK
         std::cout << "BDTree::Info      " << rPrefix << "Leaf due to maximum depth criterion" << std::endl;
       }
 
+      mpDist = new VecDistribution(vocab_size);
+      mpDist->ComputeFromNGramSubsets(rNGrams);
       mpQuestion = NULL;
       mpTree0    = NULL;
       mpTree1    = NULL;
@@ -554,6 +554,8 @@ namespace STK
         std::cout << "BDTree::Info      " << rPrefix << "Leaf due to minimum input data criterion" << std::endl;
       }
 
+      mpDist = new VecDistribution(vocab_size);
+      mpDist->ComputeFromNGramSubsets(rNGrams);
       mpQuestion = NULL;
       mpTree0    = NULL;
       mpTree1    = NULL;
@@ -635,6 +637,8 @@ namespace STK
         delete p_new_question;
       }
 
+      mpDist = new VecDistribution(vocab_size);
+      mpDist->ComputeFromNGramSubsets(rNGrams);
       mpQuestion = NULL;
       mpTree0    = NULL;
       mpTree1    = NULL;
@@ -655,6 +659,8 @@ namespace STK
         delete p_new_question;
       }
 
+      mpDist = new VecDistribution(vocab_size);
+      mpDist->ComputeFromNGramSubsets(rNGrams);
       mpQuestion = NULL;
       mpTree0    = NULL;
       mpTree1    = NULL;
