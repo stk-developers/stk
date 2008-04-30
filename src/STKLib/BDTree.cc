@@ -952,7 +952,7 @@ namespace STK
       // collect counts for each language and overal count for all langs
       for (i_subset=rNGrams.begin(); i_subset!=rNGrams.end(); ++i_subset) 
       {
-        std::cout << i_subset->Mass() << std::endl;
+        //std::cout << i_subset->Mass() << std::endl;
 	BigramMatrix0.CreateSizeVector(*i_subset, *p_new_question, pred, false);
 	BigramMatrix1.CreateSizeVector(*i_subset, *p_new_question, pred, true);
 
@@ -1952,10 +1952,10 @@ namespace STK
 
     assert(total_A >= 0 && total_A_ >= 0);
 
-    if(count_A > 0) {
+    if(total_A > 0) {
       log_likelihood -= total_A  * log(total_A);
     }
-    if(count_A_ > 0) {
+    if(total_A_ > 0) {
       log_likelihood -= total_A_ * log(total_A_);
     }
 
