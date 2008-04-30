@@ -25,7 +25,7 @@ namespace STK
    */
   class SparseBigramCell {
   public:
-    typedef double CountType;
+    typedef FLOAT CountType;
 
     SparseBigramCell() : mColumn(0), mCellCount(0)
     {};
@@ -82,6 +82,7 @@ namespace STK
   class SparseBigramMatrix {
   public:
     //typedef double CountType;
+    typedef FLOAT ProbType;
     typedef std::vector<NGram::ProbType> ContainerProb;
     typedef std::vector<int> ContainerInt;
     typedef SparseBigramCell* SparseBigramCellPntr;
@@ -166,7 +167,7 @@ namespace STK
      * @param MoveFromThisSet the set from which we move basic element to current object
      * @param Predictor Current word in predictor we ask question about
      */
-    double
+    ProbType
     InsertBasicElement(SparseBigramMatrix& MoveFromThisSet, const int Predictor);
 
     /** 
@@ -174,7 +175,7 @@ namespace STK
      * 
      * @param MoveFromThisSet Second set with which we count log-likelihood
      */
-    double
+    ProbType
     CountLogLikelihood(const SparseBigramMatrix& MoveFromThisSet) const;
 
     /** 
@@ -332,7 +333,7 @@ namespace STK
   class Distribution
   {
   public:
-    typedef double ProbType;
+    typedef FLOAT ProbType;
 
     Distribution() 
     :  mN(0)
@@ -419,8 +420,8 @@ namespace STK
   class VecDistribution : public Distribution
   {
   public:
-    typedef double ProbType;
-    typedef std::vector<double> Container;
+    typedef FLOAT ProbType;
+    typedef std::vector<ProbType> Container;
 
     VecDistribution() 
     : Distribution(), mVec()
@@ -545,7 +546,7 @@ namespace STK
      * b = #(s) / (#(s)+r)
      */
     virtual void
-    Smooth(const VecDistribution& rDistr, double r);
+    Smooth(const VecDistribution& rDistr, FLOAT r);
 
 
     /** 
@@ -561,7 +562,7 @@ namespace STK
      * b = N / (N+r)
      */
     virtual void
-    MapAdapt(const VecDistribution& rDistr, double r);
+    MapAdapt(const VecDistribution& rDistr, FLOAT r);
 
 
     ProbType
@@ -604,20 +605,20 @@ namespace STK
     mMorphologicalPredictors(0)
     {}
 
-    double    mMinReduction;    ///< Minimum entropy reduction
-    double    mMinInData;       ///< Minimum input data mass
+    FLOAT     mMinReduction;    ///< Minimum entropy reduction
+    FLOAT     mMinInData;       ///< Minimum input data mass
     int       mOrder;           ///< Number of predictors
     int       mMaxDepth;        ///< Maximum tree depth (root is depth 0)
     int       mCurDepth;        ///< Maximum tree depth (root is depth 0)
 
-    double    mSmoothR;         ///< Bottom-up recursive smoothing r-factor
-    double    mAdaptR;          ///< Adapt smoothing r-factor
+    FLOAT     mSmoothR;         ///< Bottom-up recursive smoothing r-factor
+    FLOAT     mAdaptR;          ///< Adapt smoothing r-factor
     int       mVerbosity;       ///< Verbosity level
 
     bool      mMMItoggle;
-    double    mMMIAlpha;        ///< MMI alpha constant
-    double    mMMIEta;          ///< MMI eta constant
-    double    mMinMMIIncrease;  ///< 
+    FLOAT     mMMIAlpha;        ///< MMI alpha constant
+    FLOAT     mMMIEta;          ///< MMI eta constant
+    FLOAT     mMinMMIIncrease;  ///< 
 
     bool      mMapAdapt;
     
@@ -647,15 +648,6 @@ namespace STK
     size_t  mTotalNodes;
     size_t  mTotalLeaves;
   };
-
-
-  struct ChCoRecord {
-    NGramSubset*    mpNGrams;
-    BDTree*         mpModel;
-    BasicVector<double>  mWeights;
-  };
-
-  typedef std::list<ChCoRecord> ChCoDataCollection;
 
 
 
@@ -770,7 +762,7 @@ namespace STK
      * @return pointer to new question if succeede, otherwise NULL
      */
     BSetQuestion*
-    FindSimpleQuestion(NGramSubsets& rNGrams, BDTreeBuildTraits& rTraits, double* pSplitEnt) ;
+    FindSimpleQuestion(NGramSubsets& rNGrams, BDTreeBuildTraits& rTraits, FLOAT* pSplitEnt) ;
 
 
     /** 
@@ -783,7 +775,7 @@ namespace STK
      * @return pointer to new question if succeede, otherwise NULL
      */
     BSetQuestion*
-    FindSimpleQuestion_MMI(NGramSubsets& rNGrams, BDTreeBuildTraits& rTraits, double* pSplitMMI) ;
+    FindSimpleQuestion_MMI(NGramSubsets& rNGrams, BDTreeBuildTraits& rTraits, FLOAT* pSplitMMI) ;
 
 
     /** 
@@ -795,7 +787,7 @@ namespace STK
      * NOTE: Smoothing is not done on-line. It has to be precomputed using 
      * ComputeBackoffDists
      */
-    double 
+    FLOAT 
     ScoreNGram(const NGram& rNGram);
 
     /** 
@@ -806,7 +798,7 @@ namespace STK
      * 
      * @return utterance score
      */
-    double
+    FLOAT
     ScoreNGramSubset(const NGramSubset& rNGrams);
 
     /** 
@@ -829,7 +821,7 @@ namespace STK
      * See Distribution::Smooth(...) for details
      */
     void
-    ComputeBackoffDists(BDTree* pParent, double r);
+    ComputeBackoffDists(BDTree* pParent, FLOAT r);
 
     /** 
      * @brief Recomputes distribution in non-leaf nodes
@@ -890,37 +882,22 @@ namespace STK
     GetLeaves(std::vector<BDTree*>& rCollection);
 
     void
-    FillLeafSupervector(BasicVector<double>& rVector, bool backoff, 
+    FillLeafSupervector(BasicVector<FLOAT>& rVector, bool backoff, 
         bool includeCounts);
 
     void
-    PushLeafSupervector(const std::vector<double>& rVector, bool backoff, 
+    PushLeafSupervector(const std::vector<FLOAT>& rVector, bool backoff, 
         bool includeCounts);
 
   private:
     BSetQuestion*
-    FindSubset_Greedy(NGramSubsets& rNGrams, BDTreeBuildTraits& rTraits, double* pSplitEnt,
+    FindSubset_Greedy(NGramSubsets& rNGrams, BDTreeBuildTraits& rTraits, FLOAT* pSplitEnt,
         int pred);
 
     BSetQuestion*
-    FindSubset_Greedy_MMI(NGramSubsets& rNGrams, BDTreeBuildTraits& rTraits, double* pSplitMMI,
+    FindSubset_Greedy_MMI(NGramSubsets& rNGrams, BDTreeBuildTraits& rTraits, FLOAT* pSplitMMI,
         int pred);
 
-    static void
-    ChCo_AdaptWeightVector(
-        BasicVector<double>&        rVector, 
-        const Matrix<double>&       rXformMatrix, 
-        const BasicVector<double>&  rLM,
-        const BasicVector<double>&  rNGrams, 
-        int nIter, 
-        double eps);
-
-    static void
-    ChCo_AdaptXformMatrix(
-        Matrix<double>&             rMatrix, 
-        const ChCoDataCollection&   rData, 
-        int                         nIter, 
-        double                      eps);
 
   private:
     BDTree*           mpTree0;

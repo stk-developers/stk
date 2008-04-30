@@ -156,7 +156,7 @@ namespace STK {
   //***************************************************************************/
   void
   NGramPool::
-  AddFromStream(std::istream& rStream, const double& weight)
+  AddFromStream(std::istream& rStream, FLOAT weight)
   {
     try 
     {
@@ -267,7 +267,7 @@ namespace STK {
   //***************************************************************************/
   void
   NGramPool::
-  AddFromFile(const std::string& rFileName, const double& weight)
+  AddFromFile(const std::string& rFileName, FLOAT weight)
   {
     try {
       if (weight > 0) {

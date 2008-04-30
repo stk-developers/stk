@@ -26,7 +26,7 @@ namespace STK
   class NGram : public BQuestionTerm
   {
   public:
-    typedef double  ProbType;
+    typedef FLOAT   ProbType;
     typedef int     TokenType;
 
     //..........................................................................
@@ -273,10 +273,10 @@ namespace STK
     ~NGramPool();
 
     void 
-    AddFromFile(const std::string& rFileName, const double& weight);
+    AddFromFile(const std::string& rFileName, FLOAT weight);
 
     void 
-    AddFromStream(std::istream& rStream, const double& weight);
+    AddFromStream(std::istream& rStream, FLOAT weight);
 
     void
     setPredictorVocab(VocabularyTable* pVocab)

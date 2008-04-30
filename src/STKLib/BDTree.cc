@@ -363,7 +363,7 @@ namespace STK
   //***************************************************************************/
   void
   VecDistribution::
-  Smooth(const VecDistribution& rDistr, double r)
+  Smooth(const VecDistribution& rDistr, FLOAT r)
   {
     double norm   = 0; //DBL_EPSILON;
     double new_mn = 0; //DBL_EPSILON;
@@ -398,7 +398,7 @@ namespace STK
   //***************************************************************************/
   void
   VecDistribution::
-  MapAdapt(const VecDistribution& rDistr, double r)
+  MapAdapt(const VecDistribution& rDistr, FLOAT r)
   {
     double norm   = 0; //DBL_EPSILON;
     double new_mn = 0; //DBL_EPSILON;
@@ -505,27 +505,25 @@ namespace STK
   BuildFromNGrams(NGramSubsets& rNGrams, NGramSubsets* rHeldoutNGrams, BDTreeBuildTraits& rTraits,
       BDTree* pParent, const std::string& rPrefix)
   {
-    double    total_entropy, heldout_total_entropy;
-    double    split_entropy, heldout_split_entropy;
-    double    entropy_red, heldout_entropy_red;
+    FLOAT     total_entropy, heldout_total_entropy;
+    FLOAT     split_entropy, heldout_split_entropy;
+    FLOAT     entropy_red, heldout_entropy_red;
 
-    double    total_mmi;
-    double    split_mmi;
-    double    mmi_inc;
+    FLOAT     total_mmi;
+    FLOAT     split_mmi;
+    FLOAT     mmi_inc;
     BSetQuestion* p_new_question = NULL;
     int       depth = rTraits.mCurDepth;
     size_t    vocab_size = rNGrams[0].Parent().pTargetTable()->Size();
 
 
 
-    if (NULL != pParent ) {
-      if (rTraits.mSmoothR > 0) {
-        // compute distribution as we  want to smooth right away, for
-        // which we need the parent distribution
-        mpDist = new VecDistribution(vocab_size);
-        mpDist->ComputeFromNGramSubsets(rNGrams);
-        mpDist->Smooth(*(pParent->mpDist), rTraits.mSmoothR);
-      }
+    if (NULL != pParent && rTraits.mSmoothR > 0) {
+      // compute distribution as we  want to smooth right away, for
+      // which we need the parent distribution
+      mpDist = new VecDistribution(vocab_size);
+      mpDist->ComputeFromNGramSubsets(rNGrams);
+      mpDist->Smooth(*(pParent->mpDist), rTraits.mSmoothR);
     }
 
     if (rTraits.mVerbosity > 0) {
@@ -540,8 +538,10 @@ namespace STK
         std::cout << "BDTree::Info      " << rPrefix << "Leaf due to maximum depth criterion" << std::endl;
       }
 
-      mpDist = new VecDistribution(vocab_size);
-      mpDist->ComputeFromNGramSubsets(rNGrams);
+      if (NULL == mpDist) {
+        mpDist = new VecDistribution(vocab_size);
+        mpDist->ComputeFromNGramSubsets(rNGrams);
+      }
       mpQuestion = NULL;
       mpTree0    = NULL;
       mpTree1    = NULL;
@@ -554,8 +554,10 @@ namespace STK
         std::cout << "BDTree::Info      " << rPrefix << "Leaf due to minimum input data criterion" << std::endl;
       }
 
-      mpDist = new VecDistribution(vocab_size);
-      mpDist->ComputeFromNGramSubsets(rNGrams);
+      if (NULL == mpDist) {
+        mpDist = new VecDistribution(vocab_size);
+        mpDist->ComputeFromNGramSubsets(rNGrams);
+      }
       mpQuestion = NULL;
       mpTree0    = NULL;
       mpTree1    = NULL;
@@ -637,8 +639,10 @@ namespace STK
         delete p_new_question;
       }
 
-      mpDist = new VecDistribution(vocab_size);
-      mpDist->ComputeFromNGramSubsets(rNGrams);
+      if (NULL == mpDist) {
+        mpDist = new VecDistribution(vocab_size);
+        mpDist->ComputeFromNGramSubsets(rNGrams);
+      }
       mpQuestion = NULL;
       mpTree0    = NULL;
       mpTree1    = NULL;
@@ -659,8 +663,10 @@ namespace STK
         delete p_new_question;
       }
 
-      mpDist = new VecDistribution(vocab_size);
-      mpDist->ComputeFromNGramSubsets(rNGrams);
+      if (NULL == mpDist) {
+        mpDist = new VecDistribution(vocab_size);
+        mpDist->ComputeFromNGramSubsets(rNGrams);
+      }
       mpQuestion = NULL;
       mpTree0    = NULL;
       mpTree1    = NULL;
@@ -730,10 +736,10 @@ namespace STK
   //***************************************************************************/
   BSetQuestion*
   BDTree::
-  FindSimpleQuestion(NGramSubsets& rNGrams, BDTreeBuildTraits& rTraits, double* pSplitEnt) 
+  FindSimpleQuestion(NGramSubsets& rNGrams, BDTreeBuildTraits& rTraits, FLOAT* pSplitEnt) 
   {
-    double          e = 0.0;
-    double          best_e = -1.0;
+    FLOAT           e = 0.0;
+    FLOAT           best_e = -1.0;
     BSetQuestion*   p_best_question = NULL;
 
     // choose predictor randomly for a random tree
@@ -864,10 +870,10 @@ namespace STK
   //***************************************************************************/
   BSetQuestion*
   BDTree::
-  FindSimpleQuestion_MMI(NGramSubsets& rNGrams, BDTreeBuildTraits& rTraits, double* pSplitMMI) 
+  FindSimpleQuestion_MMI(NGramSubsets& rNGrams, BDTreeBuildTraits& rTraits, FLOAT* pSplitMMI) 
   {
-    double          mmi = -10000;
-    double          best_mmi = mmi - 1.0;
+    FLOAT           mmi = -10000;
+    FLOAT           best_mmi = mmi - 1.0;
     BSetQuestion*   p_best_question = NULL;
 
 
@@ -896,7 +902,7 @@ namespace STK
   //***************************************************************************/
   BSetQuestion*
   BDTree::
-  FindSubset_Greedy(NGramSubsets& rNGrams, BDTreeBuildTraits& rTraits, double* pSplitEnt,
+  FindSubset_Greedy(NGramSubsets& rNGrams, BDTreeBuildTraits& rTraits, FLOAT* pSplitEnt,
       int pred) 
   {
     bool    inserted  = true;
@@ -1135,7 +1141,7 @@ namespace STK
   BSetQuestion*
   BDTree::
   FindSubset_Greedy_MMI(NGramSubsets& rNGrams, BDTreeBuildTraits& rTraits, 
-      double* pSplitMMI, int pred) 
+      FLOAT* pSplitMMI, int pred) 
   {
     double  mass0;
     double  mass1;
@@ -1216,7 +1222,7 @@ namespace STK
 
   //***************************************************************************/
   //***************************************************************************/
-  double
+  FLOAT
   BDTree::
   ScoreNGram(const NGram& rNGram)
   {
@@ -1237,7 +1243,7 @@ namespace STK
 
   //***************************************************************************/
   //***************************************************************************/
-  double
+  FLOAT
   BDTree::
   ScoreNGramSubset(const NGramSubset& rNGrams)
   {
@@ -1351,7 +1357,7 @@ namespace STK
   //***************************************************************************/
   void
   BDTree::
-  ComputeBackoffDists(BDTree* pParent, double r)
+  ComputeBackoffDists(BDTree* pParent, FLOAT r)
   {
     mpBackoffDist = new VecDistribution(*mpDist);
 
@@ -1479,7 +1485,7 @@ namespace STK
   //***************************************************************************/
   void
   BDTree::
-  FillLeafSupervector(BasicVector<double>& rVector, bool backoff,
+  FillLeafSupervector(BasicVector<FLOAT>& rVector, bool backoff,
       bool includeCounts)
   {
     size_t vec_size;
@@ -1528,7 +1534,7 @@ namespace STK
   //***************************************************************************/
   void
   BDTree::
-  PushLeafSupervector(const std::vector<double>& rVector, bool backoff,
+  PushLeafSupervector(const std::vector<FLOAT>& rVector, bool backoff,
       bool includeCounts)
   {
     size_t vec_size;
@@ -1573,40 +1579,6 @@ namespace STK
     }
   }
 
-  //***************************************************************************/
-  //***************************************************************************/
-  // static
-  void
-  BDTree::
-  ChCo_AdaptWeightVector(
-      BasicVector<double>&        rVector, 
-      const Matrix<double>&       rXformMatrix, 
-      const BasicVector<double>&  rLM,
-      const BasicVector<double>&  rNGrams, 
-      int nIter, 
-      double eps)
-  {
-    int                   i;
-    BasicVector<double>   dV(rXformMatrix.Cols());
-    BasicVector<double>   aux_vec(rVector.Length()); //rLM + V * rVector
-    double                ngram_mass = rNGrams.Sum();
-
-
-    // gradient descent iteration
-    for (int i = 0; i < nIter; ++i) {
-      // reset grad vector
-      dV.Clear();
-      aux_vec = rLM;
-
-      // compute the aux vector
-      aux_vec.AddCMtVMul(1.0, rXformMatrix, rVector);
-
-      dV.AddCMtVMul(1.0, rXformMatrix, rNGrams);
-
-      // update the vector
-      rVector.AddCVMul(eps, dV);
-    }
-  }  // ChCo_AdaptWeightVector
 
 
   //***************************************************************************/
@@ -1870,7 +1842,7 @@ namespace STK
 
   //***************************************************************************/
   //***************************************************************************/  
-  double
+  SparseBigramMatrix::ProbType
   SparseBigramMatrix::InsertBasicElement(SparseBigramMatrix& MoveFromThisSet, 
       const int Predictor)
   {
@@ -1922,7 +1894,7 @@ namespace STK
 
   //***************************************************************************/
   //***************************************************************************/  
-  double
+  SparseBigramMatrix::ProbType
   SparseBigramMatrix::CountLogLikelihood(const SparseBigramMatrix& SecondSet) const
   {
     int i;

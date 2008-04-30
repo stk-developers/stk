@@ -1,7 +1,7 @@
 #include <STKLib/common.h>
 #include <STKLib/stkstream.h>
-#include <STKLib/BDTree.h>
 #include <STKLib/MlfStream.h>
+#include <STKLib/Models.h>
 #include <STKLib/Tokenizer.h>
 #include "STKLib/Features.h"
 
@@ -29,20 +29,11 @@ using namespace std;
 
 
 // typedefs ...................................................................
-typedef std::list<BDTree*> ModelList;
 
 
 // prototypes .................................................................
-void
-LoadModels(const std::string& rModelListFile, ModelList& rModelList,
-    BDTreeBuildTraits& rTraits);
-
-
-void
-AdaptModel(const BDTree& rOrig, const NGramSubset& rNGrams, 
-    const std::string& rFileName, BDTreeBuildTraits& rTraits, 
-    std::ostream* pOutVectorStream, BDTreeHeader file_header);
-
+//TransformMatrix(const Matrix<FLOAT>& rSrc, Matrix<FLOAT>& rDest, 
+//    ModelSet& rModels, XformInstance* pXform, size_t outSize);
 
 // A helper function to simplify the main part.
 template<class T>
@@ -72,6 +63,13 @@ int main(int argc, char* argv[])
     string                  script_file_filter;
     Matrix<FLOAT>           feature_matrix;
 
+    // Model set, in case we need to use xform .................................
+    ModelSet                hset;
+    std::string             source_mmf;
+    std::string             input_xform_name;
+    XformInstance*          p_input_xform = NULL;
+
+    // Statistics ..............................................................
     double                  zero_stats(0.0);
     BasicVector<FLOAT>      first_stats;
     Matrix<FLOAT>           second_stats;
@@ -80,6 +78,7 @@ int main(int argc, char* argv[])
     vector< string >        positional_parameters;
 
     InitLogMath();
+    hset.Init();
 
     //srandom((unsigned int)time(NULL));
     srand((unsigned)time(0));
@@ -94,6 +93,8 @@ int main(int argc, char* argv[])
       ("outstatfile",   po::value<string>(),                                  "Output the stats here")
       ("script,S",      po::value<string>(),                                  "Source data script")
       ("scriptfilter",  po::value<string>()->default_value(""),               "Script file filter")
+      ("sourcemmf,H",   po::value<string>(&source_mmf),                       "Source input Xform mmf")
+      ("sourceinput",   po::value<string>(&input_xform_name),                 "Source input Xform name")
       ("targetkind",    po::value<string>(&target_kind)->default_value(""),   "Target kind code");
 
 
@@ -159,6 +160,37 @@ int main(int argc, char* argv[])
 
 
     // END OF COMMAND LINE PARAMETER PARSING ...................................
+
+
+    // parse MMFs if any given .................................................
+    if ("" != source_mmf) {
+      Tokenizer             file_list(source_mmf.c_str(), ",");
+      Tokenizer::iterator   p_file_name;
+
+      for (p_file_name = file_list.begin(); p_file_name != file_list.end(); 
+          ++p_file_name) {
+        // parse the MMF
+        hset.ParseMmf(p_file_name->c_str(), NULL);
+      }
+
+      if (input_xform_name != "") 
+      {
+        Macro* p_macro = FindMacro(&hset.mXformInstanceHash, 
+            input_xform_name.c_str());
+
+        if (p_macro == NULL) { 
+          throw runtime_error(std::string("Undefined source input ") + 
+              input_xform_name);
+        }
+        p_input_xform = static_cast<XformInstance*>(p_macro->mpData);
+      } 
+      else if (hset.mpInputXform) 
+      {
+        p_input_xform = hset.mpInputXform;
+      }
+    }
+
+
     int target_kind_code = ReadParmKind(target_kind.c_str(), false);
 
     // swap_features, start_frm_ext, end_frm_ext, targetKind, deriv_order, 
@@ -175,23 +207,39 @@ int main(int argc, char* argv[])
     BasicVector<double> aux_vec;
 
     for (feature_repo.Rewind(); !feature_repo.EndOfList(); 
-        feature_repo.MoveNext()) {
+        feature_repo.MoveNext()) 
+    {
+      size_t out_size;
+
       std::cout << feature_repo.Current().Logical() << " = " <<
         feature_repo.Current().Physical() << std::endl;
       
-      // now reest features are read ...........................................
-      feature_repo.ReadFullMatrix(feature_matrix);
+      if (NULL != p_input_xform) {
+        Matrix<FLOAT> raw_feature_matrix;
+
+        // now reest features are read .........................................
+        feature_repo.ReadFullMatrix(raw_feature_matrix);
+        out_size = p_input_xform->OutSize();
+        
+        // pass the matrix through all filters
+        TransformMatrix(raw_feature_matrix, feature_matrix, hset, p_input_xform,
+            out_size);
+      }
+      else {
+        // now reest features are read ...........................................
+        feature_repo.ReadFullMatrix(feature_matrix);
+        out_size  = feature_matrix.Cols();
+      }
 
       if (0 == first_stats.Length()) {
-        first_stats.Init(feature_matrix.Cols());
-        second_stats.Init(feature_matrix.Cols(), feature_matrix.Cols());
+        first_stats.Init(out_size);
+        second_stats.Init(out_size, out_size);
       }
       // check the dimensionality of the current feature file
-      else if (first_stats.Length() != feature_matrix.Cols()) {
+      else if (first_stats.Length() != out_size) {
         throw runtime_error(std::string("Dimensionality of the feature file ")
             + feature_repo.Current().Physical() + " differs from the previous");
       }
-
 
       // adding a size_t
       zero_stats += feature_matrix.Rows();
@@ -226,6 +274,34 @@ int main(int argc, char* argv[])
   return 0;
 }
 
+
+//******************************************************************************
+//******************************************************************************
+void
+TransformMatrix(const Matrix<FLOAT>& rSrc, Matrix<FLOAT>& rDest, 
+    ModelSet& rModels, XformInstance* pXform, size_t outSize)
+{
+  size_t time;
+  FLOAT* out_vector;
+
+  time = -rModels.mTotalDelay;
+  rModels.ResetXformInstances();
+
+  rDest.Destroy();
+  rDest.Init(rSrc.Rows + time, outSize);
+
+  // we go through each feature vector and xform it
+  for (int i = 0 ; i<rSrc.Rows; i++) {
+    rModels.UpdateStacks(rSrc[i], ++time, FORWARD);
+
+    if (time <= 0) {
+      continue;
+    }
+
+    out_vector = XformPass(pXform, rSrc[i], time, FORWARD);
+    memcpy(rDest[time - 1], out_vector, sizeof(FLOAT) * outSize);
+  }
+}
 
 
 #endif //boost 

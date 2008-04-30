@@ -94,7 +94,7 @@ int main(int argc, char* argv[])
     generic_options.add_options()
       ("action,A",      po::value<string>(&action),                           "Action to perform")
       ("adaptmap",                                                            "Use MAP adaptation instead of original algorithm") 
-      ("adaptr",        po::value<double>(&new_tree_traits.mAdaptR),          "Adapt r factor")
+      ("adaptr",        po::value<FLOAT>(&new_tree_traits.mAdaptR),           "Adapt r factor")
       ("cfgfile,C",     po::value<string>(&config_file),                      "Configuration file")
       ("help",                                                                "Print more detailed help") 
       ("includecounts",                                                       "In connection with outvectors and invector - augment each leaf with counts") 
@@ -102,19 +102,19 @@ int main(int argc, char* argv[])
       ("inputmlf,I",    po::value<string>(),                                  "Source data MLF")
       ("invector",      po::value<string>(),                                  "File with supervector of leaf distribution (see --action=pushleaves)")
       ("maxdepth",      po::value<int>(&new_tree_traits.mMaxDepth),           "Maximum tree depth criterion")
-      ("minentr",       po::value<double>(&new_tree_traits.mMinReduction),    "Minimum entropy reduction criterion")
-      ("mindata",       po::value<double>(&new_tree_traits.mMinInData),       "Minimum input data criterion")
-      ("MMIalpha",      po::value<double>(&new_tree_traits.mMMIAlpha),        "MMI alpha constant")
-      ("MMIeta",        po::value<double>(&new_tree_traits.mMMIEta),          "MMI eta constant")
+      ("minentr",       po::value<FLOAT >(&new_tree_traits.mMinReduction),    "Minimum entropy reduction criterion")
+      ("mindata",       po::value<FLOAT >(&new_tree_traits.mMinInData),       "Minimum input data criterion")
+      ("MMIalpha",      po::value<FLOAT >(&new_tree_traits.mMMIAlpha),        "MMI alpha constant")
+      ("MMIeta",        po::value<FLOAT >(&new_tree_traits.mMMIEta),          "MMI eta constant")
       ("MMIsplit",                                                            "Toggle MMI splitting criteria") 
-      ("MMImininc",     po::value<double>(&new_tree_traits.mMinMMIIncrease),  "MMI max increase")
+      ("MMImininc",     po::value<FLOAT >(&new_tree_traits.mMinMMIIncrease),  "MMI max increase")
       ("scoreout",      po::value<string>(&score_output),                     "Score output file")
       ("order",         po::value<int>(&new_tree_traits.mOrder),              "Number of predictors")
       ("outfileversion", po::value<int>(),                                    "Source data script")
       ("outvectors",    po::value<string>(),                                  "Cluster vector output file")
       ("predvoc",       po::value<string>(&predictor_vocab_fname),            "Predictor vocabulary file")
       ("script,S",      po::value<string>(),                                  "Source data script")
-      ("smoothr",       po::value<double>(&new_tree_traits.mSmoothR),         "Smooth r factor")
+      ("smoothr",       po::value<FLOAT >(&new_tree_traits.mSmoothR),         "Smooth r factor")
       ("srcmodel",      po::value<string>(&source_model_name),                "Source model file name")
       ("srcmdllst",     po::value<string>(&source_model_list_name),           "Source model list file name")
       ("tgtmdl",        po::value<string>(&target_model_name),                "Target model file name")
@@ -564,7 +564,7 @@ int main(int argc, char* argv[])
         }
 
         // this vector will be filled with stacked leaf dists
-        BasicVector<double> super_vector;
+        BasicVector<FLOAT> super_vector;
         // stack the leaves to the supervector
         new_tree.FillLeafSupervector(super_vector, true, var_map.count("includecounts"));
         // write to stream
@@ -828,7 +828,7 @@ int main(int argc, char* argv[])
       std::cout << "Tree average entropy: " << tree_info.mAverageEntropy << std::endl;
 
       // load leaf supervector .................................................
-      std::vector<double> super_vector(tree_info.mTotalLeaves * file_header.mVocabSize);
+      std::vector<FLOAT> super_vector(tree_info.mTotalLeaves * file_header.mVocabSize);
       //super_vector.reserve();
 
       if (!var_map.count("invector")) {
@@ -937,7 +937,7 @@ int main(int argc, char* argv[])
       model_stream.close();
 
       // this vector will be filled with stacked leaf dists
-      BasicVector<double> super_vector;
+      BasicVector<FLOAT> super_vector;
 
       string script_file = var_map["script"].as<string >();
       string output_file = var_map["outvectors"].as<string >();
@@ -1106,7 +1106,7 @@ AdaptModel(const BDTree& rOrig, const NGramSubset& rNGrams,
 
   if (NULL != pOutVectorStream) {
     // this vector will be filled with stacked leaf dists
-    BasicVector<double> super_vector;
+    BasicVector<FLOAT> super_vector;
     // stack the leaves to the supervector
     new_tree.FillLeafSupervector(super_vector, false, false);
     // write to stream
