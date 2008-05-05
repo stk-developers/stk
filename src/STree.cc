@@ -778,7 +778,7 @@ int main(int argc, char* argv[])
           file_header.mFileVersion = binary_format;
         }
         else if (file_header.mFileVersion != 0 
-              || file_header.mFileVersion != 1) {
+              && file_header.mFileVersion != 1) {
           file_header.mFileVersion = 0;
         }
 
@@ -868,7 +868,7 @@ int main(int argc, char* argv[])
         file_header.mFileVersion = binary_format;
       }
       else if (file_header.mFileVersion != 0 
-            || file_header.mFileVersion != 1) {
+            && file_header.mFileVersion != 1) {
         file_header.mFileVersion = 0;
       }
 
