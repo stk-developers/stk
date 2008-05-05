@@ -351,14 +351,44 @@ namespace STK
     ~Distribution()
     {}
 
-//    /** 
-//     * @brief Dumps the question to a stream
-//     * 
-//     * @param rStream std::ostream for output
-//     * @param rPrefix prefix which is prepended to the output
-//     */
-//    virtual void
-//    Dump(std::ostream& rStream, const std::string& rPrefix) const;
+
+    virtual Distribution*
+    Clone()
+    {}
+
+
+    /** 
+     * @brief Dumps the question to a stream
+     * 
+     * @param rStream std::ostream for output
+     * @param rPrefix prefix which is prepended to the output
+     */
+    virtual void
+    Dump(std::ostream& rStream, const std::string& rPrefix) const
+    { }
+
+
+    //..........................................................................
+    /** 
+     * @brief Reads the tree definition from a stream
+     * 
+     * @param rStream std::stream to read from
+     * @param rHeader header with parameters
+     */
+    virtual void
+    Read(std::istream& rStream, BDTreeHeader& rHeader)
+    { }
+
+    /** 
+     * @brief Reads the tree definition from a stream
+     * 
+     * @param rStream std::stream to read from
+     * @param rHeader header with parameters
+     */
+    virtual void
+    Write(std::ostream& rStream, BDTreeHeader& rHeader)
+    { }
+
 
     /** 
      * @brief Returns soft data counts
@@ -366,18 +396,43 @@ namespace STK
     const ProbType&
     Counts() const
     { return mN; }
-//
-//    /** 
-//     * @brief Returns the entropy of the distribution
-//     */
-//    virtual const ProbType 
-//    Entropy() const;
-//
-//    /** 
-//     * @brief Computes weighted entropy of two distributions
-//     */
-//    static const ProbType
-//    SplitEntropy(const Distribution& rD1, const Distribution& rD2);
+
+    /** 
+     * @brief Returns the entropy of the distribution
+     */
+    virtual const ProbType 
+    Entropy() const
+    { }
+
+    /** 
+     * @brief Computes weighted entropy of two distributions
+     */
+    static const ProbType
+    SplitEntropy(const Distribution& rD1, const Distribution& rD2);
+
+    /** 
+     * @brief Normalizes distribution to probabilities
+     */
+    virtual void
+    Fix()
+    { }
+
+    /** 
+     * @brief Sets all records to 0
+     */
+    virtual void 
+    Reset()
+    { }
+
+    /** 
+     * @brief Merges another distribution
+     * @param rDistr distribution to merge with
+     */
+    virtual void
+    Merge(const Distribution& rDistr)
+    { }
+
+      
 //
 //
 //    virtual void
@@ -393,28 +448,209 @@ namespace STK
 //      ComputeFromSamples(InputIterator first, InputIterator last);
 //
 //
-//    /** 
-//     * @brief Smoothes distribution by another distribution
-//     * 
-//     * @param rDistr Smoothing distribution
-//     * @param r smoothing kludge/fudge factor
-//     *
-//     * Psmoothed(s) = b*Pthis(s) + (1-b)*PrDistr(s) 
-//     *
-//     *   where
-//     *
-//     * b = #(s) / (#(s)+r)
-//     */
-//    virtual void
-//    Smooth(const Distribution& rDistr, double r);
-//
-//    ProbType 
-//    operator [] (const NGram::TokenType& rToken);
 
+    virtual ProbType 
+    operator [] (const NGram::TokenType& rToken) const
+    { }
+
+    
+    virtual ProbType& 
+    operator [] (NGram::TokenType& rToken)
+    { }
+
+    
+    /** 
+     * @brief Computes distribution from collection of grams
+     */
+    virtual void
+    ComputeFromNGramSubsets(const NGramSubsets& rSubsets)
+    { }
+
+
+    /** 
+     * @brief Smoothes distribution by another distribution
+     * 
+     * @param rDistr Smoothing distribution
+     * @param r smoothing kludge/fudge factor
+     *
+     * Psmoothed(s) = b*Pthis(s) + (1-b)*PrDistr(s) 
+     *
+     *   where
+     *
+     * b = #(s) / (#(s)+r)
+     */
+    virtual void
+    Smooth(const Distribution& rDistr, FLOAT r)
+    { }
+
+
+    /** 
+     * @brief Smoothes distribution by another distribution
+     * 
+     * @param rDistr Smoothing distribution
+     * @param r smoothing kludge/fudge factor
+     *
+     * Psmoothed(s) = b*Pthis(s) + (1-b)*PrDistr(s) 
+     *
+     *   where
+     *
+     * b = N / (N+r)
+     */
+    virtual void
+    MapAdapt(const Distribution& rDistr, FLOAT r)
+    { }
+
+
+    friend class BDTree;
   protected:
     ProbType           mN;   ///< Soft data count
     
   }; // class VecDistribution
+
+  
+
+  class MapDistribution : public Distribution
+  {
+  public:
+    typedef FLOAT ProbType;
+    typedef std::map<int, ProbType> Container;
+
+    MapDistribution() 
+    : Distribution(), mMap(), mVocabSize(0)
+    {}
+
+    MapDistribution(size_t n) 
+    : Distribution(n), mMap(), mVocabSize(n)
+    {}
+
+    MapDistribution(const MapDistribution& rOrig)
+    : Distribution(rOrig), mMap(rOrig.mMap), mVocabSize(rOrig.mVocabSize)
+    {}
+
+    /** 
+     * @brief Loads a new distr from a stream
+     * 
+     * @param rStream stream to read
+     * @param rHeader header containing file info
+     */
+    MapDistribution(std::istream& rStream, BDTreeHeader& rHeader);
+
+    
+    ~MapDistribution()
+    {}
+
+    MapDistribution*
+    Clone() 
+    {
+      return new MapDistribution(*this);
+    }
+
+    /** 
+     * @brief Dumps the question to a stream
+     * 
+     * @param rStream std::ostream for output
+     * @param rPrefix prefix which is prepended to the output
+     */
+    virtual void
+    Dump(std::ostream& rStream, const std::string& rPrefix) const;
+
+    //..........................................................................
+    /** 
+     * @brief Reads the tree definition from a stream
+     * 
+     * @param rStream std::stream to read from
+     * @param rHeader header with parameters
+     */
+    virtual void
+    Read(std::istream& rStream, BDTreeHeader& rHeader);
+
+    /** 
+     * @brief Reads the tree definition from a stream
+     * 
+     * @param rStream std::stream to read from
+     * @param rHeader header with parameters
+     */
+    virtual void
+    Write(std::ostream& rStream, BDTreeHeader& rHeader);
+
+
+    const size_t
+    Size() const 
+    { return mMap.size(); }
+
+    /** 
+     * @brief Returns the entropy of the distribution
+     */
+    virtual const ProbType 
+    Entropy() const;
+
+    void
+    ComputeFromNGramSubsets(const NGramSubsets& rSubsets);
+
+    /** 
+     * @brief Normalizes distribution to probabilities
+     */
+    void
+    Fix();
+
+    /** 
+     * @brief Sets all records to 0
+     */
+    void 
+    Reset();
+
+    /** 
+     * @brief Merges another distribution
+     * @param rDistr distribution to merge with
+     */
+    void
+    Merge(const MapDistribution& rDistr);
+
+      
+    /** 
+     * @brief Smoothes distribution by another distribution
+     * 
+     * @param rDistr Smoothing distribution
+     * @param r smoothing kludge/fudge factor
+     *
+     * Psmoothed(s) = b*Pthis(s) + (1-b)*PrDistr(s) 
+     *
+     *   where
+     *
+     * b = #(s) / (#(s)+r)
+     */
+    virtual void
+    Smooth(const MapDistribution& rDistr, FLOAT r);
+
+
+    /** 
+     * @brief Smoothes distribution by another distribution
+     * 
+     * @param rDistr Smoothing distribution
+     * @param r smoothing kludge/fudge factor
+     *
+     * Psmoothed(s) = b*Pthis(s) + (1-b)*PrDistr(s) 
+     *
+     *   where
+     *
+     * b = N / (N+r)
+     */
+    virtual void
+    MapAdapt(const MapDistribution& rDistr, FLOAT r);
+
+
+    virtual ProbType 
+    operator [] (const NGram::TokenType& rToken) const;
+    
+    virtual ProbType&
+    operator [] (NGram::TokenType& rToken);
+
+
+    friend class BDTree;
+  private:
+    Container          mMap; ///< Data distribution
+    size_t             mVocabSize;
+  };
 
 
   class VecDistribution : public Distribution
@@ -447,6 +683,12 @@ namespace STK
     ~VecDistribution()
     {}
 
+    VecDistribution*
+    Clone() 
+    {
+      return new VecDistribution(*this);
+    }
+
     /** 
      * @brief Dumps the question to a stream
      * 
@@ -463,7 +705,7 @@ namespace STK
      * @param rStream std::stream to read from
      * @param rHeader header with parameters
      */
-    void
+    virtual void
     Read(std::istream& rStream, BDTreeHeader& rHeader);
 
     /** 
@@ -472,7 +714,7 @@ namespace STK
      * @param rStream std::stream to read from
      * @param rHeader header with parameters
      */
-    void
+    virtual void
     Write(std::ostream& rStream, BDTreeHeader& rHeader);
 
 
@@ -486,11 +728,11 @@ namespace STK
     virtual const ProbType 
     Entropy() const;
 
-    /** 
-     * @brief Computes weighted entropy of two distributions
-     */
-    static const ProbType
-    SplitEntropy(const VecDistribution& rD1, const VecDistribution& rD2);
+    // /** 
+    //  * @brief Computes weighted entropy of two distributions
+    //  */
+    // static const ProbType
+    // SplitEntropy(const VecDistribution& rD1, const VecDistribution& rD2);
 
     /** 
      * @brief Computes distribution from collection of grams
@@ -566,7 +808,7 @@ namespace STK
 
 
     ProbType
-    operator [] (const NGram::TokenType& rToken);
+    operator [] (const NGram::TokenType& rToken) const;
 
     friend class BDTree;
 
@@ -602,7 +844,8 @@ namespace STK
     mRandomizeTree(false),
     mRandomizePredictors(false),
     mRandomizeQuestions(false),
-    mMorphologicalPredictors(0)
+    mMorphologicalPredictors(0),
+    mUseMapDistribution(false)
     {}
 
     FLOAT     mMinReduction;    ///< Minimum entropy reduction
@@ -628,6 +871,7 @@ namespace STK
     bool      mRandomizeQuestions;
     int       mMorphologicalPredictors;
     
+    bool      mUseMapDistribution;
   }; //class BDTreeAttributes
 
 
@@ -903,8 +1147,8 @@ namespace STK
     BDTree*           mpTree0;
     BDTree*           mpTree1;
     BQuestion*        mpQuestion;
-    VecDistribution*  mpDist;
-    VecDistribution*  mpBackoffDist;
+    Distribution*     mpDist;
+    Distribution*     mpBackoffDist;
   }; // class BDTree
 } // namespace STK
 

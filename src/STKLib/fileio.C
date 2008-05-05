@@ -129,8 +129,8 @@ namespace STK
   {
     HtkHeader header;
     int i, j;
-    float *pScale;
-    float *pBias;
+    FLOAT *pScale;
+    FLOAT *pBias;
     
     header.mNSamples = nSamples  + ((targetKind & PARAMKIND_C) ? 2 * sizeof(FLOAT_32) / sizeof(INT_16) : 0);
     header.mSamplePeriod = samplePeriod;
@@ -182,8 +182,8 @@ namespace STK
   {
     HtkHeader header;
     int i, j;
-    float *p_scale;
-    float *p_bias;
+    FLOAT *p_scale;
+    FLOAT *p_bias;
     size_t n_samples = rFeatureMatrix.Rows();
     size_t n_coeffs  = rFeatureMatrix.Cols();
     

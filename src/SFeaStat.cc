@@ -32,8 +32,9 @@ using namespace std;
 
 
 // prototypes .................................................................
-//TransformMatrix(const Matrix<FLOAT>& rSrc, Matrix<FLOAT>& rDest, 
-//    ModelSet& rModels, XformInstance* pXform, size_t outSize);
+void
+TransformMatrix(const Matrix<FLOAT>& rSrc, Matrix<FLOAT>& rDest, 
+    ModelSet& rModels, XformInstance* pXform, size_t outSize);
 
 // A helper function to simplify the main part.
 template<class T>
@@ -61,7 +62,7 @@ int main(int argc, char* argv[])
     string                  out_stat_file;
     string                  script_file;
     string                  script_file_filter;
-    Matrix<FLOAT>           feature_matrix;
+    Matrix<FLOAT>          feature_matrix;
 
     // Model set, in case we need to use xform .................................
     ModelSet                hset;
@@ -70,9 +71,9 @@ int main(int argc, char* argv[])
     XformInstance*          p_input_xform = NULL;
 
     // Statistics ..............................................................
-    double                  zero_stats(0.0);
-    BasicVector<FLOAT>      first_stats;
-    Matrix<FLOAT>           second_stats;
+    FLOAT                  zero_stats(0.0);
+    BasicVector<FLOAT>     first_stats;
+    Matrix<FLOAT>          second_stats;
 
     string                  config_file;
     vector< string >        positional_parameters;
@@ -204,7 +205,7 @@ int main(int argc, char* argv[])
     feature_repo.AddFileList(script_file.c_str(), script_file_filter == "" ?
         NULL : script_file_filter.c_str());
 
-    BasicVector<double> aux_vec;
+    BasicVector<FLOAT> aux_vec;
 
     for (feature_repo.Rewind(); !feature_repo.EndOfList(); 
         feature_repo.MoveNext()) 
@@ -233,7 +234,9 @@ int main(int argc, char* argv[])
 
       if (0 == first_stats.Length()) {
         first_stats.Init(out_size);
+        first_stats.Clear();
         second_stats.Init(out_size, out_size);
+        second_stats.Clear();
       }
       // check the dimensionality of the current feature file
       else if (first_stats.Length() != out_size) {
@@ -246,6 +249,8 @@ int main(int argc, char* argv[])
       first_stats.AddColSum(feature_matrix);
       second_stats.AddCMtMMul(1.0, feature_matrix, feature_matrix);
 
+      OStkStream tmp_stream("hnup");
+      tmp_stream << feature_matrix;
       feature_matrix.Destroy();
     }
 
@@ -261,6 +266,7 @@ int main(int argc, char* argv[])
     out_stream << second_stats.Rows() << " " ;
     out_stream << 0 << std::endl; // write extra zero
 
+    out_stream << std::scientific;
     out_stream << zero_stats << std::endl << first_stats << std::endl << second_stats;
 
     out_stream.close();
@@ -288,10 +294,10 @@ TransformMatrix(const Matrix<FLOAT>& rSrc, Matrix<FLOAT>& rDest,
   rModels.ResetXformInstances();
 
   rDest.Destroy();
-  rDest.Init(rSrc.Rows + time, outSize);
+  rDest.Init(rSrc.Rows() + time, outSize);
 
   // we go through each feature vector and xform it
-  for (int i = 0 ; i<rSrc.Rows; i++) {
+  for (int i = 0 ; i<rSrc.Rows(); i++) {
     rModels.UpdateStacks(rSrc[i], ++time, FORWARD);
 
     if (time <= 0) {

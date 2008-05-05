@@ -127,19 +127,20 @@ namespace STK
   // }
 
 
-  // //***************************************************************************/
-  // //***************************************************************************/
-  // MapDistribution::ProbType 
-  // MapDistribution::
-  // operator [] (const NGram::TokenType& rToken)
-  // {
-  //   if(mVec.find(rToken) != mVec.end()) {
-  //     return mVec[rToken];
-  //   }
-  //   else {
-  //     return 0.0;
-  //   }
-  // }
+  //***************************************************************************/
+  //***************************************************************************/
+  MapDistribution::ProbType 
+  MapDistribution::
+  operator [] (const NGram::TokenType& rToken) const
+  {
+    Container::const_iterator i = mMap.find(rToken);
+    if(i != mMap.end()) {
+      return i->second;
+    }
+    else {
+      return 0.0;
+    }
+  }
 
 
   // //***************************************************************************/
@@ -224,9 +225,9 @@ namespace STK
 
   //***************************************************************************/
   //***************************************************************************/
-  const VecDistribution::ProbType
-  VecDistribution::
-  SplitEntropy(const VecDistribution& rD1, const VecDistribution& rD2)
+  const Distribution::ProbType
+  Distribution::
+  SplitEntropy(const Distribution& rD1, const Distribution& rD2)
   {
     double w1 = rD1.mN / (rD1.mN + rD2.mN);
     double w2 = rD2.mN / (rD1.mN + rD2.mN);
@@ -308,7 +309,7 @@ namespace STK
   //***************************************************************************/
   VecDistribution::ProbType 
   VecDistribution::
-  operator [] (const NGram::TokenType& rToken)
+  operator [] (const NGram::TokenType& rToken) const
   {
     assert (rToken < mVec.size());
     return mVec[rToken];
@@ -451,7 +452,8 @@ namespace STK
       mpQuestion  = rOrig.mpQuestion->Clone();
     }
     else {
-      mpDist      = new VecDistribution(*(rOrig.mpDist));
+      //mpDist      = new VecDistribution(*(rOrig.mpDist));
+      mpDist      = rOrig.mpDist->Clone();
       mpTree0     = NULL;
       mpTree1     = NULL;
       mpQuestion  = NULL;
@@ -461,7 +463,8 @@ namespace STK
       mpBackoffDist = NULL;
     }
     else {
-      mpBackoffDist = new VecDistribution(*(rOrig.mpBackoffDist));
+      //mpBackoffDist = new VecDistribution(*(rOrig.mpBackoffDist));
+      mpBackoffDist = rOrig.mpBackoffDist->Clone();
     }
   }
 
@@ -521,7 +524,12 @@ namespace STK
     if (NULL != pParent && rTraits.mSmoothR > 0) {
       // compute distribution as we  want to smooth right away, for
       // which we need the parent distribution
-      mpDist = new VecDistribution(vocab_size);
+      if (rTraits.mUseMapDistribution) {
+        //mpDist = new MapDistribution(vocab_size);
+      }
+      else {
+        mpDist = new VecDistribution(vocab_size);
+      }
       mpDist->ComputeFromNGramSubsets(rNGrams);
       mpDist->Smooth(*(pParent->mpDist), rTraits.mSmoothR);
     }
@@ -1345,7 +1353,8 @@ namespace STK
       mpTree0->RecomputeDists();
       mpTree1->RecomputeDists();
       if (NULL == mpDist) {
-        mpDist = new VecDistribution(mpTree0->mpDist->Size());
+        //mpDist = new VecDistribution(mpTree0->mpDist->Size());
+        mpDist = mpTree0->mpDist->Clone();
       }
       mpDist->Reset();
       mpDist->Merge(*(mpTree0->mpDist));
@@ -1359,7 +1368,9 @@ namespace STK
   BDTree::
   ComputeBackoffDists(BDTree* pParent, FLOAT r)
   {
-    mpBackoffDist = new VecDistribution(*mpDist);
+    //mpBackoffDist = new VecDistribution(*mpDist);
+    mpBackoffDist = mpDist->Clone();
+    mpBackoffDist->Reset();
 
     if (NULL != pParent && r > 0) {
       mpBackoffDist->Smooth(*(pParent->mpBackoffDist), r);
@@ -1388,9 +1399,15 @@ namespace STK
         p_node = p_node->mpQuestion->Eval(r_ngram) ? p_node->mpTree1 : p_node->mpTree0;
       } 
 
-      //std::cout << r_ngram[0] << std::endl;
-      p_node->mpDist->mVec[r_ngram[0]]  += r_ngram.Counts();
-      p_node->mpDist->mN                += r_ngram.Counts();
+      VecDistribution* p_aux_distr = 
+        dynamic_cast<VecDistribution*>(p_node->mpDist);
+
+      if (NULL == p_aux_distr) {
+        throw std::runtime_error("Cannot collect couns for non-vector distribution implementations");
+      }
+
+      p_aux_distr->mVec[r_ngram[0]]  += r_ngram.Counts();
+      p_aux_distr->mN                += r_ngram.Counts();
     }
   }
   
@@ -1419,12 +1436,13 @@ namespace STK
 
       // if mpBackoff is not initialized yet
       if (NULL == p_node->mpBackoffDist) {
-        p_node->mpBackoffDist = new VecDistribution(*(p_node->mpDist));
+        //p_node->mpBackoffDist = new VecDistribution(*(p_node->mpDist));
+        p_node->mpBackoffDist = p_node->mpDist->Clone();
         p_node->mpDist->mN      = 0.0;
         p_node->mpDist->Reset();
       }
 
-      p_node->mpDist->mVec[r_ngram[0]]  += r_ngram.Counts();
+      (*(p_node->mpDist))[r_ngram[0]]  += r_ngram.Counts();
       p_node->mpDist->mN                += r_ngram.Counts();
     }
 
@@ -1499,7 +1517,15 @@ namespace STK
 
     // compute sizes
     n_leaves    = GetLeaves(leaves);
-    vocab_size  = leaves.front()->mpDist->mVec.size();
+
+    VecDistribution* p_aux_distr = 
+      dynamic_cast<VecDistribution*>(leaves.front()->mpDist);
+
+    if (NULL == p_aux_distr) {
+      throw std::runtime_error("Cannot collect couns for non-vector distribution implementations");
+    }
+
+    vocab_size  = p_aux_distr->mVec.size();
     vec_size    = includeCounts ? n_leaves * vocab_size + n_leaves 
                                 : n_leaves * vocab_size;
 
@@ -1510,11 +1536,20 @@ namespace STK
 
     // stack the leaves together and copy to the new supervector
     for (i_leaf = leaves.begin(); i_leaf != leaves.end(); ++i_leaf) {
-      VecDistribution::Container::iterator i_prob_begin = backoff ? 
-        (**i_leaf).mpBackoffDist->mVec.begin() : (**i_leaf).mpDist->mVec.begin();
+      if (backoff) {
+        p_aux_distr = dynamic_cast<VecDistribution*>((**i_leaf).mpBackoffDist);
+      }
+      else {
+        p_aux_distr = dynamic_cast<VecDistribution*>((**i_leaf).mpDist);
+      }
 
-      VecDistribution::Container::iterator i_prob_end   = backoff ? 
-        (**i_leaf).mpBackoffDist->mVec.end() : (**i_leaf).mpDist->mVec.end();
+
+      if (NULL == p_aux_distr) {
+        throw std::runtime_error("Cannot collect couns for non-vector distribution implementations");
+      }
+
+      VecDistribution::Container::iterator i_prob_begin = p_aux_distr->mVec.begin();
+      VecDistribution::Container::iterator i_prob_end   = p_aux_distr->mVec.end();
 
       for (i_prob  = i_prob_begin; i_prob != i_prob_end; ++i_prob)
       {
@@ -1548,17 +1583,29 @@ namespace STK
 
     // compute sizes
     n_leaves    = GetLeaves(leaves);
-    vocab_size  = leaves.front()->mpDist->mVec.size();
+
+    VecDistribution* p_aux_distr = 
+      dynamic_cast<VecDistribution*>(leaves.front()->mpDist);
+
+    if (NULL == p_aux_distr) {
+      throw std::runtime_error("Cannot collect couns for non-vector distribution implementations");
+    }
+
+    vocab_size  = p_aux_distr->mVec.size();
     vec_size    = includeCounts ? n_leaves * vocab_size + n_leaves 
                                 : n_leaves * vocab_size;
 
     // stack the leaves together and copy to the new supervector
     for (i_leaf = leaves.begin(); i_leaf != leaves.end(); ++i_leaf) {
-      VecDistribution::Container::iterator i_prob_begin = backoff ? 
-        (**i_leaf).mpBackoffDist->mVec.begin() : (**i_leaf).mpDist->mVec.begin();
+      if (backoff) {
+        p_aux_distr = dynamic_cast<VecDistribution*>((**i_leaf).mpBackoffDist);
+      }
+      else {
+        p_aux_distr = dynamic_cast<VecDistribution*>((**i_leaf).mpDist);
+      }
 
-      VecDistribution::Container::iterator i_prob_end   = backoff ? 
-        (**i_leaf).mpBackoffDist->mVec.end() : (**i_leaf).mpDist->mVec.end();
+      VecDistribution::Container::iterator i_prob_begin = p_aux_distr->mVec.begin();
+      VecDistribution::Container::iterator i_prob_end   = p_aux_distr->mVec.end();
 
       for (i_prob  = i_prob_begin; i_prob != i_prob_end; ++i_prob)
       {
