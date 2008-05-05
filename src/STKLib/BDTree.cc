@@ -604,19 +604,29 @@ namespace STK
     else {
       // compute entropy
       total_entropy = rNGrams.ParallelEntropy();
-      // find best predictor and return split entropy
-      p_new_question = FindSimpleQuestion(rNGrams, rTraits, &split_entropy);
 
-      if(rHeldoutNGrams != NULL)
+      if(total_entropy > 0)
       {
-	double mass0, mass1;
-        // compute heldout entropy before split
-        heldout_total_entropy = rHeldoutNGrams->ParallelEntropy();
-	heldout_split_entropy = rHeldoutNGrams->ParallelSplitEntropy(*p_new_question, &mass0, &mass1);
-	heldout_entropy_red   = heldout_total_entropy - heldout_split_entropy;
+        // find best predictor and return split entropy
+        p_new_question = FindSimpleQuestion(rNGrams, rTraits, &split_entropy);
+
+        if(rHeldoutNGrams != NULL)
+        {
+	  double mass0, mass1;
+          // compute heldout entropy before split
+          heldout_total_entropy = rHeldoutNGrams->ParallelEntropy();
+	  heldout_split_entropy = rHeldoutNGrams->ParallelSplitEntropy(*p_new_question, &mass0, &mass1);
+	  heldout_entropy_red   = heldout_total_entropy - heldout_split_entropy;
+        }
+
+        entropy_red = total_entropy - split_entropy;
+      }
+      else
+      {
+        total_entropy = 0;
+        entropy_red = 0; 
       }
 
-      entropy_red = total_entropy - split_entropy;
 
       if (rTraits.mVerbosity > 0) {
         if (entropy_red == 0) {
@@ -978,7 +988,7 @@ namespace STK
 
         // Ondra asks: I don't understand this line, log_likelihood is not used any longer
         // Why do we have to compute this???
-	log_likelihood = BigramMatrix0.CountLogLikelihood(BigramMatrix1);
+	//log_likelihood = BigramMatrix0.CountLogLikelihood(BigramMatrix1);
       }
 
       int i_predictor;
@@ -1014,7 +1024,7 @@ namespace STK
 	    this_e = -this_log_likelihood  / (mass0 + mass1);
 
 	    // Let the question be inserted and save changes - i.e. matrices are modified after each insertion
-	    if (this_e < e && mass0 >= rTraits.mMinInData && mass1 >= rTraits.mMinInData) 
+	    if (this_e > 0 && this_e < e && mass0 >= rTraits.mMinInData && mass1 >= rTraits.mMinInData) 
 	    {
 	      e = this_e;
 	      inserted = true;
@@ -1043,7 +1053,7 @@ namespace STK
 	    this_e = -this_log_likelihood  / (mass0 + mass1);
 
 	    // Let the question be inserted and save changes - i.e. matrices are modified after each insertion
-	    if (this_e < e && mass0 >= rTraits.mMinInData && mass1 >= rTraits.mMinInData) 
+	    if (this_e > 0 && this_e < e && mass0 >= rTraits.mMinInData && mass1 >= rTraits.mMinInData) 
 	    {
 	      e = this_e;
 	      deleted = true;
@@ -1090,7 +1100,7 @@ namespace STK
 
             double this_e = rNGrams.ParallelSplitEntropy(*p_new_question, &mass0, &mass1);
 
-            if (this_e < e && mass0 >= rTraits.mMinInData && 
+            if (this_e > 0 && this_e < e && mass0 >= rTraits.mMinInData && 
                 mass1 >= rTraits.mMinInData) 
             {
               e             = this_e;
@@ -1116,7 +1126,7 @@ namespace STK
             double this_e = rNGrams.ParallelSplitEntropy(*p_new_question, &mass0, &mass1);
 
 
-            if (this_e < e && mass0 >= rTraits.mMinInData && 
+            if (this_e > 0 && this_e < e && mass0 >= rTraits.mMinInData && 
                 mass1 >= rTraits.mMinInData) 
             {
               e             = this_e;
