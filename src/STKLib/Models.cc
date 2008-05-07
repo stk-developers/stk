@@ -2077,7 +2077,7 @@ namespace STK
 
       for (i = 0; i < mNMixtures; i++)
       {
-        if(UT_EBW == pModelSet->mUpdateType || pModelSet->mMapTau > 0.0)
+        if(UT_EBW == pModelSet->mUpdateType || (pModelSet->mMapTau > 0.0 && pModelSet->mUpdateMask & UM_MAP))
         {
           // For MMI update from single combined num-den accumulator, we can use numerator counts.
           ///accum_sum += mpMixture[i].mWeightAccumDen;

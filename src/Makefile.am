@@ -56,7 +56,7 @@ INCLUDES    = $(ATLASINCLUDEDIR) -I. -I$(top_builddir) -I$(top_srcdir) \
 if USE_SNET
 bin_PROGRAMS = SExpand SERest SVite SFeaCat SFeaStack SLRatio SResults SRover STree SNet SFeaStat
 else
-bin_PROGRAMS = SExpand SERest SVite SFeaCat SFeaStack SLRatio SResults SRover STree SFeaStat
+bin_PROGRAMS = SExpand SERest SVite SFeaCat SFeaStack SLRatio SResults SRover STree SFeaStat SWE
 endif
 
 
@@ -74,7 +74,7 @@ STree_LDADD       = $(COMMONLIBS) $(BOOST_PROGRAM_OPTIONS_LIB)
 SFeaStat_SOURCES  = SFeaStat.cc
 SFeaStat_LDADD    = $(COMMONLIBS) $(BOOST_PROGRAM_OPTIONS_LIB)
 # SWEChCoFast_SOURCES = SWEChCoFast.cc
-# SWE_SOURCES       = SWE.cc
+SWE_SOURCES       = SWE.cc
 
 #SERest_DEPENDENCIES    = $(RECURSIVE_TARGETS) 
 #SVite_DEPENDENCIES     = $(RECURSIVE_TARGETS)
