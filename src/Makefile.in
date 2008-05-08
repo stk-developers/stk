@@ -38,7 +38,7 @@ POST_UNINSTALL = :
 @USE_SNET_FALSE@	SVite$(EXEEXT) SFeaCat$(EXEEXT) \
 @USE_SNET_FALSE@	SFeaStack$(EXEEXT) SLRatio$(EXEEXT) \
 @USE_SNET_FALSE@	SResults$(EXEEXT) SRover$(EXEEXT) \
-@USE_SNET_FALSE@	STree$(EXEEXT) SFeaStat$(EXEEXT)
+@USE_SNET_FALSE@	STree$(EXEEXT) SFeaStat$(EXEEXT) SWE$(EXEEXT)
 @USE_SNET_TRUE@bin_PROGRAMS = SExpand$(EXEEXT) SERest$(EXEEXT) \
 @USE_SNET_TRUE@	SVite$(EXEEXT) SFeaCat$(EXEEXT) \
 @USE_SNET_TRUE@	SFeaStack$(EXEEXT) SLRatio$(EXEEXT) \
@@ -104,6 +104,10 @@ am_SVite_OBJECTS = SVite.$(OBJEXT)
 SVite_OBJECTS = $(am_SVite_OBJECTS)
 SVite_LDADD = $(LDADD)
 SVite_DEPENDENCIES = $(am__DEPENDENCIES_2)
+am_SWE_OBJECTS = SWE.$(OBJEXT)
+SWE_OBJECTS = $(am_SWE_OBJECTS)
+SWE_LDADD = $(LDADD)
+SWE_DEPENDENCIES = $(am__DEPENDENCIES_2)
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
 am__depfiles_maybe = depfiles
@@ -115,11 +119,11 @@ CXXLINK = $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) \
 SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFeaCat_SOURCES) \
 	$(SFeaStack_SOURCES) $(SFeaStat_SOURCES) $(SLRatio_SOURCES) \
 	$(SNet_SOURCES) $(SResults_SOURCES) $(SRover_SOURCES) \
-	$(STree_SOURCES) $(SVite_SOURCES)
+	$(STree_SOURCES) $(SVite_SOURCES) $(SWE_SOURCES)
 DIST_SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFeaCat_SOURCES) \
 	$(SFeaStack_SOURCES) $(SFeaStat_SOURCES) $(SLRatio_SOURCES) \
 	$(am__SNet_SOURCES_DIST) $(SResults_SOURCES) $(SRover_SOURCES) \
-	$(STree_SOURCES) $(SVite_SOURCES)
+	$(STree_SOURCES) $(SVite_SOURCES) $(SWE_SOURCES)
 RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	html-recursive info-recursive install-data-recursive \
 	install-exec-recursive install-info-recursive \
@@ -273,7 +277,7 @@ STree_LDADD = $(COMMONLIBS) $(BOOST_PROGRAM_OPTIONS_LIB)
 SFeaStat_SOURCES = SFeaStat.cc
 SFeaStat_LDADD = $(COMMONLIBS) $(BOOST_PROGRAM_OPTIONS_LIB)
 # SWEChCoFast_SOURCES = SWEChCoFast.cc
-# SWE_SOURCES       = SWE.cc
+SWE_SOURCES = SWE.cc
 
 #SERest_DEPENDENCIES    = $(RECURSIVE_TARGETS) 
 #SVite_DEPENDENCIES     = $(RECURSIVE_TARGETS)
@@ -376,6 +380,9 @@ STree$(EXEEXT): $(STree_OBJECTS) $(STree_DEPENDENCIES)
 SVite$(EXEEXT): $(SVite_OBJECTS) $(SVite_DEPENDENCIES) 
 	@rm -f SVite$(EXEEXT)
 	$(CXXLINK) $(SVite_LDFLAGS) $(SVite_OBJECTS) $(SVite_LDADD) $(LIBS)
+SWE$(EXEEXT): $(SWE_OBJECTS) $(SWE_DEPENDENCIES) 
+	@rm -f SWE$(EXEEXT)
+	$(CXXLINK) $(SWE_LDFLAGS) $(SWE_OBJECTS) $(SWE_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -394,6 +401,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SRover.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STree.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SVite.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SWE.Po@am__quote@
 
 .cc.o:
 @am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \

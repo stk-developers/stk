@@ -340,7 +340,7 @@ namespace STK
     {}
 
     Distribution(size_t n) 
-    :  mN(0)
+    : mN(0)
     {}
 
     Distribution(const Distribution& rOrig)
@@ -353,8 +353,7 @@ namespace STK
 
 
     virtual Distribution*
-    Clone()
-    {}
+    Clone() = 0;
 
 
     /** 
@@ -364,8 +363,7 @@ namespace STK
      * @param rPrefix prefix which is prepended to the output
      */
     virtual void
-    Dump(std::ostream& rStream, const std::string& rPrefix) const
-    { }
+    Dump(std::ostream& rStream, const std::string& rPrefix) const;
 
 
     //..........................................................................
@@ -376,8 +374,7 @@ namespace STK
      * @param rHeader header with parameters
      */
     virtual void
-    Read(std::istream& rStream, BDTreeHeader& rHeader)
-    { }
+    Read(std::istream& rStream, BDTreeHeader& rHeader) = 0;
 
     /** 
      * @brief Reads the tree definition from a stream
@@ -386,10 +383,15 @@ namespace STK
      * @param rHeader header with parameters
      */
     virtual void
-    Write(std::ostream& rStream, BDTreeHeader& rHeader)
-    { }
+    Write(std::ostream& rStream, BDTreeHeader& rHeader) = 0;
 
 
+    /** 
+     * @brief Returns the size of the distribution
+     */
+    virtual size_t
+    Size() const = 0;
+    
     /** 
      * @brief Returns soft data counts
      */
@@ -401,8 +403,7 @@ namespace STK
      * @brief Returns the entropy of the distribution
      */
     virtual const ProbType 
-    Entropy() const
-    { }
+    Entropy() const = 0;
 
     /** 
      * @brief Computes weighted entropy of two distributions
@@ -414,15 +415,13 @@ namespace STK
      * @brief Normalizes distribution to probabilities
      */
     virtual void
-    Fix()
-    { }
+    Fix() = 0;
 
     /** 
      * @brief Sets all records to 0
      */
     virtual void 
-    Reset()
-    { }
+    Reset() = 0;
 
     /** 
      * @brief Merges another distribution
@@ -432,39 +431,20 @@ namespace STK
     Merge(const Distribution& rDistr)
     { }
 
-      
-//
-//
-//    virtual void
-//    ComputeFromNGrams(const NGramSubset& rData);
-//
-//    template <class InputIterator>
-//      void
-//      ComputeFromCounts(InputIterator first);
-//
-//
-//    template <class InputIterator>
-//      void
-//      ComputeFromSamples(InputIterator first, InputIterator last);
-//
-//
+    virtual ProbType
+    operator [] (const NGram::TokenType& rToken) const = 0;
 
-    virtual ProbType 
-    operator [] (const NGram::TokenType& rToken) const
-    { }
 
     
     virtual ProbType& 
-    operator [] (NGram::TokenType& rToken)
-    { }
+    operator [] (const NGram::TokenType& rToken) = 0;
 
     
     /** 
      * @brief Computes distribution from collection of grams
      */
     virtual void
-    ComputeFromNGramSubsets(const NGramSubsets& rSubsets)
-    { }
+    ComputeFromNGramSubsets(const NGramSubsets& rSubsets) = 0;
 
 
     /** 
@@ -500,6 +480,17 @@ namespace STK
     MapAdapt(const Distribution& rDistr, FLOAT r)
     { }
 
+    /** 
+     * @brief Smoothes distribution by another distribution
+     * 
+     * @param rDistr Smoothing distribution
+     * @param r smoothing kludge/fudge factor
+     *
+     * Psmoothed(s) = r*Pthis(s) + (1-r)*PrDistr(s) 
+     */
+    virtual void
+    Interpolate(const Distribution& rDistr, FLOAT r) = 0;
+
 
     friend class BDTree;
   protected:
@@ -533,9 +524,11 @@ namespace STK
      * @param rStream stream to read
      * @param rHeader header containing file info
      */
-    MapDistribution(std::istream& rStream, BDTreeHeader& rHeader);
+    MapDistribution(std::istream& rStream, BDTreeHeader& rHeader)
+    { }
 
     
+    virtual
     ~MapDistribution()
     {}
 
@@ -574,7 +567,7 @@ namespace STK
     Write(std::ostream& rStream, BDTreeHeader& rHeader);
 
 
-    const size_t
+    virtual size_t
     Size() const 
     { return mMap.size(); }
 
@@ -639,11 +632,23 @@ namespace STK
     MapAdapt(const MapDistribution& rDistr, FLOAT r);
 
 
-    virtual ProbType 
+    /** 
+     * @brief Smoothes distribution by another distribution
+     * 
+     * @param rDistr Smoothing distribution
+     * @param r smoothing kludge/fudge factor
+     *
+     * Psmoothed(s) = r*Pthis(s) + (1-r)*PrDistr(s) 
+     */
+    virtual void
+    Interpolate(const Distribution& rDistr, FLOAT r);
+
+
+    virtual ProbType
     operator [] (const NGram::TokenType& rToken) const;
     
     virtual ProbType&
-    operator [] (NGram::TokenType& rToken);
+    operator [] (const NGram::TokenType& rToken);
 
 
     friend class BDTree;
@@ -678,8 +683,8 @@ namespace STK
      * @param rHeader header containing file info
      */
     VecDistribution(std::istream& rStream, BDTreeHeader& rHeader);
-
     
+    virtual
     ~VecDistribution()
     {}
 
@@ -718,7 +723,7 @@ namespace STK
     Write(std::ostream& rStream, BDTreeHeader& rHeader);
 
 
-    const size_t
+    virtual size_t
     Size() const 
     { return mVec.size(); }
 
@@ -734,23 +739,23 @@ namespace STK
     // static const ProbType
     // SplitEntropy(const VecDistribution& rD1, const VecDistribution& rD2);
 
-    /** 
-     * @brief Computes distribution from collection of grams
-     * @param first iterator to the begining of the NGram* container
-     * @param last iterator to the endo of th NGram* container
-     */
-    template <class InputIterator>
-      void
-      ComputeFromNGrams(InputIterator first, InputIterator last);
+    // /** 
+    //  * @brief Computes distribution from collection of grams
+    //  * @param first iterator to the begining of the NGram* container
+    //  * @param last iterator to the endo of th NGram* container
+    //  */
+    // template <class InputIterator>
+    //   void
+    //   ComputeFromNGrams(InputIterator first, InputIterator last);
 
-    /** 
-     * @brief Computes distribution from collection of grams
-     * @param first iterator to the begining of the NGram* container
-     * @param last iterator to the endo of th NGram* container
-     */
-    template <class InputIterator>
-      void
-      ComputeFromNGramSubsets(InputIterator first, InputIterator last);
+    // /** 
+    //  * @brief Computes distribution from collection of grams
+    //  * @param first iterator to the begining of the NGram* container
+    //  * @param last iterator to the endo of th NGram* container
+    //  */
+    // template <class InputIterator>
+    //   void
+    //   ComputeFromNGramSubsets(InputIterator first, InputIterator last);
 
     void
     ComputeFromNGramSubsets(const NGramSubsets& rSubsets);
@@ -807,9 +812,27 @@ namespace STK
     MapAdapt(const VecDistribution& rDistr, FLOAT r);
 
 
-    ProbType
+    /** 
+     * @brief Smoothes distribution by another distribution
+     * 
+     * @param rDistr Smoothing distribution
+     * @param r smoothing kludge/fudge factor
+     *
+     * Psmoothed(s) = r*Pthis(s) + (1-r)*PrDistr(s) 
+     */
+    virtual void
+    Interpolate(const Distribution& rDistr, FLOAT r);
+
+
+
+    virtual ProbType
     operator [] (const NGram::TokenType& rToken) const;
 
+    virtual ProbType& 
+    operator [] (const NGram::TokenType& rToken)
+    { return mVec[rToken]; }
+
+    
     friend class BDTree;
 
   private:

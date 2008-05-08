@@ -529,11 +529,18 @@ int main(int argc, char* argv[])
     }
       
 
-    if (NULL != src_mmf)
-    {
-      for (src_mmf=strtok(src_mmf, ","); src_mmf != NULL; src_mmf=strtok(NULL, ",")) 
-      {
-        hset.ParseMmf(src_mmf, NULL);
+    if (NULL != src_mmf) {
+      for (src_mmf=strtok(src_mmf, ","); src_mmf != NULL; src_mmf=strtok(NULL, ",")) {
+        bool read_only = false;
+
+        if (src_mmf[0] == '@') {
+          src_mmf++;
+          read_only = true;
+          std::cout << "Macro " << src_mmf << " is marked as read-only" 
+            << std::endl;
+        }
+
+        hset.ParseMmf(src_mmf, NULL, read_only);
       }
       if(expand_predef_xforms)
       {
@@ -550,7 +557,14 @@ int main(int argc, char* argv[])
       {
         for (alg_mmf = strtok(alg_mmf, ","); alg_mmf != NULL; alg_mmf=strtok(NULL, ",")) 
         {
-          hset_alig->ParseMmf(alg_mmf, NULL);
+          bool read_only = false;
+
+          if (src_mmf[0] == '@') {
+            src_mmf++;
+            read_only = true;
+          }
+
+          hset_alig->ParseMmf(alg_mmf, NULL, read_only);
         }
       }
     } 
@@ -566,7 +580,14 @@ int main(int argc, char* argv[])
 
       for (pri_mmf = strtok(pri_mmf, ","); pri_mmf != NULL; pri_mmf=strtok(NULL, ",")) 
       {
-        hset_prior->ParseMmf(pri_mmf, NULL);
+        bool read_only = false;
+
+        if (src_mmf[0] == '@') {
+          src_mmf++;
+          read_only = true;
+        }
+
+        hset_prior->ParseMmf(pri_mmf, NULL, read_only);
       }
     } 
     else 

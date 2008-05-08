@@ -441,7 +441,7 @@ namespace STK
         if (pInMmfExt) 
           strcat(strcat(mmfile, "."), pInMmfExt);
         
-        ParseMmf(mmfile, fhmm);
+        ParseMmf(mmfile, fhmm, false);
         
         if ((macro = FindMacro(&mHmmHash, fhmm)) == NULL)
           Error("Definition of model '%s' not found in file '%s'", fhmm, mmfile);
@@ -487,7 +487,7 @@ namespace STK
   //***************************************************************************
   void
   ModelSet::
-  ParseMmf(const char * pFileName, char * expectHMM)
+  ParseMmf(const char * pFileName, char * expectHMM, bool readOnly)
   {
     IStkStream    input_stream;
     FILE*         fp;
@@ -529,7 +529,7 @@ namespace STK
           char type = keyword[1];
     
           if (type == 'o') {
-            if (!ReadGlobalOptions(fp)) {
+            if (!ReadGlobalOptions(fp, readOnly)) {
               Error("No global option defined (%s:%d)", pFileName, gCurrentMmfLine);
             }
           } else {
@@ -537,6 +537,10 @@ namespace STK
             if ((macro = pAddMacro(type, keyword)) == NULL) {
               Error("Unrecognized macro type ~%c (%s:%d)", type, pFileName, gCurrentMmfLine);
             }
+            
+            // this is perhaps the place, where we say whether we want 
+            // to write the macro in future
+            macro->mReadOnly = readOnly;
     
             if (macro->mpData != NULL) {
               if (gHmmsIgnoreMacroRedefinition == 0) {
@@ -647,10 +651,8 @@ namespace STK
                 break;
               }
               
-              for (i = 0; i < hash->mNEntries; i++) 
-              {
-                if (reinterpret_cast<Macro *>(hash->mpEntry[i]->data)->mpData == ud.mpOldData) 
-                {
+              for (i = 0; i < hash->mNEntries; i++) {
+                if (reinterpret_cast<Macro *>(hash->mpEntry[i]->data)->mpData == ud.mpOldData) {
                   reinterpret_cast<Macro *>(hash->mpEntry[i]->data)->mpData = ud.mpNewData;
                 }
               }
@@ -668,7 +670,11 @@ namespace STK
           //macro = AddMacroToHMMSet('h', expectHMM, hmm_set);
           macro = pAddMacro('h', expectHMM);
           
-          macro->mpData = ReadHMM(fp, macro);
+          // this is perhaps the place, where we say whether we want 
+          // to write the macro in future
+          macro->mReadOnly = readOnly;
+    
+          macro->mpData = ReadHMM(fp, macro, readOnly);
         } else {
           Error("Unexpected keyword %s (%s:%d)",keyword,pFileName,gCurrentMmfLine);
         }
@@ -702,7 +708,7 @@ namespace STK
   //***************************************************************************
   Hmm *
   ModelSet::
-  ReadHMM(FILE * fp, Macro * macro)
+  ReadHMM(FILE * fp, Macro * macro, bool readOnly)
   {
     Hmm *   ret;
     char *  keyword;
@@ -725,7 +731,7 @@ namespace STK
     if (!CheckKwd(keyword, KID_BeginHMM))
       Error("Keyword <BeginHMM> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
   
-    ReadGlobalOptions(fp);
+    ReadGlobalOptions(fp, readOnly);
   
     if (mInputVectorSize == -1)
       Error("<VecSize> is not defined yet (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
@@ -2195,7 +2201,7 @@ namespace STK
   //***************************************************************************
   int 
   ModelSet::
-  ReadGlobalOptions(FILE *fp)
+  ReadGlobalOptions(FILE *fp, bool readOnly)
   {
     int           i; 
     int           ret = 0;
@@ -2275,6 +2281,8 @@ namespace STK
       } else if (CheckKwd(keyword, KID_InputXform)) {
         XformInstance *inputXform;
         Macro *macro = pAddMacro(mt_XformInstance, DEFAULT_XFORM_NAME);
+
+        macro->mReadOnly = readOnly;
         
         if (macro->mpData != NULL) 
         {
@@ -2378,16 +2386,16 @@ namespace STK
   
 
     
-  //###########################################################################################################
+  //############################################################################
   
-  //###########################################################################
-  //###########################################################################
+  //############################################################################
+  //############################################################################
   // MMF OUTPUT
-  //###########################################################################
-  //###########################################################################
+  //############################################################################
+  //############################################################################
     
-  //***************************************************************************
-  //***************************************************************************
+  //****************************************************************************
+  //****************************************************************************
   void 
   ModelSet::
   WriteMmf(const char* pFileName, const char* pOutputDir,
@@ -2402,35 +2410,25 @@ namespace STK
   
     for (macro = mpFirstMacro; macro != NULL; macro = macro->nextAll) 
     {
-      if (macro->mpFileName == NULL) 
+      // we don't store the read-only macros
+      // TODO: check whether this is a good idea.
+      if (macro->mReadOnly) {
+        continue;
+      }
+
+      if (macro->mpFileName == NULL) {
         continue; // Artificial macro not read from file
+      }
   
-      if (lastFileName == NULL || (!pFileName && strcmp(lastFileName, macro->mpFileName))) 
+      if (lastFileName == NULL 
+      || (!pFileName && strcmp(lastFileName, macro->mpFileName))) 
       {
         // New macro file
         lastFileName = macro->mpFileName;
         
-        /*
-        if (fp && fp != stdout) 
-          fclose(fp);
-        
-        if (!strcmp(pFileName ? pFileName : macro->mpFileName, "-")) 
-        {
-          fp = stdout;
-        }
-        else 
-        {
-          MakeFileName(mmfile, pFileName ? pFileName : macro->mpFileName, pOutputDir, pOutputExt);
-          
-          if ((fp  = fopen(mmfile, "wb")) == NULL)
-          { 
-            Error("Cannot open output MMF %s", mmfile);
-          }
-        }
-        */
-        
-        if (output_stream.is_open())
+        if (output_stream.is_open()) {
           output_stream.close();
+        }
   
         MakeFileName(mmfile, pFileName ? pFileName : macro->mpFileName, pOutputDir, pOutputExt);
           

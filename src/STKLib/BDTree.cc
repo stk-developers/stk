@@ -20,6 +20,14 @@
 
 namespace STK
 {
+
+  // virtual
+  void
+  Distribution::
+  Dump(std::ostream& rStream, const std::string& rPrefix) const
+  {
+  }
+  
   // //***************************************************************************/
   // //***************************************************************************/
   // void
@@ -129,10 +137,12 @@ namespace STK
 
   //***************************************************************************/
   //***************************************************************************/
-  MapDistribution::ProbType 
+  MapDistribution::ProbType
   MapDistribution::
   operator [] (const NGram::TokenType& rToken) const
   {
+    assert (rToken < mVocabSize); 
+
     Container::const_iterator i = mMap.find(rToken);
     if(i != mMap.end()) {
       return i->second;
@@ -140,6 +150,17 @@ namespace STK
     else {
       return 0.0;
     }
+  }
+
+
+  //***************************************************************************/
+  //***************************************************************************/
+  MapDistribution::ProbType&
+  MapDistribution::
+  operator [] (const NGram::TokenType& rToken)
+  {
+    assert (rToken < mVocabSize); 
+    return mMap[rToken];
   }
 
 
@@ -278,35 +299,6 @@ namespace STK
 
   //***************************************************************************/
   //***************************************************************************/
-  // void
-  // VecDistribution::
-  // ComputeFromNGrams(const NGramSubset& rData)
-  // {
-  //   mVec.clear();
-  //   mN = 0;
-
-  //   // collect the counts
-  //   NGramSubset::NGramContainer::const_iterator i;
-
-  //   for (i=rData.mData.begin(); i!=rData.mData.end(); ++i) {
-  //     NGram::TokenType* p_token = &((**i)[0]);
-  //     NGram::ProbType   counts = (*i)->Counts();
-
-  //     mVec[*p_token]  += counts;
-  //     mN              += counts;
-  //   }
-  //     
-  //   // normalize counts to probs
-  //   VecDistribution::Container::iterator  j;
-  //   
-  //   for (j=mVec.begin(); j!=mVec.end(); ++j) {
-  //     *j /= mN;
-  //   }
-  // }
-
-
-  //***************************************************************************/
-  //***************************************************************************/
   VecDistribution::ProbType 
   VecDistribution::
   operator [] (const NGram::TokenType& rToken) const
@@ -314,6 +306,7 @@ namespace STK
     assert (rToken < mVec.size());
     return mVec[rToken];
   }
+
 
   //***************************************************************************/
   //***************************************************************************/
@@ -389,6 +382,35 @@ namespace STK
       // normalize
       for (i_this = mVec.begin(); i_this != mVec.end(); ++i_this) {
         *i_this /= norm;
+      }
+    }
+    //mN = new_mn;
+  } //Smooth(const VecDistribution& rDistr, double r)
+  
+
+  //***************************************************************************/
+  //***************************************************************************/
+  void
+  VecDistribution::
+  Interpolate(const Distribution& rDistr, FLOAT r)
+  {
+    double norm   = 0; //DBL_EPSILON;
+    double new_mn = 0; //DBL_EPSILON;
+    size_t i = 0;
+
+    assert(this->Size() == rDistr.Size());
+
+    for (i = 0; i<mVec.size(); i++) {
+      (*this)[i] = r * (*this)[i] + (1-r) * rDistr[i];
+      norm    += (*this)[i];
+
+      i++;
+    } // while (i_this != mVec.end() && i_parent != rDistr.mVec.end()) {
+
+    if (norm > 0) {
+      // normalize
+      for (i = 0; i<mVec.size(); i++) {
+        (*this)[i] /= norm;
       }
     }
     //mN = new_mn;

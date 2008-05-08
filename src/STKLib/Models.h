@@ -204,11 +204,16 @@ namespace STK
   class Macro 
   {
   public:
+    Macro()
+    : mReadOnly(false)
+    {}
+
     char*         mpName;
     char*         mpFileName;
     MacroData*    mpData;
     long          mOccurances;
     int           mType;
+    bool          mReadOnly;
     Macro*        nextAll;
     Macro*        prevAll;
   };
@@ -322,7 +327,7 @@ namespace STK
     
     /// This group of methods does exactly what their names state
     /// @{ 
-    Hmm*            ReadHMM           (FILE* fp, Macro* macro);
+    Hmm*            ReadHMM           (FILE* fp, Macro* macro, bool readOnly = false);
     State*          ReadState         (FILE* fp, Macro* macro);
     Mixture*        ReadMixture       (FILE* fp, Macro* macro);
     Mean*           ReadMean          (FILE* fp, Macro* macro);
@@ -343,8 +348,9 @@ namespace STK
     FuncXform*      ReadFuncXform     (FILE* fp, Macro* macro, int funcId);
     StackingXform*  ReadStackingXform (FILE* fp, Macro* macro);
     ConstantXform*  ReadConstantXform (FILE* fp, Macro* macro);
-    int             ReadGlobalOptions (FILE* fp);
+    int             ReadGlobalOptions (FILE* fp, bool readOnly = false);
     
+
     void   WriteHMM          (FILE* fp, bool binary, Hmm*             hmm);
     void   WriteState        (FILE* fp, bool binary, State*           state);
     void   WriteMixture      (FILE* fp, bool binary, Mixture*         mixture);
@@ -506,11 +512,12 @@ namespace STK
     /**
      *  @brief Reads definition from the stream and parses
      *  @param rName filename to parse
+     *  @param readOnly if true, macros in this file will not be saved
      *  @return @c true on success
      *  
      *  The entire stream is read and propriate structures are constructed.
      */  
-    ParseMmf(const char * pName, char * expectHMM);
+    ParseMmf(const char * pName, char * expectHMM, bool readOnly = false);
     
     void 
     /**
