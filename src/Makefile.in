@@ -43,7 +43,8 @@ POST_UNINSTALL = :
 @USE_SNET_TRUE@	SVite$(EXEEXT) SFeaCat$(EXEEXT) \
 @USE_SNET_TRUE@	SFeaStack$(EXEEXT) SLRatio$(EXEEXT) \
 @USE_SNET_TRUE@	SResults$(EXEEXT) SRover$(EXEEXT) \
-@USE_SNET_TRUE@	STree$(EXEEXT) SNet$(EXEEXT) SFeaStat$(EXEEXT)
+@USE_SNET_TRUE@	STree$(EXEEXT) SNet$(EXEEXT) SFeaStat$(EXEEXT) \
+@USE_SNET_TRUE@	SWE$(EXEEXT)
 subdir = src
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4

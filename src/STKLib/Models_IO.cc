@@ -2433,10 +2433,10 @@ namespace STK
         MakeFileName(mmfile, pFileName ? pFileName : macro->mpFileName, pOutputDir, pOutputExt);
           
         output_stream.open(mmfile, std::ios::binary, gpMmfOFilter);
-        if (!output_stream.good())
-        { 
+        if (!output_stream.good()) { 
           Error("Cannot open output MMF %s", mmfile);
         }
+
         fp = output_stream.file();
           
         waitingForNonXform = 1;
@@ -2476,9 +2476,96 @@ namespace STK
         }
       }
     }
-    //if (fp && fp != stdout) fclose(fp);
-    if (output_stream.is_open())
+
+    if (output_stream.is_open()) {
       output_stream.close();
+    }
+  }
+  
+  //****************************************************************************
+  //****************************************************************************
+  void 
+  ModelSet::
+  WriteMmfRaw(const char* pFileName, const char* pOutputDir,
+                 const char* pOutputExt, bool binary)
+  {
+    FILE*       fp = NULL;
+    Macro*      macro;
+    char        mmfile[1024];
+    char*       lastFileName = NULL;
+    int         waitingForNonXform = 1;
+    OStkStream  output_stream;
+  
+    for (macro = mpFirstMacro; macro != NULL; macro = macro->nextAll) 
+    {
+      // we don't store the read-only macros
+      // TODO: check whether this is a good idea.
+      if (macro->mReadOnly) {
+        continue;
+      }
+
+      if (macro->mpFileName == NULL) {
+        continue; // Artificial macro not read from file
+      }
+  
+      if (lastFileName == NULL 
+      || (!pFileName && strcmp(lastFileName, macro->mpFileName))) 
+      {
+        // New macro file
+        lastFileName = macro->mpFileName;
+        
+        if (output_stream.is_open()) {
+          output_stream.close();
+        }
+  
+        MakeFileName(mmfile, pFileName ? pFileName : macro->mpFileName, pOutputDir, pOutputExt);
+          
+        output_stream.open(mmfile, std::ios::binary, gpMmfOFilter);
+        if (!output_stream.good()) { 
+          Error("Cannot open output MMF %s", mmfile);
+        }
+
+        fp = output_stream.file();
+          
+        waitingForNonXform = 1;
+        WriteGlobalOptions(fp, binary);
+      }
+  
+      if (macro->mpData == mpInputXform &&
+        (!strcmp(macro->mpName, DEFAULT_XFORM_NAME))) 
+      {
+        fputs("~o ", fp);
+        PutKwd(fp, binary, KID_InputXform);
+        PutNLn(fp, binary);
+      } 
+      else 
+      {
+        fprintf(fp, "~%c \"%s\"", macro->mType, macro->mpName);
+        PutNLn(fp, binary);
+      }
+  
+      if (macro->mpData->mpMacro != macro) 
+      {
+        fprintf(fp, " ~%c \"%s\"", macro->mType, (macro->mpData->mpMacro)->mpName);
+        PutNLn(fp, binary);
+      } 
+      else 
+      {
+        switch (macro->mType) 
+        {
+          case 'u': WriteMeanRaw    (fp, binary, static_cast <Mean*>     (macro->mpData)); break;
+          case 'v': WriteVarianceRaw(fp, binary, static_cast <Variance*> (macro->mpData)); break;
+          case 'm': WriteMixtureRaw (fp, binary, static_cast <Mixture*>  (macro->mpData)); break;
+          case 's': WriteStateRaw   (fp, binary, static_cast <State*>    (macro->mpData)); break;
+          case 'h': WriteHMMRaw     (fp, binary, static_cast <Hmm*>      (macro->mpData)); break;
+          default: break;
+        }
+      }
+    }
+
+    if (output_stream.is_open()) {
+      output_stream.close();
+    }
   }
   
   //***************************************************************************
@@ -2562,6 +2649,22 @@ namespace STK
   } // WriteHMM(FILE *fp, bool binary, Hmm *hmm)
   
 
+  //***************************************************************************
+  //***************************************************************************
+  void 
+  ModelSet::
+  WriteHMMRaw(FILE *fp, bool binary, Hmm *hmm)
+  {
+    size_t i;
+  
+    for (i=0; i < hmm->mNStates-2; i++) {
+      if (!hmm->mpState[i]->mpMacro) {
+        WriteState(fp, binary, hmm->mpState[i]);
+      }
+    }
+  } // WriteHMM(FILE *fp, bool binary, Hmm *hmm)
+  
+
   //*****************************************************************************  
   //*****************************************************************************  
   void 
@@ -2603,6 +2706,29 @@ namespace STK
         else 
         {
           WriteMixture(fp, binary, state->mpMixture[i].mpEstimates);
+        }
+      }
+    }
+  }
+  
+  
+  //*****************************************************************************  
+  //*****************************************************************************  
+  void 
+  ModelSet::
+  WriteStateRaw(FILE* fp, bool binary, State* state)
+  {
+    size_t i;
+  
+    if (mOutPdfKind != KID_PDFObsVec) 
+    {
+      for (i=0; i < state->mNMixtures; i++) 
+      {
+        PutFlt(fp, binary, exp(state->mpMixture[i].mWeight));
+        PutNLn(fp, binary);
+  
+        if (!state->mpMixture[i].mpEstimates->mpMacro) {
+          WriteMixtureRaw(fp, binary, state->mpMixture[i].mpEstimates);
         }
       }
     }
@@ -2657,6 +2783,22 @@ namespace STK
     PutKwd(fp, binary, KID_GConst);
     PutFlt(fp, binary, mixture->GConst());
     PutNLn(fp, binary);
+  }
+
+
+  //*****************************************************************************  
+  //*****************************************************************************  
+  void 
+  ModelSet::
+  WriteMixtureRaw(FILE *fp, bool binary, Mixture *mixture)
+  {
+    if (!mixture->mpMean->mpMacro) {
+      WriteMeanRaw(fp, binary, mixture->mpMean);
+    }
+    
+    if (!mixture->mpVariance->mpMacro) {
+      WriteVarianceRaw(fp, binary, mixture->mpVariance);
+    }
   }
 
 
@@ -2718,7 +2860,45 @@ namespace STK
   //*****************************************************************************  
   void
   ModelSet::
+  WriteMeanRaw(FILE *fp, bool binary, Mean *mean)
+  {
+    size_t    i;
+  
+    for (i=0; i < mean->VectorSize(); i++) 
+    {
+      PutFlt(fp, binary, mean->mVector[i]);
+    }
+  
+    PutNLn(fp, binary);
+  } //WriteMean(FILE *fp, bool binary, Mean *mean)
+
+  
+  //***************************************************************************  
+  //*****************************************************************************  
+  void
+  ModelSet::
   WriteVariance(FILE *fp, bool binary, Variance *variance)
+  {
+    size_t   i;
+  
+    PutKwd(fp, binary, KID_Variance);
+    PutInt(fp, binary, variance->VectorSize());
+    PutNLn(fp, binary);
+  
+    for (i=0; i < variance->VectorSize(); i++) 
+    {
+      PutFlt(fp, binary, 1/variance->mVector[i]);
+    }
+  
+    PutNLn(fp, binary);
+  }
+
+  
+  //***************************************************************************  
+  //*****************************************************************************  
+  void
+  ModelSet::
+  WriteVarianceRaw(FILE *fp, bool binary, Variance *variance)
   {
     size_t   i;
   

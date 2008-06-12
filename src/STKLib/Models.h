@@ -341,8 +341,8 @@ namespace STK
     BlockCopyXform* ReadBlockCopyXform(FILE* fp, Macro* macro);
     TransposeXform* ReadTransposeXform(FILE* fp, Macro* macro);
     WindowXform*    ReadWindowXform   (FILE* fp, Macro* macro, bool predefined);
-    FeatureMappingXform*    ReadFeatureMappingXform     (FILE* fp, Macro* macro);
-    FrantaProductXform*     ReadFrantaProductXform      (FILE* fp, Macro* macro);
+    FeatureMappingXform* ReadFeatureMappingXform     (FILE* fp, Macro* macro);
+    FrantaProductXform*  ReadFrantaProductXform      (FILE* fp, Macro* macro);
     MatlabXform*    ReadMatlabXform(FILE* fp, Macro* macro);
     BiasXform*      ReadBiasXform     (FILE* fp, Macro* macro, bool preddefined);
     FuncXform*      ReadFuncXform     (FILE* fp, Macro* macro, int funcId);
@@ -350,6 +350,12 @@ namespace STK
     ConstantXform*  ReadConstantXform (FILE* fp, Macro* macro);
     int             ReadGlobalOptions (FILE* fp, bool readOnly = false);
     
+
+    void   WriteHMMRaw       (FILE* fp, bool binary, Hmm*             hmm);
+    void   WriteStateRaw     (FILE* fp, bool binary, State*           state);
+    void   WriteMixtureRaw   (FILE* fp, bool binary, Mixture*         mixture);
+    void   WriteMeanRaw      (FILE* fp, bool binary, Mean*            mean);
+    void   WriteVarianceRaw  (FILE* fp, bool binary, Variance*        variance);
 
     void   WriteHMM          (FILE* fp, bool binary, Hmm*             hmm);
     void   WriteState        (FILE* fp, bool binary, State*           state);
@@ -449,6 +455,22 @@ namespace STK
      */
     void 
     WriteMmf(const char * pFileName, 
+             const char * pOutputDir,
+             const char * pOutputExt, bool binary);
+    
+    /**
+     * @name MMF output functions
+     */
+    //@{
+    /**
+     * @brief Writes the complete Model set to a file
+     * @param rFileName file name to write to
+     * @param rOutputDir output path
+     * @param rOutputExt output file's implicit extension
+     * @param binary write in binary mode if true
+     */
+    void 
+    WriteMmfRaw(const char * pFileName, 
              const char * pOutputDir,
              const char * pOutputExt, bool binary);
     

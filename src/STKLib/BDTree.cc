@@ -865,6 +865,7 @@ namespace STK
       }
       else
       {
+        rand_pred = (int) ( ( (double)rand() / (  (double)(RAND_MAX) + (double)(1) ) ) * (rTraits.mOrder-1) ) + 1;
         BSetQuestion* p_tmp_question = FindSubset_Greedy(rNGrams, rTraits, &e, rand_pred);
 
         if (e < best_e || best_e < 0) {

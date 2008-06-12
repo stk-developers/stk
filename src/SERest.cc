@@ -280,6 +280,9 @@ int main(int argc, char* argv[])
     IMlfStream                      frame_weight_stream(frame_weight_stream_base);
     BasicVector<FLOAT>*             p_weight_vector = NULL;
     
+    bool                            write_raw_gmm = false;
+
+
     enum  UpdateType update_type;
     enum  Update_Mode {UM_UPDATE=1, UM_DUMP=2, UM_BOTH=UM_UPDATE|UM_DUMP} update_mode;
     enum  TranscriptionFormat {TF_HTK, TF_STK, TF_ERR} in_transc_fmt;
@@ -538,6 +541,9 @@ int main(int argc, char* argv[])
           read_only = true;
           std::cout << "Macro " << src_mmf << " is marked as read-only" 
             << std::endl;
+        }
+        else {
+          std::cout << "Adding " << src_mmf << std::endl;
         }
 
         hset.ParseMmf(src_mmf, NULL, read_only);
@@ -1181,30 +1187,31 @@ int main(int argc, char* argv[])
         hset.Scan(MTM_MEAN|MTM_VARIANCE, NULL, NormalizeStatsForXform, 0);
       }
 
-      if (hset.mUpdateMask & UM_XFSTATS) 
+      if (hset.mUpdateMask & UM_XFSTATS)  {
         hset.WriteXformStatsAndRunCommands(trg_hmm_dir, xfStatsBin);
+      }
       
-      if (hset.mUpdateMask != UM_XFSTATS) 
-      {
-        if (hset.mUpdateMask & UM_XFORM) 
-        {
+      if (hset.mUpdateMask != UM_XFSTATS) {
+        if (hset.mUpdateMask & UM_XFORM) {
           hset.ReadXformStats(trg_hmm_dir, xfStatsBin);
         }
         
-        //UpdateHMMSetFromAccums(trg_hmm_dir, &hset);
         hset.UpdateFromAccums();
-        hset.WriteMmf(trg_mmf, trg_hmm_dir, trg_hmm_ext, hmms_binary);
+        if (! write_raw_gmm) {
+          hset.WriteMmf(trg_mmf, trg_hmm_dir, trg_hmm_ext, hmms_binary);
+        }
+        else {
+          hset.WriteMmfRaw(trg_mmf, trg_hmm_dir, trg_hmm_ext, hmms_binary);
+        }
       }
     }
     
-    if (hset_alig != &hset) 
-    {
+    if (hset_alig != &hset) {
       hset_alig->Release();
       delete hset_alig;
     }
     
-    if (hset_prior != &hset) 
-    {
+    if (hset_prior != &hset) {
       hset_prior->Release();
       delete hset_prior;
     }
