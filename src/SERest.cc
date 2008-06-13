@@ -565,8 +565,8 @@ int main(int argc, char* argv[])
         {
           bool read_only = false;
 
-          if (src_mmf[0] == '@') {
-            src_mmf++;
+          if (alg_mmf[0] == '@') {
+            alg_mmf++;
             read_only = true;
           }
 
