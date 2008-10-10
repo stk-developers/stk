@@ -351,12 +351,13 @@ int main(int argc, char* argv[])
           cvn_mask_alig, cvg_file_alig);
                              
       featureRepositoryList.push(&feature_repo_alig);
+      swap(featureRepositoryList.front(), featureRepositoryList.back());
     }
 
     // the rest of the parameters are the feature files
     for (; i < argc; i++) {
-      swap(featureRepositoryList.front(), featureRepositoryList.back());
       featureRepositoryList.front()->AddFile(argv[i]);
+      swap(featureRepositoryList.front(), featureRepositoryList.back());
     }
 
     gpFilterWldcrd=GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD","$");

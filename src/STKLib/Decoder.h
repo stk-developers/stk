@@ -637,7 +637,7 @@ namespace STK
         int numOfTokens = mpNode->mC.mType & NT_MODEL ? mpNode->mC.mpHmm->mNStates : 1;
         mpTokens        = new Token[numOfTokens];
         mpExitToken     = &mpTokens[numOfTokens-1];
-#ifndef NDEBUG
+#ifdef REPORT_TOKEN_ACTIVITY
       mTokensEntered =  mTokensExited = 0;
 #endif
       }
@@ -658,7 +658,7 @@ namespace STK
       Token*            mpExitToken;
       Token*            mpTokens;
       Token*            mpBestToken;
-#ifndef NDEBUG
+#ifdef REPORT_TOKEN_ACTIVITY
       int               mTokensEntered;
       int               mTokensExited;
       int               mNodeNumber;

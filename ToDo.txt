@@ -1,4 +1,4 @@
-7!!! InputXform -> XformInstance ???
+!!! InputXform -> XformInstance ???
 !!! Check that numer of states in the two models match
 + NaN appears in models for zero occupation probamilities
 !!! Wierd meaning of macro->occurances for training from network
@@ -66,6 +66,7 @@ Local optimization before posterior pruning makes statr_beta and end_alpha quite
 Size of accumulators depends on update type -> update type should be specified (and fixed) before HmmSet::Init 
                                                or we should report error if accums are not allocated properly (may be this isbetter option)
 For empty input network file, SExpan announce: ReadSTKNetwork: Network has multiple nodes with no successors 
+Estimation of tied variance vectors is completely wrong: single (tied) mean is considered for all tied variance vectors.
 
 To finish new SKT networks
 - Expanded network cannot hold information about word output symbols and
@@ -95,7 +96,6 @@ ToDo(extra):
 - Make the networks transparent and simple
 - use DEFINE on template network... 
 - separate decoder from network a bit more...
-- fix FeatureRepository 
-
+- fix FeatureRepository
                                            
 
