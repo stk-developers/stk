@@ -2,6 +2,7 @@
 #define BQuestion_h
 
 #include "BDTree_IO.h"
+//#include "BDTree.h"
 
 namespace STK {
   class BQuestionTerm {

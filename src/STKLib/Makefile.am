@@ -31,7 +31,8 @@ libSTKLib_a_CFLAGS   = $(SSE_FLAGS) $(AM_CFLAGS)
 EXTRA_libSTKLib_a_SOURCES  = $(IMAGESC_SRC)
 libSTKLib_a_DEPENDENCIES = $(HSEARCH_R_OBJ)
 libSTKLib_a_SOURCES = BasicVector.cc BasicVector.h BasicVector.tcc \
-		BDTree.cc BDTree_IO.cc BDTree.h BDTree.tcc \
+		BDTree.h BDTree.cc BDTree.tcc BDTree_IO.cc BDTree_IO.h \
+		BQuestion.h \
 		ContextSample.cc ContextSample.h Error.cc  \
 		Error.h Features.cc Features.h Matrix.cc Matrix.h Matrix.tcc \
 		MlfStream.h MlfStream.cc MlfStream.tcc Models.cc  \

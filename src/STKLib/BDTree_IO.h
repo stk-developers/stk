@@ -1,6 +1,8 @@
 #ifndef BDTree_IO_h
 #define BDTree_IO_h
 
+#include <iostream>
+
 namespace STK
 {
   class BDTreeHeader;

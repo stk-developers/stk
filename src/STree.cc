@@ -14,7 +14,10 @@
 #include <list>
 
 #if !defined HAVE_BOOST
-# error Requires BOOST
+# warning "STree won't run---Requires BOOST"
+int main(int argc, char* argv[]) {
+  return 1;
+}
 #else
 
 #include <boost/program_options.hpp>
