@@ -1106,6 +1106,20 @@ namespace STK
      */
     void
     AttachPriors(HMMSetNodeName nodeName, Transition * pPriorTransition);
+
+    /** 
+     * @brief Prints the structure to a stream
+     * 
+     * @param rOstr reference to std::ostream stream
+     */
+    void
+    Print(std::ostream& rOstr);
+
+    /** 
+     * @brief Prints the structure to std::cout
+     */
+    void 
+    PrintCout();
   };
 
 
