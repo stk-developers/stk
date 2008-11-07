@@ -57,6 +57,16 @@ namespace STK
     class Matrix
     {
     public:
+      // HTK parameter file header (see HTK manual)
+      typedef struct
+      {
+              int nSamples;
+              int sampPeriod;
+              short sampSize;
+              short paramKind;
+      } HtkHeader;
+
+
       /// defines a type of this
       typedef Matrix<_ElemT>    ThisType;
 
@@ -126,7 +136,7 @@ namespace STK
        *  @brief Gives access to a specified matrix row without range check
        *  @return Pointer to the const array
        */
-      const _ElemT* const
+      const _ElemT* 
       cpData () const
       {
         return mpData;
@@ -137,7 +147,7 @@ namespace STK
        *  @brief Gives access to a specified matrix row without range check
        *  @return Pointer to the non-const data array
        */
-      _ElemT*      
+      _ElemT* __attribute__((aligned(16)))
       pData () const
       {
         return mpData;
@@ -151,6 +161,8 @@ namespace STK
         return mMRows * mStride * sizeof(_ElemT);
       }
       
+      bool
+      LoadHTK(const char* pFileName);
       
       //########################################################################
       //########################################################################
@@ -327,6 +339,11 @@ namespace STK
       Range(const size_t    ro, const size_t    r, 
             const size_t    co, const size_t    c)
       { return MatrixRange<_ElemT>(*this, ro, r, co, c); }
+
+    protected:
+      inline void swap4b(void *a);
+      inline void swap2b(void *a);
+
 
     
     protected:

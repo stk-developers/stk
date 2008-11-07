@@ -51,10 +51,11 @@ namespace STK
       class BasicVector
     {
     public:
-      BasicVector(): mpData(NULL), mLength(0)
+      BasicVector(): mpData(NULL)
 #ifdef STK_MEMALIGN_MANUAL
         ,mpFreeData(NULL)
 #endif
+        , mLength(0)
       {}
       
       /**
@@ -139,8 +140,8 @@ namespace STK
       AddCVMul(const _ElemT c, const _ElemT* pV);
 
       BasicVector<_ElemT>&
-      AddCVVDotMul(const _ElemT c, const _ElemT* pV, const size_t nV, 
-                                   const _ElemT* pV, const size_t nV);
+      AddCVVDotMul(const _ElemT c, const _ElemT* pA, const size_t nA, 
+                                   const _ElemT* pB, const size_t nB);
       
       /// this = this + c * rM * rV 
       BasicVector<_ElemT>&
@@ -264,23 +265,23 @@ namespace STK
   template<>
     BasicVector<float>&
     BasicVector<float>::
-    AddCMVMul(const float c, const Matrix<float>& rV, const BasicVector<float>& rV);
+    AddCMVMul(const float c, const Matrix<float>& rV, const BasicVector<float>& rV2);
 
   template<>
     BasicVector<double>&
     BasicVector<double>::
-    AddCMVMul(const double c, const Matrix<double>& rV, const BasicVector<double>& rV);
+    AddCMVMul(const double c, const Matrix<double>& rV, const BasicVector<double>& rV2);
     
 
   template<>
     BasicVector<float>&
     BasicVector<float>::
-    AddCMtVMul(const float c, const Matrix<float>& rV, const BasicVector<float>& rV);
+    AddCMtVMul(const float c, const Matrix<float>& rV, const BasicVector<float>& rV2);
 
   template<>
     BasicVector<double>&
     BasicVector<double>::
-    AddCMtVMul(const double c, const Matrix<double>& rV, const BasicVector<double>& rV);
+    AddCMtVMul(const double c, const Matrix<double>& rV, const BasicVector<double>& rV2);
     
 
   template<>

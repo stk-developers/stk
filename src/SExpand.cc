@@ -143,6 +143,8 @@ int main(int argc, char *argv[])
   char *tee_phn;
   int trace_flag       =  0;
   int fcnt             = 0;
+  
+  bool topological_sort = false;
 
   enum TranscriptionFormat {
     TF_MLF, TF_MNF, TF_HTK, TF_STK, TF_ERR,
@@ -223,6 +225,7 @@ int main(int argc, char *argv[])
   viterbi_decode=GetParamBool(&cfgHash,SNAME":VITERBIDECODE",  false);
   word_penalty = GetParamFlt(&cfgHash, SNAME":WORDPENALTY",     0.0);
   model_penalty= GetParamFlt(&cfgHash, SNAME":MODELPENALTY",    0.0);
+  topological_sort=GetParamBool(&cfgHash,SNAME":TOPOLOGICALSORT", false);
   
   expOptions.mTraceFlag = trace_flag;
 
@@ -428,6 +431,9 @@ int main(int argc, char *argv[])
           grammar_scale,
           posterior_scale);
 
+      if (topological_sort) {
+        my_net.TopologicalSort();
+      }
 	
       if(poster_prune > 0.0 || out_net_fmt.mPosteriors) {
         // Just to ensure topological ordering

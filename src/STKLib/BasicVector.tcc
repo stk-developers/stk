@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <cassert>
 #include <math.h>
+#include <cstring>
 
 #ifdef HAVE_ATLAS
 extern "C"{
@@ -43,7 +44,7 @@ namespace STK
         mLength = length;
         
         // set all bytes to 0
-        memset(mpData, 0, size);
+        std::memset(mpData, 0, size);
       }
       else
       {
@@ -169,7 +170,7 @@ namespace STK
         mLength = s;
         
         // set all bytes to 0
-        memset(mpData, 0, size);
+        std::memset(mpData, 0, size);
         // copy the memory block
         memcpy(this->mpData, pData, s);
       }
@@ -207,7 +208,7 @@ namespace STK
     BasicVector<_ElemT>::
     Clear()      
     { 
-      memset(mpData, 0, mLength*sizeof(_ElemT)); 
+      std::memset(mpData, 0, mLength*sizeof(_ElemT)); 
     }
       
   

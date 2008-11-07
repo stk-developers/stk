@@ -2097,7 +2097,7 @@ namespace STK
         assert(mActiveModelsBestLikes.size() == mNActiveModelsForObservation);
 
         // Find n-th best likelihood in the vector
-        nth_element(mActiveModelsBestLikes.begin(),
+        std::nth_element(mActiveModelsBestLikes.begin(),
                     mActiveModelsBestLikes.end() - mMaxActiveModels,
                     mActiveModelsBestLikes.end());
                     

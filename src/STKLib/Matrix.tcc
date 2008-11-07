@@ -24,6 +24,7 @@ extern "C"{
 
 #include<fstream>
 #include<iomanip>
+#include<typeinfo>
 
 namespace STK
 {
@@ -166,6 +167,95 @@ namespace STK
     }
 
 
+  //****************************************************************************
+  //****************************************************************************
+  template<typename _ElemT>
+    void
+    Matrix<_ElemT>::
+    swap4b(void* a)
+    {
+      char* b = (char *)a;
+      char c;
+      c = b[0]; b[0] = b[3]; b[3] = c;
+      c = b[1]; b[1] = b[2]; b[2] = c;
+    }
+
+  //****************************************************************************
+  //****************************************************************************
+  template<typename _ElemT>
+    void
+    Matrix<_ElemT>::
+    swap2b(void* a)
+    {
+      char *b = (char *)a;
+      char c;
+      c = b[0]; b[0] = b[1]; b[1] = c;
+    }
+
+  //****************************************************************************
+  //****************************************************************************
+  template<typename _ElemT>
+    bool
+    Matrix<_ElemT>::
+    LoadHTK(const char* pFileName)
+    {
+      HtkHeader htk_hdr;
+
+      FILE *fp = fopen(pFileName, "rb");
+      if(!fp)
+      {
+        //fprintf(stderr, "Mat<T>::loadHTK - can not open the file: file\n", file);
+        //exit(1);
+        return false;
+      }
+
+      read(fileno(fp), &htk_hdr, sizeof(htk_hdr));
+
+      swap4b(&htk_hdr.nSamples);
+      swap4b(&htk_hdr.sampPeriod);
+      swap2b(&htk_hdr.sampSize);
+      swap2b(&htk_hdr.paramKind);
+
+      Init(htk_hdr.nSamples, htk_hdr.sampSize / sizeof(float));
+
+      size_t i;
+      size_t j;
+      if (typeid(_ElemT) == typeid(float))
+      {
+        for (i=0; i< Rows(); ++i) {
+          read(fileno(fp), (*this)[i], Cols() * sizeof(float));
+
+          for(j = 0; j < Cols(); j++) {
+            swap4b(&((*this)[i][j]));
+          }
+        }
+      }
+      else
+      {
+        float *pmem = new (std::nothrow) float[Cols()];
+        if (!pmem)
+        {
+          fclose(fp);
+          return false;
+        }
+
+        for(i = 0; i < Rows(); i++) {
+          read(fileno(fp), pmem, Cols() * sizeof(float));
+
+          for (j = 0; j < Cols(); ++j) {
+            swap4b(&pmem[j]);
+            (*this)[i][j] = static_cast<_ElemT>(pmem[j]);
+          }
+        }
+        delete [] pmem;
+      }
+
+      fclose(fp);
+      
+      return true;
+    }
+    
+      
   //****************************************************************************
   //****************************************************************************
   template<typename _ElemT>

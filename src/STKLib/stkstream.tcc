@@ -164,7 +164,7 @@ namespace STK
         // iostream -> stdio open mode string
         this->open_mode(m, __p_mode, __rw_mode, mstr);
 
-        if (mpFilePtr = popen(command, mstr))
+        if ((mpFilePtr = popen(command, mstr)))
         {
           mFilename   = command;
           mMode       = m;
@@ -190,7 +190,7 @@ namespace STK
           // iostream -> stdio open mode string
           this->open_mode(m, __p_mode, __rw_mode, mstr);
 
-          if (mpFilePtr = popen(command, mstr))
+          if ((mpFilePtr = popen(command, mstr)))
           {
             mFilename     = pFName;
             mMode         = m;
@@ -206,7 +206,7 @@ namespace STK
           // iostream -> stdio open mode string
           this->open_mode(m, __p_mode, __rw_mode, mstr);
 
-          if (mpFilePtr = fopen(pFName, mstr))
+          if ((mpFilePtr = fopen(pFName, mstr)))
           {
             mFilename   = pFName;
             mMode       = m;
