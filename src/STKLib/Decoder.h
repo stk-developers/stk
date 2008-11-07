@@ -153,8 +153,8 @@ namespace STK
       /**
        * @brief Sorts nodes in this network
        */
-  //    void 
-  //    SortNodes();
+      void 
+      SortNodes();
       
       /**
        * @brief Checks for a cyclic structure in network

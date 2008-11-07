@@ -586,6 +586,9 @@ namespace STK
     void 
     TopologicalSort();
 
+    void 
+    SortNodes();
+
   private:
     int 
     LatticeLocalOptimization_ForwardPass(const ExpansionOptions &expOptions,

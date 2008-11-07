@@ -432,7 +432,7 @@ int main(int argc, char *argv[])
           posterior_scale);
 
       if (topological_sort) {
-        my_net.TopologicalSort();
+        my_net.SortNodes();
       }
 	
       if(poster_prune > 0.0 || out_net_fmt.mPosteriors) {

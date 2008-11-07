@@ -809,8 +809,12 @@ namespace STK
       RemoveLink(LinkType* pLink);
 
 
-      NodeContent&
+      const NodeContent&
       Content() const
+      { return mC; }
+
+      NodeContent&
+      Content()
       { return mC; }
 
     public:

@@ -536,132 +536,130 @@ std::map<std::string,FLOAT> state_posteriors;
 
   
     
-/*
 
   //***************************************************************************
   //***************************************************************************
-  void
-  Decoder:: 
-  SortNodes()
-  {
-    int       i;
-    int       j;
-    NetworkType::Node *    chain;
-    NetworkType::Node *    last;
-    NetworkType::Node *    node;
-  
-    // Sort nodes for forward (Viterbi) propagation
-  
-    for (node = rNetwork().pFirst(); node != NULL; node = node->mpNext) 
-    {
-      node->mAux = node->rNBackLinks();
-    }
-  
-    for (i = 0; i < rNetwork().pFirst()->rNLinks(); i++) 
-    {
-      rNetwork().pFirst()->rpLinks()[i].pNode()->mAux--;
-    }
-  
-    last = rNetwork().pFirst();
-    chain = rNetwork().pFirst()->mpNext;
-  
-    while (chain) 
-    {
-      bool    short_curcuit = true;
-      NetworkType::Node ** curPtr = &chain;
-      i = 0;
-  
-      while (*curPtr) 
-      {
-        if ((((*curPtr)->mType & NT_MODEL) && !((*curPtr)->mType & NT_TEE))
-          || (*curPtr)->mAux == 0) 
-        {
-          for (j = 0; j < (*curPtr)->rNLinks(); j++) 
-          {
-            (*curPtr)->rpLinks()[j].pNode()->mAux--;
-          }
-  
-          last = (last->mpNext = *curPtr);
-          last->mAux = i++;
-          *curPtr = (*curPtr)->mpNext;
-          short_curcuit = false;
-        } 
-        else 
-        {
-          curPtr = &(*curPtr)->mpNext;
-        }
-      }
-  
-      if (short_curcuit) 
-      {
-  //      fprintf(stderr, "Nodes in loop: ");
-  //      for (curPtr = &chain; *curPtr; curPtr = &(*curPtr)->next)
-  //        fprintf(stderr, "%d %d", *curPtr - mpNodes, (*curPtr)->mType);
-  //      fprintf(stderr, "\n");
-        Error("Loop of non-emiting nodes found in network");
-      }
-    }
-  
-    last->mpNext = NULL;
-  
-    /// !!! What is this sorting links good for ???
-    for (node = rNetwork().pFirst(); node != NULL; node = node->mpNext) 
-    {
-      if (node->rNLinks() > 1)
-        qsort(node->rpLinks(), node->rNLinks(), sizeof(NetworkType::LinkType), cmplnk);
-    }
-  
-  // Sort nodes for backward propagation
-  
-    for (node = rNetwork().pFirst(); node != NULL; node = node->mpNext)
-      node->mAux = node->rNLinks();
-  
-    for (i = 0; i < rNetwork().pLast()->rNBackLinks(); i++)
-      rNetwork().pLast()->rpBackLinks()[i].pNode()->mAux--;
-  
-    last = rNetwork().pLast();
-    chain = rNetwork().pLast()->mpBackNext;
-    i = 0;
-  
-    while (chain) 
-    {
-      bool short_curcuit = true;
-      NetworkType::Node **curPtr = &chain;
-  
-      while (*curPtr) 
-      {
-        if ((((*curPtr)->mType & NT_MODEL) && !((*curPtr)->mType & NT_TEE))
-          || (*curPtr)->mAux == 0) 
-        {
-          for (j = 0; j < (*curPtr)->rNBackLinks(); j++) 
-          {
-            (*curPtr)->rpBackLinks()[j].pNode()->mAux--;
-          }
-  
-          last = (last->mpBackNext = *curPtr);
-          last->mAux = i++;
-          *curPtr = (*curPtr)->mpBackNext;
-          short_curcuit = false;
-        } 
-        else 
-        {
-          curPtr = &(*curPtr)->mpBackNext;
-        }
-      }
-  
-      assert(!short_curcuit); // Shouldn't happen, since it didnot happen before
-    }
-  
-    last->mpBackNext = NULL;
-  
-    /// !!! What is this sorting links good for ???
-    for (node = rNetwork().pFirst(); node != NULL; node = node->mpNext) 
-    {
-      if (node->rNBackLinks() > 1)
-        qsort(node->rpBackLinks(), node->rNBackLinks(), sizeof(NetworkType::LinkType), cmplnk);
-    }
-  } // Decoder::SortNodes();
-*/  
+  // void
+  // Decoder:: 
+  // SortNodes()
+  // {
+  //   int       i;
+  //   int       j;
+  //   NetworkType::Node *    chain;
+  //   NetworkType::Node *    last;
+  //   NetworkType::Node *    node;
+  // 
+  //   // Sort nodes for forward (Viterbi) propagation
+  // 
+  //   for (node = rNetwork().pFirst(); node != NULL; node = node->mpNext) 
+  //   {
+  //     node->mAux = node->rNBackLinks();
+  //   }
+  // 
+  //   for (i = 0; i < rNetwork().pFirst()->rNLinks(); i++) 
+  //   {
+  //     rNetwork().pFirst()->rpLinks()[i].pNode()->mAux--;
+  //   }
+  // 
+  //   last = rNetwork().pFirst();
+  //   chain = rNetwork().pFirst()->mpNext;
+  // 
+  //   while (chain) 
+  //   {
+  //     bool    short_curcuit = true;
+  //     NetworkType::Node ** curPtr = &chain;
+  //     i = 0;
+  // 
+  //     while (*curPtr) 
+  //     {
+  //       if ((((*curPtr)->mType & NT_MODEL) && !((*curPtr)->mType & NT_TEE))
+  //         || (*curPtr)->mAux == 0) 
+  //       {
+  //         for (j = 0; j < (*curPtr)->rNLinks(); j++) 
+  //         {
+  //           (*curPtr)->rpLinks()[j].pNode()->mAux--;
+  //         }
+  // 
+  //         last = (last->mpNext = *curPtr);
+  //         last->mAux = i++;
+  //         *curPtr = (*curPtr)->mpNext;
+  //         short_curcuit = false;
+  //       } 
+  //       else 
+  //       {
+  //         curPtr = &(*curPtr)->mpNext;
+  //       }
+  //     }
+  // 
+  //     if (short_curcuit) 
+  //     {
+  // //      fprintf(stderr, "Nodes in loop: ");
+  // //      for (curPtr = &chain; *curPtr; curPtr = &(*curPtr)->next)
+  // //        fprintf(stderr, "%d %d", *curPtr - mpNodes, (*curPtr)->mType);
+  // //      fprintf(stderr, "\n");
+  //       Error("Loop of non-emiting nodes found in network");
+  //     }
+  //   }
+  // 
+  //   last->mpNext = NULL;
+  // 
+  //   /// !!! What is this sorting links good for ???
+  //   for (node = rNetwork().pFirst(); node != NULL; node = node->mpNext) 
+  //   {
+  //     if (node->rNLinks() > 1)
+  //       qsort(node->rpLinks(), node->rNLinks(), sizeof(NetworkType::LinkType), cmplnk);
+  //   }
+  // 
+  // // Sort nodes for backward propagation
+  // 
+  //   for (node = rNetwork().pFirst(); node != NULL; node = node->mpNext)
+  //     node->mAux = node->rNLinks();
+  // 
+  //   for (i = 0; i < rNetwork().pLast()->rNBackLinks(); i++)
+  //     rNetwork().pLast()->rpBackLinks()[i].pNode()->mAux--;
+  // 
+  //   last = rNetwork().pLast();
+  //   chain = rNetwork().pLast()->mpBackNext;
+  //   i = 0;
+  // 
+  //   while (chain) 
+  //   {
+  //     bool short_curcuit = true;
+  //     NetworkType::Node **curPtr = &chain;
+  // 
+  //     while (*curPtr) 
+  //     {
+  //       if ((((*curPtr)->mType & NT_MODEL) && !((*curPtr)->mType & NT_TEE))
+  //         || (*curPtr)->mAux == 0) 
+  //       {
+  //         for (j = 0; j < (*curPtr)->rNBackLinks(); j++) 
+  //         {
+  //           (*curPtr)->rpBackLinks()[j].pNode()->mAux--;
+  //         }
+  // 
+  //         last = (last->mpBackNext = *curPtr);
+  //         last->mAux = i++;
+  //         *curPtr = (*curPtr)->mpBackNext;
+  //         short_curcuit = false;
+  //       } 
+  //       else 
+  //       {
+  //         curPtr = &(*curPtr)->mpBackNext;
+  //       }
+  //     }
+  // 
+  //     assert(!short_curcuit); // Shouldn't happen, since it didnot happen before
+  //   }
+  // 
+  //   last->mpBackNext = NULL;
+  // 
+  //   /// !!! What is this sorting links good for ???
+  //   for (node = rNetwork().pFirst(); node != NULL; node = node->mpNext) 
+  //   {
+  //     if (node->rNBackLinks() > 1)
+  //       qsort(node->rpBackLinks(), node->rNBackLinks(), sizeof(NetworkType::LinkType), cmplnk);
+  //   }
+  // } // Decoder::SortNodes();
   
 
 }; // namespace STK
