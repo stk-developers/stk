@@ -900,7 +900,7 @@ namespace STK
     
         while (*curPtr) 
         {
-          if ((((*curPtr)->Content().mType & NT_MODEL) && !((*curPtr)->Content().mType & NT_TEE))
+          if (((((*curPtr)->Content().mType & NT_MODEL) || ((*curPtr)->Content().mType & NT_PHONE)) && !((*curPtr)->Content().mType & NT_TEE))
             || (*curPtr)->mAux == 0) 
           {
             for (j = 0; j < (*curPtr)->rNLinks(); j++) 
@@ -957,7 +957,7 @@ namespace STK
     
         while (*curPtr) 
         {
-          if ((((*curPtr)->Content().mType & NT_MODEL) && !((*curPtr)->Content().mType & NT_TEE))
+          if (((((*curPtr)->Content().mType & NT_MODEL) || ((*curPtr)->Content().mType & NT_PHONE)) && !((*curPtr)->Content().mType & NT_TEE))
             || (*curPtr)->mAux == 0) 
           {
             for (j = 0; j < (*curPtr)->rNBackLinks(); j++) 
