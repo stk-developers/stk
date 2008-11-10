@@ -1150,10 +1150,11 @@ namespace STK
       {
         typename _NetworkType::iterator         tmp_node(p_node);
         ++tmp_node;
-        if (tmp_node != rNetwork.End() && p_node->NSuccessors() < 1)
-        {
-          continue;
-        }
+
+//        if (tmp_node != rNetwork.End() && p_node->NSuccessors() < 1)
+//        {
+//          continue;
+//        }
 
         p_node->mAux = n++;
         l += p_node->NSuccessors();
@@ -1173,10 +1174,10 @@ namespace STK
         typename _NetworkType::iterator         tmp_node(p_node);
         ++tmp_node;
         
-        if (tmp_node != rNetwork.End() && p_node->NSuccessors() < 1)
-        {
-          continue;
-        }
+//        if (tmp_node != rNetwork.End() && p_node->NSuccessors() < 1)
+//        {
+//          continue;
+//        }
 
         int j;
     

@@ -128,7 +128,9 @@ const char *longopts =
 " --keyword-threshold  "
 " --label-formating    "
 " --lm-scale           \n"
+" --max-active-models  "
 " --minimize-net       "
+" --min-active-models  "
 " --model-penalty      "
 " --natural-read-order \n"
 " --outp-scale         "
@@ -175,6 +177,7 @@ void usage(char *progname)
 " -l s       Dir to store transcription files                Feature file dir\n"
 " -o s       Output label formating NCST                     None\n"
 " -t f       Set pruning to f [inc limit]                    Off\n"
+" -u i       set pruning max active                          0\n"
 " -w f       Load single reognition network f                Off\n"
 " -x s       Extension for hmm files                         None\n"
 " -y s       Output transcription file extension             rec\n"
@@ -207,6 +210,7 @@ const char *optionStr =
 " -l r   TARGETTRANSCDIR"
 " -o r   LABELFORMATING"
 " -t r   PRUNING"
+" -u r   MAXACTIVEMODELS"
 " -w r   RECOGNET"
 " -x r   SOURCEMODELEXT"
 " -y r   TARGETTRANSCEXT"
@@ -294,6 +298,8 @@ int main(int argc, char *argv[])
   int  *derivWinLengths;
   int startFrmExt;
   int endFrmExt;
+  int max_active;
+  int min_active;
   bool fulleval;
   bool swap_features;
   bool time_pruning;
@@ -390,6 +396,8 @@ int main(int argc, char *argv[])
   state_pruning= GetParamFlt(&cfgHash, SNAME":PRUNING",         0.0);
 //  stprn_step   = GetParamFlt(&cfgHash, SNAME":PRUNINGINC",      0.0);
 //  stprn_limit  = GetParamFlt(&cfgHash, SNAME":PRUNINGMAX",      0.0);
+  max_active   = GetParamInt(&cfgHash, SNAME":MAXACTIVEMODELS", 0);
+  min_active   = GetParamInt(&cfgHash, SNAME":MINACTIVEMODELS", 0);
   trace_flag   = GetParamInt(&cfgHash, SNAME":TRACE",           0);
   script =(char*)GetParamStr(&cfgHash, SNAME":SCRIPT",          NULL);
   mmf    =(char*)GetParamStr(&cfgHash, SNAME":SOURCEMMF",       NULL);
@@ -554,6 +562,9 @@ int main(int argc, char *argv[])
     decoder.mOcpScale     = occprb_scale;
     decoder.mAlignment     = alignment;
     decoder.mPruningThresh = state_pruning > 0.0 ? state_pruning : -LOG_0;
+    decoder.mMinActiveModels = min_active;
+    decoder.mMaxActiveModels = max_active;
+
 
     strcpy(label_file, file_name->logical);
     lfp = OpenOutputLabelFile(label_file,out_lbl_dir,out_lbl_ext,lfp,out_MLF);
