@@ -2090,6 +2090,7 @@ main ()
   return 0;
 }
 _ACEOF
+
 ac_clean_files_save=$ac_clean_files
 ac_clean_files="$ac_clean_files a.out a.exe b.out"
 # Try to create an executable without -o first, disregard a.out.

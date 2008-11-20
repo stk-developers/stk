@@ -109,12 +109,12 @@ namespace STK
           if ((chptr = line = readline(lfp, &rld)) == NULL) 
             break;
             
-          if (chptr[0] == '.' && (chptr[1] == '\0' || isspace(chptr[1]))) {
+          if (chptr[0] == '.' && (chptr[1] == '\0' || IsSpace(chptr[1]))) {
             chptr = NULL;
             break;
           }
           line_no++;
-          while (isspace(*chptr)) chptr++;
+          while (IsSpace(*chptr)) chptr++;
         } while (!*chptr || *chptr == '#');
     
         if (chptr == NULL) break; // End of file
@@ -130,7 +130,7 @@ namespace STK
             *valptr = '\0';
             valptr++;
           } 
-          else if (!*valptr || isspace(*valptr)) 
+          else if (!*valptr || IsSpace(*valptr)) 
           { // label definition (field without '=' )
             valptr = chptr;
             chptr = "";
@@ -235,7 +235,7 @@ namespace STK
             {
               char *colonptr=valptr;
 
-              while (*colonptr && !isspace(*colonptr) && *colonptr != ',')
+              while (*colonptr && !IsSpace(*colonptr) && *colonptr != ',')
                 colonptr++;
     
               if (*colonptr == ',') {
@@ -393,11 +393,11 @@ namespace STK
                   
                   nl++;
 
-                  if(!isspace(*pCh) && *pCh != '\0')
+                  if(!IsSpace(*pCh) && *pCh != '\0')
                     Error("Invalid character '%c' (%s:%d, char %d)",
                           *pCh, file_name, line_no, pCh-line+1);
                   
-                  while(isspace(*pCh)) pCh++;
+                  while(IsSpace(*pCh)) pCh++;
                 }
                 
                 p_node->rpLinks() = static_cast<_link_type * >
@@ -816,7 +816,7 @@ namespace STK
         {
           wordOrModelName[i] = toupper(wordOrModelName[i]);
         }
-        while (--i>=0 && (wordOrModelName[i] == '='||isspace(wordOrModelName[i]))) 
+        while (--i>=0 && (wordOrModelName[i] == '='||IsSpace(wordOrModelName[i]))) 
         {
           wordOrModelName[i] = '\0';
         }
@@ -959,7 +959,7 @@ namespace STK
             }
             word = (Word *) ep->data;
     
-            while (isspace(ch = fgetc(lfp)));
+            while (IsSpace(ch = fgetc(lfp)));
             if (ch != '[') {
               ungetc(ch, lfp);
             } else {
@@ -1109,7 +1109,7 @@ namespace STK
             chptr = line + strspn(line, " \n\t");
         } while (!*chptr);
     
-        if ((chptr[0] != '.' || (chptr[1] != '\0' && !isspace(chptr[1])))) {
+        if ((chptr[0] != '.' || (chptr[1] != '\0' && !IsSpace(chptr[1])))) {
           Error("Missing '.' at the end of network '%s' in NMF '%s'",
                 file_name, in_MLF);
         }

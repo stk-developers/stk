@@ -421,6 +421,8 @@ using namespace STK;
     const char *file_name,
     const char *type,
     const char *filter);
+
+  int IsSpace(int c);
   
   int my_fclose(FILE *fp);
   

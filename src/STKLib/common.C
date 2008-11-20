@@ -169,6 +169,13 @@ void fast_softmax_vec(double *in, double *out, int size)
     "ANON"
   };
   
+  //***************************************************************************
+  //***************************************************************************
+  int IsSpace(int c)
+  {
+    return (c <= 0x20 && c > 0);
+  }
+
   
   //***************************************************************************
   //***************************************************************************
@@ -640,7 +647,7 @@ void fast_softmax_vec(double *in, double *out, int size)
     char termChar = '\0';
     char *chrptr = str;
   
-    while (isspace(*chrptr)) ++chrptr;
+    while (IsSpace(*chrptr)) ++chrptr;
   
     if (*chrptr == '\'' || *chrptr == '"') {
       termChar = *chrptr;
@@ -656,7 +663,7 @@ void fast_softmax_vec(double *in, double *out, int size)
         }
       }
   
-      if (isspace(*chrptr) && !termChar) {
+      if (IsSpace(*chrptr) && !termChar) {
         break;
       }
   
@@ -682,7 +689,7 @@ void fast_softmax_vec(double *in, double *out, int size)
     }
   
   
-    while (isspace(*chrptr)) ++chrptr;
+    while (IsSpace(*chrptr)) ++chrptr;
     *endPtrOrErrMsg = chrptr;
     *str = '\0';
   
@@ -695,7 +702,7 @@ void fast_softmax_vec(double *in, double *out, int size)
   {
     char termChar = '\0';
       
-    while (isspace(*chrptr)) ++chrptr;
+    while (IsSpace(*chrptr)) ++chrptr;
   
     if (*chrptr == '\'' || *chrptr == '"') {
       termChar = *chrptr;
@@ -711,7 +718,7 @@ void fast_softmax_vec(double *in, double *out, int size)
         }
       }
   
-      if (isspace(*chrptr) && !termChar) {
+      if (IsSpace(*chrptr) && !termChar) {
         break;
       }
   
@@ -731,7 +738,7 @@ void fast_softmax_vec(double *in, double *out, int size)
       return -2;
     }
 
-    while (isspace(*chrptr)) ++chrptr;
+    while (IsSpace(*chrptr)) ++chrptr;
     *endPtrOrErrMsg = chrptr;
   
     return 0;
@@ -898,7 +905,7 @@ void fast_softmax_vec(double *in, double *out, int size)
   
       if ((chptr = strchr(line, '#')) != NULL) *chptr = '\0';
   
-      for (parptr = line; isspace(*parptr); parptr++);
+      for (parptr = line; IsSpace(*parptr); parptr++);
   
       if (*parptr == '\0') continue;
   
@@ -906,10 +913,10 @@ void fast_softmax_vec(double *in, double *out, int size)
       for (;;) {
         // Replace speces by '_', which is removed in InsertConfigParam
         while (isalnum(*chptr) || *chptr == '_' || *chptr == '-') chptr++;
-        while (isspace(*chptr)) *chptr++ = '_';
+        while (IsSpace(*chptr)) *chptr++ = '_';
         if (*chptr != ':') break;
         chptr++;
-        while (isspace(*chptr)) *chptr++ = '_';
+        while (IsSpace(*chptr)) *chptr++ = '_';
       }
       if (*chptr != '=') Error("Character '=' expected (%s:%d, char %d)",
                               file_name, line_no, chptr-line+1);
@@ -1414,19 +1421,19 @@ void fast_softmax_vec(double *in, double *out, int size)
       if (chptr == NULL) Error("Invalid command line option '-%c'", opt);
   
       chptr += 3;
-      while (isspace(*chptr)) chptr++;
+      while (IsSpace(*chptr)) chptr++;
   
       if (!chptr || chptr[0] == '-') {// Option without format string will be ignored
         optfmt = " ";
       } else {
         optfmt = chptr;
-        while (*chptr && !isspace(*chptr)) chptr++;
+        while (*chptr && !IsSpace(*chptr)) chptr++;
         if (!*chptr) Error("Fatal: Unexpected end of optionMap string");
       }
-      for (i = 0; !isspace(*optfmt); optfmt++) {
-        while (isspace(*chptr)) chptr++;
+      for (i = 0; !IsSpace(*optfmt); optfmt++) {
+        while (IsSpace(*chptr)) chptr++;
         value = chptr;
-        while (*chptr && !isspace(*chptr)) chptr++;
+        while (*chptr && !IsSpace(*chptr)) chptr++;
         assert(static_cast<unsigned int>(chptr-value+1) < sizeof(param));
         strncat(strcat(strcpy(param, pToolName), ":"), value, chptr-value);
         param[chptr-value+strlen(pToolName)+1] = '\0';
