@@ -1119,11 +1119,12 @@ int main(int argc, char* argv[])
     }
     
     
-    if (trace_flag & 2) 
+    if (trace_flag & 1) 
     {
       TraceLog("Total number of frames: %d\nTotal log likelihood: %e",
                 totFrames, totLogLike);
-      
+      TraceLog("Average log likelihood per frame: %e", totLogLike/totFrames);
+
       if (0 == parallel_mode && UT_TwoAccumSetEBW == update_type)
         TraceLog("Total log posterior: %e", totLogPosterior);
     }
