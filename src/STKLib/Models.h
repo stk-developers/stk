@@ -64,11 +64,13 @@ namespace STK
 
   class BiasXform;
   class CompositeXform;
+  class RegionDependentXform;
   class CopyXform;
   class BlockCopyXform;
   class TransposeXform;
   class WindowXform;
   class FeatureMappingXform;
+  class GmmPosteriorsXform;
   class FrantaProductXform;
   class FuncXform;
   class LinearXform;
@@ -268,6 +270,8 @@ namespace STK
     
     
     KID_ExtendedXform, 
+    KID_RegionDependent,
+    KID_GmmPosteriors,
     
     KID_Weights = 253,
   
@@ -336,12 +340,14 @@ namespace STK
     XformInstance*  ReadXformInstance (FILE* fp, Macro* macro);
     Xform*          ReadXform         (FILE* fp, Macro* macro);
     CompositeXform* ReadCompositeXform(FILE* fp, Macro* macro);
+    RegionDependentXform* ReadRegionDependentXform(FILE* fp, Macro* macro);
     LinearXform*    ReadLinearXform   (FILE* fp, Macro* macro, bool predefined);
     CopyXform*      ReadCopyXform     (FILE* fp, Macro* macro);
     BlockCopyXform* ReadBlockCopyXform(FILE* fp, Macro* macro);
     TransposeXform* ReadTransposeXform(FILE* fp, Macro* macro);
     WindowXform*    ReadWindowXform   (FILE* fp, Macro* macro, bool predefined);
     FeatureMappingXform* ReadFeatureMappingXform     (FILE* fp, Macro* macro);
+    GmmPosteriorsXform* ReadGmmPosteriorsXform     (FILE* fp, Macro* macro);
     FrantaProductXform*  ReadFrantaProductXform      (FILE* fp, Macro* macro);
     MatlabXform*    ReadMatlabXform(FILE* fp, Macro* macro);
     BiasXform*      ReadBiasXform     (FILE* fp, Macro* macro, bool preddefined);
@@ -366,12 +372,14 @@ namespace STK
     void   WriteXformInstance(FILE* fp, bool binary, XformInstance*   xformInstance);
     void   WriteXform        (FILE* fp, bool binary,          Xform*  xform);
     void   WriteCompositeXform(FILE*fp, bool binary, CompositeXform*  xform);
+    void   WriteRegionDependentXform(FILE*fp, bool binary, RegionDependentXform*  xform);
     void   WriteLinearXform  (FILE* fp, bool binary,    LinearXform*  xform);
     void   WriteCopyXform    (FILE* fp, bool binary,      CopyXform*  xform);
     void   WriteBlockCopyXform (FILE* fp, bool binary, BlockCopyXform* xform);
     void   WriteTransposeXform (FILE* fp, bool binary, TransposeXform* xform);
     void   WriteWindowXform  (FILE* fp, bool binary, WindowXform*  xform);
     void   WriteFeatureMappingXform (FILE* fp, bool binary, FeatureMappingXform* xform);
+    void   WriteGmmPosteriorsXform  (FILE* fp, bool binary, GmmPosteriorsXform* xform);
     void   WriteFrantaProductXform  (FILE* fp, bool binary, FrantaProductXform* xform);
     void   WriteFuncXform    (FILE* fp, bool binary,      FuncXform*  xform);
     void   WriteBiasXform    (FILE* fp, bool binary,      BiasXform*  xform);
@@ -1250,7 +1258,9 @@ namespace STK
     XT_STACKING,
     XT_CONSTANT,
     XT_COMPOSITE,
+    XT_REGIONDEPENDENT,
     XT_FEATURE_MAPPING,
+    XT_GMM_POSTERIORS,
     XT_FRANTA_PRODUCT,
     XT_MATLAB,
     XT_TRANSPOSE,
@@ -1366,6 +1376,42 @@ namespace STK
     
     size_t              mNLayers;    
     XformLayer*         mpLayer;
+    
+    /**
+     * @brief Composite Xform evaluation 
+     * @param pInputVector pointer to the input vector
+     * @param pOutputVector pointer to the output vector
+     * @param pMemory pointer to the extra memory needed by the operation
+     * @param direction propagation direction (forward/backward)
+     */
+    virtual FLOAT* 
+    Evaluate(FLOAT*    pInputVector, 
+             FLOAT*    pOutputVector,
+             char*     pMemory,
+             PropagDirectionType  direction);
+  };
+  
+  
+  /** *************************************************************************
+   ** *************************************************************************
+   * @brief Region Dependent Xform 
+   */
+  class RegionDependentXform : public Xform 
+  {
+  public:
+    /**
+     * @brief The constructor
+     * @param nBlocks number of regions
+     */
+    RegionDependentXform(size_t nBlocks);
+    
+    /// The destructor
+    virtual
+    ~RegionDependentXform();    
+    
+    size_t         mNBlocks;    
+    Xform**        mpBlock;
+    BasicVector<FLOAT>  mBlockOutputVector;
     
     /**
      * @brief Composite Xform evaluation 
@@ -1741,6 +1787,42 @@ namespace STK
              
     State*              mpStateFrom;
     State*              mpStateTo;    
+  };
+  
+  
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief GMM Posteriors Xform representation
+   */
+  class GmmPosteriorsXform : public Xform 
+  {
+  public:
+    /**
+     * @brief The constructor
+     * @param inSize size of input vector
+     * @param outSize size of output vector
+     */
+    GmmPosteriorsXform(size_t inSize);
+    
+    virtual
+    ~GmmPosteriorsXform();
+  
+    /**
+     * @brief Copy Xform evaluation 
+     * @param pInputVector pointer to the input vector
+     * @param pOutputVector pointer to the output vector
+     * @param pMemory pointer to the extra memory needed by the operation
+     * @param direction propagation direction (forward/backward)
+     */
+    virtual FLOAT* 
+    Evaluate(FLOAT*     pInputVector, 
+             FLOAT*     pOutputVector,
+             char*      pMemory,
+             PropagDirectionType  direction);  
+             
+    State*              mpState;
+    std::vector<FLOAT>  mNBestLikesVector;
+    FLOAT               mScale;
   };
   
   

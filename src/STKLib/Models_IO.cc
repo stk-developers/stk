@@ -62,7 +62,9 @@ namespace STK
     gpKwds[KID_WindowPredef] = "WindowPredef";  gpKwds[KID_BlockCopy  ] = "BlockCopy";       
     gpKwds[KID_BiasPredef  ] = "BiasPredef";
         
-    gpKwds[KID_ExtendedXform    ] = "ExtendedXform";
+    gpKwds[KID_ExtendedXform  ] = "ExtendedXform";
+    gpKwds[KID_RegionDependent] = "RegionDependentXform";
+    gpKwds[KID_GmmPosteriors]   = "GmmPosteriors";
     
     /* Numeric functions - FuncXform*/
     gpKwds[KID_Sigmoid     ] = "Sigmoid";       gpKwds[KID_Log        ] = "Log";
@@ -1400,6 +1402,12 @@ namespace STK
     if (CheckKwd(keyword, KID_Constant)) {
       return (Xform *) ReadConstantXform(fp, macro);
     }
+    if (CheckKwd(keyword, KID_GmmPosteriors)) {
+      return (Xform *) ReadGmmPosteriorsXform(fp, macro);
+    }
+    if (CheckKwd(keyword, KID_RegionDependent)) {
+      return (Xform *) ReadRegionDependentXform(fp, macro);
+    }
     if (CheckKwd(keyword, KID_NumLayers) ||
       CheckKwd(keyword, KID_NumBlocks) ||
       CheckKwd(keyword, KID_BlockInfo))
@@ -1622,6 +1630,64 @@ namespace STK
     }
   
     
+    ret->mpMacro = macro;
+    return ret;
+  }; // ReadCompositeXform(FILE *fp, Macro *macro) 
+  
+  
+  //***************************************************************************
+  //***************************************************************************
+  RegionDependentXform *
+  ModelSet::
+  ReadRegionDependentXform(FILE *fp, Macro *macro) 
+  {
+    RegionDependentXform* ret;
+    char *              keyword;
+    size_t              j;
+    int                 block_id;
+    size_t              nblocks;
+
+    keyword = GetString(fp, 1);
+    if (CheckKwd(keyword, KID_NumBlocks)) {
+      nblocks = GetInt(fp);
+    } else {
+      nblocks = 1;
+      UngetString();
+    }
+  
+    // create new RegionDependent Xform
+    ret = new RegionDependentXform(nblocks);    
+
+    for (j = 0; j < nblocks; j++) {
+      keyword = GetString(fp, 1);
+      
+      if (!CheckKwd(keyword, KID_Block)) {
+        if (nblocks > 1) {
+          Error("Keyword <Block> expected (%s:%d)", gpCurrentMmfName, 
+              gCurrentMmfLine);
+        }
+        UngetString();
+        block_id = 1;
+      } else {
+        block_id = GetInt(fp);
+      }
+      if (block_id < 1 || static_cast<size_t>(block_id) > nblocks) {
+        Error("Block number out of the range (%s:%d)", gpCurrentMmfName, 
+            gCurrentMmfLine);
+      }
+      if (ret->mpBlock[block_id-1] != NULL) {
+        Error("Redefinition of block (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      }
+      ret->mpBlock[block_id-1] = ReadXform(fp, NULL);
+      ret->mMemorySize += ret->mpBlock[block_id-1]->mMemorySize;
+      ret->mDelay = HIGHER_OF(ret->mDelay ,ret->mpBlock[block_id-1]->mDelay);
+    }
+    ret->mInSize = ret->mOutSize = 0;
+    for (j=0; j < ret->mNBlocks; j++) {
+      ret->mInSize  = HIGHER_OF(ret->mInSize,  ret->mpBlock[j]->mInSize + nblocks);
+      ret->mOutSize = HIGHER_OF(ret->mOutSize, ret->mpBlock[j]->mOutSize);
+    }
+    ret->mBlockOutputVector.Init(ret->mOutSize);
     ret->mpMacro = macro;
     return ret;
   }; // ReadCompositeXform(FILE *fp, Macro *macro) 
@@ -2108,6 +2174,44 @@ namespace STK
     ret->mpMacro      = macro;
     return ret;
   }; //ReadFeatureMappingXform(FILE *fp, Macro *macro)
+  
+  
+  //***************************************************************************
+  //***************************************************************************
+  GmmPosteriorsXform*
+  ModelSet::
+  ReadGmmPosteriorsXform(FILE* fp, Macro* macro)
+  {
+    GmmPosteriorsXform* ret=NULL;
+    int           in_size_orig;
+    char*         keyword;
+    int           state_id;
+    
+    int   in_size = GetInt(fp);
+    int   n_best  = GetInt(fp);
+    FLOAT scale   = GetFloat(fp);
+
+    // create new object
+    ret = new GmmPosteriorsXform(in_size);
+
+    // we need to tell the model set to ignore the original input vector size
+    // as the transform can have different dimensiion. The value needs to be 
+    // later restored
+    in_size_orig     = mInputVectorSize;
+    mInputVectorSize = in_size;
+    
+    ret->mpState = ReadState(fp, NULL);    
+    ret->mOutSize = ret->mpState->mNMixtures;
+    n_best = LOWER_OF(n_best, ret->mOutSize);
+    ret->mNBestLikesVector.resize(n_best);
+    ret->mScale = scale;    
+    
+    // restore the original input vector size value
+    mInputVectorSize  = in_size_orig;
+    
+    ret->mpMacro      = macro;
+    return ret;
+  }; //ReadGmmPosteriorsXform(FILE *fp, Macro *macro)
   
   
   //***************************************************************************
@@ -3029,12 +3133,14 @@ namespace STK
       case XT_BLOCKCOPY : WriteBlockCopyXform(fp, binary, static_cast<BlockCopyXform *>(xform)); break;      
       case XT_TRANSPOSE : WriteTransposeXform(fp, binary, static_cast<TransposeXform *>(xform)); break;
       case XT_WINDOW    : WriteWindowXform   (fp, binary, static_cast<WindowXform *>(xform)); break;
-      case XT_FEATURE_MAPPING: WriteFeatureMappingXform     (fp, binary, static_cast<FeatureMappingXform *>(xform)); break;
-      case XT_FRANTA_PRODUCT : WriteFrantaProductXform      (fp, binary, static_cast<FrantaProductXform  *>(xform)); break;
+      case XT_GMM_POSTERIORS:  WriteGmmPosteriorsXform (fp, binary, static_cast<GmmPosteriorsXform  *>(xform)); break;
+      case XT_FEATURE_MAPPING: WriteFeatureMappingXform(fp, binary, static_cast<FeatureMappingXform *>(xform)); break;
+      case XT_FRANTA_PRODUCT : WriteFrantaProductXform (fp, binary, static_cast<FrantaProductXform  *>(xform)); break;
       case XT_FUNC      : WriteFuncXform     (fp, binary, static_cast<FuncXform *>(xform)); break;
       case XT_BIAS      : WriteBiasXform     (fp, binary, static_cast<BiasXform *>(xform)); break;
       case XT_STACKING  : WriteStackingXform (fp, binary, static_cast<StackingXform *>(xform)); break;
       case XT_CONSTANT  : WriteConstantXform (fp, binary, static_cast<ConstantXform *>(xform)); break;
+      case XT_REGIONDEPENDENT : WriteRegionDependentXform(fp, binary, static_cast<RegionDependentXform *>(xform)); break;
       case XT_COMPOSITE : WriteCompositeXform(fp, binary, static_cast<CompositeXform *>(xform)); break;
       default:  break;    
     }
@@ -3120,6 +3226,40 @@ namespace STK
   } //WriteCompositeXform(FILE *fp, bool binary, CompositeXform *xform)
 
   
+  //***************************************************************************
+  //*****************************************************************************  
+  void 
+  ModelSet::
+  WriteRegionDependentXform(FILE *fp, bool binary, RegionDependentXform *xform)
+  {
+    size_t          j;
+  
+    PutKwd(fp, binary, KID_RegionDependent);
+    PutNLn(fp, binary);
+  
+    if (xform->mNBlocks > 1) 
+    {
+      PutKwd(fp, binary, KID_NumBlocks);
+      PutInt(fp, binary, xform->mNBlocks);
+      PutNLn(fp, binary);
+    }
+  
+    for (j = 0; j < xform->mNBlocks; j++) {
+      if (xform->mNBlocks > 1) {
+        PutKwd(fp, binary, KID_Block);
+        PutInt(fp, binary, j+1);
+        PutNLn(fp, binary);
+      }
+      if (xform->mpBlock[j]->mpMacro) {
+        fprintf(fp, "~x \"%s\"", xform->mpBlock[j]->mpMacro->mpName);
+        PutNLn(fp, binary);
+      } else {
+        WriteXform(fp, binary, xform->mpBlock[j]);
+      }
+    }
+  } //WriteCompositeXform(FILE *fp, bool binary, CompositeXform *xform)
+
+
   //*****************************************************************************  
   //*****************************************************************************  
   void 
@@ -3445,6 +3585,21 @@ namespace STK
     WriteState(fp, binary, xform->mpStateTo);
     fputs("\n", fp);
   } //WriteFeatureMappingXform(FILE *fp, bool binary, FeatureMappingXform *xform)
+
+  
+  //*****************************************************************************
+  //*****************************************************************************  
+  void
+  ModelSet::
+  WriteGmmPosteriorsXform(FILE* fp, bool binary, GmmPosteriorsXform* xform)
+  {
+    PutKwd(fp, binary, KID_GmmPosteriors);
+    PutInt(fp, binary, xform->mInSize);
+    PutInt(fp, binary, xform->mNBestLikesVector.size());
+    PutFlt(fp, binary, xform->mScale);
+    PutNLn(fp, binary);
+    WriteState(fp, binary, xform->mpState);
+  } //WriteGmmPosteriorsXform(FILE *fp, bool binary, GmmPosteriorsXform *xform)
 
   
   //*****************************************************************************

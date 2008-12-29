@@ -137,7 +137,8 @@ void WriteLabels(
   int ctm = labelFormat.mCentreTimes;
 
   for (;label != NULL; label = label->mpNext) {
-    if(label->mpName == NULL) continue;
+    // if(label->mpName == NULL) continue; 
+    // SRover needs to output NULL labels to represent insertions and deletions
 
     if (!(labelFormat.mNoTimes)) {
       long long time = UNDEF_TIME;
@@ -164,8 +165,8 @@ void WriteLabels(
     }
 
     for (level = label; level != NULL; level = level->mpNextLevel) {
-      if (prev == level || level->mpName == NULL) break;
-
+      if (prev == level) break; //  || level->mpName == NULL 
+                                // SRover needs to output NULL labels to represent insertions and deletions
 
       putc(' ', lfp);
       fprintHTKstr(lfp, level->mpName);

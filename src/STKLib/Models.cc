@@ -28,6 +28,7 @@
 #include <malloc.h>
 #include <math.h>
 
+#include <functional>
 #include <map>
 
 
@@ -2420,12 +2421,28 @@ namespace STK
           }
         }
       }
-    }
-    
-    if (mXformType == XT_FEATURE_MAPPING)
+    } 
+    else if (mXformType == XT_FEATURE_MAPPING) 
     {
       static_cast<FeatureMappingXform*>(this)->mpStateTo->Scan(mask, nodeName, action, pUserData);
       static_cast<FeatureMappingXform*>(this)->mpStateFrom->Scan(mask, nodeName, action, pUserData);
+    }
+    else if (mXformType == XT_GMM_POSTERIORS) 
+    {
+      static_cast<GmmPosteriorsXform*>(this)->mpState->Scan(mask, nodeName, action, pUserData);
+    }
+    else if (mXformType == XT_REGIONDEPENDENT) {
+      RegionDependentXform*  rdxf = dynamic_cast<RegionDependentXform *> (this);
+      size_t j;
+  
+      for (j = 0; j < rdxf->mNBlocks; j++) {
+        if (!rdxf->mpBlock[j]->mpMacro) {
+          if (n > 0) {
+            snprintf(chptr, n, ".part[%d]", (int) j+1);
+          }
+          rdxf->mpBlock[j]->Scan(mask, nodeName, action, pUserData);
+        }
+      }
     }
   
     if (!(mask & MTM_PRESCAN)) 
@@ -2556,6 +2573,75 @@ namespace STK
         in  += mpLayer[i].mpBlock[j]->mInSize;
         out += mpLayer[i].mpBlock[j]->mOutSize;
         pMemory += mpLayer[i].mpBlock[j]->mMemorySize;
+      }
+    }
+    
+    return pOutputVector;
+  }; //Evaluate(...)
+
+
+
+  //**************************************************************************  
+  //**************************************************************************  
+  // RegionDependentXform section
+  //**************************************************************************  
+  //**************************************************************************  
+  RegionDependentXform::
+  RegionDependentXform(size_t nBlocks):
+    mBlockOutputVector()
+  {
+    mpBlock  = new Xform*[nBlocks];
+    mNBlocks = nBlocks;
+    
+    for (size_t i = 0; i < nBlocks; i++) 
+      mpBlock[i] = NULL;
+      
+    // set some properties
+    mMemorySize = 0;
+    mDelay      = 0;
+    mNBlocks    = nBlocks;
+    mXformType  = XT_REGIONDEPENDENT;    
+  }
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  RegionDependentXform::
+  ~RegionDependentXform()
+  {
+    delete [] mpBlock;
+  }
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  //virtual 
+  FLOAT *
+  RegionDependentXform::
+  Evaluate(FLOAT*     pInputVector, 
+           FLOAT*     pOutputVector,
+           char*      pMemory,
+           PropagDirectionType  direction)
+  {
+    size_t  i;
+    size_t  j;
+    FLOAT* region_weights = pInputVector;
+    FLOAT* input_vector   = pInputVector + mNBlocks;
+    
+    for(j = 0; j < mBlockOutputVector.Length(); j++) {
+      pOutputVector[j] = 0;
+    }  
+    for (i = 0; i < mNBlocks; i++) 
+    {
+      if(pInputVector[i] != 0 || mpBlock[i]->mMemorySize) {
+        mpBlock[i]->Evaluate(
+          input_vector,
+          mBlockOutputVector.pData(), 
+          pMemory, 
+          direction);
+          
+        for(j = 0; j < mpBlock[i]->mOutSize; j++) {
+          pOutputVector[j] = pOutputVector[j] + region_weights[i] * mBlockOutputVector[j];
+        }
+        pMemory += mpBlock[i]->mMemorySize;
       }
     }
     
@@ -2948,6 +3034,7 @@ namespace STK
     return pOutputVector;
   }; //Evaluate(...)
   
+  
   //**************************************************************************  
   //**************************************************************************  
   // FeatureMappingXform section
@@ -3046,7 +3133,75 @@ namespace STK
   
   //**************************************************************************  
   //**************************************************************************  
-  // FeatureMappingXform section
+  // GmmPosteriorsXform section
+  //**************************************************************************  
+  //**************************************************************************  
+  GmmPosteriorsXform::
+  GmmPosteriorsXform(size_t inSize):
+    mNBestLikesVector()
+  {
+    mInSize       = inSize;
+    mMemorySize   = 0;
+    mDelay        = 0;
+    mXformType    = XT_GMM_POSTERIORS;
+    mpState       = NULL;
+    mScale        = 0.0;
+  }
+  
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  // virutal
+  GmmPosteriorsXform::
+  ~GmmPosteriorsXform()
+  {  
+    
+    //std::cerr << "GmmPosteriorsXform destructor" << std::endl;
+  }
+  
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  //virtual 
+  FLOAT *
+  GmmPosteriorsXform::
+  Evaluate(FLOAT*     pInputVector, 
+           FLOAT*     pOutputVector,
+           char*      pMemory,
+           PropagDirectionType  direction)
+  {
+    size_t  i;
+    FLOAT min_like;
+    FLOAT like_sum = LOG_0;
+    
+    // find best input mixture
+    for (i = 0; i < mpState->mNMixtures; i++) {
+      pOutputVector[i] = (Decoder<DecoderNetwork>::DiagCGaussianDensity(mpState->mpMixture[i].mpEstimates, 
+        pInputVector, NULL) + mpState->mpMixture[i].mWeight) * mScale;
+    }
+    partial_sort_copy(pOutputVector, pOutputVector+mpState->mNMixtures, 
+                      mNBestLikesVector.begin(), mNBestLikesVector.end(), std::greater<FLOAT>());
+    min_like = mNBestLikesVector.back();
+    
+    for (i = 0; i < mpState->mNMixtures; i++) {
+      if(pOutputVector[i] >= min_like) {
+        like_sum = LogAdd(like_sum, pOutputVector[i]);
+      }
+    }
+    for (i = 0; i < mpState->mNMixtures; i++) {
+      if(pOutputVector[i] >= min_like) {
+        pOutputVector[i] = exp(pOutputVector[i]-like_sum);
+      } else {
+        pOutputVector[i] = 0;
+      }
+    }
+    return pOutputVector;
+  }; //Evaluate(...)
+    
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  // FrantaProductXform section
   //**************************************************************************  
   //**************************************************************************  
   FrantaProductXform::
