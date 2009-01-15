@@ -900,10 +900,14 @@ int main(int argc, char* argv[])
         {
           static string lastSpeakerMMF;
           string speakerMMF;
-          ProcessMask(feature_repo_alig.Current().Logical().c_str(), 
-              mmf_mask_alig, speakerMMF);
+          if (!one_pass_reest) 
+	    ProcessMask(feature_repo.Current().Logical().c_str(), 
+		mmf_mask_alig, speakerMMF);
+	  else
+	    ProcessMask(feature_repo_alig.Current().Logical().c_str(), 
+		mmf_mask_alig, speakerMMF);
           
-          if(lastSpeakerMMF != speakerMMF) 
+	  if(lastSpeakerMMF != speakerMMF) 
           {
             hset_alig->ParseMmf((string(mmf_dir_alig) + "/" + speakerMMF).c_str(),
                 NULL);
