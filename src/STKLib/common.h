@@ -254,7 +254,7 @@ typedef union
 #endif
 
 
-using namespace STK;
+//using namespace STK;
 
     
 //namespace STK
@@ -315,6 +315,8 @@ using namespace STK;
   };
   
   
+namespace STK 
+{
 
   /** **************************************************************************
    ** **************************************************************************
@@ -343,6 +345,7 @@ using namespace STK;
     char *              mpPhysical;
     char                logical[1];
   };
+}
   
   
   /** **************************************************************************
@@ -356,15 +359,20 @@ using namespace STK;
   
   
   
+namespace STK
+{
   int     ReadParmKind(const char *str, bool checkBrackets);
   int     ParmKind2Str(unsigned parmKind, char *outstr);
   void    MakeFileName(char *outFileName, const char* inFileName,
                     const char *out_dir, const char *out_ext);
+}
   
   char*   strtoupper(char *str);
   int     qsstrcmp(const void *a, const void *b);
   int     qsptrcmp(const void *a, const void *b);
   
+namespace STK
+{
   void    InitLogMath(void);
   double  LogAdd(double x, double y);
   double  LogSub(double x, double y);
@@ -375,6 +383,7 @@ using namespace STK;
   FloatInLog FIL_Sub(FloatInLog a, FloatInLog b);
   FloatInLog FIL_Mul(FloatInLog a, FloatInLog b);
   FloatInLog FIL_Div(FloatInLog a, FloatInLog b);
+}
   
   bool isBigEndian();
   
@@ -411,6 +420,7 @@ using namespace STK;
   float_safe_substract(const FLOAT& f1, const FLOAT &f2, int nRounds);
 
   
+namespace STK {
   int my_hcreate_r(size_t nel,
                   MyHSearchData *tab);
   int my_hsearch_r(ENTRY item, ACTION action, ENTRY **ret,
@@ -491,12 +501,15 @@ using namespace STK;
     MyHSearchData*  cfgHash);
   
   FileListElem **AddFileElem(FileListElem **last, char *fileElem);
+}
   
   int npercents(const char *str);
   int process_mask(const char *normstr, const char *wildcard, char *substr);
   
   void fprintf_ll(FILE* fp, long long n);
   
+namespace STK 
+{
 
   //////////////////////////////////////////////////////////////////////////////
   // THE C++ COMMON ROUTINES
@@ -575,12 +588,12 @@ using namespace STK;
   extern bool           gHtkCompatible;
   
   extern const char*    gpFilterWldcrd;
-  extern const char*    gpHListOFilter;
-  extern const char*    gpMmfFilter;
-  extern const char*    gpMmfOFilter;
-  extern const char*    gpParmFilter;
-  extern const char*    gpParmOFilter;
   extern const char*    gpScriptFilter;
+  extern const char*    gpParmFilter;
+  extern const char*    gpMmfFilter;
+  extern const char*    gpHListOFilter;
+  extern const char*    gpMmfOFilter;
+  extern const char*    gpParmOFilter;
 
 
   struct ParameterRecord
@@ -594,6 +607,7 @@ using namespace STK;
 
   void
   print_registered_parameters();
+}
   
   int breakpoint(); // Empty function, just for debuging purposes
 

@@ -180,7 +180,7 @@ namespace STK
         if ( pFilter 
         && ('\0' != pFilter[0]))
         {
-          char* command = expandFilterCommand(pFilter, pFName);
+          char* command = STK::expandFilterCommand(pFilter, pFName);
 
           if      ((m & std::ios::in) && !(m & std::ios::out)) m = std::ios::in;
           else if ((m & std::ios::out) && !(m & std::ios::in)) m = std::ios::out;

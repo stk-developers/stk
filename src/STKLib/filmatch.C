@@ -46,7 +46,7 @@ bool is_pattern (const char *p)
             case '%':
               return true;
             case '[':
-              return !gHtkCompatible;
+              return !STK::gHtkCompatible;
         }
     }
     return false;
@@ -84,7 +84,7 @@ bool is_valid_pattern (const char *p, int *error_type)
       /* the [..] construct must be well formed */
       case '[':
       {
-        if (!gHtkCompatible)
+        if (!STK::gHtkCompatible)
         {
           p++;
 
@@ -240,7 +240,7 @@ int matche ( register const char *p, register const char *t, register char *s )
 
             /* [..] construct, single member/exclusion character match */
             case '[': {
-              if (!gHtkCompatible)
+              if (!STK::gHtkCompatible)
               {
 
                 /* move to beginning of range */

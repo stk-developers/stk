@@ -716,6 +716,8 @@ namespace STK
 #endif
       
       //printf("PassTokenMax: totalLike = %f  acousticLike = %f\n", totalLike, acousticLike);
+      //  std::cout <<"from " << std::fixed << pFrom->mLike+totalLike << " to " 
+      //    << std::fixed << pTo->mLike << " acoustic is " << std::fixed << acousticLike << std::endl;
 
       if (!pTo->IsActive() || pFrom->mLike + totalLike > pTo->mLike) 
       {
@@ -1633,6 +1635,7 @@ namespace STK
                     mpBestToken->mLike - mPruningThresh > LOG_MIN
                     ? LOWER_OF(mpBestToken->mLike - mPruningThresh, mMaxThreshold)
                     : LOG_MIN;
+      // std::cout << "Beam thresh: " << mBeamThresh << std::endl;
     
       p_node = InForwardPass() ? rNetwork().pLast() : rNetwork().pFirst();
 
@@ -1951,10 +1954,12 @@ namespace STK
           }
     
           // if (IS_ACTIVE(p_node->mC.mpTokens[j])) 
+          // std::cout << "thresh: " << mBeamThresh << std::endl;
           if (p_node->mC.mpAnr->mpTokens[j].mLike > mBeamThresh) 
           {
             FLOAT out_prob = OutputProbability(p_hmm->mpState[state_idx-1],
                                               pObservation, this);
+            // std::cout << "out_prob: " << out_prob << std::endl;
             
             out_prob *= mOutpScale;
     
@@ -1971,6 +1976,7 @@ namespace STK
               p_node->mC.mpAnr->mpTokens[j].mAccuracy = FIL_Add(p_node->mC.mpAnr->mpTokens[j].mAccuracy, fil_like);
             }
     
+            // std::cout << "old like: " << p_node->mC.mpAnr->mpTokens[j].mLike  << std::endl;
             p_node->mC.mpAnr->mpTokens[j].mAccuracy.logvalue += out_prob;
             p_node->mC.mpAnr->mpTokens[j].mLike              += out_prob;
             p_node->mC.mpAnr->mpTokens[j].mAcousticLike      += out_prob;
@@ -2085,6 +2091,7 @@ namespace STK
           }
         }
       }
+
       assert(!HasCycle());
 //printf("%d: %d\n", mTime, mNActiveModelsForObservation);
       mNActiveTokensForUtterance += mNActiveTokensForObservation;
@@ -2137,6 +2144,7 @@ namespace STK
       }
       
       mActiveModelsBestLikes.clear();    
+      // std::cout << "Best token like: " << mpBestToken->mLike << std::endl;
     }
   // TokenPropagationInModels(FLOAT* pObservation)
   //***************************************************************************
@@ -2383,7 +2391,7 @@ namespace STK
           rNetwork().pLast()->mC.mpAnr->mpExitToken->IsActive()) 
       {
         tot_like = rNetwork().pLast()->mC.mpAnr->mpExitToken->mLike;
-        
+
         if (pLabels != NULL)
           *pLabels = rNetwork().pLast()->mC.mpAnr->mpExitToken->pGetLabels(getTimesFromNetwork, 
 	                                             rNetwork().pFirst()->mC.mpAlphaBeta 

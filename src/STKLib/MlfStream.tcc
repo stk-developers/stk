@@ -258,9 +258,10 @@ namespace STK
         // if we can, we will try to index the label
         pos = mIStream.tellg();
 
-        if (pos != static_cast<const std::streampos>(-1)) {
+        // if (pos != static_cast<const std::streampos>(-1)) {
+        if (pos != std::string::npos) {
           std::string line_buffer(mLineBuffer.begin(), mLineBuffer.end());
-          ::ParseHTKString(line_buffer, rName);
+          STK::ParseHTKString(line_buffer, rName);
           mLabels.Insert(rName, pos);
         }
 
