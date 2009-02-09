@@ -212,115 +212,7 @@ std::map<std::string,FLOAT> state_posteriors;
     }
     printf("%d Released: %d\n", nwlrsnf, nwlrs - nwlrsnf);
   }
-#endif
-  
-  
-  
-  //***************************************************************************
-  //***************************************************************************
-  void 
-  UpdateXformStatCache(
-    XformStatCache*  xfsc,
-    Xform*           topXform, //to locate positions in input vector
-    FLOAT*           input) 
-  {
-    size_t          i;
-    size_t          j;
-    const size_t    size(xfsc->mpXform->mInSize);
-  
-    if (topXform == NULL)
-      return;
-  
-    if (topXform == xfsc->mpXform) 
-    {
-      if (xfsc->mNorm > 0) 
-      {
-        for (i=0; i < size; i++) 
-        {
-          xfsc->mpStats[i] += input[i];
-          for (j=0; j <= i; j++) 
-          {
-            xfsc->mpStats[size + i*(i+1)/2 + j] += input[i] * input[j];
-          }
-        }
-      } 
-      else 
-      {
-        for (i=0; i < size; i++) 
-        {
-          xfsc->mpStats[i] = input[i];
-          for (j=0; j <= i; j++) 
-          {
-            xfsc->mpStats[size + i*(i+1)/2 + j] = input[i] * input[j];
-          }
-        }
-      }
-      xfsc->mNorm++;
-    } 
-    
-    else if (topXform->mXformType == XT_COMPOSITE) 
-    {
-      CompositeXform* cxf = (CompositeXform *) topXform;
-      for (i=0; i<cxf->mpLayer[0].mNBlocks; i++) 
-      {
-        UpdateXformStatCache(xfsc, cxf->mpLayer[0].mpBlock[i], input);
-        input += cxf->mpLayer[0].mpBlock[i]->mInSize;
-      }
-    }
-  }
-  //***************************************************************************
-  
-  
-  //***************************************************************************
-  //***************************************************************************
-  void 
-  UpdateXformInstanceStatCaches(XformInstance* xformInstance,
-                                FLOAT* pObservation, int time)
-  {
-    size_t  i;
-    size_t  j;
-    FLOAT*  obs;
-  
-    if (xformInstance == NULL || xformInstance->mStatCacheTime == time) return;
-  
-    xformInstance->mStatCacheTime = time;
-  
-    if (xformInstance->mNumberOfXformStatCaches == 0) return;
-  
-    if (xformInstance->mpInput) 
-    {
-      UpdateXformInstanceStatCaches(xformInstance->mpInput, pObservation, time);
-    }
-  
-    for (i = 0; i < xformInstance->mNumberOfXformStatCaches; i++) 
-    {
-      XformStatCache* xfsc = &xformInstance->mpXformStatCache[i];
-  
-      //just link to upper level?
-      if (xfsc->mpUpperLevelStats != NULL 
-      &&  xfsc->mpUpperLevelStats->mpStats == xfsc->mpStats) 
-      { 
-        xfsc->mNorm = xfsc->mpUpperLevelStats->mNorm;
-        continue;
-      }
-  
-      obs = XformPass(xformInstance->mpInput, pObservation, time, FORWARD);
-      xfsc->mNorm = 0;
-      UpdateXformStatCache(xfsc, xformInstance->mpXform, obs);
-      
-      if (xfsc->mpUpperLevelStats != NULL) 
-      {
-        size_t size = xfsc->mpXform->mInSize;
-        for (j = 0; j < size + size*(size+1)/2; j++) 
-        {
-          xfsc->mpStats[j] += xfsc->mpUpperLevelStats->mpStats[j];
-        }
-        xfsc->mNorm += xfsc->mpUpperLevelStats->mNorm;
-      }
-    }
-  }
-  //***************************************************************************
-  
+#endif  
   
   //***************************************************************************
   //***************************************************************************
@@ -328,7 +220,7 @@ std::map<std::string,FLOAT> state_posteriors;
   StateOccupationProbability(Decoder *net, FLOAT *obsMx, ModelSet *hmms,
                              int nFrames, FLOAT **outProbOrMahDist, int getMahalDist)
   {
-    int i, j, k;
+.    int i, j, k;
     int nNetModels;
     int nEmitingStates;
     FLOAT totalLike;

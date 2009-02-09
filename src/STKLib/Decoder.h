@@ -686,10 +686,6 @@ namespace STK
     WordLinkRecord<typename _NetworkType::Node> *  
     TimePruning(Decoder<_NetworkType>* pNetwork, int frameDelay);
   
-  void 
-  UpdateXformInstanceStatCaches(XformInstance* xformInstance, FLOAT* pObservation, int time);
-
-
 /*  FLOAT 
   compute_diag_c_gaussian_density(
     const FLOAT*  pObs, 

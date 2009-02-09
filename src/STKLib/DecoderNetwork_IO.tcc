@@ -93,6 +93,7 @@ namespace STK
       int              line_no   =  0;
       int              nnodes    =  0;
       char*            chptr;
+      char             empty_string[] = "";
       char*            valptr;
       char*            phn_marks = NULL;
       Word*            word     = NULL;
@@ -100,7 +101,7 @@ namespace STK
       int              pron_var  = 1;
       enum {LINE_START, AFTER_J, HEADER_DEF, ARC_DEF, NODE_DEF} state;
       MyHSearchData node_hash = {0};
-      struct ReadlineData   rld       = {0};
+      struct ReadlineData   rld = {0};
       
       for (;;) 
       {
@@ -133,7 +134,7 @@ namespace STK
           else if (!*valptr || IsSpace(*valptr)) 
           { // label definition (field without '=' )
             valptr = chptr;
-            chptr = "";
+            chptr = empty_string;
           } 
           else 
           {
@@ -155,7 +156,7 @@ namespace STK
                   file_name, line_no);
             }
             state = LINE_START;
-            chptr="";
+            chptr = empty_string;
           }
           
           if (state == LINE_START) 

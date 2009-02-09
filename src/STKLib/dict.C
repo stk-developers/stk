@@ -18,6 +18,7 @@
 
 const char *dict_filter;
 
+using namespace STK;
 
 void ReadDictionary(
     const char *dictFileName,
@@ -31,20 +32,20 @@ void ReadDictionary(
   char *word_name, *model_name, *chrptr, *tchrptr;
   Pronun *new_pronun;
 
-  if ((fp = my_fopen(dictFileName, "rt", dict_filter)) == NULL) {
-      Error("Cannot open file: '%s'", dictFileName);
+  if ((fp = STK::my_fopen(dictFileName, "rt", dict_filter)) == NULL) {
+    STK::Error("Cannot open file: '%s'", dictFileName);
   }
   while (fgets(line, sizeof(line), fp)) {
     ENTRY e, *ep;
     
     line_no++;
     if (strlen(line) == sizeof(line)-1) {
-      Error("Line is too long (%s:%d)", dictFileName, line_no);
+      STK::Error("Line is too long (%s:%d)", dictFileName, line_no);
     }
     
     line[strlen(line)-1] = '\0'; // remove final '\n' caracter
-    if (getHTKstr(word_name = line, &chrptr)) {
-      Error("%s (%s:%d)", chrptr, dictFileName, line_no);
+    if (STK::getHTKstr(word_name = line, &chrptr)) {
+      STK::Error("%s (%s:%d)", chrptr, dictFileName, line_no);
     }
     e.key  = word_name;
     e.data = NULL;
@@ -55,14 +56,14 @@ void ReadDictionary(
     } else {
       e.key  = strdup(word_name);
       word = (Word *) malloc(sizeof(Word));
-      if (e.key == NULL || word  == NULL) Error("Insufficient memory");
+      if (e.key == NULL || word  == NULL) STK::Error("Insufficient memory");
       word->mpName = e.key;
       word->npronuns = 0;
       word->pronuns  = NULL;
       e.data = word;
 
       if (!my_hsearch_r(e, ENTER, &ep, wordHash)) {
-        Error("Insufficient memory");
+        STK::Error("Insufficient memory");
       }
     }
 
@@ -71,7 +72,7 @@ void ReadDictionary(
 
     word->pronuns = (Pronun **) realloc(word->pronuns, word->npronuns * sizeof(Pronun *));
     new_pronun = (Pronun *) malloc(sizeof(Pronun));
-    if (word->pronuns == NULL || new_pronun == NULL) Error("Insufficient memory");
+    if (word->pronuns == NULL || new_pronun == NULL) STK::Error("Insufficient memory");
 
     word->pronuns[word->npronuns-1] = new_pronun;
     new_pronun->mpWord       = word;
@@ -85,7 +86,7 @@ void ReadDictionary(
       model_name = ++chrptr;
       while (*chrptr && *chrptr != ']') chrptr++;
 
-      if (*chrptr != ']') Error("Matching `]' is missing (%s:%d)",
+      if (*chrptr != ']') STK::Error("Matching `]' is missing (%s:%d)",
                                 model_name, dictFileName, line_no);
       *chrptr++ = '\0';
       new_pronun->outSymbol = *model_name != '\0' ?  strdup(model_name) : NULL;
@@ -99,8 +100,8 @@ void ReadDictionary(
     }
 
     while (*chrptr) {
-      if (getHTKstr(model_name = chrptr, &chrptr)) {
-        Error("%s (%s:%d)", chrptr, dictFileName, line_no);
+      if (STK::getHTKstr(model_name = chrptr, &chrptr)) {
+        STK::Error("%s (%s:%d)", chrptr, dictFileName, line_no);
       }
 
       e.key  = model_name;
@@ -112,19 +113,19 @@ void ReadDictionary(
         e.data = e.key;
 
         if (e.key == NULL || !my_hsearch_r(e, ENTER, &ep, phoneHash)) {
-          Error("Insufficient memory");
+          STK::Error("Insufficient memory");
         }
         ep->data = e.data;
       }
       new_pronun->nmodels++;
       new_pronun->model=(_Model*) realloc(new_pronun->model,
                                 new_pronun->nmodels*sizeof(*new_pronun->model));
-      if (new_pronun->model == NULL) Error("Insufficient memory");
+      if (new_pronun->model == NULL) STK::Error("Insufficient memory");
       new_pronun->model[new_pronun->nmodels-1].mpName = static_cast <char*> (ep->data);
     }
   }
-  if (ferror(fp) || my_fclose(fp)) {
-    Error("Cannot read dictionary file %s", dictFileName);
+  if (ferror(fp) || STK::my_fclose(fp)) {
+    STK::Error("Cannot read dictionary file %s", dictFileName);
   }
 }
 

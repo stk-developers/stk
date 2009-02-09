@@ -43,6 +43,44 @@ static union
 #define SN_EXP_C 60801
 #define FAST_EXP(y) (sn_d2i.n.i = (int) (SN_EXP_A*(y)) + (1072693248 - SN_EXP_C), sn_d2i.d)  
 
+namespace STK
+{
+  // :WARNING: default HTK compatibility is set to false
+  bool            gHtkCompatible = false;
+
+  FLOAT           gMinLogDiff;
+  
+  const char*     gpFilterWldcrd;
+  const char*     gpScriptFilter;
+  const char*     gpParmFilter;
+  const char*     gpMmfFilter;
+  const char*     gpHListOFilter;
+  const char*     gpMmfOFilter;
+  const char*     gpParmOFilter;
+
+    
+  static const char* gpParmKindNames[] = 
+  {
+    "WAVEFORM",
+    "LPC",
+    "LPREFC",
+    "LPCEPSTRA",
+    "LPDELCEP",
+    "IREFC",
+    "MFCC",
+    "FBANK",
+    "MELSPEC",
+    "USER",
+    "DISCRETE",
+    "PLP",
+    "ANON"
+  };
+  
+  
+  // holds the registered parameters
+  std::vector<ParameterRecord>    gRegisteredParameters;
+}
+
 //***************************************************************************
 //***************************************************************************
 void fast_sigmoid_vec(float* in, float* out, int size)
@@ -136,38 +174,38 @@ void fast_softmax_vec(double *in, double *out, int size)
 }
 
 
-//namespace STK
-//{
+namespace STK
+{
   
-  const char*     gpFilterWldcrd;
+  // const char*     gpFilterWldcrd;
   // :WARNING: default HTK compatibility is set to false
-  bool            gHtkCompatible = false;
-  FLOAT           gMinLogDiff;
+  // bool            gHtkCompatible = false;
+  // FLOAT           gMinLogDiff;
   
-  const char*     gpScriptFilter;
-  const char*     gpParmFilter;
-  const char*     gpMmfFilter;
-  const char*     gpHListOFilter;
-  const char*     gpMmfOFilter;
-  const char*     gpParmOFilter;
+  // const char*     gpScriptFilter;
+  // const char*     gpParmFilter;
+  // const char*     gpMmfFilter;
+  // const char*     gpHListOFilter;
+  // const char*     gpMmfOFilter;
+  // const char*     gpParmOFilter;
 
     
-  static const char* gpParmKindNames[] = 
-  {
-    "WAVEFORM",
-    "LPC",
-    "LPREFC",
-    "LPCEPSTRA",
-    "LPDELCEP",
-    "IREFC",
-    "MFCC",
-    "FBANK",
-    "MELSPEC",
-    "USER",
-    "DISCRETE",
-    "PLP",
-    "ANON"
-  };
+  // static const char* gpParmKindNames[] = 
+  // {
+  //   "WAVEFORM",
+  //   "LPC",
+  //   "LPREFC",
+  //   "LPCEPSTRA",
+  //   "LPDELCEP",
+  //   "IREFC",
+  //   "MFCC",
+  //   "FBANK",
+  //   "MELSPEC",
+  //   "USER",
+  //   "DISCRETE",
+  //   "PLP",
+  //   "ANON"
+  // };
   
   //***************************************************************************
   //***************************************************************************
@@ -216,6 +254,31 @@ void fast_softmax_vec(double *in, double *out, int size)
     return -1;
   }
   
+
+  //***************************************************************************
+  //***************************************************************************
+  int ParmKind2Str(unsigned parmKind, char* pOutString) 
+  {
+    // :KLUDGE: Absolutely no idea what this is...
+      if ((parmKind & 0x003F) >= sizeof(gpParmKindNames)/sizeof(gpParmKindNames[0])) 
+      return 0;
+  
+    strcpy(pOutString, gpParmKindNames[parmKind & 0x003F]);
+  
+    if (parmKind & PARAMKIND_E) strcat(pOutString, "_E");
+    if (parmKind & PARAMKIND_N) strcat(pOutString, "_N");
+    if (parmKind & PARAMKIND_D) strcat(pOutString, "_D");
+    if (parmKind & PARAMKIND_A) strcat(pOutString, "_A");
+    if (parmKind & PARAMKIND_C) strcat(pOutString, "_C");
+    if (parmKind & PARAMKIND_Z) strcat(pOutString, "_Z");
+    if (parmKind & PARAMKIND_K) strcat(pOutString, "_K");
+    if (parmKind & PARAMKIND_0) strcat(pOutString, "_0");
+    if (parmKind & PARAMKIND_V) strcat(pOutString, "_V");
+    if (parmKind & PARAMKIND_T) strcat(pOutString, "_T");
+    
+    return 1;
+  }
+
   //***************************************************************************
   //***************************************************************************
   void 
@@ -275,6 +338,7 @@ void fast_softmax_vec(double *in, double *out, int size)
       strcat(pOutFileName, out_ext);
     }
   }
+}
   
   //***************************************************************************
   //***************************************************************************
@@ -304,6 +368,8 @@ void fast_softmax_vec(double *in, double *out, int size)
     return *(char **)a - *(char **)b;
   }
   
+namespace STK
+{
   //***************************************************************************
   //***************************************************************************
   void 
@@ -406,6 +472,7 @@ void fast_softmax_vec(double *in, double *out, int size)
     return FIL_Mul(a, b);
   }
   
+}
   //***************************************************************************
   //***************************************************************************
   void 
@@ -478,29 +545,6 @@ void fast_softmax_vec(double *in, double *out, int size)
     for (i = 0; i < size; i++) pOut[i] *= sum;
   }
   
-  //***************************************************************************
-  //***************************************************************************
-  int ParmKind2Str(unsigned parmKind, char* pOutString) 
-  {
-    // :KLUDGE: Absolutely no idea what this is...
-      if ((parmKind & 0x003F) >= sizeof(gpParmKindNames)/sizeof(gpParmKindNames[0])) 
-      return 0;
-  
-    strcpy(pOutString, gpParmKindNames[parmKind & 0x003F]);
-  
-    if (parmKind & PARAMKIND_E) strcat(pOutString, "_E");
-    if (parmKind & PARAMKIND_N) strcat(pOutString, "_N");
-    if (parmKind & PARAMKIND_D) strcat(pOutString, "_D");
-    if (parmKind & PARAMKIND_A) strcat(pOutString, "_A");
-    if (parmKind & PARAMKIND_C) strcat(pOutString, "_C");
-    if (parmKind & PARAMKIND_Z) strcat(pOutString, "_Z");
-    if (parmKind & PARAMKIND_K) strcat(pOutString, "_K");
-    if (parmKind & PARAMKIND_0) strcat(pOutString, "_0");
-    if (parmKind & PARAMKIND_V) strcat(pOutString, "_V");
-    if (parmKind & PARAMKIND_T) strcat(pOutString, "_T");
-    
-    return 1;
-  }
   
   /*
   #define SQR(x) ((x) * (x))
@@ -542,6 +586,8 @@ void fast_softmax_vec(double *in, double *out, int size)
     return (bool) ((char *) &a)[0] != 1;
   }
   
+namespace STK
+{
   //***************************************************************************
   //***************************************************************************
   int my_hcreate_r(size_t nel, MyHSearchData *tab)
@@ -672,7 +718,8 @@ void fast_softmax_vec(double *in, double *out, int size)
         if (*chrptr == '\0' || (*chrptr    >= '0' && *chrptr <= '7' &&
                               (*++chrptr  <  '0' || *chrptr >  '7' ||
                               *++chrptr  <  '0' || *chrptr >  '7'))) {
-          *endPtrOrErrMsg = "Invalid escape sequence";
+          static char msg[] = "Invalid escape sequence"; // to make compiler happy
+          *endPtrOrErrMsg = msg;
           return -1;
         }
   
@@ -684,7 +731,8 @@ void fast_softmax_vec(double *in, double *out, int size)
     }
   
     if (termChar) {
-      *endPtrOrErrMsg = "Unterminated quoted string";
+      static char msg[] = "Unterminated quoted string"; // to make compiler happy
+      *endPtrOrErrMsg = msg;
       return -2;
     }
   
@@ -753,10 +801,10 @@ void fast_softmax_vec(double *in, double *out, int size)
     int ndollars = 0;
     int fnlen = strlen(filename);
   
-    while (*chrptr++) ndollars += (*chrptr ==  *gpFilterWldcrd);
+    while (*chrptr++) ndollars += (*chrptr ==  *STK::gpFilterWldcrd);
   
     out = (char*) malloc(strlen(command) - ndollars + ndollars * fnlen + 1);
-    if (out == NULL) Error("Insufficient memory");
+    if (out == NULL) STK::Error("Insufficient memory");
   
     outend = out;
   
@@ -784,7 +832,7 @@ void fast_softmax_vec(double *in, double *out, int size)
     if (data->size == 0) {
       data->size = LINEBUFF_INIT_SIZE;
       data->buffer = (char*) malloc(data->size);
-      if (data->buffer == NULL) Error("Insufficient memory");
+      if (data->buffer == NULL) STK::Error("Insufficient memory");
     } else if (data->size == -1) { // EOF reached in previous call
       data->size = 0;
       free(data->buffer);
@@ -975,9 +1023,6 @@ void fast_softmax_vec(double *in, double *out, int size)
   }
   
   
-  // holds the registered parameters
-  std::vector<ParameterRecord>    gRegisteredParameters;
-
   //***************************************************************************
   //***************************************************************************
   // registers a parameter in a global variable for easy printing
@@ -1285,6 +1330,7 @@ void fast_softmax_vec(double *in, double *out, int size)
     return targetKind;
   }
   
+
   //***************************************************************************
   //***************************************************************************
   FILE *
@@ -1491,6 +1537,7 @@ void fast_softmax_vec(double *in, double *out, int size)
     return optind;
   }
   
+
   //***************************************************************************
   //***************************************************************************
   FileListElem **
@@ -1556,6 +1603,7 @@ void fast_softmax_vec(double *in, double *out, int size)
     }    
   }    
   
+}
   //***************************************************************************
   //***************************************************************************
   static int 
@@ -1671,7 +1719,9 @@ void fast_softmax_vec(double *in, double *out, int size)
     fprintf(fp, "%s", buffer + buffer_i + 1);
   } // void fprintf_ll(FILE* fp, long long n)
         
-  
+
+namespace STK 
+{
   
   //***************************************************************************
   //***************************************************************************
@@ -1827,6 +1877,7 @@ void fast_softmax_vec(double *in, double *out, int size)
     return rStr;
   }
 
+}
 
   /**
   * @brief Builds new filename based on the parameters given

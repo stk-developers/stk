@@ -21,6 +21,7 @@
 #  include "engine.h"
 #endif
 
+#include <list>
 #include <map>
 #include <iostream>
 
@@ -35,18 +36,6 @@
 
 namespace STK
 {  
-  static std::map<void*, int> mStatCachePtrs;
-  static void
-  DumpStatCachePtrs() 
-  {
-    std::map<void*, int>::iterator i;
-
-    for (i = mStatCachePtrs.begin(); i != mStatCachePtrs.end(); ++i) {
-      std::cout << i->first << " " << i->second << std::endl;
-    }
-  }
-
-
   class ModelSetIOBase;
   class ModelSet;
   class MacroHash;  
@@ -172,31 +161,6 @@ namespace STK
     
   
   
-  /** *************************************************************************
-   ** *************************************************************************
-   *  @brief Macro data base class
-   *  
-   *  Any class, that can be defined as a macro in the MMF file
-   */
-  class MacroData
-  {
-  public:
-    Macro*                     mpMacro;
-  
-  public:  
-    /// Default constructor
-    MacroData() : mpMacro(NULL) {}
-    
-    virtual
-    ~MacroData() {};
-    
-    // we'll make the Macro class a frien as it will increment the mLinksCount
-    friend class Macro;
-    
-    virtual void
-    Scan(int mask, HMMSetNodeName nodeName, ScanAction action, void *userData)
-    { }
-  }; // class MacroData
 
   
   /** *************************************************************************
@@ -239,6 +203,14 @@ namespace STK
     UT_ML=0,
     UT_TwoAccumSetEBW,
     UT_EBW
+  };
+
+  enum StatType
+  {
+    ST_HLDA           = 1,
+    ST_CMLLR          = 2,
+    ST_RDMPE_DIRECT   = 3,
+    ST_RDMPE_INDIRECT = 4,
   };
   
   enum KeywordID
@@ -297,11 +269,13 @@ namespace STK
     PWID_LINSPACE
   };
   
-  class MakeXformCommand 
+  class MakeXformCommand
   {
   public:
+    StatType mStatType;
     Xform *mpXform;
-    char  *mpShellCommand;
+    std::string mpShellCommand;    
+    std::list<std::string>mStringArgs;
   };
   
   struct FunctionTable
@@ -310,7 +284,6 @@ namespace STK
     KeywordID KID;
   };
   
-
 
   /** *************************************************************************
    ** *************************************************************************
@@ -425,14 +398,14 @@ namespace STK
     Variance*                 mpVarFloor;
     double                    mMinVariance;            ///< global minimum variance floor
     long                      mMinOccurances;
-    MakeXformCommand*         mpXformToUpdate;
+    std::list<MakeXformCommand> mpXformToUpdate;
     size_t                    mNumberOfXformsToUpdate;
     int                       mGaussLvl2ModelReest;
     UpdateType                mUpdateType;
     bool                      mISmoothAfterD;
     bool                      JSmoothing;
     bool                      mSaveGlobOpts;
-    bool                      mCmllrStats; // Collect CMLLR statistics instedad of full covariance statistics
+//    bool                      mCmllrStats; // Collect CMLLR statistics instedad of full covariance statistics
     FLOAT                     MMI_E;
     FLOAT                     MMI_h;
     FLOAT                     MMI_tauI;
@@ -482,12 +455,29 @@ namespace STK
              const char * pOutputDir,
              const char * pOutputExt, bool binary);
     
+
+    /**
+     * @brief Writes mixture occupation counts to a file
+     * @param rFileName file to write to
+     */
+    void
+    WriteMixtureOccups(const char * pFileName);
+
+    
+    /**
+     * @brief Read mixture occupation counts from a file and store them to mWeightAccumDen
+     * @param rFileName file to write to
+     */
+    void 
+    ReadMixtureOccups(const char * pFileName);
+
+
     /**
      * @brief Writes HMM statistics to a file
      * @param rFileName file to write to
      */
     void 
-    WriteHMMStats(const char * pFileName);             
+    WriteHMMStats(const char * pFileName);
     
     
     /**
@@ -596,8 +586,8 @@ namespace STK
     void
     AllocateAccumulatorsForXformStats();
                     
-    void 
-    NormalizeAccums();
+//    void 
+//    NormalizeAccums();
     
     /**
      * @brief Resets the accumulators to 0
@@ -664,6 +654,40 @@ namespace STK
           void *          pUserData);
   }; // ModelSet
 
+
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Macro data base class
+   *  
+   *  Any class, that can be defined as a macro in the MMF file
+   */
+  class MacroData
+  {
+  public:
+    Macro*                      mpMacro;
+    std::list<XformStatAccum *> mXformStatAccumList;
+ 
+  public:  
+    /// Default constructor
+    MacroData() : mpMacro(NULL), mXformStatAccumList() {}
+    
+    virtual
+    ~MacroData() {};
+    
+    virtual MacroType Type() = 0;
+    
+    XformStatAccum *FindXformStatAccum(StatType statType, Xform *pXform);
+    XformStatAccum *FindXformStatAccumByCache(XformStatCache *pXfsc);    
+    XformStatAccum *AllocXformStatAccum(XformStatCache *pXfsc, std::list<std::string> &args);
+    
+    // we'll make the Macro class a frien as it will increment the mLinksCount
+    friend class Macro;
+    
+    virtual void
+    Scan(int mask, HMMSetNodeName nodeName, ScanAction action, void *userData)
+    { }
+  }; // class MacroData
+
   
   /** *************************************************************************
    ** *************************************************************************
@@ -686,6 +710,8 @@ namespace STK
     /// Destructor
     virtual ~Hmm();
     
+    virtual MacroType Type() { return mt_hmm;}
+
     /**
      * @brief Updates the object from the accumulators
      * @param rModelSet ModelSet object which holds the accumulator configuration
@@ -732,7 +758,7 @@ namespace STK
    ** *************************************************************************
    *  @brief Defines HMM State representation
    */
-  class State : public MacroData  
+  class State : public MacroData
   {
   public:
     
@@ -748,6 +774,7 @@ namespace STK
     virtual 
     ~State();
     
+    virtual MacroType Type() { return mt_state;}
     
     long                      mID;
   
@@ -819,6 +846,9 @@ namespace STK
     /// The (empty) destructor
     virtual
     ~Mixture() {};
+    
+    virtual MacroType Type() { return mt_mixture;}
+
     
     long                      mID;
     Mean*                     mpMean;
@@ -929,19 +959,6 @@ namespace STK
   
   /** *************************************************************************
    ** *************************************************************************
-   *  @brief Xform statistics accumulator
-   */
-  class XformStatAccum
-  {
-  public:
-    Xform*                  mpXform;
-    FLOAT                   mNorm;
-    FLOAT*                  mpStats;
-  };
-  
-  
-  /** *************************************************************************
-   ** *************************************************************************
    *  @brief Mean representation
    */
   class Mean : public MacroData 
@@ -957,11 +974,11 @@ namespace STK
     /// The destructor
     virtual
     ~Mean();
-    
+
+    virtual MacroType Type() { return mt_mean;}
+
     BasicVector<FLOAT>      mVector;
     FLOAT*                  mpAccums;
-    XformStatAccum*         mpXformStatAccum;
-    size_t                  mNumberOfXformStatAccums;
     bool                    mUpdatableFromStatAccums;
     Mean  *                 mpPrior;
     
@@ -1031,13 +1048,12 @@ namespace STK
     /// The destructor
     virtual
     ~Variance();
-  
+
+    virtual MacroType Type() { return mt_variance;}
+
     //  BOOL         diagonal;
     BasicVector<FLOAT>      mVector;
     FLOAT*                  mpAccums;
-    
-    XformStatAccum *        mpXformStatAccum;
-    size_t                  mNumberOfXformStatAccums;
     bool                    mUpdatableFromStatAccums;
     
     Variance*               mpPrior;
@@ -1093,7 +1109,9 @@ namespace STK
     /// The destructor
     virtual
     ~Transition();
-  
+
+    virtual MacroType Type() { return mt_transition;}
+
     size_t                  mNStates;
     //Matrix<FLOAT>           mMatrix;
     FLOAT *                 mpMatrixO;
@@ -1135,23 +1153,43 @@ namespace STK
    ** *************************************************************************
    *  @brief Xform statisctics cache
    */
-  class XformStatCache 
+  class XformStatCache
   {
   public:
-    XformStatCache *        mpUpperLevelStats;
+    XformStatCache(StatType statType, Xform * pXform, XformStatCache * pUpperLevelCache, bool linkToUperLevel);
+    ~XformStatCache();
+
+    XformStatCache *        mpUpperLevelCache;
     Xform *                 mpXform;
     int                     mNorm;
     FLOAT *                 mpStats;
+    size_t                  mSize;
+    StatType                mStatType;
   };
 
   
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Xform statistics accumulator
+   */
+  class XformStatAccum
+  {
+  public:
+    XformStatAccum(size_t size, XformStatCache * pCache);
+    ~XformStatAccum();
+    
+    XformStatCache *        mpCache;
+    FLOAT                   mNorm;
+    FLOAT*                  mpStats;
+    size_t                  mSize;
+  };
+
   /** *************************************************************************
    ** *************************************************************************
    *  @brief Xform Instance 
    */
   class XformInstance : public MacroData 
   {
-  public:
   public:
     /**
      * @brief The constructor
@@ -1171,17 +1209,18 @@ namespace STK
     /// the destructor
     virtual
     ~XformInstance();
+
+    virtual MacroType Type() { return mt_XformInstance;}
     
-  
+    XformStatCache *FindXformStatCache(Xform *pXform, StatType statType);
+
     /// Output vector declaration
     BasicVector<FLOAT>    mOutputVector;
     XformInstance*        mpInput;
     Xform*                mpXform;
     int                   mTime;
     XformInstance*        mpNext; // Chain of all instances
-    XformStatCache*       mpXformStatCache;
-    size_t                mNumberOfXformStatCaches;
-    
+    std::list<XformStatCache *>  mXformStatCacheList;
     int                   mStatCacheTime;
     char*                 mpMemory;
     int                   mTotalDelay;
@@ -1281,13 +1320,16 @@ namespace STK
     size_t              mOutSize;
     size_t              mMemorySize;
     int                 mDelay;
-    FLOAT *             mpCmllrStats; // !!! Not very nice to have it here
+//    FLOAT *             mpCmllrStats; // !!! Not very nice to have it here
     
-    Xform() : MacroData(), mpCmllrStats(NULL) {}
+    Xform() : MacroData() {}
+//    , mpCmllrStats(NULL) 
     
     virtual 
     ~Xform() {}
-    
+
+    virtual MacroType Type() { return mt_Xform;}
+
     /**
      * @brief Interface to the evaluation procedure of a concrete Xform
      * @param pInputVector pointer to the input vector
@@ -2051,16 +2093,17 @@ namespace STK
   /// Action procedures
   /// @{
   void        AllocateXformStatCachesAndAccums(int, HMMSetNodeName, MacroData * pData, void *);
+  void        UpdateXformInstanceStatCaches(XformInstance* xformInstance, FLOAT* pObservation, int time);
   void        GlobalStats(int macro_type, HMMSetNodeName, MacroData * pData, void *userData);
   void        NormalizeAccum(int macro_type, HMMSetNodeName, MacroData * pData, void *userData);
   void        NormalizeStatsForXform(int macro_type, HMMSetNodeName, MacroData * pData, void *userData);
   void        ReadAccum  (int macro_type, HMMSetNodeName, MacroData * pData, void *userData);
-  void        ReadStatsForXform(int macro_type, HMMSetNodeName, void *data, void *userData);
+  void        ReadHldaStatsForXform(int macro_type, HMMSetNodeName, void *data, void *userData);
   void        ReleaseItem(int macro_type, HMMSetNodeName, MacroData * pData, void *userData);
   void        ReplaceItem(int macro_type, HMMSetNodeName, MacroData * pData, void *userData);
   void        ResetAccum (int macro_type, HMMSetNodeName, MacroData * pData, void *userData);
   void        WriteAccum (int macro_type, HMMSetNodeName, MacroData * pData, void *userData);
-  void        WriteStatsForXform(int macro_type, HMMSetNodeName, MacroData * pData, void *userData);
+  void        WriteHldaStatsForXform(int macro_type, HMMSetNodeName, MacroData * pData, void *userData);
   void        ComputeClusterWeightVectorAccums(int macro_type, HMMSetNodeName nodeName, MacroData* pData, void* pUserData);
   /// @}  
   

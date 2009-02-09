@@ -214,6 +214,7 @@ int main(int argc, char* argv[])
     const char*                     network_file;
     const char*                     xformList;
     const char*                     stat_file;
+    const char*                     mix_occup_file;
     char*                           script;
     const char*                     dictionary;
     const char*                     label_filter;
@@ -238,7 +239,7 @@ int main(int argc, char* argv[])
     const char*                     mmf_mask_alig;
     const char*                     mmf_karkulka;
     bool                            karkulka;
-    bool                            cmllr_stats;  
+//    bool                            cmllr_stats;  
     int                             trace_flag;
     int                             min_examples;
     int                             parallel_mode;
@@ -419,12 +420,13 @@ int main(int argc, char* argv[])
     min_active   = GetParamInt(&cfgHash, SNAME":MINACTIVEMODELS", 0);
     trace_flag   = GetParamInt(&cfgHash, SNAME":TRACE",           0);
     stat_file    = GetParamStr(&cfgHash, SNAME":SAVESTATS",       NULL);
+    mix_occup_file=GetParamStr(&cfgHash, SNAME":SAVEMIXOCCUPS",   NULL);
     min_examples = GetParamInt(&cfgHash, SNAME":MINEGS",          3);
     min_variance = GetParamFlt(&cfgHash, SNAME":MINVAR",          0.0);
     min_mix_wght = GetParamFlt(&cfgHash, SNAME":MIXWEIGHTFLOOR",  1.0);
     hmms_binary  = GetParamBool(&cfgHash,SNAME":SAVEBINARY",      false);
     save_glob_opt= GetParamBool(&cfgHash,SNAME":SAVEGLOBOPTS",    true);
-    cmllr_stats  = GetParamBool(&cfgHash,SNAME":CMLLRSTATS",      false);
+//    cmllr_stats  = GetParamBool(&cfgHash,SNAME":CMLLRSTATS",      false);
     src_hmm_list = GetParamStr(&cfgHash, SNAME":SOURCEHMMLIST",   NULL);
     src_hmm_dir  = GetParamStr(&cfgHash, SNAME":SOURCEMODELDIR",  NULL);
     src_hmm_ext  = GetParamStr(&cfgHash, SNAME":SOURCEMODELEXT",  NULL);
@@ -648,7 +650,7 @@ int main(int argc, char* argv[])
     if (xformList != NULL) 
       hset.ReadXformList(xformList);
 
-    hset.mCmllrStats = cmllr_stats;
+//    hset.mCmllrStats = cmllr_stats;
     hset.AllocateAccumulatorsForXformStats();
 
     if (network_file) 
@@ -1133,8 +1135,11 @@ int main(int argc, char* argv[])
         TraceLog("Total log posterior: %e", totLogPosterior);
     }
     
-    if (stat_file) 
+    if (stat_file)
       hset.WriteHMMStats(stat_file);
+      
+    if (mix_occup_file)
+      hset.WriteMixtureOccups(mix_occup_file);
     
     if (parallel_mode != 0) 
       hset.DistributeMacroOccurances();
@@ -1188,10 +1193,10 @@ int main(int argc, char* argv[])
         }
       }
       
-      // Required by WriteXformStatsAndRunCommands and UpdateHMMSetFromAccums
-      if(!hset.mCmllrStats) {
-        hset.Scan(MTM_MEAN|MTM_VARIANCE, NULL, NormalizeStatsForXform, 0);
-      }
+      // Required by hset.WriteXformStatsAndRunCommands and hset.UpdateFromAccums
+//      if(!hset.mCmllrStats) {
+      hset.Scan(MTM_MEAN|MTM_VARIANCE, NULL, NormalizeStatsForXform, 0);
+//      }
 
       if (hset.mUpdateMask & UM_XFSTATS)  {
         hset.WriteXformStatsAndRunCommands(trg_hmm_dir, xfStatsBin);

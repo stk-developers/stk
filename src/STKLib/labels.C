@@ -17,6 +17,8 @@
 #include <stdlib.h>
 #include <assert.h>
 
+using namespace STK;
+
 const Label init_label = {
   NULL, UNDEF_TIME, UNDEF_TIME, NULL, NULL, -1, 0, NULL
 };

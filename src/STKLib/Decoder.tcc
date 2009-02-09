@@ -716,6 +716,8 @@ namespace STK
 #endif
       
       //printf("PassTokenMax: totalLike = %f  acousticLike = %f\n", totalLike, acousticLike);
+      //  std::cout <<"from " << std::fixed << pFrom->mLike+totalLike << " to " 
+      //    << std::fixed << pTo->mLike << " acoustic is " << std::fixed << acousticLike << std::endl;
 
       if (!pTo->IsActive() || pFrom->mLike + totalLike > pTo->mLike) 
       {
@@ -1068,7 +1070,8 @@ namespace STK
           }*/
     
           // the real state occupation probability
-          Lqjmt = exp(Lqjmt) * updateDir;
+          FLOAT occ_prob = exp(Lqjmt);
+          Lqjmt = occ_prob * updateDir;
     
           // Update
           for (i = 0; i < vec_size; i++) 
@@ -1125,67 +1128,101 @@ namespace STK
             } 
           }
       
-          if (ixf == NULL || ixf->mNumberOfXformStatCaches == 0) 
+          if (ixf == NULL || ixf->mXformStatCacheList.empty()) 
             continue;
     
           UpdateXformInstanceStatCaches(ixf, pObs2, mTime);
           
-          for (i = 0; i < ixf->mNumberOfXformStatCaches; i++) 
-          {
-            XformStatCache *xfsc = &ixf->mpXformStatCache[i];
+          for(std::list<XformStatCache *>::iterator it = ixf->mXformStatCacheList.begin(); it != ixf->mXformStatCacheList.end(); it++) {
+            XformStatCache *p_xfsc = *it;
+
             Variance *var  = state2->mpMixture[m].mpEstimates->mpVariance;
             Mean     *mean = state2->mpMixture[m].mpEstimates->mpMean;
+            XformStatAccum *xfsa;
+            
+            xfsa = var->FindXformStatAccumByCache(p_xfsc);
+            if(xfsa != NULL) {
+              if(p_xfsc->mStatType == ST_HLDA) {
+                size_t size = p_xfsc->mpXform->mInSize;
+                for (k = 0; k < size+size*(size+1)/2; k++) {
+                  xfsa->mpStats[k] += p_xfsc->mpStats[k] * Lqjmt;
+                }
+                xfsa->mNorm += p_xfsc->mNorm * Lqjmt;
+              }
+            }
     
-            if (!mpModelSetToUpdate->mCmllrStats) { // compute full covariance statistics (for HLDA)
-              for (j = 0; j < var->mNumberOfXformStatAccums; j++) {
-                XformStatAccum *xfsa = &var->mpXformStatAccum[j];
-                if (xfsa->mpXform == xfsc->mpXform) {
-                  size_t size = xfsc->mpXform->mInSize;
-                  for (k = 0; k < size+size*(size+1)/2; k++) {
-                    xfsa->mpStats[k] += xfsc->mpStats[k] * Lqjmt;
-                  }
-                  xfsa->mNorm += xfsc->mNorm * Lqjmt;
-                  break;
+            xfsa = mean->FindXformStatAccumByCache(p_xfsc);
+            if(xfsa != NULL) {
+              if(p_xfsc->mStatType == ST_HLDA) {
+                size_t size = p_xfsc->mpXform->mInSize;
+                for (k = 0; k < size; k++) {
+                  xfsa->mpStats[k] += p_xfsc->mpStats[k] * Lqjmt;
                 }
+                xfsa->mNorm += p_xfsc->mNorm * Lqjmt;
               }
-              for (j = 0; j < mean->mNumberOfXformStatAccums; j++) {
-                XformStatAccum *xfsa = &mean->mpXformStatAccum[j];                
-                if (xfsa->mpXform == xfsc->mpXform) {
-                  size_t size = xfsc->mpXform->mInSize;
+            }
+            
+            FLOAT *RD_ind_I = NULL;
+            FLOAT *RD_ind_G = NULL;
+            FLOAT  RD_ind_Fi;
+            
+            int outOffset = 0; 
+            // Block diagonal CMLLR would not work now, because the for loop was removed!!! 
+            // It was hack anyway and should be solved in a clean way
+            xfsa = p_xfsc->mpXform->FindXformStatAccumByCache(p_xfsc);
+            if(xfsa != NULL) {
+              if(p_xfsc->mStatType == ST_CMLLR) {
+                if(p_xfsc->mpXform->mOutSize != p_xfsc->mpXform->mInSize - 1) {
+                  Error("Invalid size of CMMLR matrix %s", p_xfsc->mpXform->mpMacro->mpName);
+                }
+                size_t size = p_xfsc->mpXform->mInSize;
+                size_t stat_size = size+size*(size+1)/2;
+                int dim;
+                
+                for(dim = 0; dim < size - 1; dim++) {
                   for (k = 0; k < size; k++) {
-                    xfsa->mpStats[k] += xfsc->mpStats[k] * Lqjmt;
+                    xfsa->mpStats[stat_size * dim + k]
+                      += p_xfsc->mpStats[k] * Lqjmt * mean->mVector[dim+outOffset] * var->mVector[dim+outOffset];
                   }
-                  xfsa->mNorm += xfsc->mNorm * Lqjmt;
-                  break;
+                  for (k = size; k < stat_size; k++) {
+                    xfsa->mpStats[stat_size * dim + k]
+                      += p_xfsc->mpStats[k] * Lqjmt *                                var->mVector[dim+outOffset];
+                  }
                 }
+                xfsa->mNorm += p_xfsc->mNorm * Lqjmt;
+              } else if(p_xfsc->mStatType == ST_RDMPE_DIRECT) {
+                // Equations (19) - (21) from "Recent Progress on the Discriminative Region-dependent Transform for Speech Feature Extraction"
+                for(i = 0; i < mean->VectorSize(); i++) {
+                  xfsa->mpStats[                     i] += Lqjmt *    (xobs[i] - mean->mVector[i]);
+                  xfsa->mpStats[mean->VectorSize() + i] += Lqjmt * SQR(xobs[i] - mean->mVector[i]);
+                }
+                xfsa->mNorm += Lqjmt;
+              } else if(p_xfsc->mStatType == ST_RDMPE_INDIRECT) {
+                RD_ind_I = xfsa->mpStats;
+                RD_ind_G = xfsa->mpStats + mean->VectorSize();
+                RD_ind_Fi = xfsa->mNorm;
               }
-            } else { // mpModelSet.cmllrStats
-              int outOffset = 0;
-              for (j = 0; j < mean->mNumberOfXformStatAccums; j++) {
-                if (mean->mpXformStatAccum[j].mpXform == xfsc->mpXform)  {
-                  if(xfsc->mpXform->mOutSize != xfsc->mpXform->mInSize - 1) {
-                    Error("Invalid size of CMMLR matrix %s", xfsc->mpXform->mpMacro->mpName);
-                  }
-                  size_t size = xfsc->mpXform->mInSize;
-                  size_t stat_size = size+size*(size+1)/2;
-                  int dim;
-                  
-                  for(dim = 0; dim < size - 1; dim++) {                  
-                    for (k = 0; k < size; k++) {
-                      xfsc->mpXform->mpCmllrStats[stat_size * dim + k]
-                        += xfsc->mpStats[k] * Lqjmt * mean->mVector[dim+outOffset] * var->mVector[dim+outOffset];
-                    }
-                    for (k = size; k < stat_size; k++) {
-                      xfsc->mpXform->mpCmllrStats[stat_size * dim + k]
-                        += xfsc->mpStats[k] * Lqjmt *                                var->mVector[dim+outOffset];
-                    }
-                  }
-                  xfsc->mpXform->mpCmllrStats[stat_size * dim] += xfsc->mNorm * Lqjmt;
-                  break;
+            }
+            
+            xfsa = ixf->FindXformStatAccumByCache(p_xfsc);
+            if(xfsa != NULL) {
+              if(p_xfsc->mStatType == ST_RDMPE_DIRECT) {
+                int i;
+                // Equation (16) from "Recent Progress on the Discriminative Region-dependent Transform for Speech Feature Extraction"
+                for(i = 0; i < mean->VectorSize(); i++) {
+                  xfsa->mpStats[                       i] -=               Lqjmt * (xobs[i] - mean->mVector[i])*var->mVector[i];
+                  xfsa->mpStats[  mean->VectorSize() + i] -= LOWER_OF(0.0, Lqjmt * (xobs[i] - mean->mVector[i])*var->mVector[i]);
+                  xfsa->mpStats[2*mean->VectorSize() + i] += occ_prob / var->mVector[i];
                 }
-                outOffset += mean->mpXformStatAccum[j].mpXform->mOutSize;
-                // !!! This is hack to deal with block diaginal CMLLR's
-                // !!! Works only if all block transformatins are listed in 'xormlist' in the correct order
+                xfsa->mpStats[3*mean->VectorSize()]   += occ_prob;
+                xfsa->mpStats[3*mean->VectorSize()+1] += fabs(Lqjmt);
+              } else if(p_xfsc->mStatType == ST_RDMPE_INDIRECT) {
+                assert(RD_ind_I != NULL);
+                for(i = 0; i < mean->VectorSize(); i++) {
+                  xfsa->mpStats[i] += Lqjmt * ((xobs[i] - mean->mVector[i]) * (var->mVector[i] * RD_ind_G[i] - RD_ind_Fi) + RD_ind_I[i]) 
+                                            * var->mVector[i] / state2->mpMixture[m].mWeightAccumDen; 
+                                            // mWeightAccumDen contains loaded mixture occupation counts
+                }
               }
             }
           }
@@ -1633,6 +1670,7 @@ namespace STK
                     mpBestToken->mLike - mPruningThresh > LOG_MIN
                     ? LOWER_OF(mpBestToken->mLike - mPruningThresh, mMaxThreshold)
                     : LOG_MIN;
+      // std::cout << "Beam thresh: " << mBeamThresh << std::endl;
     
       p_node = InForwardPass() ? rNetwork().pLast() : rNetwork().pFirst();
 
@@ -1951,10 +1989,12 @@ namespace STK
           }
     
           // if (IS_ACTIVE(p_node->mC.mpTokens[j])) 
+          // std::cout << "thresh: " << mBeamThresh << std::endl;
           if (p_node->mC.mpAnr->mpTokens[j].mLike > mBeamThresh) 
           {
             FLOAT out_prob = OutputProbability(p_hmm->mpState[state_idx-1],
                                               pObservation, this);
+            // std::cout << "out_prob: " << out_prob << std::endl;
             
             out_prob *= mOutpScale;
     
@@ -1971,6 +2011,7 @@ namespace STK
               p_node->mC.mpAnr->mpTokens[j].mAccuracy = FIL_Add(p_node->mC.mpAnr->mpTokens[j].mAccuracy, fil_like);
             }
     
+            // std::cout << "old like: " << p_node->mC.mpAnr->mpTokens[j].mLike  << std::endl;
             p_node->mC.mpAnr->mpTokens[j].mAccuracy.logvalue += out_prob;
             p_node->mC.mpAnr->mpTokens[j].mLike              += out_prob;
             p_node->mC.mpAnr->mpTokens[j].mAcousticLike      += out_prob;
@@ -2085,6 +2126,7 @@ namespace STK
           }
         }
       }
+
       assert(!HasCycle());
 //printf("%d: %d\n", mTime, mNActiveModelsForObservation);
       mNActiveTokensForUtterance += mNActiveTokensForObservation;
@@ -2137,6 +2179,7 @@ namespace STK
       }
       
       mActiveModelsBestLikes.clear();    
+      // std::cout << "Best token like: " << mpBestToken->mLike << std::endl;
     }
   // TokenPropagationInModels(FLOAT* pObservation)
   //***************************************************************************
@@ -2383,7 +2426,7 @@ namespace STK
           rNetwork().pLast()->mC.mpAnr->mpExitToken->IsActive()) 
       {
         tot_like = rNetwork().pLast()->mC.mpAnr->mpExitToken->mLike;
-        
+
         if (pLabels != NULL)
           *pLabels = rNetwork().pLast()->mC.mpAnr->mpExitToken->pGetLabels(getTimesFromNetwork, 
 	                                             rNetwork().pFirst()->mC.mpAlphaBeta 
@@ -3050,13 +3093,63 @@ extern std::map<std::string,FLOAT> state_posteriors;
               }
             }
             
-             if (i_node->mC.rpAlphaBetaListReverse()) 
-              free(i_node->mC.rpAlphaBetaListReverse());
+            if (i_node->mC.rpAlphaBetaListReverse()) 
+             free(i_node->mC.rpAlphaBetaListReverse());
               
             i_node->mC.rpAlphaBetaListReverse() = i_node->mC.rpAlphaBetaList();
             i_node->mC.rpAlphaBetaList() = i_node->mC.rpAlphaBetaList()->mpNext;
           }
         }
+        
+        
+        XformInstance *inst;
+        for (inst = p_hmms_upd->mpXformInstances; inst != NULL; inst = inst->mpNext) {
+          if(inst->mpXform->mXformType != XT_REGIONDEPENDENT) {
+            continue;
+          }
+          StatType stat_type = ST_RDMPE_DIRECT;
+          XformStatAccum *xfsa_inst;
+          XformStatAccum *xfsa_xfrm;
+          xfsa_inst = inst->FindXformStatAccum(stat_type, inst->mpXform);
+          if(xfsa_inst == NULL) {
+            stat_type = ST_RDMPE_INDIRECT;
+            xfsa_inst = inst->FindXformStatAccum(stat_type, inst->mpXform);
+          }
+          if(xfsa_inst != NULL) {
+            xfsa_xfrm = inst->mpXform->FindXformStatAccum(stat_type, inst->mpXform);
+            assert(xfsa_xfrm != NULL);
+            RegionDependentXform * rd_xform = static_cast<RegionDependentXform *>(inst->mpXform);
+            FLOAT *p_stats = xfsa_xfrm->mpStats + 2 * rd_xform->mOutSize; // Skip the G an I statistics
+            FLOAT* region_weights = inst->mpInput != NULL ? inst->mpInput->mOutputVector.pData() : obs2;
+            FLOAT* input_vector   = region_weights + rd_xform->mNBlocks;
+                    
+            for(int i = 0; i < rd_xform->mNBlocks; i++) {
+              if(rd_xform->mpBlock[i]->mXformType == XT_LINEAR) {
+                if(region_weights[i] > 0.0) {
+                  for(int j = 0; j < rd_xform->mpBlock[i]->mOutSize; j++) {
+                    for(int k = 0; k < rd_xform->mpBlock[i]->mInSize; k++) {
+                      p_stats[rd_xform->mpBlock[i]->mInSize * j + k] += xfsa_inst->mpStats[j] * input_vector[k] * region_weights[i];;
+                                                          // the outer product is the same for all regions -> can be optimized//
+                    }
+                  }
+                }
+                p_stats += rd_xform->mpBlock[i]->mInSize * rd_xform->mpBlock[i]->mOutSize;
+              } else if(rd_xform->mpBlock[i]->mXformType == XT_BIAS) {
+                if(region_weights[i] > 0.0) {
+                  for(int j = 0; j < rd_xform->mpBlock[i]->mOutSize * 3 + 2; j++) {
+                   p_stats[j] += xfsa_inst->mpStats[j] * region_weights[i];
+                  }
+                }
+                p_stats +=  rd_xform->mpBlock[i]->mOutSize * 3 + 2;
+              }
+            }
+            
+            for(int i = 0; i < xfsa_inst->mSize; i++) {
+              xfsa_inst->mpStats[i] = 0.0;
+            }
+          }
+        }
+
 //for(std::map<string,FLOAT>::iterator i_sp = state_posteriors.begin(); i_sp != state_posteriors.end(); ++i_sp) {
 //  printf("%d %s %f\n", mTime, i_sp->first.c_str(), i_sp->second);
 //}

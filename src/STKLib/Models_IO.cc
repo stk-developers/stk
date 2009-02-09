@@ -1,6 +1,7 @@
 #include "Models.h"
 #include "SigP.h"
 #include <stdarg.h>
+#include <sstream>
  
 namespace STK
 {
@@ -1330,8 +1331,6 @@ namespace STK
     ret->mpMacro = macro;
   //  puts("ReadXformInstance exit");
   
-    ret->mNumberOfXformStatCaches = 0;
-    ret->mpXformStatCache   = NULL;
     ret->mTotalDelay = ret->mpXform->mDelay + (input ? input->mTotalDelay : 0);
   
     mTotalDelay = HIGHER_OF(mTotalDelay, ret->mTotalDelay);
@@ -3630,6 +3629,81 @@ namespace STK
   ModelSet::
   ReadXformList(const char * pFileName)
   {
+    Macro*     macro;
+    int        nlines = 0;
+    
+    IStkStream file(pFileName);
+    if (!file) {
+      Error("ReadXformList: Cannot open file: '%s'", pFileName);
+    }
+    std::string line;
+    while(getline(file,line)) {
+      std::string token;
+      MakeXformCommand  mxfc;
+      
+      nlines++;
+      std::istringstream iss(line);
+      if(!(iss >> token)) {
+        continue;
+      }
+      macro = FindMacro(&mXformHash, token.c_str());
+      if (macro == NULL) {
+        Error("ReadXformList: Undefined Xform '%s' at line %d in file %s",
+              token.c_str(), (int) nlines, pFileName);
+      }
+      mxfc.mpXform = static_cast<Xform *>(macro->mpData);
+      if(!(iss >> token)) {
+        mxfc.mStatType = ST_HLDA;
+      } else {
+        if("HLDA"           == token) mxfc.mStatType = ST_HLDA;
+        else if("CMLLR"          == token) mxfc.mStatType = ST_CMLLR;
+        else if("RDMPE_DIRECT"   == token) mxfc.mStatType = ST_RDMPE_DIRECT;
+        else if("RDMPE_INDIRECT" == token) mxfc.mStatType = ST_RDMPE_INDIRECT;
+        else {
+          Error("ReadXformList: Unknown type of statistic '%s' at line %d in file %s",
+                   token.c_str(), (int) nlines, pFileName);
+        }
+        if(getline(iss, token)) {
+          Trim(token);
+          if(!token.empty() && token[0] == '(') {
+            //extract arguments
+            size_t arg_end = token.find(')');
+            if(arg_end == std::string::npos) {
+              Error("ReadXformList: Expecting ')' at line %d in file %s", (int) nlines, pFileName);
+            }
+            mxfc.mpShellCommand = token.substr(arg_end+1);
+            line = token.substr(1, arg_end-1);
+            std::istringstream iss2(line);
+            while(getline(iss2, token, ',')) {
+              mxfc.mStringArgs.push_back(token);
+            }
+          } else {
+            mxfc.mpShellCommand = token;
+          }
+          Trim(mxfc.mpShellCommand);
+        }
+        mpXformToUpdate.push_back(mxfc);      
+      }
+      if(mxfc.mStatType == ST_RDMPE_INDIRECT) {
+        if(mxfc.mStringArgs.size() < 2) {
+          Error("ReadXformList: File names with occupation counts and I, G, Fi statistics are expected at line %d in file %s",
+                token.c_str(), (int) nlines, pFileName);
+        }
+        ReadMixtureOccups(mxfc.mStringArgs.front().c_str());
+      }
+    }
+    if(file.bad()) {
+      Error("ReadXformList: Cannot read file: '%s'", pFileName);
+    }
+  } //ReadXformList(const std::string & rFileName);
+  
+  //***************************************************************************
+  //*****************************************************************************  
+/*
+  void 
+  ModelSet::
+  ReadXformList(const char * pFileName)
+  {
     char      line[1024];
     FILE *    fp;
     size_t    nlines=0;
@@ -3641,11 +3715,12 @@ namespace STK
     {
       char*             xformName;
       char*             makeXformShellCommand = NULL;
+      char*             statTypeString        = NULL;
       char              termChar = '\0';
       size_t            i = strlen(line);
       Macro*            macro;
-      MakeXformCommand* mxfc;
-  
+      MakeXformCommand  mxfc;
+      StatType          statType;
       nlines++;
       
       if (line[i-1] != '\n' && getc(fp) != EOF) 
@@ -3672,56 +3747,68 @@ namespace STK
             (termChar != '\0' || !isspace(line[i]))) 
         i++;
   
-      if (termChar != '\0') 
-      {
-        if (line[i] != termChar) 
-        {
+      if (termChar != '\0') {
+        if (line[i] != termChar) {
           Error("ReadXformList: Terminanting %c expected at line %d in file %s",
                 termChar, (int) nlines, pFileName);
         }
-        
         line[i++] = '\0';
       }
-  
-      if (line[i] != '\0') 
-      { // shell command follows
+      for (; isspace(line[i]); i++) 
+        line[i] = '\0';
+ 
+      if (line[i] != '\0') {
+        // stat type id follows (default is ST_HLDA)
+        statTypeString = &line[i];
+        for (; !isspace(line[i]) && line[i] != '\0'; i++)
+          line[i] = toupper(line[i]);
+        // shell command follows
         for (; isspace(line[i]); i++) 
           line[i] = '\0';
-        makeXformShellCommand = &line[i];
+          
+        if (line[i] != '\0') {
+          // shell command follows
+          makeXformShellCommand = &line[i];
+        }
       }
-  
       macro = FindMacro(&mXformHash, xformName);
       
-      if (macro == NULL) 
-      {
+      if (macro == NULL) {
         Error("ReadXformList: Undefined Xform '%s' at line %d in file %s",
               xformName, (int) nlines, pFileName);
       }
-  
-      mpXformToUpdate = (MakeXformCommand*)
-        realloc(mpXformToUpdate,
-                sizeof(MakeXformCommand) * ++mNumberOfXformsToUpdate);
-  
-      if (mpXformToUpdate == NULL) 
-      {
-        Error("ReadXformList: Insufficient memory");
+//      mpXformToUpdate = (MakeXformCommand*)
+//        realloc(mpXformToUpdate,
+//                sizeof(MakeXformCommand) * ++mNumberOfXformsToUpdate);
+//  
+//      if (mpXformToUpdate == NULL) {
+//        Error("ReadXformList: Insufficient memory");
+//      }
+//      mxfc = &mpXformToUpdate[mNumberOfXformsToUpdate-1];
+      mxfc.mpXform = (Xform *) macro->mpData;
+//      mxfc.mpShellCommand = NULL;
+      
+      if(statTypeString == NULL || !strcmp(statTypeString, "HLDA")) {
+        mxfc.mStatType = ST_HLDA;
+      } else if(!strcmp(statTypeString, "CMLLR")) {
+        mxfc.mStatType = ST_CMLLR;
+      } else if(!strcmp(statTypeString, "RDMPE_DIRECT")) {
+        mxfc.mStatType = ST_RDMPE_DIRECT;
+      } else if(!strcmp(statTypeString, "RDMPE_INDIRECT")) {
+        mxfc.mStatType = ST_RDMPE_INDIRECT;
+      } else {
+        Error("ReadXformList: Unknown type of statistic '%s' at line %d in file %s",
+              statTypeString, (int) nlines, pFileName);
+      } 
+      if (makeXformShellCommand) {
+        mxfc.mpShellCommand = makeXformShellCommand;
       }
-  
-      mxfc = &mpXformToUpdate[mNumberOfXformsToUpdate-1];
-      mxfc->mpXform = (Xform *) macro->mpData;
-      mxfc->mpShellCommand = NULL;
-  
-      if (makeXformShellCommand) 
-      {
-        if ((mxfc->mpShellCommand = strdup(makeXformShellCommand)) == NULL) 
-        {
-          Error("ReadXformList: Insufficient memory");
-        }
-      }
+      mpXformToUpdate.push_back(mxfc);
+
     }
     fclose(fp);
   }; //ReadXformList(const std::string & rFileName);
-  
+*/
 
   //***************************************************************************
   //*****************************************************************************  
@@ -3829,25 +3916,13 @@ namespace STK
     
     else if (macro_type == mt_mean || macro_type == mt_variance) 
     {
-      XformStatAccum *  xfsa = NULL;
-      //UINT_32           size_inf;
-      size_t            size_inf;
-      UINT_32           nxfsa_inf;
-      size_t            nxfsa = 0;
-  
-      if (macro_type == mt_mean) 
-      {
-        xfsa   = ((Mean*)pData)->mpXformStatAccum;
-        nxfsa  = ((Mean*)pData)->mNumberOfXformStatAccums;
+      if (macro_type == mt_mean) {
         size   = ((Mean*)pData)->VectorSize();
         //vector = ((Mean *)pData)->mpVectorO+size;
         vector = ((Mean*)pData)->mpAccums;
         size   = size + 1;
       } 
-      else if (macro_type == mt_variance) 
-      {
-        xfsa   = ((Variance*)pData)->mpXformStatAccum;
-        nxfsa  = ((Variance*)pData)->mNumberOfXformStatAccums;
+      else if (macro_type == mt_variance) {
         size   = ((Variance*)pData)->VectorSize();
         //vector = ((Variance *)pData)->mpVectorO+size;
         vector = ((Variance*)pData)->mpAccums;
@@ -3857,68 +3932,10 @@ namespace STK
       if (ud->mMmi) 
         vector += size;
   
-      if (faddfloat(vector, size, ud->mWeight,    ud->mpFp) != size ||
-          fread(&nxfsa_inf, sizeof(nxfsa_inf), 1, ud->mpFp) != 1) 
-      {
+      if (faddfloat(vector, size, ud->mWeight,    ud->mpFp) != size) {
         Error("Incompatible accumulator file: '%s'", ud->mpFileName);
       }
-  
-      if (!ud->mMmi && !ud->mpModelSet->mCmllrStats ) 
-      { // MMI estimation of Xform statistics has not been implemented yet
-        for (i = 0; i < nxfsa_inf; i++) 
-        {
-          if (getc(ud->mpFp) != '"') 
-            Error("Incompatible accumulator file: '%s'", ud->mpFileName);
-  
-          for (j=0; (c=getc(ud->mpFp)) != EOF && c != '"' && j < sizeof(xfName)-1; j++) 
-            xfName[j] = c;
-  
-          xfName[j] = '\0';
-          
-          if (c == EOF)
-            Error("Incompatible accumulator file: '%s'", ud->mpFileName);
-  
-          macro = FindMacro(&ud->mpModelSet->mXformHash, xfName);
-  
-          if (fread(&size_inf, sizeof(size_inf), 1, ud->mpFp) != 1) 
-            Error("Incompatible accumulator file: '%s'", ud->mpFileName);
-  
-          if (macro != NULL) 
-          {
-            size = ((LinearXform *) macro->mpData)->mInSize;
-            size = (macro_type == mt_mean) ? size : size+size*(size+1)/2;
-  
-            if (size != size_inf)
-              Error("Incompatible accumulator file: '%s'", ud->mpFileName);
-  
-            for (j = 0; j < nxfsa && xfsa[j].mpXform != macro->mpData; j++)
-            {}
-            
-            if (j < nxfsa) 
-            {
-              if (faddfloat(xfsa[j].mpStats, size, ud->mWeight, ud->mpFp) != size  ||
-                  faddfloat(&xfsa[j].mNorm,     1, ud->mWeight, ud->mpFp) != 1) 
-              {
-                Error("Invalid accumulator file: '%s'", ud->mpFileName);
-              }
-            } 
-            else 
-            {
-              macro = NULL;
-            }
-          }
-  
-          // Skip Xform accumulator
-          if (macro == NULL) 
-          { 
-            FLOAT f;
-            for (j = 0; j < size_inf+1; j++) 
-              fread(&f, sizeof(f), 1, ud->mpFp);
-          }
-        }
-      }
-    } 
-    
+    }
     else if (macro_type == mt_state) 
     {
       State *state = (State *) pData;
@@ -3957,9 +3974,9 @@ namespace STK
           LOG_INC(vector[i], f);
         }
       }
-    } else if (macro_type == mt_Xform) {
-      if (ud->mpModelSet->mCmllrStats 
-      && ((Xform *) pData)->mpCmllrStats != NULL) {
+    }
+/*     else if (macro_type == mt_Xform) {
+      if (((Xform *) pData)->mpCmllrStats != NULL) {
         size = ((Xform *) pData)->mInSize;
         size = (size + size*(size+1)/2) * (size -1) + 1;
         vector = ((Xform *) pData)->mpCmllrStats;
@@ -3969,6 +3986,66 @@ namespace STK
         }    
       }
     }
+*/    
+    //Read XformStatAccum associated with the MacroData object
+    UINT_32           nxfsa_inf;
+    UINT_32           size_inf;
+    UINT_32           stat_type;
+
+    if (fread(&nxfsa_inf, sizeof(nxfsa_inf), 1, ud->mpFp) != 1) {
+      Error("Incompatible accumulator file: '%s'", ud->mpFileName);
+    }
+    for (i = 0; i < nxfsa_inf; i++) 
+    {
+      if (getc(ud->mpFp) != '"') 
+        Error("Incompatible accumulator file: '%s'", ud->mpFileName);
+  
+      for (j=0; (c=getc(ud->mpFp)) != EOF && c != '"' && j < sizeof(xfName)-1; j++) 
+        xfName[j] = c;
+  
+      xfName[j] = '\0';
+      
+      if (c == EOF)
+        Error("Incompatible accumulator file: '%s'", ud->mpFileName);
+    
+      if (fread(&stat_type, sizeof(stat_type), 1, ud->mpFp) != 1 ||
+          fread(&size_inf,  sizeof(size_inf),  1, ud->mpFp) != 1)
+        Error("Incompatible accumulator file: '%s'", ud->mpFileName);
+  
+      macro = FindMacro(&ud->mpModelSet->mXformHash, xfName);
+
+      if (macro != NULL) {
+        std::list<XformStatAccum *>::iterator xfsait;
+        for (xfsait = pData->mXformStatAccumList.begin(); 
+             xfsait != pData->mXformStatAccumList.end() 
+             && ((*xfsait)->mpCache->mpXform != macro->mpData 
+                 || (*xfsait)->mpCache->mStatType != static_cast<StatType>(stat_type));
+             xfsait++)
+          ;
+
+        if (xfsait != pData->mXformStatAccumList.end()) {
+          if ((*xfsait)->mSize != size_inf)
+            Error("Incompatible accumulator file: '%s'", ud->mpFileName);
+
+          if (faddfloat((*xfsait)->mpStats, size_inf, ud->mWeight, ud->mpFp) != size_inf  ||
+              faddfloat(&(*xfsait)->mNorm,         1, ud->mWeight, ud->mpFp) != 1) {
+            Error("Invalid accumulator file: '%s'", ud->mpFileName);
+          }
+        } 
+        else {
+          macro = NULL;
+        }
+      }
+  
+      // Skip Xform accumulator
+      if (macro == NULL) 
+      { 
+        FLOAT f;
+        for (j = 0; j < size_inf+1; j++) 
+          fread(&f, sizeof(f), 1, ud->mpFp);
+      }
+    }  
+    
   } // void ReadAccum(int macro_type, HMMSetNodeName nodeName...)
   
 
@@ -3990,13 +4067,8 @@ namespace STK
     INT_32                    occurances;
     ReadAccumUserData         ud;
     Macro*                    macro;
-    int                       mtm = MTM_PRESCAN | 
-                                    MTM_STATE |
-                                    MTM_MIXTURE |
-                                    MTM_MEAN |   
-                                    MTM_VARIANCE | 
-                                    MTM_TRANSITION;
-  
+    int                       mtm = MTM_PRESCAN | MTM_ALL;
+                                    //MTM_PRESCAN | MTM_STATE | MTM_MIXTURE | MTM_MEAN | MTM_VARIANCE | MTM_TRANSITION;  
     macro_name[sizeof(macro_name)-1] = '\0';
   
     // open the file
@@ -4038,7 +4110,7 @@ namespace STK
             break;
           }
             
-          if (strchr("hsmuvtx", t = c = getc(fp)) &&
+          if (strchr("hsmuvtxj", t = c = getc(fp)) &&
              (c = getc(fp)) == ' ' && (c = getc(fp)) == '"')
           {  
             break;
@@ -4056,7 +4128,7 @@ namespace STK
           break;
         }
         
-        if (c != '~'      || !strchr("hsmuvtx", t = getc(fp)) ||
+        if (c != '~'      || !strchr("hsmuvtxj", t = getc(fp)) ||
           getc(fp) != ' ' || getc(fp) != '"') 
         {
           Error("Incompatible accumulator file: '%s'", rFile.Physical().c_str());
@@ -4075,7 +4147,8 @@ namespace STK
              t == 'u' ? &mMeanHash :
              t == 'v' ? &mVarianceHash :
              t == 't' ? &mTransitionHash : 
-             t == 'x' ? &mXformHash : NULL;
+             t == 'x' ? &mXformHash :
+             t == 'j' ? &mXformInstanceHash : NULL;
   
       assert(hash);
       if ((macro = FindMacro(hash, macro_name)) == NULL) 
@@ -4096,10 +4169,11 @@ namespace STK
         case 'h': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
         case 's': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
         case 'm': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
-        case 'u': ReadAccum(mt_mean,       NULL, macro->mpData, &ud);          break;
-        case 'v': ReadAccum(mt_variance,   NULL, macro->mpData, &ud);          break;
-        case 't': ReadAccum(mt_transition, NULL, macro->mpData, &ud);          break;
-        case 'x': ReadAccum(mt_Xform,      NULL, macro->mpData, &ud);          break;
+        case 'x': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
+        case 'j': macro->mpData->Scan(mtm, NULL, ReadAccum, &ud); break;
+        case 'u': ReadAccum(mt_mean,       NULL, macro->mpData, &ud); break;
+        case 'v': ReadAccum(mt_variance,   NULL, macro->mpData, &ud); break;
+        case 't': ReadAccum(mt_transition, NULL, macro->mpData, &ud); break;
         default:  assert(0);
       }
     }
@@ -4318,55 +4392,23 @@ namespace STK
     
     else if (macro_type == mt_mean || macro_type == mt_variance) 
     {
-      XformStatAccum*     xfsa = NULL;
-      UINT_32             nxfsa = 0;
   
-      if (macro_type == mt_mean) 
-      {
-        xfsa   = ((Mean*)pData)->mpXformStatAccum;
-        nxfsa  = ((Mean*)pData)->mNumberOfXformStatAccums;
-        size   = ((Mean*)pData)->VectorSize();
+      if (macro_type == mt_mean) {
+        size    = ((Mean*)pData)->VectorSize();
         //vector = ((Mean*)pData)->mpVectorO+size;
-        vector = ((Mean*)pData)->mpAccums;
-        size   = size + 1;
+        vector  = ((Mean*)pData)->mpAccums;
+        size    = size + 1;
       } 
-      else if (macro_type == mt_variance) 
-      {
-        xfsa   = ((Variance*)pData)->mpXformStatAccum;
-        nxfsa  = ((Variance*)pData)->mNumberOfXformStatAccums;
-        size   = ((Variance*)pData)->VectorSize();
+      else if (macro_type == mt_variance) {
+        size    = ((Variance*)pData)->VectorSize();
         //vector = ((Variance*)pData)->mpVectorO+size;
-        vector = ((Variance*)pData)->mpAccums;
-        size   = size * 2 + 1;
+        vector  = ((Variance*)pData)->mpAccums;
+        size    = size * 2 + 1;
       }
-  
-  //    if (ud->mMmi) vector += size; // Move to MMI accums, which follows ML accums
-  
-      if (fwrite(vector, sizeof(FLOAT), size, ud->mpFp) != size ||
-          fwrite(&nxfsa, sizeof(nxfsa),    1, ud->mpFp) != 1) 
-      {
+      if (fwrite(vector, sizeof(FLOAT), size, ud->mpFp) != size) {
         Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
-      }
-  
-  //    if (!ud->mMmi) { // MMI estimation of Xform statistics has not been implemented yet
-      if(!ud->mpModelSet->mCmllrStats) {
-        for (i = 0; i < nxfsa; i++) 
-        {
-          size = xfsa[i].mpXform->mInSize;
-          size = (macro_type == mt_mean) ? size : size+size*(size+1)/2;
-          assert(xfsa[i].mpXform->mpMacro != NULL);
-          if (fprintf(ud->mpFp, "\"%s\"", xfsa[i].mpXform->mpMacro->mpName) < 0 ||
-            fwrite(&size,           sizeof(size),        1, ud->mpFp) != 1    ||
-            fwrite(xfsa[i].mpStats, sizeof(FLOAT), size, ud->mpFp) != size ||
-            fwrite(&xfsa[i].mNorm,  sizeof(FLOAT),    1, ud->mpFp) != 1) 
-          {
-            Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
-          }
-        }
-      }
-  //    }
-    }
-    
+      }  
+    }    
     else if (macro_type == mt_state) 
     {
       State *state = (State *) pData;
@@ -4395,10 +4437,10 @@ namespace STK
         Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
       }
     }
+/*
     else if (macro_type == mt_Xform) 
     {
-      if (ud->mpModelSet->mCmllrStats 
-      && ((Xform *) pData)->mpCmllrStats != NULL) {
+      if (((Xform *) pData)->mpCmllrStats != NULL) {
         size = ((Xform *) pData)->mInSize;
         size = (size + size*(size+1)/2) * (size -1) + 1;
         vector = ((Xform *) pData)->mpCmllrStats;
@@ -4406,6 +4448,27 @@ namespace STK
         if (fwrite(vector, sizeof(FLOAT), size, ud->mpFp) != size) {
           Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
         }
+      }
+    }
+*/    
+    std::list<XformStatAccum *>::iterator xfsait;
+    UINT_32 nxfsa = pData->mXformStatAccumList.size();
+    
+    if (fwrite(&nxfsa, sizeof(nxfsa),    1, ud->mpFp) != 1) {
+      Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
+    }
+    for (xfsait = pData->mXformStatAccumList.begin();
+         xfsait != pData->mXformStatAccumList.end();
+         xfsait++) {
+      UINT_32 acc_size = (*xfsait)->mSize;
+      UINT_32 stat_type = (*xfsait)->mpCache->mStatType;
+      assert((*xfsait)->mpCache->mpXform->mpMacro != NULL);
+      if (fprintf(ud->mpFp, "\"%s\"", (*xfsait)->mpCache->mpXform->mpMacro->mpName) < 0 ||
+          fwrite(&stat_type,      sizeof(stat_type),       1, ud->mpFp) != 1    ||
+          fwrite(&acc_size,       sizeof(acc_size),        1, ud->mpFp) != 1    ||
+          fwrite((*xfsait)->mpStats, sizeof(FLOAT), acc_size, ud->mpFp) != acc_size ||
+          fwrite(&(*xfsait)->mNorm,  sizeof(FLOAT),        1, ud->mpFp) != 1) {
+        Error("Cannot write accumulators to file: '%s'", ud->mpFileName);
       }
     }
   } // WriteAccum(int macro_type, HMMSetNodeName nodeName,..)
@@ -4443,7 +4506,7 @@ namespace STK
     ud.mpModelSet   = this;
   //  ud.mMmi = MMI_denominator_accums;
   
-    Scan(MTM_PRESCAN | (MTM_ALL & ~(MTM_XFORM_INSTANCE)), //|MTM_XFORM
+    Scan(MTM_PRESCAN | MTM_ALL, //& ~(MTM_XFORM_INSTANCE)), //|MTM_XFORM
               NULL, WriteAccum, &ud);
   
     fclose(fp);
