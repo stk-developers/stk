@@ -1135,7 +1135,8 @@ namespace STK
           
           for(std::list<XformStatCache *>::iterator it = ixf->mXformStatCacheList.begin(); it != ixf->mXformStatCacheList.end(); it++) {
             XformStatCache *p_xfsc = *it;
-
+            
+            Mixture  *mix  = state2->mpMixture[m].mpEstimates;
             Variance *var  = state2->mpMixture[m].mpEstimates->mpVariance;
             Mean     *mean = state2->mpMixture[m].mpEstimates->mpMean;
             XformStatAccum *xfsa;
@@ -1161,10 +1162,25 @@ namespace STK
                 xfsa->mNorm += p_xfsc->mNorm * Lqjmt;
               }
             }
-            
             FLOAT *RD_ind_I = NULL;
             FLOAT *RD_ind_G = NULL;
             FLOAT  RD_ind_Fi;
+            
+            xfsa = mix->FindXformStatAccumByCache(p_xfsc);
+            if(xfsa != NULL) {
+              if(p_xfsc->mStatType == ST_RDMPE_DIRECT) {
+                // Equations (19) - (21) from "Recent Progress on the Discriminative Region-dependent Transform for Speech Feature Extraction"
+                for(i = 0; i < mean->VectorSize(); i++) {
+                  xfsa->mpStats[                     i] += Lqjmt *    (xobs[i] - mean->mVector[i]);
+                  xfsa->mpStats[mean->VectorSize() + i] += Lqjmt * SQR(xobs[i] - mean->mVector[i]);
+                }
+                xfsa->mNorm += Lqjmt;
+              } else if(p_xfsc->mStatType == ST_RDMPE_INDIRECT) {
+                RD_ind_I = xfsa->mpStats;
+                RD_ind_G = xfsa->mpStats + mean->VectorSize();
+                RD_ind_Fi = xfsa->mNorm;
+              }
+            }
             
             int outOffset = 0; 
             // Block diagonal CMLLR would not work now, because the for loop was removed!!! 
@@ -1190,18 +1206,7 @@ namespace STK
                   }
                 }
                 xfsa->mNorm += p_xfsc->mNorm * Lqjmt;
-              } else if(p_xfsc->mStatType == ST_RDMPE_DIRECT) {
-                // Equations (19) - (21) from "Recent Progress on the Discriminative Region-dependent Transform for Speech Feature Extraction"
-                for(i = 0; i < mean->VectorSize(); i++) {
-                  xfsa->mpStats[                     i] += Lqjmt *    (xobs[i] - mean->mVector[i]);
-                  xfsa->mpStats[mean->VectorSize() + i] += Lqjmt * SQR(xobs[i] - mean->mVector[i]);
-                }
-                xfsa->mNorm += Lqjmt;
-              } else if(p_xfsc->mStatType == ST_RDMPE_INDIRECT) {
-                RD_ind_I = xfsa->mpStats;
-                RD_ind_G = xfsa->mpStats + mean->VectorSize();
-                RD_ind_Fi = xfsa->mNorm;
-              }
+              } 
             }
             
             xfsa = ixf->FindXformStatAccumByCache(p_xfsc);
@@ -1210,12 +1215,11 @@ namespace STK
                 int i;
                 // Equation (16) from "Recent Progress on the Discriminative Region-dependent Transform for Speech Feature Extraction"
                 for(i = 0; i < mean->VectorSize(); i++) {
-                  xfsa->mpStats[                       i] -=               Lqjmt * (xobs[i] - mean->mVector[i])*var->mVector[i];
-                  xfsa->mpStats[  mean->VectorSize() + i] -= LOWER_OF(0.0, Lqjmt * (xobs[i] - mean->mVector[i])*var->mVector[i]);
-                  xfsa->mpStats[2*mean->VectorSize() + i] += occ_prob / var->mVector[i];
+                  xfsa->mpStats[                     i] -= Lqjmt * (xobs[i] - mean->mVector[i])*var->mVector[i];
+                  xfsa->mpStats[mean->VectorSize() + i] += occ_prob / var->mVector[i];
                 }
-                xfsa->mpStats[3*mean->VectorSize()]   += occ_prob;
-                xfsa->mpStats[3*mean->VectorSize()+1] += fabs(Lqjmt);
+                xfsa->mpStats[2*mean->VectorSize()]   += occ_prob;
+                xfsa->mpStats[2*mean->VectorSize()+1] += fabs(Lqjmt);
               } else if(p_xfsc->mStatType == ST_RDMPE_INDIRECT) {
                 assert(RD_ind_I != NULL);
                 for(i = 0; i < mean->VectorSize(); i++) {
@@ -3119,7 +3123,7 @@ extern std::map<std::string,FLOAT> state_posteriors;
             xfsa_xfrm = inst->mpXform->FindXformStatAccum(stat_type, inst->mpXform);
             assert(xfsa_xfrm != NULL);
             RegionDependentXform * rd_xform = static_cast<RegionDependentXform *>(inst->mpXform);
-            FLOAT *p_stats = xfsa_xfrm->mpStats + 2 * rd_xform->mOutSize; // Skip the G an I statistics
+            FLOAT *p_stats = xfsa_xfrm->mpStats;
             FLOAT* region_weights = inst->mpInput != NULL ? inst->mpInput->mOutputVector.pData() : obs2;
             FLOAT* input_vector   = region_weights + rd_xform->mNBlocks;
                     
@@ -3132,15 +3136,33 @@ extern std::map<std::string,FLOAT> state_posteriors;
                                                           // the outer product is the same for all regions -> can be optimized//
                     }
                   }
-                }
-                p_stats += rd_xform->mpBlock[i]->mInSize * rd_xform->mpBlock[i]->mOutSize;
-              } else if(rd_xform->mpBlock[i]->mXformType == XT_BIAS) {
-                if(region_weights[i] > 0.0) {
-                  for(int j = 0; j < rd_xform->mpBlock[i]->mOutSize * 3 + 2; j++) {
-                   p_stats[j] += xfsa_inst->mpStats[j] * region_weights[i];
+                  int offset = rd_xform->mpBlock[i]->mInSize * rd_xform->mpBlock[i]->mOutSize;
+                  for(int j = 0; j < rd_xform->mpBlock[i]->mOutSize; j++) {
+                   p_stats[offset + j] += xfsa_inst->mpStats[rd_xform->mOutSize + j] * region_weights[i];
                   }
+                  offset += rd_xform->mpBlock[i]->mOutSize;
+                  for(int j = 0; j < rd_xform->mpBlock[i]->mInSize; j++) {
+                   p_stats[offset + j] += SQR(input_vector[j]) * region_weights[i];
+                  }
+                  offset += rd_xform->mpBlock[i]->mInSize;
+                  p_stats[offset    ] += xfsa_inst->mpStats[2*rd_xform->mOutSize]     * region_weights[i];
+                  p_stats[offset + 1] += xfsa_inst->mpStats[2*rd_xform->mOutSize + 1] * region_weights[i];
+                  assert(offset == rd_xform->mpBlock[i]->mInSize * rd_xform->mpBlock[i]->mOutSize +
+                                   rd_xform->mpBlock[i]->mInSize + rd_xform->mpBlock[i]->mOutSize);
                 }
-                p_stats +=  rd_xform->mpBlock[i]->mOutSize * 3 + 2;
+                p_stats += rd_xform->mpBlock[i]->mInSize * rd_xform->mpBlock[i]->mOutSize 
+                        +  rd_xform->mpBlock[i]->mInSize + rd_xform->mpBlock[i]->mOutSize + 2;
+              } 
+              else if(rd_xform->mpBlock[i]->mXformType == XT_BIAS) {
+                if(region_weights[i] > 0.0) {
+                  for(int j = 0; j < rd_xform->mpBlock[i]->mOutSize; j++) {
+                   p_stats[                                   j] += xfsa_inst->mpStats[                       j] * region_weights[i];
+                   p_stats[  rd_xform->mpBlock[i]->mOutSize + j] += xfsa_inst->mpStats[  rd_xform->mOutSize + j] * region_weights[i];
+                  }
+                  p_stats[2*rd_xform->mpBlock[i]->mOutSize]      += xfsa_inst->mpStats[2*rd_xform->mOutSize]     * region_weights[i];
+                  p_stats[2*rd_xform->mpBlock[i]->mOutSize + 1]  += xfsa_inst->mpStats[2*rd_xform->mOutSize + 1] * region_weights[i];
+                }
+                p_stats +=  rd_xform->mpBlock[i]->mOutSize * 2 + 2;
               }
             }
             

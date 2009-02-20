@@ -131,17 +131,19 @@ namespace STK
       size = Type() == mt_mean ? size : size+size*(size+1)/2;
     } else if((Type() == mt_Xform)                  && pXfsc->mStatType == ST_CMLLR) {
       size = (size+size*(size+1)/2) * (size-1);
+    } else if((Type() == mt_mixture)                && (pXfsc->mStatType == ST_RDMPE_DIRECT || pXfsc->mStatType == ST_RDMPE_INDIRECT)) {
+      size = pXfsc->mpXform->mOutSize * 2;
     } else if((Type() == mt_XformInstance)          && (pXfsc->mStatType == ST_RDMPE_DIRECT || pXfsc->mStatType == ST_RDMPE_INDIRECT)) {
-      size = pXfsc->mpXform->mOutSize * 3 + 2;
+      size = pXfsc->mpXform->mOutSize * 2 + 2;
     } else if((Type() == mt_Xform)                  && (pXfsc->mStatType == ST_RDMPE_DIRECT || pXfsc->mStatType == ST_RDMPE_INDIRECT)) {
       assert(pXfsc->mpXform->mXformType == XT_REGIONDEPENDENT);
       RegionDependentXform * rd_xform = static_cast<RegionDependentXform *>(pXfsc->mpXform);
-      size = 2 * pXfsc->mpXform->mOutSize;
       for(int i = 0; i < rd_xform->mNBlocks; i++) {
         if(rd_xform->mpBlock[i]->mXformType == XT_LINEAR) {
-          size += rd_xform->mpBlock[i]->mInSize * rd_xform->mpBlock[i]->mOutSize;
+          size += rd_xform->mpBlock[i]->mInSize * rd_xform->mpBlock[i]->mOutSize 
+               +  rd_xform->mpBlock[i]->mInSize + rd_xform->mpBlock[i]->mOutSize + 2;
         } else if(rd_xform->mpBlock[i]->mXformType == XT_BIAS) {
-          size +=  rd_xform->mpBlock[i]->mOutSize * 3 + 2;
+          size +=  rd_xform->mpBlock[i]->mOutSize * 2 + 2;
         }
       }
     } else {
@@ -150,28 +152,6 @@ namespace STK
 
     p_xfsa = new XformStatAccum(size, pXfsc);
     mXformStatAccumList.push_back(p_xfsa);
-    
-    if(Type() == mt_Xform &&  pXfsc->mStatType == ST_RDMPE_INDIRECT) {
-      assert(args.size() >= 2);
-      // Load I, G, Fi statistics computed in ST_RDMPE_DIRECT pass
-      std::string junk;
-      const char *igf_file_name = (++args.begin())->c_str();
-      IStkStream file(igf_file_name);
-      if(!file) {
-        Error("AllocXformStatAccum: Cannot open file %s", igf_file_name);
-      }
-      for(int i=0; i < 2 * pXfsc->mpXform->mOutSize; i++) {
-        file >> p_xfsa->mpStats[i];
-      }
-      file >> p_xfsa->mNorm;
-      
-      if(!file || !(file >> junk).eof()) {
-        if(file.bad()) {
-          Error("AllocXformStatAccum: Cannot read file: '%s'", igf_file_name);
-        }
-        Error("AllocXformStatAccum: Incompatible statistics in file: '%s'", igf_file_name);
-      }
-    }
     return p_xfsa;
   }
 
@@ -669,6 +649,7 @@ namespace STK
           xscit != mix->mpInputXform->mXformStatCacheList.end(); 
           xscit++) {
         std::list<std::string> empty_list;
+        mix            ->AllocXformStatAccum(*xscit,empty_list);
         mix->mpMean    ->AllocXformStatAccum(*xscit,empty_list);
         mix->mpVariance->AllocXformStatAccum(*xscit,empty_list);
       }
@@ -836,7 +817,7 @@ namespace STK
   //*****************************************************************************
   //*****************************************************************************
   void 
-  WriteHldaStatsForXform(int macro_type, HMMSetNodeName nodeName,
+  WriteHldaStats(int macro_type, HMMSetNodeName nodeName,
                      MacroData * pData, void * pUserData) 
   {
     XformStatsFileNames*        file = NULL;
@@ -907,13 +888,13 @@ namespace STK
       Error("Cannot write to file %s", file->mpStatsN);
     }
   }
-  
-  
+
+
   //*****************************************************************************
   //*****************************************************************************
   void 
-  ReadHldaStatsForXform(int macro_type, HMMSetNodeName nodeName,
-                    MacroData * pData, void *pUserData) 
+  ReadHldaStats(int macro_type, HMMSetNodeName nodeName,
+                  MacroData * pData, void *pUserData) 
   {
     char                        buff[128];
     XformStatsFileNames *  file = NULL;
@@ -994,6 +975,137 @@ namespace STK
   }
   
 
+  //*****************************************************************************
+  //*****************************************************************************
+  void 
+  WriteIGFiStatsForMixture(int macro_type, HMMSetNodeName nodeName,
+                         MacroData * pData, void * pUserData) 
+  {
+    int                         cc = 0;
+    WriteStatsForXformUserData* ud = (WriteStatsForXformUserData *) pUserData;
+    assert(macro_type == mt_mixture);
+    
+    XformStatAccum *p_xfsa = pData->FindXformStatAccum(ST_RDMPE_DIRECT, ud->mpXform);
+    if (p_xfsa == NULL) {
+      return;
+    }
+    if (fprintf(ud->mMeanFile.mpOccupP, "%s "FLOAT_FMT"\n", nodeName, p_xfsa->mNorm) < 0) {
+      Error("Cannot write to file: %s", ud->mMeanFile.mpOccupN);
+    }
+    for (int j=0; j<ud->mpXform->mOutSize; j++) {
+      cc |= fprintf(ud->mMeanFile.mpStatsP, FLOAT_FMT" ", p_xfsa->mpStats[j]) < 0;
+    }
+    cc |= fputs("\n", ud->mMeanFile.mpStatsP) == EOF;
+    if (cc) {
+      Error("Cannot write to file %s", ud->mMeanFile.mpStatsN);
+    }
+
+    for (int j=0; j<ud->mpXform->mOutSize; j++) {
+      cc |= fprintf(ud->mCovFile.mpStatsP, FLOAT_FMT" ", p_xfsa->mpStats[ud->mpXform->mOutSize + j]) < 0;
+    }
+    cc |= fputs("\n", ud->mCovFile.mpStatsP) == EOF;
+    if (cc) {
+      Error("Cannot write to file %s", ud->mCovFile.mpStatsN);
+    }
+  }
+  
+  
+  //*****************************************************************************
+  //*****************************************************************************
+  void 
+  ReadIGFiStatsForMixture(int macro_type, HMMSetNodeName nodeName,
+                          MacroData * pData, void *pUserData) 
+  {
+    char                        buff[128];
+    XformStatsFileNames *  file = NULL;
+    int                         cc = 0;
+    WriteStatsForXformUserData * ud = (WriteStatsForXformUserData *) pUserData;
+  
+    assert(macro_type == mt_mixture);
+    
+    XformStatAccum *p_xfsa = pData->FindXformStatAccum(ST_RDMPE_INDIRECT, ud->mpXform);
+    if (p_xfsa == NULL) {
+      return;
+    }    
+    int j = fscanf(ud->mMeanFile.mpOccupP, "%128s "FLOAT_FMT"\n", buff, &p_xfsa->mNorm);
+    
+    if (j < 1) {
+      Error("Unexpected end of file: %s", ud->mMeanFile.mpOccupN);
+    } else if (strcmp(buff, nodeName)) {
+      Error("'%s' expected but '%s' found in file: %s",nodeName,buff,ud->mMeanFile.mpOccupN);
+    } else if (j < 2) {
+      Error("Decimal number expected after '%s'in file: %s", buff, ud->mMeanFile.mpOccupN);
+    }  
+    for (j=0; j<ud->mpXform->mOutSize; j++) {
+      cc |= (fscanf(ud->mMeanFile.mpStatsP, FLOAT_FMT" ", &p_xfsa->mpStats[j]) != 1);
+    }
+    if (ferror(ud->mMeanFile.mpStatsP)) {
+      Error("Cannot read file '%s'", ud->mMeanFile.mpStatsN);
+    } else if (cc) {
+      Error("Invalid file with Xform statistics '%s'", ud->mMeanFile.mpStatsN);
+    }
+    for (j=0; j<ud->mpXform->mOutSize; j++) {
+      cc |= (fscanf(ud->mCovFile.mpStatsP, FLOAT_FMT" ", &p_xfsa->mpStats[ud->mpXform->mOutSize + j]) != 1);
+    }
+    if (ferror(ud->mCovFile.mpStatsP)) {
+      Error("Cannot read file '%s'", ud->mCovFile.mpStatsN);
+    } else if (cc) {
+      Error("Invalid file with Xform statistics '%s'", ud->mCovFile.mpStatsN);
+    }
+  }
+  
+  //*****************************************************************************  
+  //*****************************************************************************  
+  void 
+  ModelSet::
+  ReadRegionDependentXformIGFiStats()
+  {
+    HMMSetNodeName             nodeNameBuffer;
+    WriteStatsForXformUserData userData;
+    char                       fileName[1024];
+
+    for (std::list<MakeXformCommand>::iterator xtuit = mpXformToUpdate.begin(); 
+         xtuit != mpXformToUpdate.end(); 
+         xtuit++)
+    {
+      if(xtuit->mStatType == ST_RDMPE_INDIRECT) {
+        assert(xtuit->mpXform->mXformType == XT_REGIONDEPENDENT);
+        ReadMixtureOccups(xtuit->mStringArgs.front().c_str());        
+        MakeFileName(fileName, xtuit->mpXform->mpMacro->mpName, 
+                       (++xtuit->mStringArgs.begin())->c_str(), NULL);
+    
+        std::string RDMPE_Istat_file = std::string(fileName) + ".rdI";
+        std::string RDMPE_Gstat_file = std::string(fileName) + ".rdG";
+        std::string RDMPE_Fstat_file = std::string(fileName) + ".rdF";
+        
+        FILE *fpi, *fpg, *fpf;
+        if ((fpi = fopen(RDMPE_Istat_file.c_str(), "rt")) == NULL) {
+          Error("Cannot open file %s", RDMPE_Istat_file.c_str());
+        }
+        if ((fpg = fopen(RDMPE_Gstat_file.c_str(), "rt")) == NULL) {
+          Error("Cannot open file %s", RDMPE_Gstat_file.c_str());
+        }
+        if ((fpf = fopen(RDMPE_Fstat_file.c_str(), "rt")) == NULL) {
+          Error("Cannot open file %s", RDMPE_Fstat_file.c_str());
+        }
+            
+        userData.mpXform            = xtuit->mpXform;
+        userData.mMeanFile.mpStatsN = (char *) RDMPE_Istat_file.c_str();
+        userData.mCovFile.mpStatsN  = (char *) RDMPE_Gstat_file.c_str();
+        userData.mMeanFile.mpOccupN = (char *) RDMPE_Fstat_file.c_str();
+        userData.mMeanFile.mpStatsP = fpi;
+        userData.mCovFile.mpStatsP  = fpg;
+        userData.mMeanFile.mpOccupP = fpf;
+        
+        Scan(MTM_MIXTURE, nodeNameBuffer, ReadIGFiStatsForMixture, &userData);
+        
+        fclose(fpi);
+        fclose(fpg);
+        fclose(fpf);
+      }
+    }
+  }
+    
   //*****************************************************************************
   //*****************************************************************************
 /*  void 
@@ -3925,8 +4037,9 @@ namespace STK
       ext = fileName + strlen(fileName);
       
       if (stat_type == ST_HLDA || stat_type == ST_CMLLR) {
-        userData.mpXform   = (LinearXform *) xtuit->mpXform;
-        assert(userData.mpXform->mXformType == XT_LINEAR);
+        LinearXform *lin_xform = static_cast<LinearXform *>(xtuit->mpXform);
+        userData.mpXform = lin_xform;
+        assert(lin_xform->mXformType == XT_LINEAR);
         
         strcpy(ext, ".xms"); userData.mMeanFile.mpStatsN = strdup(fileName);
         strcpy(ext, ".xmo"); userData.mMeanFile.mpOccupN = strdup(fileName);
@@ -3946,7 +4059,7 @@ namespace STK
       
         if (binary) {
           header.stats_type = STATS_MEAN;
-          header.size = userData.mpXform->mInSize;
+          header.size = lin_xform->mInSize;
           
           if (!isBigEndian()) 
             swap2(header.size);
@@ -3966,7 +4079,7 @@ namespace STK
         }
         if (binary) {
           header.stats_type = STATS_COV_LOW_TRI;
-          header.size = userData.mpXform->mInSize;
+          header.size = lin_xform->mInSize;
           if (!isBigEndian()) 
             swap2(header.size);
           
@@ -3982,27 +4095,27 @@ namespace STK
           Error("Cannot open output file %s", userData.mCovFile.mpOccupN);
         }
         if (stat_type == ST_HLDA) {
-          Scan(MTM_MEAN | MTM_VARIANCE, nodeNameBuffer, WriteHldaStatsForXform, &userData);
+          Scan(MTM_MEAN | MTM_VARIANCE, nodeNameBuffer, WriteHldaStats, &userData);
         } else if(stat_type == ST_CMLLR) {
-          XformStatAccum *xfsa = userData.mpXform->FindXformStatAccum(ST_CMLLR, userData.mpXform);
+          XformStatAccum *xfsa = lin_xform->FindXformStatAccum(ST_CMLLR, lin_xform);
           assert(NULL != xfsa);
           
           size_t dim;
-          size_t out_size= userData.mpXform->mOutSize;
-          size_t k_size  = userData.mpXform->mInSize;
+          size_t out_size= lin_xform->mOutSize;
+          size_t k_size  = lin_xform->mInSize;
           size_t G_size  = k_size*(k_size+1)/2;
           size_t stat_size = k_size+G_size;
           assert(k_size - 1 == out_size);
           
           if (fprintf(userData.mMeanFile.mpOccupP, 
                       "%s "FLOAT_FMT"\n", 
-                      userData.mpXform->mpMacro->mpName,
+                      lin_xform->mpMacro->mpName,
                       (double) xfsa->mNorm) < 0) {
             Error("Cannot write to file: %s", userData.mMeanFile.mpOccupN);
           }
           if (fprintf(userData.mCovFile.mpOccupP, 
                       "%s "FLOAT_FMT"\n", 
-                      userData.mpXform->mpMacro->mpName,
+                      lin_xform->mpMacro->mpName,
                       xfsa->mNorm) < 0) {
             Error("Cannot write to file: %s", userData.mCovFile.mpOccupN);
           }
@@ -4065,11 +4178,9 @@ namespace STK
         if ((fp = fopen(fileName, "wt")) == NULL) {
           Error("Cannot open output file %s", fileName);
         }
-        for (i=0; i < userData.mpXform->mOutSize; i++) {
-          for (j=0; j < userData.mpXform->mInSize; j++) {
-            fprintf(fp, " "FLOAT_FMT,
-                    //userData.mpXform->mpMatrixO[i*userData.mpXform->mInSize+j]);
-                    userData.mpXform->mMatrix[i][j]);
+        for (i=0; i < lin_xform->mOutSize; i++) {
+          for (j=0; j < lin_xform->mInSize; j++) {
+            fprintf(fp, " "FLOAT_FMT, lin_xform->mMatrix[i][j]);
           }
           fputs("\n", fp);
         }
@@ -4077,21 +4188,19 @@ namespace STK
       } else if (stat_type == ST_RDMPE_DIRECT || stat_type == ST_RDMPE_INDIRECT) {
         const char *extext = stat_type == ST_RDMPE_INDIRECT ? "_ind" : "";
         std::string RDMPE_deriv_file = std::string(fileName) + ".rdd" + extext;
-        std::string RDMPE_posit_file = std::string(fileName) + ".rdp" + extext;
         std::string RDMPE_vrncs_file = std::string(fileName) + ".rdv" + extext;
-        std::string RDMPE_IGFis_file = std::string(fileName) + ".igf" + extext;
         std::string RDMPE_wghts_file = std::string(fileName) + ".rdw" + extext;
         std::string RDMPE_xform_file = std::string(fileName) + ".xfm" + extext;
+        std::string RDMPE_Istat_file = std::string(fileName) + ".rdI" + extext;
+        std::string RDMPE_Gstat_file = std::string(fileName) + ".rdG" + extext;
+        std::string RDMPE_Fstat_file = std::string(fileName) + ".rdF" + extext;
         
-        FILE *fpx, *fpp, *fpv, *fpw, *fpf;
+        FILE *fpx, *fpv, *fpw, *fpi, *fpg, *fpf;
         if ((fp  = fopen(RDMPE_deriv_file.c_str(), "wt")) == NULL) {
           Error("Cannot open output file %s", RDMPE_deriv_file.c_str());
         }
         if ((fpx = fopen(RDMPE_xform_file.c_str(), "wt")) == NULL) {
           Error("Cannot open output file %s", RDMPE_xform_file.c_str());
-        }
-        if ((fpp = fopen(RDMPE_posit_file.c_str(), "wt")) == NULL) {
-          Error("Cannot open output file %s", RDMPE_posit_file.c_str());
         }
         if ((fpv = fopen(RDMPE_vrncs_file.c_str(), "wt")) == NULL) {
           Error("Cannot open output file %s", RDMPE_vrncs_file.c_str());
@@ -4099,26 +4208,32 @@ namespace STK
         if ((fpw = fopen(RDMPE_wghts_file.c_str(), "wt")) == NULL) {
           Error("Cannot open output file %s", RDMPE_wghts_file.c_str());
         }
-        if ((fpf = fopen(RDMPE_IGFis_file.c_str(), "wt")) == NULL) {
-          Error("Cannot open output file %s", RDMPE_IGFis_file.c_str());
+        if ((fpi = fopen(RDMPE_Istat_file.c_str(), "wt")) == NULL) {
+          Error("Cannot open output file %s", RDMPE_Istat_file.c_str());
         }
+        if ((fpg = fopen(RDMPE_Gstat_file.c_str(), "wt")) == NULL) {
+          Error("Cannot open output file %s", RDMPE_Gstat_file.c_str());
+        }
+        if ((fpf = fopen(RDMPE_Fstat_file.c_str(), "wt")) == NULL) {
+          Error("Cannot open output file %s", RDMPE_Fstat_file.c_str());
+        }
+
         RegionDependentXform * rd_xform = static_cast<RegionDependentXform *>(xtuit->mpXform);
-        assert(xtuit->mpXform->mXformType == XT_REGIONDEPENDENT);
+        assert(rd_xform->mXformType == XT_REGIONDEPENDENT);
+        
+        userData.mpXform            = rd_xform;        
+        userData.mMeanFile.mpStatsN = (char *) RDMPE_Istat_file.c_str();
+        userData.mCovFile.mpStatsN  = (char *) RDMPE_Gstat_file.c_str();
+        userData.mMeanFile.mpOccupN = (char *) RDMPE_Fstat_file.c_str();
+        userData.mMeanFile.mpStatsP = fpi;
+        userData.mCovFile.mpStatsP  = fpg;
+        userData.mMeanFile.mpOccupP = fpf;
+        Scan(MTM_MIXTURE, nodeNameBuffer, WriteIGFiStatsForMixture, &userData);
+
         XformStatAccum *xfsa_xfrm = rd_xform->FindXformStatAccum(stat_type, rd_xform);
         assert(xfsa_xfrm != NULL);
         FLOAT *p_stats = xfsa_xfrm->mpStats;
         
-        for(int j = 0; j < 2 * rd_xform->mOutSize; j++) {
-          if(j == rd_xform->mOutSize) {
-            fputs("\n", fpf);
-          }
-          fprintf(fpf, " "FLOAT_FMT, p_stats[j]);
-        }
-        fprintf(fpf, "\n "FLOAT_FMT"\n", xfsa_xfrm->mNorm);
-        fclose(fpf);
-        
-        p_stats += 2 * rd_xform->mOutSize;
-                
         for(int i = 0; i < rd_xform->mNBlocks; i++) {
           if(rd_xform->mpBlock[i]->mXformType == XT_LINEAR) {
             for(int j = 0; j < rd_xform->mpBlock[i]->mOutSize; j++) {
@@ -4126,25 +4241,33 @@ namespace STK
                 fprintf(fp , " "FLOAT_FMT, p_stats[rd_xform->mpBlock[i]->mInSize * j + l]);
                 fprintf(fpx, " "FLOAT_FMT, static_cast<LinearXform *>(rd_xform->mpBlock[i])->mMatrix[j][l]);                
               }
-              fputs("\n", fp);
-              fputs("\n", fpx);
+              fputs("\n", fp); fputs("\n", fpx);
+            }            
+            int offset = rd_xform->mpBlock[i]->mInSize * rd_xform->mpBlock[i]->mOutSize;
+            for(int j = 0; j < rd_xform->mpBlock[i]->mOutSize; j++) {
+             fprintf(fpv, " "FLOAT_FMT, p_stats[offset + j]);
             }
-            fputs("\n", fp);
-            fputs("\n", fpx);
-            p_stats += rd_xform->mpBlock[i]->mInSize * rd_xform->mpBlock[i]->mOutSize;
+            offset += rd_xform->mpBlock[i]->mOutSize;
+            for(int j = 0; j < rd_xform->mpBlock[i]->mInSize; j++) {
+             fprintf(fpv, " "FLOAT_FMT, p_stats[offset + j]);
+            }
+            offset += rd_xform->mpBlock[i]->mInSize;
+            fprintf(fpw, FLOAT_FMT" "FLOAT_FMT"\n", p_stats[offset], p_stats[offset+1]);
+            fputs("\n", fp); fputs("\n", fpv); fputs("\n", fpx);
+            p_stats += rd_xform->mpBlock[i]->mInSize * rd_xform->mpBlock[i]->mOutSize
+                    +  rd_xform->mpBlock[i]->mInSize + rd_xform->mpBlock[i]->mOutSize + 2;
           } else if(rd_xform->mpBlock[i]->mXformType == XT_BIAS) {
             for(int j = 0; j < rd_xform->mpBlock[i]->mOutSize; j++) {
-             fprintf(fp , " "FLOAT_FMT, p_stats[                                   j]);
-             fprintf(fpp, " "FLOAT_FMT, p_stats[  rd_xform->mpBlock[i]->mOutSize + j]);
-             fprintf(fpv, " "FLOAT_FMT, p_stats[2*rd_xform->mpBlock[i]->mOutSize + j]);
+             fprintf(fp , " "FLOAT_FMT, p_stats[                                 j]);
+             fprintf(fpv, " "FLOAT_FMT, p_stats[rd_xform->mpBlock[i]->mOutSize + j]);
              fprintf(fpx, " "FLOAT_FMT, static_cast<BiasXform *>(rd_xform->mpBlock[i])->mVector[0][j]);                
             }
-            fprintf(fpw, FLOAT_FMT" "FLOAT_FMT"\n", p_stats[3*rd_xform->mpBlock[i]->mOutSize], p_stats[3*rd_xform->mpBlock[i]->mOutSize + 1]);
-            fputs("\n", fp); fputs("\n", fpp); fputs("\n", fpv); fputs("\n", fpx);
-            p_stats +=  rd_xform->mpBlock[i]->mOutSize * 3 + 2;
+            fprintf(fpw, FLOAT_FMT" "FLOAT_FMT"\n", p_stats[2*rd_xform->mpBlock[i]->mOutSize], p_stats[2*rd_xform->mpBlock[i]->mOutSize + 1]);
+            fputs("\n", fp); fputs("\n", fpv); fputs("\n", fpx);
+            p_stats +=  rd_xform->mpBlock[i]->mOutSize * 2 + 2;
           }
         }
-        fclose(fp); fclose(fpx); fclose(fpp); fclose(fpv); fclose(fpw);
+        fclose(fp); fclose(fpx); fclose(fpv); fclose(fpw);
       }
       if (!xtuit->mpShellCommand.empty()) {
         TraceLog("Executing command: %s", xtuit->mpShellCommand.c_str());
@@ -4181,10 +4304,11 @@ namespace STK
     {
       char *  ext;
       StatType  stat_type =                 xtuit->mStatType;
-      userData.mpXform    = (LinearXform *) xtuit->mpXform;
-      assert(userData.mpXform->mXformType == XT_LINEAR);
+      LinearXform *lin_xform = static_cast<LinearXform *>(xtuit->mpXform);
+      userData.mpXform       = lin_xform;
+      assert(lin_xform->mXformType == XT_LINEAR);
   
-      MakeFileName(fileName, userData.mpXform->mpMacro->mpName, pOutDir, NULL);
+      MakeFileName(fileName, lin_xform->mpMacro->mpName, pOutDir, NULL);
       ext = fileName + strlen(fileName);
       
       if(stat_type == ST_HLDA) {
@@ -4219,7 +4343,7 @@ namespace STK
             Error("Cannot read input file '%s'", userData.mMeanFile.mpStatsN);
           }        
           else if (header.stats_type                != STATS_MEAN
-               || static_cast<size_t>(header.size)  != userData.mpXform->mInSize
+               || static_cast<size_t>(header.size)  != lin_xform->mInSize
                || header.precision                  != (sizeof(FLOAT) == sizeof(FLOAT_32)
                                                        ? PRECISION_FLOAT : PRECISION_DOUBLE))
           {
@@ -4248,7 +4372,7 @@ namespace STK
           if (ferror(userData.mCovFile.mpStatsP)) {
             Error("Cannot read input file '%s'", userData.mCovFile.mpStatsN);
           } else if (header.stats_type               != STATS_COV_LOW_TRI
-                 || static_cast<size_t>(header.size) != userData.mpXform->mInSize
+                 || static_cast<size_t>(header.size) != lin_xform->mInSize
                  || header.precision                 != (sizeof(FLOAT) == sizeof(float)
                                                        ? PRECISION_FLOAT : PRECISION_DOUBLE))
           {
@@ -4261,8 +4385,7 @@ namespace STK
           Error("Cannot open output file '%s'", userData.mCovFile.mpOccupN);
         }
     
-        Scan(MTM_MEAN | MTM_VARIANCE, nodeNameBuffer,
-             ReadHldaStatsForXform, &userData);
+        Scan(MTM_MEAN | MTM_VARIANCE, nodeNameBuffer, ReadHldaStats, &userData);
 
         fclose(userData.mMeanFile.mpStatsP); fclose(userData.mMeanFile.mpOccupP);
         fclose(userData.mCovFile.mpStatsP);  fclose(userData.mCovFile.mpOccupP);
@@ -4279,9 +4402,9 @@ namespace STK
   
       int c =0;
       
-      for (size_t i=0; i < userData.mpXform->mOutSize; i++) {
-        for (size_t j=0; j < userData.mpXform->mInSize; j++) {
-          c |= fscanf(fp, FLOAT_FMT, &userData.mpXform->mMatrix[i][j]) != 1;
+      for (size_t i=0; i < lin_xform->mOutSize; i++) {
+        for (size_t j=0; j < lin_xform->mInSize; j++) {
+          c |= fscanf(fp, FLOAT_FMT, &lin_xform->mMatrix[i][j]) != 1;
         }
       }
       
@@ -4358,7 +4481,7 @@ namespace STK
     HMMSetNodeName nodeNameBuffer;
     IStkStream file(pFileName);
     if (!file) {
-      Error("WriteMixtureOccups: Cannot open file: '%s'", pFileName);
+      Error("ReadMixtureOccups: Cannot open file: '%s'", pFileName);
     }
     Scan(MTM_STATE, nodeNameBuffer, ReadOccupsForMixture, &file);
   }

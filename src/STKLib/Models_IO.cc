@@ -3689,7 +3689,6 @@ namespace STK
           Error("ReadXformList: File names with occupation counts and I, G, Fi statistics are expected at line %d in file %s",
                 token.c_str(), (int) nlines, pFileName);
         }
-        ReadMixtureOccups(mxfc.mStringArgs.front().c_str());
       }
     }
     if(file.bad()) {

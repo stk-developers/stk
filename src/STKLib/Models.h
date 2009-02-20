@@ -585,6 +585,9 @@ namespace STK
     
     void
     AllocateAccumulatorsForXformStats();
+    
+    void
+    ReadRegionDependentXformIGFiStats();
                     
 //    void 
 //    NormalizeAccums();
@@ -2048,7 +2051,7 @@ namespace STK
   class WriteStatsForXformUserData 
   {
   public:
-    LinearXform *             mpXform;
+    Xform *             mpXform;
     XformStatsFileNames       mMeanFile;
     XformStatsFileNames       mCovFile;
     bool                      mBinary;

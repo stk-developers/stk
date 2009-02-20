@@ -647,11 +647,6 @@ int main(int argc, char* argv[])
                     in_transc_fmt == TF_STK  ? net_filter    :
                                                label_filter;
 
-    if (xformList != NULL) 
-      hset.ReadXformList(xformList);
-
-//    hset.mCmllrStats = cmllr_stats;
-    hset.AllocateAccumulatorsForXformStats();
 
     if (network_file) 
     { // Unsupervised training
@@ -742,8 +737,15 @@ int main(int argc, char* argv[])
     hset.mMinMixWeight        = min_mix_wght * MIN_WEGIHT;
     hset.mUpdateMask          = update_mask;
     hset.mSaveGlobOpts        = save_glob_opt;
-    hset.ResetAccums();  
-
+    hset.ResetAccums();
+    
+    
+    if (xformList != NULL) {
+      //Needs to be run after hset.ResetAccums() as it loads also mixoccups for RD_INDIRECT
+      hset.ReadXformList(xformList);
+    }
+    hset.AllocateAccumulatorsForXformStats();
+    hset.ReadRegionDependentXformIGFiStats();
 
     if ((hset.mUpdateMask & (UM_MEAN | UM_VARIANCE)) &&
        !hset.mAllMixuresUpdatableFromStatAccums) 
@@ -1138,9 +1140,6 @@ int main(int argc, char* argv[])
     if (stat_file)
       hset.WriteHMMStats(stat_file);
       
-    if (mix_occup_file)
-      hset.WriteMixtureOccups(mix_occup_file);
-    
     if (parallel_mode != 0) 
       hset.DistributeMacroOccurances();
 
@@ -1194,9 +1193,7 @@ int main(int argc, char* argv[])
       }
       
       // Required by hset.WriteXformStatsAndRunCommands and hset.UpdateFromAccums
-//      if(!hset.mCmllrStats) {
       hset.Scan(MTM_MEAN|MTM_VARIANCE, NULL, NormalizeStatsForXform, 0);
-//      }
 
       if (hset.mUpdateMask & UM_XFSTATS)  {
         hset.WriteXformStatsAndRunCommands(trg_hmm_dir, xfStatsBin);
@@ -1216,6 +1213,9 @@ int main(int argc, char* argv[])
         }
       }
     }
+    
+    if (mix_occup_file)
+      hset.WriteMixtureOccups(mix_occup_file);
     
     if (hset_alig != &hset) {
       hset_alig->Release();
