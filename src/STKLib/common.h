@@ -404,6 +404,8 @@ namespace STK
   void fast_sigmoid_vec(double *in, double *out, int size);
 
 
+namespace STK 
+{
   /** 
    * @brief 
    * 
@@ -419,8 +421,6 @@ namespace STK
   FLOAT 
   float_safe_substract(const FLOAT& f1, const FLOAT &f2, int nRounds);
 
-  
-namespace STK {
   int my_hcreate_r(size_t nel,
                   MyHSearchData *tab);
   int my_hsearch_r(ENTRY item, ACTION action, ENTRY **ret,

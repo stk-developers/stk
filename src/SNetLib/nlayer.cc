@@ -1,5 +1,6 @@
 #include"nlayer.h"
 
+using namespace STK;
 SNet::NLayer::NLayer(Matrix<FLOAT>* weights, Matrix<FLOAT>* biases, int outFunc){
   mpWeights = weights;
   mpBiases = biases;

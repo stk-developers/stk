@@ -13,8 +13,8 @@ namespace SNet{
       int mLast;
       int mFrom; // :TODO: can be deleted, not used right now
       
-      Matrix<FLOAT> **mpWeights;
-      Matrix<FLOAT> **mpBiases;
+      STK::Matrix<FLOAT> **mpWeights;
+      STK::Matrix<FLOAT> **mpBiases;
           
       Element(NNet *nnet, bool allocate); ///< Constructor, if not allocated, contains only pointers - Reference of ReferenceUpdate should be used
       ~Element();                        ///< Destructor

@@ -1,6 +1,8 @@
 #include "element.h"
 #include "nnet.h"
 
+using namespace STK;
+
 SNet::Element::Element(NNet *nnet, bool allocate){
   mNLayers = nnet->NLayers();
   mLast = 0;

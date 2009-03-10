@@ -1,10 +1,11 @@
 #include"progobj.h"
 #include "barrier.h"
 
+using namespace STK;
 //******************************************************************************
 //******************************************************************************
 SNet::ProgObj::
-ProgObj(XformInstance* NNetInstance, int cacheSize, int bunchSize, 
+ProgObj(STK::XformInstance* NNetInstance, int cacheSize, int bunchSize, 
     bool  crossValidation, std::string version, float learningRate, int clients, 
     char* ip, bool randomize, bool sync, int port, int seed, int ncumrbu, 
     char* learning_rate_list)

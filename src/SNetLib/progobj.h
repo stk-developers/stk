@@ -51,7 +51,7 @@ namespace SNet{
       Element *GetOrCreate(std::queue<Element*> *que, 
                            NNet *nn, pthread_mutex_t *mutex); ///< Gets element from queue (using mutex) or makes new one (using NN)
     public:
-      ProgObj(XformInstance *NNetInstance, int cacheSize, int bunchSize, bool crossValidation, ///< Constructor
+      ProgObj(STK::XformInstance *NNetInstance, int cacheSize, int bunchSize, bool crossValidation, ///< Constructor
               std::string version, float learningRate, int clients, char* ip, bool randomize, 
               bool sync, int port, int seed, int nocumrbu, char *learning_rate_list); 
       ~ProgObj();                                                                              ///< Destructor

@@ -1,6 +1,7 @@
 #include "nnet.h"
 #include "barrier.h"
 
+using namespace STK;
 SNet::NNet::NNet(CompositeXform* nn, int cacheSize, int bunchSize, bool crossValidation, float *learningRateList){
   if(nn->mNLayers % 3 != 0) // linear / biases / non-linear
     Error("NN has to have 3 Xform layers for one NN layer");
