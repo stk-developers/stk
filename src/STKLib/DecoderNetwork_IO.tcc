@@ -79,7 +79,7 @@ namespace STK
       _NetworkType&             rNetwork)
     {
       // to make it easier, we define local typedefs
-      typedef typename _NetworkType::Node    _node_type;
+      typedef typename _NetworkType::NodeType    _node_type;
       typedef typename _NetworkType::LinkType    _link_type;
 
 
@@ -762,7 +762,7 @@ namespace STK
       // take over the original list
       rNetwork.splice(first, last);
     }           
-    // Node *ReadSTKNetwork(...)
+    // NodeType *ReadSTKNetwork(...)
     //**************************************************************************
 
 
@@ -784,7 +784,7 @@ namespace STK
     {
       // to make it easier, we define local typedefs
       typedef          _NetworkType              _network_type;
-      typedef typename _NetworkType::Node    _node_type;
+      typedef typename _NetworkType::NodeType    _node_type;
       typedef typename _NetworkType::LinkType    _link_type;
       
 
@@ -1141,7 +1141,7 @@ namespace STK
       int                                     n;
       int                                     l=0;
       typename _NetworkType::Iterator         p_node;
-      typedef typename _NetworkType::Node    _node_type;
+      typedef typename _NetworkType::NodeType    _node_type;
 //      float                                   lm_scale(lmScale);
       FLOAT                                   tot_log_like;
     
@@ -1305,7 +1305,7 @@ namespace STK
 	    FLOAT ac_score = p_node->rpLinks()[j].AcousticLike();
 	    
 	    if (format.mPosteriors) {
-	      typename _NetworkType::Node* p_end_node = p_node->rpLinks()[j].pNode();
+	      typename _NetworkType::NodeType* p_end_node = p_node->rpLinks()[j].pNode();
 	      FLOAT score = p_node->mC.mpAlphaBeta->mAlpha + p_end_node->mC.mpAlphaBeta->mBeta 
                             + (lm_score * lmScale + ac_score) * posteriorScale;
 
@@ -1379,7 +1379,7 @@ namespace STK
 	    FLOAT ac_score = p_node->rpLinks()[j].AcousticLike();
 	    
 	    if (format.mPosteriors) {
-	      typename _NetworkType::Node* p_end_node = p_node->rpLinks()[j].pNode();
+	      typename _NetworkType::NodeType* p_end_node = p_node->rpLinks()[j].pNode();
 	      FLOAT score = p_node->mC.mpAlphaBeta->mAlpha + p_end_node->mC.mpAlphaBeta->mBeta 
                             + (lm_score * lmScale + ac_score) * posteriorScale;
 
@@ -1444,7 +1444,7 @@ namespace STK
     {
       // to make it easier, we define local typedefs
       typedef          _NetworkType              _network_type;
-      typedef typename _NetworkType::Node    _node_type;
+      typedef typename _NetworkType::NodeType    _node_type;
       typedef typename _NetworkType::LinkType    _link_type;
 
 
@@ -1556,7 +1556,7 @@ namespace STK
     {
       int                         n;
       int                         l=0;
-      typename _NetworkType::Node*         p_node;
+      typename _NetworkType::NodeType*         p_node;
 
     
       for (n = 0, p_node = rNetwork.pFirst(); p_node != NULL; p_node = p_node->mpNext, n++)  

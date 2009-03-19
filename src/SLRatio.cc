@@ -36,7 +36,7 @@ using namespace STK;
 
 typedef struct _LRTrace LRTrace;
 struct _LRTrace {
-  DecoderNetwork::Node* mpWordEnd;
+  DecoderNetwork::NodeType* mpWordEnd;
   FLOAT lastLR;
   FLOAT candidateLR;
   long long candidateStartTime;
@@ -620,7 +620,7 @@ int main(int argc, char *argv[])
       {
         long long  wordStartTime;
         float      lhRatio;
-        Decoder<DecoderNetwork>::NetworkType::Node*    word_end = lrt[j].mpWordEnd;
+        Decoder<DecoderNetwork>::NetworkType::NodeType*    word_end = lrt[j].mpWordEnd;
 
         if (word_end->mC.mpAnr == NULL || !word_end->mC.mpAnr->mpExitToken->IsActive() || 
             filler_end->mC.mpAnr == NULL || !filler_end->mC.mpAnr->mpExitToken->IsActive()) 

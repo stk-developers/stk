@@ -555,7 +555,10 @@ int main(int argc, char* argv[])
 
       // recompute non-leaf distributions
       new_tree.RecomputeDists();
-      new_tree.ComputeBackoffDists(NULL, new_tree_traits.mSmoothR);
+
+      if (new_tree_traits.mSmoothR > 0.0) {
+        new_tree.ComputeBackoffDists(NULL, new_tree_traits.mSmoothR);
+      }
 
       if (var_map.count("outvectors")) {
         std::string output_file = var_map["outvectors"].as<string >();
@@ -641,6 +644,7 @@ int main(int argc, char* argv[])
 
       // recompute non-leaf distributions
       new_tree.RecomputeDists();
+
       // compute backoffs
       new_tree.ComputeBackoffDists(NULL, new_tree_traits.mSmoothR);
 
@@ -727,7 +731,8 @@ int main(int argc, char* argv[])
         }
 
         std::cout << "To logical " << new_record.Logical() << " adding physical "
-          << new_record.Physical() << " with weight " << new_record.Weight() << std::endl;
+          << new_record.Physical() << " with weight " << new_record.Weight() 
+          << std::endl;
 
         if (var_map.count("inputmlf")) {
           // we'll be adding from stream if MLF specified
@@ -1094,7 +1099,9 @@ AdaptModel(const BDTree& rOrig, const NGramSubset& rNGrams,
 {
   BDTree new_tree(rOrig);
 
-  // clear new distributions
+  // this step clears the mpDist distributions. they will be filled with data
+  // and adapted using mpBackoffDist, which should be now ready, as 
+  // ComputeBackoffDists must have been already called
   new_tree.ResetLeaves();
 
   // adapt using new data

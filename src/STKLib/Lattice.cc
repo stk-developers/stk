@@ -24,7 +24,7 @@ namespace STK
   void 
   Lattice::
   AllocateNodesForWordLinkRecords(WordLinkRecord* pWlr, 
-      Node*& rpNode)
+      NodeType*& rpNode)
   {
     // mAux had been initialized to zero. Now, it is used to count how many
     // successors has been already processed. 
@@ -34,8 +34,8 @@ namespace STK
       
     // All successors has been already processed, so make new lattice node
     // corresponding to pWlr and initialize it according to pWlr->pNode().
-    Lattice::Node* pNode = 
-      (Lattice::Node *) calloc(1, sizeof(Lattice::Node));
+    Lattice::NodeType* pNode = 
+      (Lattice::NodeType *) calloc(1, sizeof(Lattice::NodeType));
 
     if (pNode == NULL) 
       Error("Insufficient memory");
@@ -105,7 +105,7 @@ namespace STK
     }
   }
   */
-  // MakeLatticeNodesForWordLinkRecords(WordLinkRecord* pWlr, Node*& rpNode)
+  // MakeLatticeNodesForWordLinkRecords(WordLinkRecord* pWlr, NodeType*& rpNode)
   //***************************************************************************
 
   
@@ -189,7 +189,7 @@ namespace STK
     AllocateNodesForWordLinkRecords(pWlr, mpPtr);
     EstablishLinks(pWlr);
 
-    Node* p_node;
+    NodeType* p_node;
 
     for (p_node = mpPtr; NULL != p_node && NULL != p_node->mpNext;
          p_node = p_node->mpNext)
@@ -213,7 +213,7 @@ namespace STK
     FLOAT posteriorScale,
     bool viterbi)
   {
-    Node*  p_start_node;
+    NodeType*  p_start_node;
     double      score(0.0);
 
     iterator   i_node(begin());
@@ -238,7 +238,7 @@ namespace STK
       for (size_t i = 0; i < i_node->NLinks(); i++)
       {
         LinkType* p_link     (&(i_node->rpLinks()[i]));
-        Node* p_end_node (p_link->pNode());
+        NodeType* p_end_node (p_link->pNode());
 
         score = i_node->mC.mpAlphaBeta->mAlpha 
 	      + (p_link->LmLike() * lmScale + p_link->AcousticLike()) * posteriorScale;
@@ -269,7 +269,7 @@ namespace STK
       for (size_t i = 0; i < i_node->NBackLinks(); i++)
       {
         LinkType* p_link     (&(i_node->rpBackLinks()[i]));
-        Node* p_end_node (p_link->pNode());
+        NodeType* p_end_node (p_link->pNode());
 
         score = i_node->mC.mpAlphaBeta->mBeta 
 	      + (p_link->LmLike() * lmScale + p_link->AcousticLike()) * posteriorScale;

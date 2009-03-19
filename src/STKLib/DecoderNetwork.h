@@ -133,7 +133,7 @@ namespace STK
     {
     public:
       typedef       long long  TimingType;
-      typedef ActiveNodeRecord< Node<NodeBasicContent, LinkContent, LinkArray> > ActiveNodeRecord;
+      typedef ActiveNodeRecord< Node<NodeBasicContent, LinkContent, LinkArray> > ActiveNodeRecordType;
 
       NodeBasicContent() : mpName(NULL), mType(NT_UNDEF)//, mpAnr(NULL)
       {}
@@ -200,7 +200,7 @@ namespace STK
 #   ifndef EXPANDNET_ONLY
       struct //union { We need both in SExpant - node posteriors for one best string
       {
-        ActiveNodeRecord*          mpAnr;
+        ActiveNodeRecordType*          mpAnr;
         AlphaBeta*                 mpAlphaBeta; 
       };
 #   endif
@@ -217,7 +217,7 @@ namespace STK
     {
     public:
       typedef       long long  TimingType;
-      typedef ActiveNodeRecord<Node<NodeContent, LinkContent, LinkArray> > ActiveNodeRecord;
+      typedef ActiveNodeRecord<Node<NodeContent, LinkContent, LinkArray> > ActiveNodeRecordType;
 
 
       void
@@ -281,7 +281,7 @@ namespace STK
 #   endif
       struct //union { We need both in SExpant - node posteriors for one best string; AlphaBeta also initialized in Init()
       {
-        ActiveNodeRecord*          mpAnr;
+        ActiveNodeRecordType*      mpAnr;
         AlphaBeta*                 mpAlphaBeta;
       };
 #   endif
@@ -428,7 +428,7 @@ namespace STK
      * 
      * In this case, no deallocation will take place when destructor is called
      */
-    DecoderNetwork(Node* pNode) 
+    DecoderNetwork(NodeType* pNode) 
     : _DecoderNetwork(pNode)
     { }
 

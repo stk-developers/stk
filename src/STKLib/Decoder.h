@@ -134,7 +134,7 @@ namespace STK
     public:
 
       typedef _NetworkType                            NetworkType;
-      typedef typename NetworkType::Node              NetworkNode;
+      typedef typename NetworkType::NodeType          NetworkNode;
       typedef STK::WordLinkRecord<NetworkNode>        WordLinkRecord;
       typedef STK::Token<NetworkNode>                 Token;
       typedef typename STK::ActiveNodeRecord<NetworkNode> 
@@ -263,7 +263,7 @@ namespace STK
 
       void 
       Wlr2Lattice_AllocateNodes(WordLinkRecord* pWlr, 
-          typename STK::Lattice::Node*& rpNode);
+          typename STK::Lattice::NodeType*& rpNode);
 
       void 
       Wlr2Lattice_EstablishLinks(WordLinkRecord* pWlr);
@@ -301,7 +301,7 @@ namespace STK
 //       */
 //
 //      void 
-//      Init(typename NetworkType::Node* pFirstNode, ModelSet* pHmms, 
+//      Init(typename NetworkType::NodeType* pFirstNode, ModelSet* pHmms, 
 //          ModelSet* pHmmsToUpdate/*, bool compactRepresentation = false*/);
       
       /**
@@ -456,7 +456,7 @@ namespace STK
       bool                        mContinuousTokenGeneration;
       bool                        mKeepExitToken;    
       //    MyHSearchData               mLatticeNodeHash;
-      //    Node *                      mpLatticeLastNode;
+      //    NodeType *                      mpLatticeLastNode;
 
                                     
       PropagDirectionType         mPropagDir;
@@ -524,9 +524,9 @@ namespace STK
     public:
       /// Token's likelihood precision type
       typedef double                            LikeType;
-      //typedef Node<NodeContent, LinkContent, LinkArray>  Node;
-      typedef _NodeType  Node;
-      typedef STK::WordLinkRecord<Node>     WordLinkRecord;
+      //typedef Node<NodeContent, LinkContent, LinkArray>  NodeType;
+      typedef _NodeType  NodeType;
+      typedef STK::WordLinkRecord<NodeType>     WordLinkRecord;
       typedef STK::WlrReference<WordLinkRecord>           WlrReference;
       typedef std::list<WlrReference >    AltHypList;
 
@@ -558,11 +558,11 @@ namespace STK
       Label*
       pGetLabels(bool getTimesFromNetwork = false, FLOAT total_like = LOG_0);
       
-      Node*
+      NodeType*
       pGetLattice();
       
       void
-      AddWordLinkRecord(Node* pNode, int stateIdx, int time);
+      AddWordLinkRecord(NodeType* pNode, int stateIdx, int time);
       
       void 
       AddAlternativeHypothesis(WordLinkRecord* pWlr);
@@ -587,12 +587,12 @@ namespace STK
   {
   public:
     typedef double     LikeType;
-    //typedef Node<NodeContent, LinkContent, LinkArray>  Node;
-    typedef _NodeType  Node;
+    //typedef Node<NodeContent, LinkContent, LinkArray>  NodeType;
+    typedef _NodeType  NodeType;
     typedef WordLinkRecord Self;
     typedef std::list<WlrReference<Self> >   AltHypList;
 
-    Node*          mpNode;
+    NodeType*          mpNode;
     int                mStateIdx;
     int                mAux;             
     LikeType           mLike;
@@ -607,7 +607,7 @@ namespace STK
     bool               mIsFreed;
   #endif
 
-    Node*
+    NodeType*
     pNode() const
     { return mpNode; }
   }; 
@@ -628,11 +628,11 @@ namespace STK
     class ActiveNodeRecord
     {
     public:
-      typedef _NodeType                                       Node;
-      typedef STK::Token<Node>                            Token;     
+      typedef _NodeType                                   NodeType;
+      typedef STK::Token<NodeType>                        Token;     
 
 
-      ActiveNodeRecord(Node* pNode) : mpNode(pNode), mIsActiveModel(false), mActiveNodeFlag(0)
+      ActiveNodeRecord(NodeType* pNode) : mpNode(pNode), mIsActiveModel(false), mActiveNodeFlag(0)
       {
         int numOfTokens = mpNode->mC.mType & NT_MODEL ? mpNode->mC.mpHmm->mNStates : 1;
         mpTokens        = new Token[numOfTokens];
@@ -645,11 +645,11 @@ namespace STK
       ~ActiveNodeRecord() 
       { delete [] mpTokens; }
 
-      Node*             mpNode;
-      Node*             mpNextActiveModel;
-      Node*             mpPrevActiveModel;
-      Node*             mpNextActiveNode;
-      Node*             mpPrevActiveNode;
+      NodeType*             mpNode;
+      NodeType*             mpNextActiveModel;
+      NodeType*             mpPrevActiveModel;
+      NodeType*             mpNextActiveNode;
+      NodeType*             mpPrevActiveNode;
       
       bool              mIsActiveModel;
       int               mActiveNodeFlag;
@@ -683,7 +683,7 @@ namespace STK
       size_t nBest, int time);
 
   template<typename _NetworkType>
-    WordLinkRecord<typename _NetworkType::Node> *  
+    WordLinkRecord<typename _NetworkType::NodeType> *  
     TimePruning(Decoder<_NetworkType>* pNetwork, int frameDelay);
   
   void 

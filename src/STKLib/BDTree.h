@@ -363,7 +363,14 @@ namespace STK
      * @param rPrefix prefix which is prepended to the output
      */
     virtual void
-    Dump(std::ostream& rStream, const std::string& rPrefix) const;
+    Dump(std::ostream& rStream, const std::string& rPrefix) const = 0;
+
+
+    /** 
+     * @brief Dumps the distribution to STDOUT
+     */
+    virtual void
+    DumpImplicit() const;
 
 
     //..........................................................................
@@ -1136,6 +1143,9 @@ namespace STK
      */
     void
     Dump(std::ostream& rStream, const std::string& rPrefix) const;
+
+    void
+    DumpImplicit() const;
 
 
     /** 

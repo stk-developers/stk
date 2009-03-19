@@ -382,7 +382,7 @@ int main(int argc, char *argv[])
 
     for (;;) 
     { //in cases of MLF or MNF, we must process all records
-      DecoderNetwork::Node*    p_node = NULL;
+      DecoderNetwork::NodeType*    p_node = NULL;
       DecoderNetwork           my_net(p_node);
 
       if (in_transc_fmt == TF_MLF

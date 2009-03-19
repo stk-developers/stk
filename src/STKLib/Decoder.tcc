@@ -1,5 +1,6 @@
 #include "Lattice.h"
 #include <map>
+#include <algorithm>
 
 
 
@@ -179,7 +180,7 @@ namespace STK
     Decoder<_NetworkType>::
     HasCycle() 
     {
-      typename NetworkType::Node *node,  *prev_node = NULL;
+      typename NetworkType::NodeType *node,  *prev_node = NULL;
       
       HasCycleCounter++;
       
@@ -258,7 +259,7 @@ namespace STK
     Decoder<_NetworkType>:: 
     AllWordSuccessorsAreActive() 
     {
-      typename NetworkType::Node* node;
+      typename NetworkType::NodeType* node;
       
       if (!test_for_cycle) 
         return true;
@@ -300,7 +301,7 @@ namespace STK
     
       for (i = 0; i < n_links; i++) 
       {
-        typename NetworkType::Node* p_lnode = p_links[i].pNode();
+        typename NetworkType::NodeType* p_lnode = p_links[i].pNode();
         
         assert(p_lnode != node);
 
@@ -342,9 +343,9 @@ namespace STK
   //***************************************************************************
   //***************************************************************************
   template<typename _NetworkType>
-    typename Decoder<_NetworkType>::NetworkType::Node *
+    typename Decoder<_NetworkType>::NetworkType::NodeType *
     Decoder<_NetworkType>::
-    pActivateWordNodesLeadingFrom(typename NetworkType::Node* pNode)
+    pActivateWordNodesLeadingFrom(typename _NetworkType::NodeType* pNode)
     {
       int     i;
       int     n_links = InForwardPass() ? pNode->rNLinks() : pNode->rNBackLinks();
@@ -352,7 +353,7 @@ namespace STK
     
       for (i = 0; i < n_links; i++) 
       {
-        typename NetworkType::Node* p_lnode = p_links[i].pNode();
+        typename NetworkType::NodeType* p_lnode = p_links[i].pNode();
         
         if (((p_lnode->mC.mType & NT_MODEL) && !(p_lnode->mC.mType & NT_TEE))
         || (p_lnode == (InForwardPass() ? rNetwork().pLast() : rNetwork().pFirst()))) 
@@ -392,7 +393,7 @@ namespace STK
       assert(!HasCycle());
       return pNode;
     }
-  // pActivateWordNodesLeadingFrom(NetworkType::Node* pNode)
+  // pActivateWordNodesLeadingFrom(NetworkType::NodeType* pNode)
   //***************************************************************************
   
   
@@ -402,7 +403,7 @@ namespace STK
   template<typename _NetworkType>
     void
     Decoder<_NetworkType>:: 
-    ActivateModel(typename NetworkType::Node* pNode)
+    ActivateModel(typename NetworkType::NodeType* pNode)
     {
       if(pNode->mC.mpAnr == NULL)
       {
@@ -453,7 +454,7 @@ namespace STK
       pActivateWordNodesLeadingFrom(pNode);
       assert(AllWordSuccessorsAreActive());
     }
-  // ActivateModel(NetworkType::Node* pNode)
+  // ActivateModel(NetworkType::NodeType* pNode)
   //***************************************************************************
   
   
@@ -462,7 +463,7 @@ namespace STK
   template<typename _NetworkType>
     void
     Decoder<_NetworkType>:: 
-    DeactivateWordNodesLeadingFrom(typename NetworkType::Node* pNode)
+    DeactivateWordNodesLeadingFrom(typename NetworkType::NodeType* pNode)
     {
       int       i;
       int       n_links = InForwardPass() ? pNode->rNLinks() : pNode->rNBackLinks();
@@ -473,7 +474,7 @@ namespace STK
     
       for (i = 0; i < n_links; i++) 
       {
-        typename NetworkType::Node* p_lnode = links[i].pNode();
+        typename NetworkType::NodeType* p_lnode = links[i].pNode();
         
         if ((p_lnode->mC.mType & NT_MODEL && !(p_lnode->mC.mType & NT_TEE))
         ||  (p_lnode->mC.mType & NT_STICKY)
@@ -508,7 +509,7 @@ namespace STK
       
       assert(!HasCycle());
     }
-  // DeactivateWordNodesLeadingFrom(NetworkType::Node* pNode)
+  // DeactivateWordNodesLeadingFrom(NetworkType::NodeType* pNode)
   //***************************************************************************
   
 
@@ -517,7 +518,7 @@ namespace STK
   template<typename _NetworkType>
     void
     Decoder<_NetworkType>:: 
-    DeactivateModel(typename NetworkType::Node* pNode)
+    DeactivateModel(typename NetworkType::NodeType* pNode)
     {
       assert(pNode->mC.mpAnr != NULL && pNode->mC.mpAnr->mIsActiveModel);
         
@@ -991,7 +992,7 @@ namespace STK
     void 
     Decoder<_NetworkType>::
     ReestState(
-      typename NetworkType::Node*   pNode,
+      typename NetworkType::NodeType*   pNode,
       int           stateIndex, 
       FLOAT         logPriorProb, 
       FLOAT         updateDir,
@@ -1204,7 +1205,7 @@ namespace STK
     TokenPropagationInit()
     {
       size_t                    i;
-      typename NetworkType::Node*   p_node;
+      typename NetworkType::NodeType*   p_node;
       typename NetworkType::iterator    i_node;
     
       InitLogMath();
@@ -1327,7 +1328,7 @@ namespace STK
     {
       int                     t;
       WordLinkRecord *        wlr;
-      typename NetworkType::Node* prevnode =        NULL;
+      typename NetworkType::NodeType* prevnode =        NULL;
       FLOAT                   P;
       Cache *                 p_out_p_cache;
       ModelSet *              p_hmms_alig =   mpModelSet;
@@ -1407,7 +1408,7 @@ namespace STK
     // Update accumulators
       for (wlr = rNetwork().pLast()->mC.mpAnr->mpExitToken->mpWlr; wlr != NULL; wlr = wlr->mpNext) 
       {
-        typename NetworkType::Node *node   = wlr->mpNode;
+        typename NetworkType::NodeType *node   = wlr->mpNode;
         int Nq       = node->mC.rpHmmToUpdate()->mNStates;
         FLOAT *aqacc = node->mC.rpHmmToUpdate()->mpTransition->mpMatrixO + SQR(Nq);
         int currstate = wlr->mStateIdx+1;
@@ -1462,7 +1463,7 @@ namespace STK
     template <typename _NodeType>
       void 
       Token<_NodeType>::
-      AddWordLinkRecord(Node* pNode, int stateIndex, int time)
+      AddWordLinkRecord(_NodeType* pNode, int stateIndex, int time)
       {
         WordLinkRecord* wlr;
       
@@ -1617,7 +1618,7 @@ namespace STK
     Decoder<_NetworkType>::
     TokenPropagationInNetwork()
     {
-      typename NetworkType::Node*     p_node;
+      typename NetworkType::NodeType*     p_node;
       typename NetworkType::LinkType* links;
       int                             i;
       int                             n_links;
@@ -1642,7 +1643,7 @@ namespace STK
       assert(p_node->mC.mpAnr != NULL);
       KillToken(p_node->mC.mpAnr->mpExitToken);
 
-  //  NetworkType::Node *Xnode = mpActiveNodes;
+  //  NetworkType::NodeType *Xnode = mpActiveNodes;
   /*  for (p_node = InForwardPass() ? rNetwork().pFirst() : rNetwork().pLast();
         p_node != NULL;
         p_node = InForwardPass() ? p_node->mC.mpNext : p_node->mC.mpBackNext)  // */
@@ -1842,8 +1843,8 @@ namespace STK
     Decoder<_NetworkType>::
     TokenPropagationInModels(FLOAT* pObservation)
     {
-      typename NetworkType::Node*    p_node;
-      typename NetworkType::Node*    p_next_active;
+      typename NetworkType::NodeType*    p_node;
+      typename NetworkType::NodeType*    p_next_active;
       Hmm*                      p_hmm;
       size_t                    winingToken = 0;
       size_t                    i;
@@ -2160,7 +2161,7 @@ namespace STK
     // {{{
     {
       int     j;
-      typename NetworkType::Node*   node = InForwardPass() 
+      typename NetworkType::NodeType*   node = InForwardPass() 
         ? rNetwork().pLast() 
         : rNetwork().pFirst();
     
@@ -2234,7 +2235,7 @@ namespace STK
   //***************************************************************************
   //***************************************************************************
   template<typename _NetworkType>
-    typename Decoder<_NetworkType>::NetworkType::Node* 
+    typename Decoder<_NetworkType>::NetworkType::NodeType* 
     Decoder<_NetworkType>:: 
     PhoneNodesToModelNodes(ModelSet * pHmms, ModelSet *pHmmsToUpdate, int& maxStatesInModel)
     {
@@ -2250,7 +2251,7 @@ namespace STK
       // for (p_node =  rNetwork().begin(); 
       // p_node != rNetwork().end(); 
       // p_last_node = p_node, p_node = mCompactRepresentation 
-      // ? (p_node->mC.rNLinks() ? reinterpret_cast<NetworkType::Node*>(reinterpret_cast<NodeBasic<NODE_REGULAR, LINK_REGULAR>* >(p_node)+1) : NULL)
+      // ? (p_node->mC.rNLinks() ? reinterpret_cast<NetworkType::NodeType*>(reinterpret_cast<NodeBasic<NODE_REGULAR, LINK_REGULAR>* >(p_node)+1) : NULL)
       // : p_node->mC.mpNext)
       
       for (p_node =  rNetwork().begin(); 
@@ -2579,7 +2580,7 @@ namespace STK
       
       ModelSet*         p_hmms_alig = mpModelSet;
       ModelSet*         p_hmms_upd = mpModelSetToUpdate;
-      typename NetworkType::Node*             node;
+      typename NetworkType::NodeType*             node;
       typename NetworkType::iterator              i_node;
     
       AccumType origAccumType = mAccumType;
@@ -2693,7 +2694,7 @@ namespace STK
         for (i_node = rNetwork().begin(); i_node != rNetwork().end(); ++i_node) 
         { //for every model
     //    for (k=0; k < nnodes; k++) 
-    //      NetworkType::Node *node = &mpNodes[k];
+    //      NetworkType::NodeType *node = &mpNodes[k];
           if (i_node->mC.mType & NT_MODEL &&
             i_node->mC.rpAlphaBetaList() != NULL &&
             i_node->mC.rpAlphaBetaList()->mTime == mTime+1) {
@@ -2897,7 +2898,7 @@ extern std::map<std::string,FLOAT> state_posteriors;
       int                     k;
       ModelSet*               p_hmms_alig = mpModelSet;
       ModelSet*               p_hmms_upd = mpModelSetToUpdate;
-      typename NetworkType::Node*                   node;
+      typename NetworkType::NodeType*                   node;
       typename NetworkType::iterator                    i_node;
     
       fwbw = ForwardBackward(rObsMx, nFrames);
@@ -2972,7 +2973,7 @@ extern std::map<std::string,FLOAT> state_posteriors;
         for (i_node = rNetwork().begin(); i_node != rNetwork().end(); ++i_node) 
         { //for every model
     //    for (k=0; k < nnodes; k++) {\\}
-    //      NetworkType::Node *i_node = &mpNodes[k];
+    //      NetworkType::NodeType *i_node = &mpNodes[k];
           if (i_node->mC.mType & NT_MODEL &&
             i_node->mC.rpAlphaBetaList() != NULL &&
             i_node->mC.rpAlphaBetaList()->mTime == mTime+1) 
@@ -3152,12 +3153,12 @@ extern std::map<std::string,FLOAT> state_posteriors;
     Wlr2Lattice(WordLinkRecord* pWlr, Lattice& rLattice)
     {
       
-      Lattice::Node* p_first = NULL;
+      Lattice::NodeType* p_first = NULL;
       
       Wlr2Lattice_AllocateNodes(pWlr, p_first);
       Wlr2Lattice_EstablishLinks(pWlr);
       
-      Lattice::Node* p_node;
+      Lattice::NodeType* p_node;
       
       for (p_node = p_first; NULL != p_node && NULL != p_node->mpNext;
            p_node = p_node->mpNext)
@@ -3175,7 +3176,7 @@ extern std::map<std::string,FLOAT> state_posteriors;
     void 
     Decoder<_NodeType>::
     Wlr2Lattice_AllocateNodes(WordLinkRecord* pWlr, 
-        typename STK::Lattice::Node*& rpNode)
+        typename STK::Lattice::NodeType*& rpNode)
     {
       // mAux had been initialized to zero. Now, it is used to count how many
       // successors has been already processed. 
@@ -3185,8 +3186,8 @@ extern std::map<std::string,FLOAT> state_posteriors;
         
       // All successors has been already processed, so make new lattice node
       // corresponding to pWlr and initialize it according to pWlr->pNode().
-      Lattice::Node* pNode = 
-        (Lattice::Node *) calloc(1, sizeof(Lattice::Node));
+      Lattice::NodeType* pNode = 
+        (Lattice::NodeType *) calloc(1, sizeof(Lattice::NodeType));
 
       if (pNode == NULL) 
         Error("Insufficient memory");
@@ -3241,7 +3242,7 @@ extern std::map<std::string,FLOAT> state_posteriors;
         
       // Set pWlr->mpNode to the new lattice node, so we can latter easily
       // establish  links between the nodes in the lattice nodes
-      pWlr->mpNode = reinterpret_cast<typename WordLinkRecord::Node*>(pNode);
+      pWlr->mpNode = reinterpret_cast<typename WordLinkRecord::NodeType*>(pNode);
         
       // All successors have been already processed, so continue recursively with Wlr's predecessors
       if(pWlr->mpNext != NULL)
@@ -3255,7 +3256,7 @@ extern std::map<std::string,FLOAT> state_posteriors;
         }
       }
     }
-  // MakeLatticeNodesForWordLinkRecords(WordLinkRecord* pWlr, Node*& rpNode)
+  // MakeLatticeNodesForWordLinkRecords(WordLinkRecord* pWlr, NodeType*& rpNode)
   //***************************************************************************
 
   
