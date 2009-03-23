@@ -448,6 +448,7 @@ namespace STK
     std::string               mClusterWeightsOutPath;
     
     //bool                      mClusterParametersUpdate;
+    bool                      mModelUpdateDoesNotNormalize;
     
     
     /**

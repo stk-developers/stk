@@ -79,133 +79,101 @@ namespace STK
   
   // holds the registered parameters
   std::vector<ParameterRecord>    gRegisteredParameters;
-}
-
-//***************************************************************************
-//***************************************************************************
-void fast_sigmoid_vec(float* in, float* out, int size)
-{
-  while(size--) *out++ = 1.0/(1.0 + FAST_EXP(-*in++));
-}
 
 
-//***************************************************************************
-//***************************************************************************
-void fast_sigmoid_vec(double* in, double* out, int size)
-{
-  while(size--) *out++ = 1.0/(1.0 + FAST_EXP(-*in++));
-}
-
-
-//***************************************************************************
-//***************************************************************************
-float i_max_double (float *a, int len) 
-{
-  int i;
-  float max;
-  max = a[0];
-  for (i=1; i<len; i++) 
+  //***************************************************************************
+  //***************************************************************************
+  void fast_sigmoid_vec(float* in, float* out, int size)
   {
-    if (a[i] > max) 
+    while(size--) *out++ = 1.0/(1.0 + FAST_EXP(-*in++));
+  }
+
+
+  //***************************************************************************
+  //***************************************************************************
+  void fast_sigmoid_vec(double* in, double* out, int size)
+  {
+    while(size--) *out++ = 1.0/(1.0 + FAST_EXP(-*in++));
+  }
+
+
+  //***************************************************************************
+  //***************************************************************************
+  float i_max_double (float *a, int len) 
+  {
+    int i;
+    float max;
+    max = a[0];
+    for (i=1; i<len; i++) 
     {
-      max = a[i];
+      if (a[i] > max) 
+      {
+        max = a[i];
+      }
+    }
+    return max;
+  }
+
+
+  //***************************************************************************
+  //***************************************************************************
+  double i_max_double (double *a, int len) 
+  {
+    int i;
+    double max;
+    max = a[0];
+    for (i=1; i<len; i++) 
+    {
+      if (a[i] > max) 
+      {
+        max = a[i];
+      }
+    }
+    return max;
+  }
+
+
+  //***************************************************************************
+  //***************************************************************************
+  void fast_softmax_vec(float *in, float *out, int size)
+  {
+    int i;
+    float maxa,sum;
+    // first find the max
+    maxa = i_max_double (in, size);
+    // normalize, exp and get the sum
+    sum = 0.0;
+    for (i=0; i<size; i++) {
+      out[i] = FAST_EXP(in[i] - maxa);
+      sum += out[i];
+    }
+    // now normalize bu the sum
+    for (i=0; i<size; i++) {
+      out[i] /= sum;
     }
   }
-  return max;
-}
 
-
-//***************************************************************************
-//***************************************************************************
-double i_max_double (double *a, int len) 
-{
-  int i;
-  double max;
-  max = a[0];
-  for (i=1; i<len; i++) 
+  //***************************************************************************
+  //***************************************************************************
+  void fast_softmax_vec(double *in, double *out, int size)
   {
-    if (a[i] > max) 
-    {
-      max = a[i];
+    int i;
+    double maxa,sum;
+    // first find the max
+    maxa = i_max_double (in, size);
+    // normalize, exp and get the sum
+    sum = 0.0;
+    for (i=0; i<size; i++) {
+      out[i] = FAST_EXP(in[i] - maxa);
+      sum += out[i];
+    }
+    // now normalize bu the sum
+    for (i=0; i<size; i++) {
+      out[i] /= sum;
     }
   }
-  return max;
-}
 
-
-//***************************************************************************
-//***************************************************************************
-void fast_softmax_vec(float *in, float *out, int size)
-{
-  int i;
-  float maxa,sum;
-  // first find the max
-  maxa = i_max_double (in, size);
-  // normalize, exp and get the sum
-  sum = 0.0;
-  for (i=0; i<size; i++) {
-    out[i] = FAST_EXP(in[i] - maxa);
-    sum += out[i];
-  }
-  // now normalize bu the sum
-  for (i=0; i<size; i++) {
-    out[i] /= sum;
-  }
-}
-
-//***************************************************************************
-//***************************************************************************
-void fast_softmax_vec(double *in, double *out, int size)
-{
-  int i;
-  double maxa,sum;
-  // first find the max
-  maxa = i_max_double (in, size);
-  // normalize, exp and get the sum
-  sum = 0.0;
-  for (i=0; i<size; i++) {
-    out[i] = FAST_EXP(in[i] - maxa);
-    sum += out[i];
-  }
-  // now normalize bu the sum
-  for (i=0; i<size; i++) {
-    out[i] /= sum;
-  }
-}
-
-
-namespace STK
-{
   
-  // const char*     gpFilterWldcrd;
-  // :WARNING: default HTK compatibility is set to false
-  // bool            gHtkCompatible = false;
-  // FLOAT           gMinLogDiff;
-  
-  // const char*     gpScriptFilter;
-  // const char*     gpParmFilter;
-  // const char*     gpMmfFilter;
-  // const char*     gpHListOFilter;
-  // const char*     gpMmfOFilter;
-  // const char*     gpParmOFilter;
-
-    
-  // static const char* gpParmKindNames[] = 
-  // {
-  //   "WAVEFORM",
-  //   "LPC",
-  //   "LPREFC",
-  //   "LPCEPSTRA",
-  //   "LPDELCEP",
-  //   "IREFC",
-  //   "MFCC",
-  //   "FBANK",
-  //   "MELSPEC",
-  //   "USER",
-  //   "DISCRETE",
-  //   "PLP",
-  //   "ANON"
-  // };
   
   //***************************************************************************
   //***************************************************************************
@@ -338,7 +306,7 @@ namespace STK
       strcat(pOutFileName, out_ext);
     }
   }
-}
+
   
   //***************************************************************************
   //***************************************************************************
@@ -368,8 +336,7 @@ namespace STK
     return *(char **)a - *(char **)b;
   }
   
-namespace STK
-{
+
   //***************************************************************************
   //***************************************************************************
   void 
@@ -472,7 +439,6 @@ namespace STK
     return FIL_Mul(a, b);
   }
   
-}
   //***************************************************************************
   //***************************************************************************
   void 
@@ -586,8 +552,6 @@ namespace STK
     return (bool) ((char *) &a)[0] != 1;
   }
   
-namespace STK
-{
   //***************************************************************************
   //***************************************************************************
   int my_hcreate_r(size_t nel, MyHSearchData *tab)

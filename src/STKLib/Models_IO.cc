@@ -2974,7 +2974,7 @@ namespace STK
     }
   
     PutNLn(fp, binary);
-  } //WriteMean(FILE *fp, bool binary, Mean *mean)
+  } //WriteMeanRaw(FILE *fp, bool binary, Mean *mean)
 
   
   //***************************************************************************  

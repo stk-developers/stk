@@ -1714,7 +1714,7 @@ namespace STK
     //FLOAT    nrm  = mpVectorO  [2 * VectorSize()];
     FLOAT*   vec  = mVector.pData();
     FLOAT*   acc  = mpAccums;
-    FLOAT    nrm  = mpAccums[VectorSize()];
+    FLOAT    nrm  = !pModelSet->mModelUpdateDoesNotNormalize ? mpAccums[VectorSize()] : 1;
   
     if (pModelSet->mUpdateMask & UM_MEAN) 
     {
@@ -2203,6 +2203,12 @@ namespace STK
         }
       }
   
+      // in case we don't want to normalize, reset the normalizing constant
+      // this is probably not the optimal way to do this, but the easiest
+      if (pModelSet->mModelUpdateDoesNotNormalize) {
+        accum_sum = 1;
+      }
+
       for (i = 0; i < mNMixtures; i++) 
       {
   //      printf("Weight Acc: %f\n", (float) state->mpMixture[i].mWeightAccum);
@@ -3466,6 +3472,7 @@ namespace STK
     this->mMapTau               = 10.0;
     this->mMinOccupation        = 0.0;
     this->mISmoothingMaxOccup   = -1.0;
+    this->mModelUpdateDoesNotNormalize = false;
     mpClusterWeightVectors            = NULL;
     mNClusterWeightVectors            = 0;
     mpGw                              = NULL;

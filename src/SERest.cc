@@ -281,6 +281,7 @@ int main(int argc, char* argv[])
     BasicVector<FLOAT>*             p_weight_vector = NULL;
     
     bool                            write_raw_gmm = false;
+    bool                            model_update_does_not_normalize = false;
 
 
     enum  UpdateType update_type;
@@ -477,6 +478,10 @@ int main(int argc, char* argv[])
     frame_weight_mlf  = GetParamStr(&cfgHash, SNAME":FRAMEWEIGHTMLF",  NULL);
     frame_weight_mask = GetParamStr(&cfgHash, SNAME":FRAMEWEIGHTMASK",  NULL);
     frame_weight_ext  = GetParamStr(&cfgHash, SNAME":FRAMEWEIGHTEXT",  NULL);
+
+    // this will not normalize the stats when updating the model, giving stats
+    // instead of real model parameters
+    model_update_does_not_normalize  = GetParamBool(&cfgHash,SNAME":MODELUPDATEDOESNOTNORMALIZE",   false);
       
     for (; *cchrptr; cchrptr++)
     {
@@ -532,6 +537,11 @@ int main(int argc, char* argv[])
       print_registered_parameters();
     }
       
+    // check wheather by any chance we haven's specified both --recognet and -I
+    // params
+    if (NULL != network_file && NULL != src_mmf) {
+      Error("Cannot specify both --recognet and -I");
+    }
 
     if (NULL != src_mmf) {
       for (src_mmf=strtok(src_mmf, ","); src_mmf != NULL; src_mmf=strtok(NULL, ",")) {
@@ -740,6 +750,7 @@ int main(int argc, char* argv[])
     hset.mMinMixWeight        = min_mix_wght * MIN_WEGIHT;
     hset.mUpdateMask          = update_mask;
     hset.mSaveGlobOpts        = save_glob_opt;
+    hset.mModelUpdateDoesNotNormalize      = model_update_does_not_normalize;
     hset.ResetAccums();  
 
 
@@ -1202,7 +1213,9 @@ int main(int argc, char* argv[])
           hset.ReadXformStats(trg_hmm_dir, xfStatsBin);
         }
         
+        // update the parameters based on the collected stats
         hset.UpdateFromAccums();
+
         if (! write_raw_gmm) {
           hset.WriteMmf(trg_mmf, trg_hmm_dir, trg_hmm_ext, hmms_binary);
         }
