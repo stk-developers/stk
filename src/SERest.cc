@@ -539,7 +539,7 @@ int main(int argc, char* argv[])
       
     // check wheather by any chance we haven's specified both --recognet and -I
     // params
-    if (NULL != network_file && NULL != src_mmf) {
+    if (NULL != network_file && NULL != src_mlf) {
       Error("Cannot specify both --recognet and -I");
     }
 
