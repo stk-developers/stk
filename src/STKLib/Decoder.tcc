@@ -1223,7 +1223,7 @@ namespace STK
               } else if(p_xfsc->mStatType == ST_RDMPE_INDIRECT) {
                 assert(RD_ind_I != NULL);
                 for(i = 0; i < mean->VectorSize(); i++) {
-                  xfsa->mpStats[i] += Lqjmt * ((xobs[i] - mean->mVector[i]) * (var->mVector[i] * RD_ind_G[i] - RD_ind_Fi) + RD_ind_I[i]) 
+                  xfsa->mpStats[i] += Lqjmt * ((xobs[i] - mean->mVector[i]) * (var->mVector[i] * RD_ind_G[i] - RD_ind_Fi) + RD_ind_I[i])
                                             * var->mVector[i] / state2->mpMixture[m].mWeightAccumDen; 
                                             // mWeightAccumDen contains loaded mixture occupation counts
                 }
@@ -3126,16 +3126,40 @@ extern std::map<std::string,FLOAT> state_posteriors;
             FLOAT *p_stats = xfsa_xfrm->mpStats;
             FLOAT* region_weights = inst->mpInput != NULL ? inst->mpInput->mOutputVector.pData() : obs2;
             FLOAT* input_vector   = region_weights + rd_xform->mNBlocks;
-                    
+            
+            FLOAT* outer_product_cache = NULL;
+            size_t outer_product_cache_rows = 0;
+            size_t outer_product_cache_cols = 0;
+            
             for(int i = 0; i < rd_xform->mNBlocks; i++) {
               if(rd_xform->mpBlock[i]->mXformType == XT_LINEAR) {
                 if(region_weights[i] > 0.0) {
-                  for(int j = 0; j < rd_xform->mpBlock[i]->mOutSize; j++) {
+                
+                  if(outer_product_cache_rows != rd_xform->mpBlock[i]->mOutSize ||
+                     outer_product_cache_cols != rd_xform->mpBlock[i]->mInSize) {
+                    delete [] outer_product_cache;
+                    outer_product_cache_rows = rd_xform->mpBlock[i]->mOutSize;
+                    outer_product_cache_cols = rd_xform->mpBlock[i]->mInSize;
+                    outer_product_cache = new FLOAT[outer_product_cache_rows * outer_product_cache_cols];
+                                        
+                    for(int j = 0; j < rd_xform->mpBlock[i]->mOutSize; j++) {
+                      for(int k = 0; k < rd_xform->mpBlock[i]->mInSize; k++) {
+                        outer_product_cache[rd_xform->mpBlock[i]->mInSize * j + k] = xfsa_inst->mpStats[j] * input_vector[k];
+                      }
+                    }
+                  }
+                  FLOAT weight = region_weights[i];
+                  for(int j = 0; j < rd_xform->mpBlock[i]->mOutSize * rd_xform->mpBlock[i]->mInSize; j++) {
+                    p_stats[j] += outer_product_cache[j] * weight;
+                  }
+                
+/*                for(int j = 0; j < rd_xform->mpBlock[i]->mOutSize; j++) {
                     for(int k = 0; k < rd_xform->mpBlock[i]->mInSize; k++) {
                       p_stats[rd_xform->mpBlock[i]->mInSize * j + k] += xfsa_inst->mpStats[j] * input_vector[k] * region_weights[i];;
                                                           // the outer product is the same for all regions -> can be optimized//
                     }
-                  }
+                  } */
+
                   int offset = rd_xform->mpBlock[i]->mInSize * rd_xform->mpBlock[i]->mOutSize;
                   for(int j = 0; j < rd_xform->mpBlock[i]->mOutSize; j++) {
                    p_stats[offset + j] += xfsa_inst->mpStats[rd_xform->mOutSize + j] * region_weights[i];
@@ -3165,6 +3189,8 @@ extern std::map<std::string,FLOAT> state_posteriors;
                 p_stats +=  rd_xform->mpBlock[i]->mOutSize * 2 + 2;
               }
             }
+            
+            delete [] outer_product_cache;
             
             for(int i = 0; i < xfsa_inst->mSize; i++) {
               xfsa_inst->mpStats[i] = 0.0;

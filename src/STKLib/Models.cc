@@ -1106,89 +1106,6 @@ namespace STK
     }
   }
     
-  //*****************************************************************************
-  //*****************************************************************************
-/*  void 
-  NormalizeAccum(int macro_type, HMMSetNodeName nodeName,
-                 MacroData * pData, void *pUserData) 
-  {
-    size_t      i, j;
-    size_t      size   = 0;
-    FLOAT *     vector = NULL;
-
-    if (macro_type == mt_mean || macro_type == mt_variance) 
-    {
-      if (macro_type == mt_mean) {
-        size   = ((Mean *)pData)->VectorSize();
-        vector = ((Mean *)pData)->mpAccums;
-        size   = size + 1;
-      } 
-      else if (macro_type == mt_variance) {
-        size   = ((Variance *)pData)->VectorSize();
-        vector = ((Variance *)pData)->mpAccums;
-        size   = size * 2 + 1;
-      }
-  
-      for (i=0; i < size; i++) 
-        vector[i] /= vector[size-1];
-  
-      std::list<XformStatAccum *>::iterator xfsait;
-      for (xfsait = pData->mXformStatAccumList.begin(); 
-           xfsait != pData->mXformStatAccumList.end(); 
-           xfsait++) 
-      {
-        size = (*xfsait)->mpCache->mpXform->mInSize;
-        size = (macro_type == mt_mean) ? size : size+size*(size+1)/2;
-  
-        for (j=0; j < size; j++) 
-          (*xfsait)->mpStats[j] /= (*xfsait)->mNorm;
-        
-        (*xfsait)->mNorm = 1.0;
-      }
-    } 
-    else if (macro_type == mt_state) 
-    {
-      State *state = (State *) pData;
-      
-      if (state->mOutPdfKind == KID_DiagC) 
-      {
-        FLOAT accum_sum = 0.0;
-  
-        for (i = 0; i < state->mNMixtures; i++)
-          accum_sum += state->mpMixture[i].mWeightAccum;
-  
-        if (accum_sum > 0.0) 
-        {
-          for (i = 0; i < state->mNMixtures; i++)
-            state->mpMixture[i].mWeightAccum /= accum_sum;
-        }
-      }
-    } 
-    else if (macro_type == mt_transition) 
-    {
-      size_t nstates = ((Transition *) pData)->mNStates;
-      vector = ((Transition *) pData)->mpMatrixO + SQR(nstates);
-  
-      for (i=0; i < nstates; i++) 
-      {
-        FLOAT nrm = LOG_0;
-        
-        for (j=0; j < nstates; j++) 
-        {
-          LOG_INC(nrm, vector[i * nstates + j]);
-        }
-        
-        if (nrm < LOG_MIN) nrm = 0.0;
-        
-        for (j=0; j < nstates; j++) 
-        {
-          vector[i * nstates + j] -= nrm;
-        }
-      }
-    }
-  }
-*/
-
   //**************************************************************************
   //**************************************************************************
   //   Hmm class section
@@ -1394,25 +1311,16 @@ namespace STK
     if (UT_TwoAccumSetEBW == pModelSet->mUpdateType)
     {
       int vec_size    = mpVariance->VectorSize();
-      // old vector
-      //FLOAT *mean_vec = mpMean->mpVectorO;
-      //FLOAT *var_vec  = mpVariance->mpVectorO;
       FLOAT* mean_vec = mpMean->mVector.pData();
       FLOAT* var_vec  = mpVariance->mVector.pData();
   
-      //FLOAT *vac_num  = var_vec + 1 * vec_size;
-      //FLOAT *mac_num  = var_vec + 2 * vec_size;
-      //FLOAT *nrm_num  = var_vec + 3 * vec_size;
       FLOAT *vac_num  = mpVariance->mpAccums;
       FLOAT *mac_num  = mpVariance->mpAccums + 1 * vec_size;
       FLOAT *nrm_num  = mpVariance->mpAccums + 2 * vec_size;
-  
       FLOAT *vac_den  = vac_num + 2 * vec_size + 1;
       FLOAT *mac_den  = mac_num + 2 * vec_size + 1;
       FLOAT *nrm_den  = nrm_num + 2 * vec_size + 1;
   
-//      FLOAT *var_pri  = mpVariance->mpPrior->mVector.pData();
-//      FLOAT *mean_pri = mpMean    ->mpPrior->mVector.pData();
 
       if (!pModelSet->mISmoothAfterD) 
       {
@@ -1426,14 +1334,6 @@ namespace STK
 
         // New way of I-smoothing or general MAP update making use of prior model set
         ISmoothing(*nrm_num + *nrm_den, pModelSet);
-/*        if (pModelSet->mUpdateMask & UM_MAP)
-        {
-          for (i = 0; i < vec_size; i++) {
-            mac_num[i] += pModelSet->mMapTau * mean_pri[i];
-            vac_num[i] += pModelSet->mMapTau * (1.0/var_pri[i] + SQR(mean_pri[i]));
-          }
-          *nrm_num += pModelSet->mMapTau;
-        }*/
       }
   
       Djm = 0.0;
@@ -1469,14 +1369,6 @@ namespace STK
 
         // New way of I-smoothing or general MAP update making use of prior model set
         ISmoothing(*nrm_num + *nrm_den, pModelSet);
-        /*if (pModelSet->mUpdateMask & UM_MAP)
-        {
-          for (i = 0; i < vec_size; i++) {
-            mac_num[i] += pModelSet->mMapTau * mean_pri[i];
-            vac_num[i] += pModelSet->mMapTau * (1.0/var_pri[i] + SQR(mean_pri[i]));
-          }
-          *nrm_num += pModelSet->mMapTau;
-        }*/
       }
       
       for (i = 0; i < vec_size; i++) 
@@ -1503,54 +1395,26 @@ namespace STK
     // //////////
     // MPE update
     else if ((UT_EBW == pModelSet->mUpdateType) && 0 == mAccumK.Rows()) 
-    { 
-    
-
-    
+    {     
       int    vec_size = mpVariance->VectorSize();
       FLOAT* mean_vec = mpMean->mVector.pData();
       FLOAT* var_vec  = mpVariance->mVector.pData();
-  
-      //FLOAT *vac_mpe  = var_vec + 1 * vec_size;
-      //FLOAT *mac_mpe  = var_vec + 2 * vec_size;
-      //FLOAT *nrm_mpe  = var_vec + 3 * vec_size;
       FLOAT *vac_mpe  = mpVariance->mpAccums;
       FLOAT *mac_mpe  = mpVariance->mpAccums + 1 * vec_size;
       FLOAT *nrm_mpe  = mpVariance->mpAccums + 2 * vec_size;
   
-//      FLOAT *var_pri  = mpVariance->mpPrior->mVector.pData();
-//      FLOAT *mean_pri = mpMean    ->mpPrior->mVector.pData();
+      if (!pModelSet->mISmoothAfterD) 
+      {
+        ISmoothing(*nrm_mpe + 2 * gWeightAccumDen, pModelSet);
+      }
 
       if (*nrm_mpe + 2 * gWeightAccumDen <= pModelSet->mMinOccupation) 
       {
-//!!!Should not be better to move this after I-smoothing???
         if (mpMacro)
           Warning("Low occupation of '%s', mixture is not updated", mpMacro->mpName);
         else 
           Warning("Low occupation of mixture, mixture is not updated");
         return;
-      }
-  
-      if (!pModelSet->mISmoothAfterD) 
-      {
-        ISmoothing(*nrm_mpe + 2 * gWeightAccumDen, pModelSet);
-        // I-smoothing or general MAP update
-/*        if (pModelSet->mUpdateMask & UM_MAP)
-        {
-          FLOAT tau;
-          if(!pModelSet->JSmoothing
-          || (*nrm_mpe + 2 * gWeightAccumDen) <= *nrm_mpe) {
-            tau = pModelSet->mMapTau;
-          } else {
-            tau = pModelSet->mMapTau * *nrm_mpe / (*nrm_mpe + 2 * gWeightAccumDen);
-          }
-          for (i = 0; i < vec_size; i++) 
-          {
-            mac_mpe[i] += tau * mean_pri[i];
-            vac_mpe[i] += tau * (1.0/var_pri[i] + SQR(mean_pri[i]));
-          }
-          *nrm_mpe += tau;
-        }*/
       }
       
       Djm = 0.0;
@@ -1582,16 +1446,6 @@ namespace STK
       if (pModelSet->mISmoothAfterD) 
       {
         ISmoothing(*nrm_mpe + 2 * gWeightAccumDen, pModelSet);
-        // I-smoothing
-/*
-        if (pModelSet->mUpdateMask & UM_MAP)
-        {
-          for (i = 0; i < vec_size; i++) {
-            mac_mpe[i] += pModelSet->mMapTau * mean_pri[i];
-            vac_mpe[i] += pModelSet->mMapTau * (1.0/var_pri[i] + SQR(mean_pri[i]));
-          }
-          *nrm_mpe += pModelSet->mMapTau;
-        }*/
       }
   
       for (i = 0; i < vec_size; i++) 
@@ -2713,10 +2567,9 @@ namespace STK
   //**************************************************************************  
   RegionDependentXform::
   RegionDependentXform(size_t nBlocks):
-    mBlockOutputVector()
+    mBlockOutputVector(), mNBlocks(nBlocks)
   {
     mpBlock  = new Xform*[nBlocks];
-    mNBlocks = nBlocks;
     
     for (size_t i = 0; i < nBlocks; i++) 
       mpBlock[i] = NULL;
@@ -2746,6 +2599,7 @@ namespace STK
            char*      pMemory,
            PropagDirectionType  direction)
   {
+static int cnt = 0;
     size_t  i;
     size_t  j;
     FLOAT* region_weights = pInputVector;
@@ -2756,7 +2610,7 @@ namespace STK
     }  
     for (i = 0; i < mNBlocks; i++) 
     {
-      if(pInputVector[i] != 0 || mpBlock[i]->mMemorySize) {
+      if(pInputVector[i] != 0.0 || mpBlock[i]->mMemorySize) {
         mpBlock[i]->Evaluate(
           input_vector,
           mBlockOutputVector.pData(), 
@@ -2878,6 +2732,52 @@ namespace STK
     for (i = 0; i < mOutSize; i++) 
     {
       pOutputVector[i] = pInputVector[i] + mVector[0][i];
+    }
+    return pOutputVector;
+  }; //Evaluate(...)
+  
+
+  //**************************************************************************  
+  //**************************************************************************  
+  // SumXform section
+  //**************************************************************************  
+  //**************************************************************************  
+  SumXform::
+  SumXform(size_t outSize, size_t nSplits)
+  {
+    mInSize       = nSplits * outSize;
+    mOutSize      = outSize;
+    mMemorySize   = 0;
+    mDelay        = 0;
+    mXformType    = XT_SUM;
+  }
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  SumXform::
+  ~SumXform()
+  {
+  }
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  //virtual 
+  FLOAT *
+  SumXform::
+  Evaluate(FLOAT *    pInputVector, 
+           FLOAT *    pOutputVector,
+           char *     pMemory,
+           PropagDirectionType  direction)
+  {
+    size_t i, j;
+    
+    for (j = 0; j < mOutSize; j++) {
+      pOutputVector[j] = pInputVector[j];
+    }
+    for (i = 1; i < mInSize / mOutSize; i++) {
+      for (j = 0; j < mOutSize; j++) {
+        pOutputVector[j] += pInputVector[i * mOutSize + j];
+      }
     }
     return pOutputVector;
   }; //Evaluate(...)
@@ -3306,7 +3206,7 @@ namespace STK
     }
     partial_sort_copy(pOutputVector, pOutputVector+mpState->mNMixtures, 
                       mNBestLikesVector.begin(), mNBestLikesVector.end(), std::greater<FLOAT>());
-    min_like = mNBestLikesVector.back();
+    min_like  = HIGHER_OF(mNBestLikesVector.back(), mNBestLikesVector.front() + mPrune);
     
     for (i = 0; i < mpState->mNMixtures; i++) {
       if(pOutputVector[i] >= min_like) {
@@ -3317,7 +3217,7 @@ namespace STK
       if(pOutputVector[i] >= min_like) {
         pOutputVector[i] = exp(pOutputVector[i]-like_sum);
       } else {
-        pOutputVector[i] = 0;
+        pOutputVector[i] = 0.0;
       }
     }
     return pOutputVector;

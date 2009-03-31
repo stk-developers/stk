@@ -52,6 +52,7 @@ namespace STK
   class Xform;
 
   class BiasXform;
+  class SumXform;
   class CompositeXform;
   class RegionDependentXform;
   class CopyXform;
@@ -236,6 +237,7 @@ namespace STK
     KID_NumBlocks,   KID_Layer,      KID_Copy,        KID_Stacking, KID_Constant,
     KID_Transpose,   
     KID_XformPredef, KID_Window,     KID_WindowPredef,KID_BlockCopy,KID_BiasPredef,
+    KID_Sum,
   
     /* Numeric functions - FuncXform*/
     KID_Sigmoid,     KID_Log,        KID_Exp,        KID_Sqrt,     KID_SoftMax,
@@ -324,6 +326,7 @@ namespace STK
     FrantaProductXform*  ReadFrantaProductXform      (FILE* fp, Macro* macro);
     MatlabXform*    ReadMatlabXform(FILE* fp, Macro* macro);
     BiasXform*      ReadBiasXform     (FILE* fp, Macro* macro, bool preddefined);
+    SumXform*       ReadSumXform      (FILE* fp, Macro* macro);
     FuncXform*      ReadFuncXform     (FILE* fp, Macro* macro, int funcId);
     StackingXform*  ReadStackingXform (FILE* fp, Macro* macro);
     ConstantXform*  ReadConstantXform (FILE* fp, Macro* macro);
@@ -356,6 +359,7 @@ namespace STK
     void   WriteFrantaProductXform  (FILE* fp, bool binary, FrantaProductXform* xform);
     void   WriteFuncXform    (FILE* fp, bool binary,      FuncXform*  xform);
     void   WriteBiasXform    (FILE* fp, bool binary,      BiasXform*  xform);
+    void   WriteSumXform     (FILE* fp, bool binary,      SumXform*  xform);
     void   WriteStackingXform(FILE* fp, bool binary,  StackingXform*  xform);
     void   WriteConstantXform(FILE* fp, bool binary,  ConstantXform*  xform);
     void   WriteGlobalOptions(FILE* fp, bool binary);  
@@ -563,6 +567,8 @@ namespace STK
                long *       totFrames, 
                FLOAT *      totLogLike, 
                int          mmiDenominatorAccums);
+               
+          
     
     /**
      * @brief Reads accumulators from file
@@ -572,8 +578,21 @@ namespace STK
      * @param MMI_denominator_accums 
      */
     void
-    ReadAccums(const FileListElem& rFile, long* totFrames, FLOAT* totLogLike, 
-        int mmiDenominatorAccums);
+    ReadAccums(const FileListElem& rFile, long* totFrames, FLOAT* totLogLike, int mmiDenominatorAccums);
+        
+        
+    /**
+     * @brief Reads accumulators from file
+     * @param fp file pointer to the file to read
+     * @param fileName name corresponding to fp to be reported in error messages
+     * @param weight
+     * @param totFrames 
+     * @param totLogLike 
+     * @param MMI_denominator_accums 
+     */
+    void
+    ReadAccums(FILE *fp, const char *fileName, FLOAT weight, long* totFrames, FLOAT* totLogLike, int mmiDenominatorAccums);
+
     
     void
     ReadXformStats(const char * pOutDir, bool binary);
@@ -1307,7 +1326,8 @@ namespace STK
     XT_MATLAB,
     XT_TRANSPOSE,
     XT_WINDOW,
-    XT_BLOCKCOPY
+    XT_BLOCKCOPY,
+    XT_SUM,
   } XformType;
 
   
@@ -1568,6 +1588,38 @@ namespace STK
     
     /**
      * @brief Bias Xform evaluation 
+     * @param pInputVector pointer to the input vector
+     * @param pOutputVector pointer to the output vector
+     * @param pMemory pointer to the extra memory needed by the operation
+     * @param direction propagation direction (forward/backward)
+     */
+    virtual FLOAT* 
+    Evaluate(FLOAT*    pInputVector, 
+             FLOAT*    pOutputVector,
+             char*     pMemory,
+             PropagDirectionType  direction);
+  };
+  
+  
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Bias Xform representation
+   */
+  class SumXform : public Xform 
+  {
+  public:
+    /**
+     * @brief The constructor
+     * @param vectorSize size of
+     */
+    SumXform(size_t outSize, size_t nSplits);
+    
+    virtual
+    ~SumXform();
+    
+
+    /**
+     * @brief Sum Xform evaluation 
      * @param pInputVector pointer to the input vector
      * @param pOutputVector pointer to the output vector
      * @param pMemory pointer to the extra memory needed by the operation
@@ -1868,6 +1920,7 @@ namespace STK
     State*              mpState;
     std::vector<FLOAT>  mNBestLikesVector;
     FLOAT               mScale;
+    FLOAT               mPrune;
   };
   
   

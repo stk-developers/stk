@@ -34,17 +34,18 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
-LIBOBJDIR =
 @USE_SNET_FALSE@bin_PROGRAMS = SExpand$(EXEEXT) SERest$(EXEEXT) \
 @USE_SNET_FALSE@	SVite$(EXEEXT) SFeaCat$(EXEEXT) \
 @USE_SNET_FALSE@	SFeaStack$(EXEEXT) SLRatio$(EXEEXT) \
 @USE_SNET_FALSE@	SResults$(EXEEXT) SRover$(EXEEXT) \
-@USE_SNET_FALSE@	STree$(EXEEXT) SFeaStat$(EXEEXT)
+@USE_SNET_FALSE@	STree$(EXEEXT) SFeaStat$(EXEEXT) \
+@USE_SNET_FALSE@	STcpAccDump$(EXEEXT)
 @USE_SNET_TRUE@bin_PROGRAMS = SExpand$(EXEEXT) SERest$(EXEEXT) \
 @USE_SNET_TRUE@	SVite$(EXEEXT) SFeaCat$(EXEEXT) \
 @USE_SNET_TRUE@	SFeaStack$(EXEEXT) SLRatio$(EXEEXT) \
 @USE_SNET_TRUE@	SResults$(EXEEXT) SRover$(EXEEXT) \
-@USE_SNET_TRUE@	STree$(EXEEXT) SNet$(EXEEXT) SFeaStat$(EXEEXT)
+@USE_SNET_TRUE@	STree$(EXEEXT) SNet$(EXEEXT) SFeaStat$(EXEEXT) \
+@USE_SNET_TRUE@	STcpAccDump$(EXEEXT)
 subdir = src
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -98,6 +99,10 @@ am_SRover_OBJECTS = SRover.$(OBJEXT)
 SRover_OBJECTS = $(am_SRover_OBJECTS)
 SRover_LDADD = $(LDADD)
 SRover_DEPENDENCIES = $(am__DEPENDENCIES_2)
+am_STcpAccDump_OBJECTS = STcpAccDump.$(OBJEXT)
+STcpAccDump_OBJECTS = $(am_STcpAccDump_OBJECTS)
+STcpAccDump_LDADD = $(LDADD)
+STcpAccDump_DEPENDENCIES = $(am__DEPENDENCIES_2)
 am_STree_OBJECTS = STree.$(OBJEXT)
 STree_OBJECTS = $(am_STree_OBJECTS)
 STree_DEPENDENCIES = $(am__DEPENDENCIES_2) $(am__DEPENDENCIES_1)
@@ -116,11 +121,11 @@ CXXLINK = $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) \
 SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFeaCat_SOURCES) \
 	$(SFeaStack_SOURCES) $(SFeaStat_SOURCES) $(SLRatio_SOURCES) \
 	$(SNet_SOURCES) $(SResults_SOURCES) $(SRover_SOURCES) \
-	$(STree_SOURCES) $(SVite_SOURCES)
+	$(STcpAccDump_SOURCES) $(STree_SOURCES) $(SVite_SOURCES)
 DIST_SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFeaCat_SOURCES) \
 	$(SFeaStack_SOURCES) $(SFeaStat_SOURCES) $(SLRatio_SOURCES) \
 	$(am__SNet_SOURCES_DIST) $(SResults_SOURCES) $(SRover_SOURCES) \
-	$(STree_SOURCES) $(SVite_SOURCES)
+	$(STcpAccDump_SOURCES) $(STree_SOURCES) $(SVite_SOURCES)
 RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	html-recursive info-recursive install-data-recursive \
 	install-exec-recursive install-info-recursive \
@@ -162,7 +167,6 @@ EGREP = @EGREP@
 ENABLE_SSE_FALSE = @ENABLE_SSE_FALSE@
 ENABLE_SSE_TRUE = @ENABLE_SSE_TRUE@
 EXEEXT = @EXEEXT@
-GREP = @GREP@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
@@ -204,6 +208,8 @@ WANT_LIBGETOPT_FALSE = @WANT_LIBGETOPT_FALSE@
 WANT_LIBGETOPT_TRUE = @WANT_LIBGETOPT_TRUE@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
+ac_ct_RANLIB = @ac_ct_RANLIB@
+ac_ct_STRIP = @ac_ct_STRIP@
 am__fastdepCC_FALSE = @am__fastdepCC_FALSE@
 am__fastdepCC_TRUE = @am__fastdepCC_TRUE@
 am__fastdepCXX_FALSE = @am__fastdepCXX_FALSE@
@@ -216,26 +222,19 @@ am__untar = @am__untar@
 bindir = @bindir@
 build_alias = @build_alias@
 datadir = @datadir@
-datarootdir = @datarootdir@
-docdir = @docdir@
-dvidir = @dvidir@
 exec_prefix = @exec_prefix@
 host_alias = @host_alias@
-htmldir = @htmldir@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
 libdir = @libdir@
 libexecdir = @libexecdir@
-localedir = @localedir@
 localstatedir = @localstatedir@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
-pdfdir = @pdfdir@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
-psdir = @psdir@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 sysconfdir = @sysconfdir@
@@ -267,7 +266,8 @@ INCLUDES = $(ATLASINCLUDEDIR) -I. -I$(top_builddir) -I$(top_srcdir) \
 
 
 # Specifications
-SERest_SOURCES = SERest.cc 
+SERest_SOURCES = SERest.cc
+STcpAccDump_SOURCES = STcpAccDump.cc
 SVite_SOURCES = SVite.cc
 SExpand_SOURCES = SExpand.cc
 SFeaCat_SOURCES = SFeaCat.cc
@@ -377,6 +377,9 @@ SResults$(EXEEXT): $(SResults_OBJECTS) $(SResults_DEPENDENCIES)
 SRover$(EXEEXT): $(SRover_OBJECTS) $(SRover_DEPENDENCIES) 
 	@rm -f SRover$(EXEEXT)
 	$(CXXLINK) $(SRover_LDFLAGS) $(SRover_OBJECTS) $(SRover_LDADD) $(LIBS)
+STcpAccDump$(EXEEXT): $(STcpAccDump_OBJECTS) $(STcpAccDump_DEPENDENCIES) 
+	@rm -f STcpAccDump$(EXEEXT)
+	$(CXXLINK) $(STcpAccDump_LDFLAGS) $(STcpAccDump_OBJECTS) $(STcpAccDump_LDADD) $(LIBS)
 STree$(EXEEXT): $(STree_OBJECTS) $(STree_DEPENDENCIES) 
 	@rm -f STree$(EXEEXT)
 	$(CXXLINK) $(STree_LDFLAGS) $(STree_OBJECTS) $(STree_LDADD) $(LIBS)
@@ -399,6 +402,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SNet.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SResults.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SRover.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STcpAccDump.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STree.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SVite.Po@am__quote@
 

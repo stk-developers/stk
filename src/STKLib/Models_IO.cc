@@ -60,8 +60,8 @@ namespace STK
     gpKwds[KID_Stacking    ] = "Stacking";      gpKwds[KID_Transpose  ] = "Transpose";    
     gpKwds[KID_Constant    ] = "Constant";
     gpKwds[KID_XformPredef ] = "XformPredef";   gpKwds[KID_Window     ] = "Window";  
-    gpKwds[KID_WindowPredef] = "WindowPredef";  gpKwds[KID_BlockCopy  ] = "BlockCopy";       
-    gpKwds[KID_BiasPredef  ] = "BiasPredef";
+    gpKwds[KID_WindowPredef] = "WindowPredef";  gpKwds[KID_BlockCopy  ] = "BlockCopy";
+    gpKwds[KID_BiasPredef  ] = "BiasPredef";    gpKwds[KID_Sum        ] = "Sum";
         
     gpKwds[KID_ExtendedXform  ] = "ExtendedXform";
     gpKwds[KID_RegionDependent] = "RegionDependentXform";
@@ -300,14 +300,30 @@ namespace STK
   unsigned int faddfloat(FLOAT *vec, size_t size, float mul_const, FILE *fp) 
   {
     size_t    i;
-    FLOAT     f;
-  
+
+    FLOAT *   f = new float[size];
+
+    size = fread(f, sizeof(FLOAT), size, fp);
+
+    if(mul_const != 1.0) {
+      for (i = 0; i < size; i++) {
+        vec[i] += f[i] * mul_const;
+      }
+    } else {
+      for (i = 0; i < size; i++) {
+        vec[i] += f[i];
+      }
+    }
+    delete [] f;
+/*  
+    FLOAT f;
+
     for (i = 0; i < size; i++) 
     {
       if (fread(&f, sizeof(FLOAT), 1, fp) != 1) break;
       vec[i] += f * mul_const;
     }
-    
+*/
     return i;
   }
   
@@ -1375,6 +1391,10 @@ namespace STK
       return (Xform *) ReadBiasXform(fp, macro, true);
     }    
       
+    if (CheckKwd(keyword, KID_Sum)) {
+      return (Xform *) ReadSumXform(fp, macro);
+    }    
+
     if (CheckKwd(keyword, KID_Copy)) {
       return (Xform *) ReadCopyXform(fp, macro);
     }
@@ -1645,7 +1665,7 @@ namespace STK
     size_t              j;
     int                 block_id;
     size_t              nblocks;
-
+    
     keyword = GetString(fp, 1);
     if (CheckKwd(keyword, KID_NumBlocks)) {
       nblocks = GetInt(fp);
@@ -1655,7 +1675,7 @@ namespace STK
     }
   
     // create new RegionDependent Xform
-    ret = new RegionDependentXform(nblocks);    
+    ret = new RegionDependentXform(nblocks);
 
     for (j = 0; j < nblocks; j++) {
       keyword = GetString(fp, 1);
@@ -1825,24 +1845,29 @@ namespace STK
   }; // ReadBiasXform(FILE *fp, Macro *macro)
   
   
+  //***************************************************************************  
+  //***************************************************************************  
+  SumXform *
+  ModelSet::
+  ReadSumXform(FILE *fp, Macro *macro)
+  {
+    size_t out_size = GetInt(fp);
+    size_t n_splits = GetInt(fp);
+    SumXform * ret  = new SumXform(out_size, n_splits);
+    ret->mpMacro    = macro;
+    return ret;
+  }; // ReadSumXform(FILE *fp, Macro *macro)
+  
+  
   //***************************************************************************
   //***************************************************************************
   FuncXform *
   ModelSet::
   ReadFuncXform(FILE *fp, Macro *macro, int funcId)
   {
-    FuncXform * ret;
-    size_t      size;
-  
-    //***
-    // old malloc
-    //ret = (FuncXform *) malloc(sizeof(FuncXform));
-    //if (ret == NULL) Error("Insufficient memory");
-    
-    
-    size          = GetInt(fp);
-    ret           = new FuncXform(size, funcId);
-    ret->mpMacro  = macro;
+    size_t size     = GetInt(fp);
+    FuncXform * ret = new FuncXform(size, funcId);
+    ret->mpMacro    = macro;
     return ret;
   }; // ReadFuncXform(FILE *fp, Macro *macro, int funcId)
   
@@ -2189,6 +2214,7 @@ namespace STK
     int   in_size = GetInt(fp);
     int   n_best  = GetInt(fp);
     FLOAT scale   = GetFloat(fp);
+    FLOAT minprob = GetFloat(fp);
 
     // create new object
     ret = new GmmPosteriorsXform(in_size);
@@ -2203,7 +2229,8 @@ namespace STK
     ret->mOutSize = ret->mpState->mNMixtures;
     n_best = LOWER_OF(n_best, ret->mOutSize);
     ret->mNBestLikesVector.resize(n_best);
-    ret->mScale = scale;    
+    ret->mScale = scale;
+    ret->mPrune = log(minprob);
     
     // restore the original input vector size value
     mInputVectorSize  = in_size_orig;
@@ -3137,6 +3164,7 @@ namespace STK
       case XT_FRANTA_PRODUCT : WriteFrantaProductXform (fp, binary, static_cast<FrantaProductXform  *>(xform)); break;
       case XT_FUNC      : WriteFuncXform     (fp, binary, static_cast<FuncXform *>(xform)); break;
       case XT_BIAS      : WriteBiasXform     (fp, binary, static_cast<BiasXform *>(xform)); break;
+      case XT_SUM       : WriteSumXform      (fp, binary, static_cast<SumXform *>(xform));  break;
       case XT_STACKING  : WriteStackingXform (fp, binary, static_cast<StackingXform *>(xform)); break;
       case XT_CONSTANT  : WriteConstantXform (fp, binary, static_cast<ConstantXform *>(xform)); break;
       case XT_REGIONDEPENDENT : WriteRegionDependentXform(fp, binary, static_cast<RegionDependentXform *>(xform)); break;
@@ -3300,6 +3328,18 @@ namespace STK
       PutNLn(fp, binary);
     } 
   } //WriteBiasXform(FILE *fp, bool binary, BiasXform *xform)
+
+  //*****************************************************************************  
+  //*****************************************************************************  
+  void 
+  ModelSet::
+  WriteSumXform(FILE *fp, bool binary, SumXform* xform)
+  {
+    PutKwd(fp, binary, KID_Sum);
+    PutInt(fp, binary, xform->mOutSize);
+    PutInt(fp, binary, xform->mInSize / xform->mOutSize);
+    PutNLn(fp, binary); 
+  } //WriteSumXform(FILE *fp, bool binary, SumXform *xform)
 
   //*****************************************************************************  
   //*****************************************************************************  
@@ -3475,7 +3515,7 @@ namespace STK
       PutFlt(fp, binary, xform->mVector[0][i]);
     }
     PutNLn(fp, binary);
-  } //WriteConstantXform(FILE *fp, bool binary, BiasXform *xform)
+  } //WriteConstantXform(FILE *fp, bool binary, ConstantXform *xform)
   
   //*****************************************************************************
   //*****************************************************************************  
@@ -3596,6 +3636,7 @@ namespace STK
     PutInt(fp, binary, xform->mInSize);
     PutInt(fp, binary, xform->mNBestLikesVector.size());
     PutFlt(fp, binary, xform->mScale);
+    PutFlt(fp, binary, exp(xform->mPrune));
     PutNLn(fp, binary);
     WriteState(fp, binary, xform->mpState);
   } //WriteGmmPosteriorsXform(FILE *fp, bool binary, GmmPosteriorsXform *xform)
@@ -4046,7 +4087,7 @@ namespace STK
     }  
     
   } // void ReadAccum(int macro_type, HMMSetNodeName nodeName...)
-  
+
 
   //****************************************************************************  
   //****************************************************************************  
@@ -4057,6 +4098,28 @@ namespace STK
   {
     IStkStream                in;
     FILE*                     fp;
+  
+    // open the file
+    in.open(rFile.Physical().c_str(), std::ios::binary);
+    if (!in.good())
+    {
+      Error("Cannot open input accumulator file: '%s'", rFile.Physical().c_str());
+    }
+    
+    fp = in.file();
+    
+    ReadAccums(fp, rFile.Physical().c_str(), rFile.Weight(), totFrames, totLogLike, mmiDenominatorAccums);
+  
+    in.close();
+  }; // ReadAccums(...)
+
+  //****************************************************************************  
+  //****************************************************************************  
+  void
+  ModelSet::
+  ReadAccums(FILE *fp, const char *fileName, FLOAT weight, long* totFrames, FLOAT* totLogLike, 
+      int mmiDenominatorAccums)
+  {
     char                      macro_name[128];
     MyHSearchData*            hash;
     unsigned int              i;
@@ -4069,21 +4132,12 @@ namespace STK
     int                       mtm = MTM_PRESCAN | MTM_ALL;
                                     //MTM_PRESCAN | MTM_STATE | MTM_MIXTURE | MTM_MEAN | MTM_VARIANCE | MTM_TRANSITION;  
     macro_name[sizeof(macro_name)-1] = '\0';
-  
-    // open the file
-    in.open(rFile.Physical().c_str(), std::ios::binary);
-    if (!in.good())
-    {
-      Error("Cannot open input accumulator file: '%s'", rFile.Physical().c_str());
-    }
-    
-    fp = in.file();
     
     INT_32 i32;
     if (fread(&i32,       sizeof(i32),  1, fp) != 1 ||
         fread(totLogLike, sizeof(FLOAT), 1, fp) != 1) 
     {
-      Error("Invalid accumulator file: '%s'", rFile.Physical().c_str());
+      Error("Invalid accumulator file: '%s'", fileName);
     }
 
     *totFrames = i32;
@@ -4091,10 +4145,10 @@ namespace STK
 //    *totFrames  *= weight; // Not sure whether we should report weighted quantities or not
 //    *totLogLike *= weight;
   
-    ud.mpFileName   = rFile.Physical().c_str();
+    ud.mpFileName   = fileName;
     ud.mpFp         = fp;
     ud.mpModelSet   = this;
-    ud.mWeight      = rFile.Weight();;
+    ud.mWeight      = weight;;
     ud.mMmi         = mmiDenominatorAccums;
   
     for (;;) {
@@ -4130,7 +4184,7 @@ namespace STK
         if (c != '~'      || !strchr("hsmuvtxj", t = getc(fp)) ||
           getc(fp) != ' ' || getc(fp) != '"') 
         {
-          Error("Incompatible accumulator file: '%s'", rFile.Physical().c_str());
+          Error("Incompatible accumulator file: '%s'", fileName);
         }
       }
   
@@ -4159,7 +4213,7 @@ namespace STK
       skip_accum = 0;
       if (fread(&occurances, sizeof(occurances), 1, fp) != 1) 
       {
-        Error("Invalid accumulator file: '%s'", rFile.Physical().c_str());
+        Error("Invalid accumulator file: '%s'", fileName);
       }
       
       if (!mmiDenominatorAccums) macro->mOccurances += occurances;
@@ -4176,10 +4230,6 @@ namespace STK
         default:  assert(0);
       }
     }
-    
-    in.close();
-    //delete [] ud.mpFileName;
-    //free(ud.mpFileName);    
   }; // ReadAccums(...)
 
 
