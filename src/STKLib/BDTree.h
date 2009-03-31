@@ -1166,6 +1166,10 @@ namespace STK
     PushLeafSupervector(const std::vector<FLOAT>& rVector, bool backoff, 
         bool includeCounts);
 
+    const Distribution*
+    cpDistribution()
+    { return mpDist; }
+
   private:
     BSetQuestion*
     FindSubset_Greedy(NGramSubsets& rNGrams, BDTreeBuildTraits& rTraits, FLOAT* pSplitEnt,

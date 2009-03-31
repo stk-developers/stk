@@ -156,7 +156,7 @@ namespace STK {
   //***************************************************************************/
   void
   NGramPool::
-  AddFromStream(std::istream& rStream, FLOAT weight)
+  AddFromStream(std::istream& rStream, FLOAT weight, FLOAT threshold)
   {
     try 
     {
@@ -176,6 +176,8 @@ namespace STK {
       // copy the original data to a map container, which is faster for 
       // insertion and update
       ngram_map.insert(mData.begin(), mData.end());
+
+      rStream >> std::ws;
 
       // read till the end of file
       while (!rStream.eof()) 
@@ -228,18 +230,23 @@ namespace STK {
           (*tmp_sample)[token_index] = x;
         }
 
-        tmp_sample->mCounts = counts * weight ;
 
-        // if we have the ngram in the map, just add the counts
-        if ((i_ngram = ngram_map.find(tmp_sample)) != ngram_map.end()) {
-          (**i_ngram).mCounts += tmp_sample->mCounts;
+        if (counts > threshold) {
+          tmp_sample->mCounts = counts * weight ;
+          // if we have the ngram in the map, just add the counts
+          if ((i_ngram = ngram_map.find(tmp_sample)) != ngram_map.end()) {
+            (**i_ngram).mCounts += tmp_sample->mCounts;
+          }
+          else {
+            ngram_map.insert(ngram_map.end(),tmp_sample);
+            tmp_sample = NULL;
+          }
+          ++token_counter;
         }
         else {
-          ngram_map.insert(ngram_map.end(),tmp_sample);
+          delete tmp_sample;
           tmp_sample = NULL;
         }
-        
-        ++token_counter;
       } // while (!eof)
 
       // create new data vector out of the updated map container
@@ -267,7 +274,7 @@ namespace STK {
   //***************************************************************************/
   void
   NGramPool::
-  AddFromFile(const std::string& rFileName, FLOAT weight)
+  AddFromFile(const std::string& rFileName, FLOAT weight, FLOAT threshold)
   {
     try {
       if (weight > 0) {
@@ -283,7 +290,7 @@ namespace STK {
 
         stream >> std::ws;
         // stream.seekg(0);
-        AddFromStream(stream, weight);
+        AddFromStream(stream, weight, threshold);
 
         stream.close();
       }
