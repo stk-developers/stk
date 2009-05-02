@@ -21,11 +21,21 @@
 namespace STK
 {
 
+  // // virtual
+  // void
+  // Distribution::
+  // Dump(std::ostream& rStream, const std::string& rPrefix) const
+  // {
+  // }
+  
+  // //***************************************************************************/
+  // //***************************************************************************/
   // virtual
   void
   Distribution::
-  Dump(std::ostream& rStream, const std::string& rPrefix) const
+  DumpImplicit() const
   {
+    Dump(std::cout, " ");
   }
   
   // //***************************************************************************/
@@ -1376,6 +1386,17 @@ namespace STK
     }
   }
 
+
+  //***************************************************************************/
+  //***************************************************************************/
+  void
+  BDTree::
+  DumpImplicit() const
+  {
+    Dump(std::cout, " ");
+  }
+
+
   //***************************************************************************/
   //***************************************************************************/
   void
@@ -1395,15 +1416,14 @@ namespace STK
     }
   }
 
+
   //***************************************************************************/
   //***************************************************************************/
   void
   BDTree::
   ComputeBackoffDists(BDTree* pParent, FLOAT r)
   {
-    //mpBackoffDist = new VecDistribution(*mpDist);
     mpBackoffDist = mpDist->Clone();
-    mpBackoffDist->Reset();
 
     if (NULL != pParent && r > 0) {
       mpBackoffDist->Smooth(*(pParent->mpBackoffDist), r);
@@ -1414,6 +1434,7 @@ namespace STK
       mpTree1->ComputeBackoffDists(this, r);
     }
   }
+
 
   //***************************************************************************/
   //***************************************************************************/
@@ -1456,6 +1477,8 @@ namespace STK
 
     std::vector<BDTree*> leaf_map;
     std::vector<BDTree*>::iterator i_leaf;
+
+    // fill the leaves collection
     GetLeaves(leaf_map);
 
     // go through all data
@@ -1469,7 +1492,6 @@ namespace STK
 
       // if mpBackoff is not initialized yet
       if (NULL == p_node->mpBackoffDist) {
-        //p_node->mpBackoffDist = new VecDistribution(*(p_node->mpDist));
         p_node->mpBackoffDist = p_node->mpDist->Clone();
         p_node->mpDist->mN      = 0.0;
         p_node->mpDist->Reset();
@@ -1499,6 +1521,7 @@ namespace STK
     }
   }
   
+
   //***************************************************************************/
   //***************************************************************************/
   void
@@ -1513,6 +1536,7 @@ namespace STK
       mpDist->Reset();
     }
   }
+
 
   //***************************************************************************/
   //***************************************************************************/

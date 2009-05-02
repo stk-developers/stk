@@ -273,10 +273,10 @@ namespace STK
     ~NGramPool();
 
     void 
-    AddFromFile(const std::string& rFileName, FLOAT weight);
+    AddFromFile(const std::string& rFileName, FLOAT weight, FLOAT threshold);
 
     void 
-    AddFromStream(std::istream& rStream, FLOAT weight);
+    AddFromStream(std::istream& rStream, FLOAT weight, FLOAT threshold);
 
     void
     setPredictorVocab(VocabularyTable* pVocab)

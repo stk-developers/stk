@@ -208,6 +208,7 @@ int main(int argc, char* argv[])
     const char*                     trg_hmm_dir;
     const char*                     trg_hmm_ext;
     const char*                     trg_mmf;
+    const char*                     trg_acc;
     const char*                     src_lbl_dir;
     const char*                     src_lbl_ext;
     const char*                     src_mlf;
@@ -282,6 +283,7 @@ int main(int argc, char* argv[])
     BasicVector<FLOAT>*             p_weight_vector = NULL;
     
     bool                            write_raw_gmm = false;
+    bool                            model_update_does_not_normalize = false;
 
 
     enum  UpdateType update_type;
@@ -443,6 +445,7 @@ int main(int argc, char* argv[])
     trg_hmm_dir  = GetParamStr(&cfgHash, SNAME":TARGETMODELDIR",  NULL);
     trg_hmm_ext  = GetParamStr(&cfgHash, SNAME":TARGETMODELEXT",  NULL);
     trg_mmf      = GetParamStr(&cfgHash, SNAME":TARGETMMF",       NULL);
+    trg_acc      = GetParamStr(&cfgHash, SNAME":TARGETACCUM",     NULL);
     
     mmf_dir      = GetParamStr(&cfgHash, SNAME":MMFDIR",          ".");
     mmf_mask     = GetParamStr(&cfgHash, SNAME":MMFMASK",         NULL);
@@ -479,6 +482,10 @@ int main(int argc, char* argv[])
     frame_weight_mlf  = GetParamStr(&cfgHash, SNAME":FRAMEWEIGHTMLF",  NULL);
     frame_weight_mask = GetParamStr(&cfgHash, SNAME":FRAMEWEIGHTMASK",  NULL);
     frame_weight_ext  = GetParamStr(&cfgHash, SNAME":FRAMEWEIGHTEXT",  NULL);
+
+    // this will not normalize the stats when updating the model, giving stats
+    // instead of real model parameters
+    model_update_does_not_normalize  = GetParamBool(&cfgHash,SNAME":MODELUPDATEDOESNOTNORMALIZE",   false);
       
     for (; *cchrptr; cchrptr++)
     {
@@ -534,6 +541,11 @@ int main(int argc, char* argv[])
       print_registered_parameters();
     }
       
+    // check wheather by any chance we haven's specified both --recognet and -I
+    // params
+    if (NULL != network_file && NULL != src_mlf) {
+      Error("Cannot specify both --recognet and -I");
+    }
 
     if (NULL != src_mmf) {
       for (src_mmf=strtok(src_mmf, ","); src_mmf != NULL; src_mmf=strtok(NULL, ",")) {
@@ -746,6 +758,7 @@ int main(int argc, char* argv[])
     }
     hset.AllocateAccumulatorsForXformStats();
     hset.ReadRegionDependentXformIGFiStats();
+    hset.mModelUpdateDoesNotNormalize      = model_update_does_not_normalize;
 
     if ((hset.mUpdateMask & (UM_MEAN | UM_VARIANCE)) &&
        !hset.mAllMixuresUpdatableFromStatAccums) 
@@ -1039,9 +1052,9 @@ int main(int argc, char* argv[])
           p_weight_vector->Init(n_frames);
 
           // read the values
-          ::ReadFrameWeightVector(frame_weight_stream, 
+          ::ReadFrameWeightVector(frame_weight_stream,
               feature_repo.Current().Logical().c_str(), frame_weight_mask,
-              frame_weight_ext, p_weight_vector); 
+              frame_weight_ext, p_weight_vector);
         }
 
 
@@ -1146,8 +1159,11 @@ int main(int argc, char* argv[])
     if (parallel_mode > 0 || update_mode & UM_DUMP) 
     {  
       char accfn[32];
-      snprintf(accfn, sizeof(accfn)-1, "SER%d.acc", HIGHER_OF(parallel_mode, 0));
-      hset.WriteAccums(accfn, trg_hmm_dir, totFrames, totLogLike);
+      if(trg_acc == NULL) {
+        snprintf(accfn, sizeof(accfn)-1, "SER%d.acc", HIGHER_OF(parallel_mode, 0));
+        trg_acc = accfn;
+      }
+      hset.WriteAccums(trg_acc, trg_hmm_dir, totFrames, totLogLike);
     }
     
     if (parallel_mode <= 0 && update_mode & UM_UPDATE) 
@@ -1204,7 +1220,9 @@ int main(int argc, char* argv[])
           hset.ReadXformStats(trg_hmm_dir, xfStatsBin);
         }
         
+        // update the parameters based on the collected stats
         hset.UpdateFromAccums();
+
         if (! write_raw_gmm) {
           hset.WriteMmf(trg_mmf, trg_hmm_dir, trg_hmm_ext, hmms_binary);
         }

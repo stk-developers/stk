@@ -5,8 +5,10 @@
 #include <STKLib/Tokenizer.h>
 
 
+
 #include <algorithm>
 #include <cctype>
+#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -21,6 +23,11 @@ int main(int argc, char* argv[]) {
 #else
 
 #include <boost/program_options.hpp>
+
+// #define HAVE_HDF5
+#ifdef HAVE_HDF5
+#include <hdf5.h>
+#endif
 
 // ............................................................................
 // shorten namespace to program options
@@ -45,6 +52,11 @@ AdaptModel(const BDTree& rOrig, const NGramSubset& rNGrams,
     const std::string& rFileName, BDTreeBuildTraits& rTraits, 
     std::ostream* pOutVectorStream, BDTreeHeader file_header);
 
+#ifdef HAVE_HDF5
+hid_t
+H5CreateDataset(hid_t h5_file, const std::string& rFileName,
+    hid_t type_id, hid_t space_id, hid_t dcpl_id);
+#endif
 
 // A helper function to simplify the main part.
 template<class T>
@@ -80,6 +92,7 @@ int main(int argc, char* argv[])
     bool                    output_ARPA = false;
     int                     binary_format = 0;
     string                  heldout_data_fname;
+    FLOAT                   counts_threshold = 0.0;
     NGramSubsets*           heldout_collection_pntr = NULL;
     //VocabularyTable*        word_vocabulary = NULL;
     //VocabularyTable*        stem_vocabulary = NULL;
@@ -99,6 +112,7 @@ int main(int argc, char* argv[])
       ("adaptmap",                                                            "Use MAP adaptation instead of original algorithm") 
       ("adaptr",        po::value<FLOAT>(&new_tree_traits.mAdaptR),           "Adapt r factor")
       ("cfgfile,C",     po::value<string>(&config_file),                      "Configuration file")
+      ("countthreshold", po::value<FLOAT >(&counts_threshold),                "Ignore data whos value is less or equal to this threshold")
       ("help",                                                                "Print more detailed help") 
       ("includecounts",                                                       "In connection with outvectors and invector - augment each leaf with counts") 
       ("indexmlf",      po::value<bool>()->default_value(true),               "If true (default) perform indexing of MLF before reading") 
@@ -115,6 +129,7 @@ int main(int argc, char* argv[])
       ("order",         po::value<int>(&new_tree_traits.mOrder),              "Number of predictors")
       ("outfileversion", po::value<int>(),                                    "Source data script")
       ("outvectors",    po::value<string>(),                                  "Cluster vector output file")
+      ("outvectorsh5",  po::value<string>(),                                  "Cluster vector output hdf5 file")
       ("predvoc",       po::value<string>(&predictor_vocab_fname),            "Predictor vocabulary file")
       ("script,S",      po::value<string>(),                                  "Source data script")
       ("smoothr",       po::value<FLOAT >(&new_tree_traits.mSmoothR),         "Smooth r factor")
@@ -230,7 +245,7 @@ int main(int argc, char* argv[])
         // Create the stats file
         heldout_pool.setPredictorVocab(&predictor_vocabulary);
         heldout_pool.setTargetVocab(target_vocabulary);
-        heldout_pool.AddFromFile(heldout_data_fname, 1);
+        heldout_pool.AddFromFile(heldout_data_fname, 1, counts_threshold);
 
         std::cout << "Heldout data mass: " << heldout_pool.Mass() << std::endl;
         std::cout << "Heldout token count: " << heldout_pool.TokenCount() << std::endl;
@@ -329,7 +344,7 @@ int main(int argc, char* argv[])
         }
 
         // add the data
-        i_data_pools->second.AddFromStream(*p_in_data_stream, new_record.Weight());
+        i_data_pools->second.AddFromStream(*p_in_data_stream, new_record.Weight(), counts_threshold);
 
         if (var_map.count("inputmlf")) {
           // Need to close for proper work
@@ -493,7 +508,7 @@ int main(int argc, char* argv[])
         }
 
         // parse data file
-        data.AddFromStream(*p_in_data_stream, new_record.Weight());
+        data.AddFromStream(*p_in_data_stream, new_record.Weight(), counts_threshold);
 
         if (var_map.count("inputmlf")) {
           // Need to close for proper work
@@ -555,7 +570,10 @@ int main(int argc, char* argv[])
 
       // recompute non-leaf distributions
       new_tree.RecomputeDists();
-      new_tree.ComputeBackoffDists(NULL, new_tree_traits.mSmoothR);
+
+      if (new_tree_traits.mSmoothR > 0.0) {
+        new_tree.ComputeBackoffDists(NULL, new_tree_traits.mSmoothR);
+      }
 
       if (var_map.count("outvectors")) {
         std::string output_file = var_map["outvectors"].as<string >();
@@ -571,7 +589,7 @@ int main(int argc, char* argv[])
         // stack the leaves to the supervector
         new_tree.FillLeafSupervector(super_vector, true, var_map.count("includecounts"));
         // write to stream
-        out_vector_stream << output_file << " " << super_vector << std::endl;
+        out_vector_stream << super_vector << std::endl;
         out_vector_stream.close();
       }
 
@@ -641,6 +659,7 @@ int main(int argc, char* argv[])
 
       // recompute non-leaf distributions
       new_tree.RecomputeDists();
+
       // compute backoffs
       new_tree.ComputeBackoffDists(NULL, new_tree_traits.mSmoothR);
 
@@ -727,7 +746,8 @@ int main(int argc, char* argv[])
         }
 
         std::cout << "To logical " << new_record.Logical() << " adding physical "
-          << new_record.Physical() << " with weight " << new_record.Weight() << std::endl;
+          << new_record.Physical() << " with weight " << new_record.Weight() 
+          << std::endl;
 
         if (var_map.count("inputmlf")) {
           // we'll be adding from stream if MLF specified
@@ -749,7 +769,7 @@ int main(int argc, char* argv[])
         }
 
         // parse the file
-        data_pools.back().AddFromStream(*p_in_data_stream, new_record.Weight());
+        data_pools.back().AddFromStream(*p_in_data_stream, new_record.Weight(), counts_threshold);
 
         if (var_map.count("inputmlf")) {
           mlf_data_stream.Close();
@@ -912,7 +932,7 @@ int main(int argc, char* argv[])
         throw runtime_error("Predictor vocabulary file not set");
       }
 
-      if (!var_map.count("outvectors")) {
+      if (!var_map.count("outvectors") && !var_map.count("outvectorsh5")) {
         throw runtime_error("--outvectors expected");
       }
 
@@ -943,52 +963,199 @@ int main(int argc, char* argv[])
       BasicVector<FLOAT> super_vector;
 
       string script_file = var_map["script"].as<string >();
-      string output_file = var_map["outvectors"].as<string >();
 
-      // parse script file
-      IStkStream list_stream(script_file.c_str());
-      if (!list_stream.good()) {
-        throw runtime_error(string("Error opening source list file ") +
-            script_file);
+      if (var_map.count("outvectorsh5")) {
+#ifdef HAVE_HDF5
+        hsize_t               vec_size;
+        hsize_t               dim_size;
+        size_t                n_leaves;
+        std::vector<BDTree*>  leaves;
+        std::string           output_file = var_map["outvectorsh5"].as<string >();
+
+        // compute sizes
+        n_leaves = new_tree.GetLeaves(leaves);
+
+        const VecDistribution* p_aux_distr = 
+          dynamic_cast<const VecDistribution*>(leaves.front()->cpDistribution());
+
+        if (NULL == p_aux_distr) {
+          throw std::runtime_error("Cannot collect couns for non-vector distribution implementations");
+        }
+
+        dim_size    = p_aux_distr->Size();
+        vec_size    = n_leaves * dim_size;
+
+        // parse script file
+        IStkStream list_stream(script_file.c_str());
+        if (!list_stream.good()) {
+          throw runtime_error(string("Error opening source list file ") +
+              script_file);
+        }
+
+
+        hid_t       h5_file;
+        hid_t       h5_dataset;            /* file and dataset handles */
+        hid_t       h5_datatype;
+        hid_t       h5_dataspace;   /* handles */
+        hid_t       h5_plist;
+        herr_t      h5_status;                             
+        unsigned szip_options_mask;
+        unsigned szip_pixels_per_block;
+
+        /* Save old error handler */
+        herr_t  (*p_h5_old_error_function)(void*);
+        void*   p_h5_old_client_data;
+        H5Eget_auto(&p_h5_old_error_function, &p_h5_old_client_data);
+
+        /* Turn off error handling */
+        H5Eset_auto(NULL, NULL);
+
+        /*
+         * Create a new file using H5F_ACC_TRUNC access,
+         * default file creation properties, and default file
+         * access properties.
+         */
+        h5_file = H5Fcreate(output_file.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+
+        /*
+         * Describe the size of the array and create the data space for fixed
+         * size dataset. 
+         */
+        h5_dataspace = H5Screate_simple(1, &vec_size, NULL); 
+
+        /* 
+         * Define datatype for the data in the file.
+         * We will store little endian INT numbers.
+         */
+        h5_datatype = H5Tcopy(H5T_NATIVE_FLOAT);
+        h5_status  = H5Tset_order(h5_datatype, H5T_ORDER_LE);
+
+        /*
+         * Define property list for dataset---we want to compress the files
+         */
+        h5_plist = H5Pcreate(H5P_DATASET_CREATE);
+        H5Pset_chunk(h5_plist, 1, &dim_size);
+        H5Pset_deflate(h5_plist, 6);
+
+        // browse the list
+        string line_buf;
+        while (!list_stream.eof()) {
+          std::getline(list_stream, line_buf);
+          list_stream >> std::ws;
+
+          // parse the logical and physical part and the weights
+          FileListElem new_record(line_buf);
+
+          // parse the file
+          NGramPool  data_pool(file_header.mOrder);
+          data_pool.setPredictorVocab(&predictor_vocabulary);
+          data_pool.setTargetVocab(target_vocabulary);
+          data_pool.AddFromFile(new_record.Physical(), new_record.Weight(), counts_threshold);
+
+          // clear previous counts 
+          new_tree.ResetLeaves();
+
+          // cluster the data
+          new_tree.CollectCounts(data_pool);
+
+          // stack the leaves to the supervector
+          new_tree.FillLeafSupervector(super_vector, false, false);
+
+           /*
+           * Create a new dataset within the file using defined dataspace and
+           * datatype and default dataset creation properties.
+           */
+          // h5_dataset = H5Dcreate(h5_file, new_record.Logical().c_str(), 
+          //     h5_datatype, h5_dataspace, h5_plist);
+
+          h5_dataset = H5CreateDataset(h5_file, new_record.Logical().c_str(), 
+              h5_datatype, h5_dataspace, h5_plist);
+
+          // 
+          if (h5_dataset < 0) {
+            throw runtime_error("Could not create dataset");
+          }
+          
+          /*
+           * Write the data to the dataset using default transfer properties.
+           */
+          h5_status = H5Dwrite(h5_dataset, h5_datatype, H5S_ALL, H5S_ALL, 
+              H5P_DEFAULT, super_vector.cpData());
+
+          if (h5_status < 0) {
+            throw runtime_error("Could not write dataset");
+          }
+          
+          /*
+           * Close/release resources.
+           */
+          H5Dclose(h5_dataset);
+        }
+
+        /*
+         * Close/release resources.
+         */
+        H5Sclose(h5_dataspace);
+        H5Tclose(h5_datatype);
+        H5Fclose(h5_file);
+
+        /* Restore previous error handler */
+        H5Eset_auto(p_h5_old_error_function, p_h5_old_client_data);
+	      
+        list_stream.close();
+#else
+        throw runtime_error("HDF5 support has not been enabled");
+#endif
       }
+      else {
+        string output_file = var_map["outvectors"].as<string >();
 
-      // open output file
-      OStkStream vector_stream(output_file.c_str());
-      if (!vector_stream.good()) {
-        throw runtime_error(string("Error opening output file ") +
-            output_file);
+
+        // parse script file
+        IStkStream list_stream(script_file.c_str());
+        if (!list_stream.good()) {
+          throw runtime_error(string("Error opening source list file ") +
+              script_file);
+        }
+
+        // open output file
+        OStkStream vector_stream(output_file.c_str());
+        if (!vector_stream.good()) {
+          throw runtime_error(string("Error opening output file ") +
+              output_file);
+        }
+
+        // browse the list
+        string line_buf;
+        while (!list_stream.eof()) {
+          std::getline(list_stream, line_buf);
+          list_stream >> std::ws;
+
+          // parse the logical and physical part and the weights
+          FileListElem new_record(line_buf);
+
+          // parse the file
+          NGramPool  data_pool(file_header.mOrder);
+          data_pool.setPredictorVocab(&predictor_vocabulary);
+          data_pool.setTargetVocab(target_vocabulary);
+          data_pool.AddFromFile(new_record.Physical(), new_record.Weight(), counts_threshold);
+
+          // clear previous counts 
+          new_tree.ResetLeaves();
+
+          // cluster the data
+          new_tree.CollectCounts(data_pool);
+
+          // stack the leaves to the supervector
+          new_tree.FillLeafSupervector(super_vector, false, false);
+
+          // write to stream
+          vector_stream << new_record.Logical() << " " << super_vector << std::endl;
+        }
+
+        list_stream.close();
+        vector_stream.close();
       }
-
-      // browse the list
-      string line_buf;
-      while (!list_stream.eof()) {
-        std::getline(list_stream, line_buf);
-        list_stream >> std::ws;
-
-        // parse the logical and physical part and the weights
-        FileListElem new_record(line_buf);
-
-        // parse the file
-        NGramPool  data_pool(file_header.mOrder);
-        data_pool.setPredictorVocab(&predictor_vocabulary);
-        data_pool.setTargetVocab(target_vocabulary);
-        data_pool.AddFromFile(new_record.Physical(), new_record.Weight());
-
-        // clear previous counts 
-        new_tree.ResetLeaves();
-
-        // cluster the data
-        new_tree.CollectCounts(data_pool);
-
-        // stack the leaves to the supervector
-        new_tree.FillLeafSupervector(super_vector, false, false);
-
-        // write to stream
-        vector_stream << new_record.Logical() << " " << super_vector << std::endl;
-      }
-
-      list_stream.close();
-      vector_stream.close();
     }
 
     //..........................................................................
@@ -1094,7 +1261,9 @@ AdaptModel(const BDTree& rOrig, const NGramSubset& rNGrams,
 {
   BDTree new_tree(rOrig);
 
-  // clear new distributions
+  // this step clears the mpDist distributions. they will be filled with data
+  // and adapted using mpBackoffDist, which should be now ready, as 
+  // ComputeBackoffDists must have been already called
   new_tree.ResetLeaves();
 
   // adapt using new data
@@ -1134,6 +1303,71 @@ AdaptModel(const BDTree& rOrig, const NGramSubset& rNGrams,
     out_model_stream.close();
   }
 }
+
+
+#ifdef HAVE_HDF5
+hid_t 
+H5RCreateDataset(hid_t h5_location, const char* pFileName,
+    hid_t type_id, hid_t space_id, hid_t dcpl_id)
+{
+  hid_t h5_dataset;
+
+  // check wheather slashes exist in the middle somewhere
+  const char* p_last_pos = std::strchr(pFileName, '/');
+
+  // make sure that the current char is not slash
+  assert(p_last_pos != pFileName);
+
+  // if no slash is found, we can directly create the dataset,
+  // otherwise we'll create the parent groups
+  if (p_last_pos == NULL) {
+    h5_dataset = H5Dcreate(h5_location, pFileName,
+      type_id, space_id, dcpl_id);
+  }
+  else {
+    size_t  len = p_last_pos - pFileName;
+    char*   p_group_name = new char[len+1];
+    hid_t   h5_grp;
+
+    // extract the current group name
+    std::strncpy(p_group_name, pFileName, len);
+    p_group_name[len] = '\0';
+
+    // try to open the group (within the current location)
+    h5_grp = H5Gopen(h5_location, p_group_name);
+
+    // if we didn't manage to open the group, we'll create it and we'll set
+    // the current location accordingly
+    if (h5_grp < 0) {
+      std::cout << "Creating group " << p_group_name << std::endl;
+      h5_location = H5Gcreate(h5_location, p_group_name, -1);
+    }
+    else {
+      h5_location = h5_grp;
+    }
+
+    delete [] p_group_name;
+
+    h5_dataset = H5RCreateDataset(h5_location, p_last_pos+1, type_id,
+        space_id, dcpl_id);
+  }
+
+  return h5_dataset;
+}
+
+hid_t
+H5CreateDataset(hid_t h5_file, const std::string& rFileName,
+    hid_t type_id, hid_t space_id, hid_t dcpl_id)
+{
+  const char* p_file_name = rFileName.c_str();
+
+  while (*p_file_name == '/' || isspace(*p_file_name)) {
+    p_file_name++;
+  }
+
+  return H5RCreateDataset(h5_file, p_file_name, type_id, space_id, dcpl_id);
+}
+#endif //HAVE_HDF5
 
 #endif //boost 
 

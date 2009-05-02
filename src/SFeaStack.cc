@@ -215,59 +215,87 @@ int main(int argc, char *argv[])
     }
   }
   
-  
+  // DO SOMETHING ..............................................................
+  std::vector<std::string>    file_names;
+  std::vector<Matrix<FLOAT> > feature_matrices;
 
   for (file_name=feature_files; file_name != NULL; file_name=file_name->mpNext) 
   {
+    // give info
     if (trace_flag & 1) TraceLog("Processing record %d/%d '%s'",
                                 ++fcnt, nfeature_files, file_name->logical);
                                 
-    std::string input_file1;
-    std::string input_file2;
-    std::string output_file;
+    size_t      n_file_names = 0;
+    size_t      n_rows = 0;
+    size_t      n_cols = 0;
+    std::string aux_file_name;
 
+    // this is what we parse
     std::stringstream file_record(file_name->mpPhysical);
-    file_record >> input_file1 >> input_file2 >> output_file;
 
+    // read the column defintions
+    while (!file_record.eof()) {
+      file_record >> aux_file_name;
+      file_names.push_back(aux_file_name);
 
-    ReadHTKFeatures(input_file1.c_str(), swap_features,
-                    startFrmExt, endFrmExt, targetKind,
-                    derivOrder, derivWinLengths, &header1,
-                    cmn_path, cvn_path, cvg_file, &rhfbuff, feature_matrix1);
-                            
-    ReadHTKFeatures(input_file2.c_str(), swap_features,
-                    startFrmExt, endFrmExt, targetKind,
-                    derivOrder, derivWinLengths, &header2,
-                    cmn_path, cvn_path, cvg_file, &rhfbuff, feature_matrix2);
+      ++ n_file_names;
+    }
+    std::string& r_output_file = file_names.back();
 
-    if (feature_matrix1.Rows() != feature_matrix2.Rows()) {
-      Error("Numbers of frames differ [%d] != [%d]",
-          feature_matrix1.Rows(), feature_matrix2.Rows());
+    // check that there is at least something to stack
+    if (n_file_names < 3) {
+      Error("Nothing to stack for record: %s", file_name->mpPhysical);
+    }
+
+    // allocate feature matrices
+    feature_matrices.resize(file_names.size());
+
+    // mark the last matrix
+    Matrix<FLOAT>& r_output_matrix = feature_matrices.back();
+
+    // read feature matrices
+    for (size_t i_file=0; i_file< (n_file_names-1); ++i_file) {
+      ReadHTKFeatures(file_names[i_file].c_str(), swap_features,
+                      startFrmExt, endFrmExt, targetKind,
+                      derivOrder, derivWinLengths, &header1,
+                      cmn_path, cvn_path, cvg_file, &rhfbuff, 
+                      feature_matrices[i_file]);
+
+      // check for number of rows (has to be the same through all files
+      if (0 == i_file) {
+        n_rows = feature_matrices[i_file].Rows();
+      }
+      else if (n_rows != feature_matrices[i_file].Rows()) {
+        Error("Numbers of frames differ [%d] != [%d]",
+            feature_matrices[i_file].Rows(), n_rows);
+      }
+
+      // count total number of columns
+      n_cols += feature_matrices[i_file].Cols();
     }
 
     // Initialize output matrix
-    feature_matrix3.Init(feature_matrix1.Rows(), feature_matrix1.Cols() + feature_matrix2.Cols());
+    r_output_matrix.Init(n_rows, n_cols);
                             
-    // Stack two input matrices
-    for (i = 0; i < feature_matrix1.Rows(); ++i) {
-      int j;
-      for (j = 0; j < feature_matrix1.Cols(); j++) {
-        feature_matrix3[i][j] = feature_matrix1[i][j];
+    // Stack input matrices
+    size_t offset = 0;
+    for (size_t i_file=0; i_file< (n_file_names-1); ++i_file) {
+      for (i = 0; i< n_rows; ++i) {
+        memcpy(r_output_matrix[i] + offset, feature_matrices[i_file][i], 
+            sizeof(FLOAT) * feature_matrices[i_file].Cols());
       }
 
-      int offset = j;
-
-      for (j = 0; j < feature_matrix2.Cols(); j++) {
-        feature_matrix3[i][j + offset] = feature_matrix2[i][j];
-      }
+      offset += feature_matrices[i_file].Cols();
     }
 
+    // write the output
+    if ((ofp = fopen(r_output_file.c_str(), "wb")) == NULL) {
+      Error("Cannot open output feature file: '%s'", r_output_file.c_str());
+    }
 
-    if ((ofp = fopen(output_file.c_str(), "wb")) == NULL)
-      Error("Cannot open output feature file: '%s'", output_file.c_str());
-
-    if (WriteHTKHeader(ofp, header3, 1))
-      Error("Cannot write to output feature file: '%s'", output_file.c_str());
+    if (WriteHTKHeader(ofp, header3, 1)) {
+      Error("Cannot write to output feature file: '%s'", r_output_file.c_str());
+    }
     
     targetKind = header1.mSampleKind;
     if (WriteHTKFeatures(
@@ -275,11 +303,12 @@ int main(int argc, char *argv[])
 	  header1.mSamplePeriod,
 	  p_input ? (PARAMKIND_USER | targetKind & PARAMKIND_C) : targetKind,
 	  swap_fea_out,
-          feature_matrix3)) 
+          r_output_matrix)) 
     {
-      Error("Cannot write to output feature file: '%s'", output_file.c_str());
+      Error("Cannot write to output feature file: '%s'", r_output_file.c_str());
     }
 
+    // collect some stats
     tot_frames += header1.mNSamples;
     
     if(trace_flag & 1) 
@@ -287,14 +316,20 @@ int main(int argc, char *argv[])
       
     fclose(ofp);
 
-    feature_matrix1.Destroy();
-    feature_matrix2.Destroy();
-    feature_matrix3.Destroy();
+    // cleanup
+    for (size_t i_file=0; i_file< n_file_names; ++i_file) {
+      feature_matrices[i_file].Destroy();
+    }
+
+    file_names.clear();
+    feature_matrices.clear();
   }
   
+  // 
   if (trace_flag & 2) 
     TraceLog("Total number of frames: %d", tot_frames);
 
+  // total cleanup
   free(derivWinLengths);
 
   while (feature_files) 

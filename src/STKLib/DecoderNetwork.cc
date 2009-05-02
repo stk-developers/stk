@@ -11,8 +11,8 @@ namespace STK
   //***************************************************************************
 //  int nbacklinkscmp(const void *a, const void *b) 
 //  {
-//    return (*(DecoderNetwork::Node **) a)->rNBackLinks() 
-//         - (*(DecoderNetwork::Node **) b)->rNBackLinks();
+//    return (*(DecoderNetwork::NodeType **) a)->rNBackLinks() 
+//         - (*(DecoderNetwork::NodeType **) b)->rNBackLinks();
 //  }
   
   
@@ -40,13 +40,13 @@ namespace STK
     BuildFromLabels(const Label* pLabels, NodeKind nodeKind)
     {
       const Label*   p_lp;
-      Node*      p_first;
-      Node*      p_last = &(*end());
-      Node*      p_node;
+      NodeType*      p_first;
+      NodeType*      p_last = &(*end());
+      NodeType*      p_node;
     
       // allocate the memory
-      if ((p_first             = (Node *) calloc(1, sizeof(Node))) == NULL ||
-          (p_last              = (Node *) calloc(1, sizeof(Node))) == NULL ||
+      if ((p_first             = (NodeType *) calloc(1, sizeof(NodeType))) == NULL ||
+          (p_last              = (NodeType *) calloc(1, sizeof(NodeType))) == NULL ||
           (p_first->rpLinks()    = (LinkType *) malloc(sizeof(LinkType))) == NULL    ||
           (p_last->rpBackLinks() = (LinkType *) malloc(sizeof(LinkType))) == NULL) 
       {
@@ -70,9 +70,9 @@ namespace STK
       
       for (p_lp = pLabels; p_lp != NULL; p_lp = p_lp->mpNext) 
       {
-        Node*  p_tmp_node;
+        NodeType*  p_tmp_node;
     
-        if ((p_tmp_node              = (Node *) calloc(1, sizeof(Node))) == NULL ||
+        if ((p_tmp_node              = (NodeType *) calloc(1, sizeof(NodeType))) == NULL ||
             (p_tmp_node->rpLinks()     = (LinkType *) malloc(sizeof(LinkType))) == NULL    ||
             (p_tmp_node->rpBackLinks() = (LinkType *) malloc(sizeof(LinkType))) == NULL) 
         {
@@ -116,7 +116,7 @@ namespace STK
 
       this->splice(p_first, p_last);
     }
-  // Network::MakeNetworkFromLabels(Label * pLabels, Node nodeType)
+  // Network::MakeNetworkFromLabels(Label * pLabels, NodeType nodeType)
   //***************************************************************************
   
 
@@ -131,8 +131,8 @@ namespace STK
       bool keep_word_nodes,
       bool multiple_pronun)
     {
-      Node* node; 
-      Node* prev = NULL;
+      NodeType* node; 
+      NodeType* prev = NULL;
       int   i;
       int   j;
     
@@ -167,7 +167,7 @@ namespace STK
         // link arrays of backlinked nodes to hold word->npronuns more backlinks
         for (i = 0; i < node->rNBackLinks(); i++) 
         {
-          Node *bakcnode = node->rpBackLinks()[i].pNode();
+          NodeType *bakcnode = node->rpBackLinks()[i].pNode();
 
           for (j=0; j<bakcnode->NLinks() && bakcnode->rpLinks()[j].pNode()!=node; j++)
           {}
@@ -187,7 +187,7 @@ namespace STK
         // backlink arrays of linked nodes to hold word->npronuns more backlinks
         for (i=0; i < node->NLinks(); i++) 
         {
-          Node* forwnode = node->rpLinks()[i].pNode();
+          NodeType* forwnode = node->rpLinks()[i].pNode();
 
           for (j=0;j<forwnode->rNBackLinks()&&forwnode->rpBackLinks()[j].pNode()!=node;j++)
           {}
@@ -209,11 +209,11 @@ namespace STK
         for (i = 0; i < word->npronuns; i++) 
         {
           Pronun *pronun = word->pronuns[i];
-          Node *pronun_first = NULL, *pronun_prev = NULL, *tnode;
+          NodeType *pronun_first = NULL, *pronun_prev = NULL, *tnode;
     
           for (j = 0; j < pronun->nmodels; j++) 
           {
-            tnode = (Node *) calloc(1, sizeof(Node));
+            tnode = (NodeType *) calloc(1, sizeof(NodeType));
             
             if (tnode == NULL) 
               Error("Insufficient memory");
@@ -251,7 +251,7 @@ namespace STK
           
           if (keep_word_nodes || j == 0) 
           {
-            tnode = (Node *) calloc(1, sizeof(Node));
+            tnode = (NodeType *) calloc(1, sizeof(NodeType));
             
             if (tnode == NULL) Error("Insufficient memory");
     
@@ -291,7 +291,7 @@ namespace STK
     
           for (j = 0; j < node->rNBackLinks(); j++) 
           {
-            Node* backnode(node->rpBackLinks()[j].pNode());
+            NodeType* backnode(node->rpBackLinks()[j].pNode());
 
             backnode->rpLinks()[backnode->NLinks()].SetNode(pronun_first);
             backnode->rpLinks()[backnode->NLinks()].SetLmLike(node->rpBackLinks()[j].LmLike());
@@ -302,7 +302,7 @@ namespace STK
 
           for (j=0; j < node->NLinks(); j++) 
           {
-            Node *forwnode = node->rpLinks()[j].pNode();
+            NodeType *forwnode = node->rpLinks()[j].pNode();
             forwnode->rpBackLinks()[forwnode->rNBackLinks()].SetNode(pronun_prev);
             forwnode->rpBackLinks()[forwnode->rNBackLinks()].SetLmLike(node->rpLinks()[j].LmLike());
             forwnode->rpBackLinks()[forwnode->rNBackLinks()].SetAcousticLike(node->rpLinks()[j].AcousticLike());
@@ -330,7 +330,7 @@ namespace STK
     ExpandMonophonesToTriphones(MyHSearchData *nonCDphones, 
         MyHSearchData *CDphones)
     {
-      Node *  p_node;
+      NodeType *  p_node;
       int     did_we_clone;
       int     i;
       int     j;
@@ -342,7 +342,7 @@ namespace STK
       {
         ENTRY           e    = {0}; //{0} is just to make compiler happy
         ENTRY*          ep;
-        Node*      prev = NULL;
+        NodeType*      prev = NULL;
         
         did_we_clone = 0;
         
@@ -359,7 +359,7 @@ namespace STK
             e.key = p_node->mC.mpName;
             my_hsearch_r(e, FIND, &ep, nonCDphones);
             if (ep == NULL || !reinterpret_cast<size_t>(ep->data))
-              continue; // Node is not a Tee model
+              continue; // NodeType is not a Tee model
           }
           
           did_we_clone = 1;
@@ -369,7 +369,7 @@ namespace STK
           // link arrays of back-linked nodes to hold node->NLinks() more links
           for (j=0; j < p_node->rNBackLinks(); j++) 
           {
-            Node *backnode = p_node->rpBackLinks()[j].pNode();
+            NodeType *backnode = p_node->rpBackLinks()[j].pNode();
             
             for (k=0; k<backnode->NLinks() && backnode->rpLinks()[k].pNode()!=p_node; k++)
             {}
@@ -393,7 +393,7 @@ namespace STK
           // backlink arrays of linked nodes to hold node->rNBackLinks() more backlinks
           for (j=0; j < p_node->NLinks(); j++) 
           {
-            Node *forwnode = p_node->rpLinks()[j].pNode();
+            NodeType *forwnode = p_node->rpLinks()[j].pNode();
             
             for (k=0;k<forwnode->rNBackLinks()&&forwnode->rpBackLinks()[k].pNode()!=p_node;k++)
             {}
@@ -418,11 +418,11 @@ namespace STK
           {
             for (j=0; j < p_node->rNBackLinks(); j++) 
             {
-              Node *  tnode;
+              NodeType *  tnode;
               LinkType    forwlink = p_node->rpLinks()[i];
               LinkType    backlink = p_node->rpBackLinks()[j];
     
-              if ((tnode = (Node *) calloc(1, sizeof(Node))) == NULL)
+              if ((tnode = (NodeType *) calloc(1, sizeof(NodeType))) == NULL)
                 Error("Insufficient memory");
               
               tnode->mC.mpName = NULL;
@@ -473,7 +473,7 @@ namespace STK
         p_node->mAux = id++;
     
       // Expand monophone nodes to triphone nodes
-      Node *prev = NULL;
+      NodeType *prev = NULL;
       for (p_node = pFirst(); p_node != NULL; prev = p_node, p_node = p_node->mpNext) 
       {
         ENTRY e = {0}; //{0} is just to make compiler happy
@@ -488,7 +488,7 @@ namespace STK
         assert(p_node->mC.mType & NT_PHONE);
         e.key = p_node->mC.mpName;
         my_hsearch_r(e, FIND, &ep, nonCDphones);
-        if (ep != NULL && reinterpret_cast<size_t>(ep->data)) continue; // Node is a Tee model
+        if (ep != NULL && reinterpret_cast<size_t>(ep->data)) continue; // NodeType is a Tee model
     
         assert(prev != NULL); //Otherwise first node is not Null node
     
@@ -519,7 +519,7 @@ namespace STK
         // link arrays of backlinked nodes to hold nforwmononodes more links
         for (j=0; j < p_node->rNBackLinks(); j++) 
         {
-          Node *backnode = p_node->rpBackLinks()[j].pNode();
+          NodeType *backnode = p_node->rpBackLinks()[j].pNode();
           for (k=0; k<backnode->NLinks() && backnode->rpLinks()[k].pNode()!=p_node; k++);
           assert(k < backnode->NLinks());
           // Otherwise link to 'node' is missing from which backlink exists
@@ -537,7 +537,7 @@ namespace STK
         // backlink arrays of linked nodes to hold nbackmononodes more backlinks
         for (j=0; j < p_node->NLinks(); j++) 
         {
-          Node *forwnode = p_node->rpLinks()[j].pNode();
+          NodeType *forwnode = p_node->rpLinks()[j].pNode();
           for (k=0;k<forwnode->rNBackLinks()&&forwnode->rpBackLinks()[k].pNode()!=p_node;k++);
           assert(k < forwnode->rNBackLinks());
           // Otherwise link to 'p_node' is missing from which backlink exists
@@ -581,8 +581,8 @@ namespace STK
             assert((j <  nbackmononodes-1 && backmono_end <  p_node->rpBackLinks()+p_node->rNBackLinks()) ||
                    (j == nbackmononodes-1 && backmono_end == p_node->rpBackLinks()+p_node->rNBackLinks()));
     
-            Node * tnode;
-            if ((tnode = (Node *) calloc(1, sizeof(Node))) == NULL)
+            NodeType * tnode;
+            if ((tnode = (NodeType *) calloc(1, sizeof(NodeType))) == NULL)
               Error("Insufficient memory");
             
             *tnode = *p_node;
@@ -633,8 +633,8 @@ namespace STK
       {
         ENTRY     e       = {0}; //{0} is just to make compiler happy
         ENTRY*    ep      = NULL;
-        Node*     lc      = NULL;
-        Node*     rc      = NULL;
+        NodeType*     lc      = NULL;
+        NodeType*     rc      = NULL;
         char*     lcname  = NULL;
         char*     rcname  = NULL;
         char*     triname = NULL;
@@ -670,7 +670,7 @@ namespace STK
             
             e.key  = lc->mC.mpName;
             my_hsearch_r(e, FIND, &ep, nonCDphones);
-            if (ep == NULL || !reinterpret_cast<size_t>(ep->data)) break; // Node represents Tee model
+            if (ep == NULL || !reinterpret_cast<size_t>(ep->data)) break; // NodeType represents Tee model
           }
           
           for (rc = p_node;;) 
@@ -683,7 +683,7 @@ namespace STK
             
             e.key  = rc->mC.mpName;
             my_hsearch_r(e, FIND, &ep, nonCDphones);
-            if (ep == NULL || !reinterpret_cast<size_t>(ep->data)) break; // Node represents Tee model
+            if (ep == NULL || !reinterpret_cast<size_t>(ep->data)) break; // NodeType represents Tee model
           }
         }
         
@@ -766,7 +766,7 @@ namespace STK
       FLOAT                   lmScale,
       FLOAT                   posteriorScale)
     {
-      Node*              p_node(pFirst());
+      NodeType*              p_node(pFirst());
 
       if (expOptions.mNoWordExpansion  && !expOptions.mCDPhoneExpansion &&
           expOptions.mNoOptimization   && !rFormat.mNoLMLikes &&
@@ -873,9 +873,9 @@ namespace STK
     {
       int       i;
       int       j;
-      Node *    chain;
-      Node *    last;
-      Node *    node;
+      NodeType *    chain;
+      NodeType *    last;
+      NodeType *    node;
     
       // Sort nodes for forward (Viterbi) propagation
     
@@ -895,7 +895,7 @@ namespace STK
       while (chain) 
       {
         bool    short_curcuit = true;
-        Node ** curPtr = &chain;
+        NodeType ** curPtr = &chain;
         i = 0;
     
         while (*curPtr) 
@@ -953,7 +953,7 @@ namespace STK
       while (chain) 
       {
         bool short_curcuit = true;
-        Node **curPtr = &chain;
+        NodeType **curPtr = &chain;
     
         while (*curPtr) 
         {
@@ -995,8 +995,8 @@ namespace STK
     DecoderNetwork::
     TopologicalSort()
     {
-      Node *    node;
-      Node *    lastnode;
+      NodeType *    node;
+      NodeType *    lastnode;
       int       i;
       int       j;
       int       unreachable = 0;
@@ -1008,7 +1008,7 @@ namespace STK
       {
         for (i=0; i < node->NLinks(); i++) 
         {
-          Node *lnknode = node->rpLinks()[i].pNode();
+          NodeType *lnknode = node->rpLinks()[i].pNode();
           
           if (lnknode->mAux == 0) 
           {
@@ -1041,7 +1041,7 @@ namespace STK
         {
           for (i=0; i < node->NLinks(); i++) 
           {
-            Node *lnknode = node->rpLinks()[i].pNode();
+            NodeType *lnknode = node->rpLinks()[i].pNode();
             if (lnknode->mAux == 0) 
             {
               lastnode->mpNext = lnknode;
@@ -1071,7 +1071,7 @@ namespace STK
       {
         while (node->mpBackNext && node->mpBackNext->mAux == 0) 
         {
-          Node *tnode = node->mpBackNext;
+          NodeType *tnode = node->mpBackNext;
           node->mpBackNext = node->mpBackNext->mpBackNext;
           unreachable++;
           free(tnode->rpLinks());
@@ -1102,7 +1102,7 @@ namespace STK
       FLOAT lmScale,
       FLOAT posteriorScale)
     {
-      Node *    node;
+      NodeType *    node;
       int       i;
       
       // For each node, sort links by pointer value to allow
@@ -1169,13 +1169,13 @@ namespace STK
       int     l; 
       int     m;
       int     rep;
-      Node*   p_tnode;
+      NodeType*   p_tnode;
       int     node_removed = 0;
       FLOAT   t_acoustic_like;
       FLOAT   t_lm_like;
 
       
-      //for (Node* p_node = pFirst(); p_node != NULL; p_node = p_node->mpNext) 
+      //for (NodeType* p_node = pFirst(); p_node != NULL; p_node = p_node->mpNext) 
       for (iterator p_node = begin(); p_node != end(); ++p_node) 
       {
         if(!expOptions.mNoWeightPushing) {
@@ -1197,7 +1197,7 @@ namespace STK
 
             for (l=0; l < p_tnode->rNBackLinks(); l++) 
             {
-              Node* backnode = p_tnode->rpBackLinks()[l].pNode();
+              NodeType* backnode = p_tnode->rpBackLinks()[l].pNode();
 
               p_tnode->rpBackLinks()[l].AddLmLike(-t_lm_like);
               //p_tnode->rpBackLinks()[l].AddAcousticLike(-t_acoustic_like);
@@ -1219,7 +1219,7 @@ namespace STK
             
             for (l=0; l < p_tnode->NLinks(); l++) 
             {
-              Node* forwnode = p_tnode->rpLinks()[l].pNode();
+              NodeType* forwnode = p_tnode->rpLinks()[l].pNode();
   
               p_tnode->rpLinks()[l].AddLmLike(t_lm_like);
               //p_tnode->rpLinks()[l].AddAcousticLike(t_acoustic_like);
@@ -1248,8 +1248,8 @@ namespace STK
         {
           for (j = i+1; j < p_node->NLinks(); j++) 
           {
-            //Node* inode = p_node->rpLinks()[i].pNode();
-          //Node* jnode = p_node->rpLinks()[j].pNode();
+            //NodeType* inode = p_node->rpLinks()[i].pNode();
+          //NodeType* jnode = p_node->rpLinks()[j].pNode();
             iterator inode(p_node->rpLinks()[i].pNode());
             iterator jnode(p_node->rpLinks()[j].pNode());
 
@@ -1325,7 +1325,7 @@ namespace STK
             // Remove links to jnode form predeccessors
             for (l=0; l < jnode->NBackLinks(); l++) 
             {
-              Node* backnode = jnode->rpBackLinks()[l].pNode();
+              NodeType* backnode = jnode->rpBackLinks()[l].pNode();
 
               for (k=0; k<backnode->NLinks() && backnode->rpLinks()[k].pNode()!=jnode.mpPtr;
                    k++)
@@ -1464,7 +1464,7 @@ namespace STK
   //***************************************************************************
   struct CorrPhnRec 
   {
-    DecoderNetwork::Node*   mpNode;
+    DecoderNetwork::NodeType*   mpNode;
     TimingType              maxStopTimeTillNow;
     int                     mId;
   };
@@ -1491,13 +1491,13 @@ namespace STK
   {
     CorrPhnRec *corr_phn = (CorrPhnRec *) elem;
   
-    if (((DecoderNetwork::Node *) key)->mC.Start() >=
+    if (((DecoderNetwork::NodeType *) key)->mC.Start() >=
           corr_phn->maxStopTimeTillNow) 
     {
       return 1;
     }
     if (corr_phn->mId == 0 || // first element in the array
-      ((DecoderNetwork::Node *) key)->mC.Start() >= 
+      ((DecoderNetwork::NodeType *) key)->mC.Start() >= 
        (corr_phn-1)->maxStopTimeTillNow)
     {
       return  0;
@@ -1538,7 +1538,7 @@ namespace STK
   DecoderNetwork::
   ComputePhoneCorrectnes(PhoneCorrectnessApproximationType approxType, MyHSearchData *silencePhones)
   {
-//    Node*    node;
+//    NodeType*    node;
     CorrPhnRec*  corr_phn;
     CorrPhnRec*  overlapped;
     int          ncorr_phns = 0, i = 0;
@@ -1691,11 +1691,11 @@ namespace STK
 
 /*
   void 
-  FreeNetwork(DecoderNetwork::Node * pNode, bool compactRepresentation) 
+  FreeNetwork(DecoderNetwork::NodeType * pNode, bool compactRepresentation) 
   {
     if (!compactRepresentation)
     {
-      DecoderNetwork::Node*  tnode;
+      DecoderNetwork::NodeType*  tnode;
       while (pNode) 
       {
         tnode = pNode->mpNext;
@@ -1720,11 +1720,11 @@ namespace STK
 
 #ifndef NDEBUG
   // Debug function showing network using AT&T dot utility
-  void dnet(DecoderNetwork::Node *net, int nAuxNodePtrs, ...)
+  void dnet(DecoderNetwork::NodeType *net, int nAuxNodePtrs, ...)
   {
     static int dnetcnt=1;
     va_list ap;
-    DecoderNetwork::Node* node;
+    DecoderNetwork::NodeType* node;
     int i = 1;
   
     FILE *fp = popen("cat | (tf=`mktemp /tmp/netps.XXXXXX`;"
@@ -1792,7 +1792,7 @@ namespace STK
     }
     va_start(ap, nAuxNodePtrs);
 
-    typedef  DecoderNetwork::Node  my_node;
+    typedef  DecoderNetwork::NodeType  my_node;
     for (i = 0; i < nAuxNodePtrs; i++) 
     {
       my_node* ptr = va_arg(ap, my_node* );
@@ -1820,8 +1820,8 @@ namespace STK
       FLOAT lmScale,
       FLOAT posteriorScale)
   {
-    Node *    p_node;
-    Node *    tnode;
+    NodeType *    p_node;
+    NodeType *    tnode;
     int       i;
     int       j;
     int       k;
@@ -1850,7 +1850,7 @@ namespace STK
       // link arrays of backlinked nodes to hold p_node->rNLinks() more backlinks
         for (i = 0; i < p_node->rNBackLinks(); i++) 
         {
-          Node* bakcnode = p_node->rpBackLinks()[i].pNode();
+          NodeType* bakcnode = p_node->rpBackLinks()[i].pNode();
 
           for (j=0; j<bakcnode->NLinks() && bakcnode->rpLinks()[j].pNode()!=p_node; j++)
           {}
@@ -1872,7 +1872,7 @@ namespace STK
         // Remove backlinks to current node form linked nodes and realloc
         // backlink arrays of linked nodes to hold word->npronuns more backlinks
         for (i=0; i < p_node->NLinks(); i++) {
-          Node *forwnode = p_node->rpLinks()[i].pNode();
+          NodeType *forwnode = p_node->rpLinks()[i].pNode();
           for (j=0;j<forwnode->rNBackLinks()&&forwnode->rpBackLinks()[j].pNode()!=p_node;j++);
           assert(j < forwnode->rNBackLinks());
           // Otherwise link to 'node' is missing from which backlink exists
@@ -1885,7 +1885,7 @@ namespace STK
           forwnode->rNBackLinks()--;
         }
         for (j = 0; j < p_node->rNBackLinks(); j++) {
-          Node *backnode = p_node->rpBackLinks()[j].pNode();
+          NodeType *backnode = p_node->rpBackLinks()[j].pNode();
           int orig_nlinks = backnode->NLinks();
   
           for (i=0; i < p_node->NLinks(); i++) 
@@ -1931,7 +1931,7 @@ namespace STK
 
         for (j = 0; j < p_node->NLinks(); j++) 
         {
-          Node *forwnode = p_node->rpLinks()[j].pNode();
+          NodeType *forwnode = p_node->rpLinks()[j].pNode();
           int orig_nbacklinks = forwnode->rNBackLinks();
   
           for (i=0; i < p_node->rNBackLinks(); i++) 
@@ -1986,7 +1986,7 @@ namespace STK
     }
     return node_removed;
   }
-  //  RemoveRedundantNullNodes(Node<NODE_REGULAR, LINK_REGULAR> *pFirstNode)
+  //  RemoveRedundantNullNodes(NodeType<NODE_REGULAR, LINK_REGULAR> *pFirstNode)
   //****************************************************************************
 
 
@@ -1999,19 +1999,19 @@ namespace STK
     int   i;
     int   j;
 
-    Node* node;
-    Node* tnode;
+    NodeType* node;
+    NodeType* tnode;
     iterator   p_node;
     
     for (p_node = begin(); p_node != end(); p_node++) 
     {
-      Node* p_node_real_address = &(*p_node);
+      NodeType* p_node_real_address = &(*p_node);
 
       for (i=0; i < p_node->NLinks(); i++) 
       {
         if (p_node->rpLinks()[i].pNode() == &(*p_node))
         {
-          if ((tnode           = (Node *) calloc(1, sizeof(Node))) == NULL ||
+          if ((tnode           = (NodeType *) calloc(1, sizeof(NodeType))) == NULL ||
               (tnode->rpLinks()     = (LinkType *) malloc(sizeof(LinkType))) == NULL ||
               (tnode->rpBackLinks() = (LinkType *) malloc(sizeof(LinkType))) == NULL) 
           {
@@ -2057,7 +2057,7 @@ namespace STK
       {
         if (node->rpLinks()[i].pNode() == node) 
         {
-          if ((tnode           = (Node *) calloc(1, sizeof(Node))) == NULL ||
+          if ((tnode           = (NodeType *) calloc(1, sizeof(NodeType))) == NULL ||
               (tnode->rpLinks()     = (LinkType *) malloc(sizeof(LinkType))) == NULL ||
               (tnode->rpBackLinks() = (LinkType *) malloc(sizeof(LinkType))) == NULL) 
           {

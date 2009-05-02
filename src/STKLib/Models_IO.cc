@@ -3000,7 +3000,7 @@ namespace STK
     }
   
     PutNLn(fp, binary);
-  } //WriteMean(FILE *fp, bool binary, Mean *mean)
+  } //WriteMeanRaw(FILE *fp, bool binary, Mean *mean)
 
   
   //***************************************************************************  
@@ -4533,16 +4533,28 @@ namespace STK
               FLOAT        totLogLike)
   {
     FILE*                 fp;
+    OStkStream            output_stream;
     char                  file_name[1024];
     WriteAccumUserData    ud;  
     
+    // synthesize new name for the accumulator
     MakeFileName(file_name, pFileName, pOutputDir, NULL);
   
-    if ((fp = fopen(file_name, "wb")) == NULL) 
-    {
+    // open the stream
+    output_stream.open(file_name, std::ios::binary);
+    if (!output_stream.good()) {
       Error("Cannot open output file: '%s'", file_name);
     }
   
+    // TODO: make full use of streams
+    fp = output_stream.file();
+
+    // if ((fp = fopen(file_name, "wb")) == NULL) 
+    // {
+    //   Error("Cannot open output file: '%s'", file_name);
+    // }
+  
+    // write some header info
     INT_32 i32 = totFrames;
     if (fwrite(&i32,  sizeof(i32),  1, fp) != 1 ||
         fwrite(&totLogLike, sizeof(FLOAT), 1, fp) != 1) 
@@ -4558,7 +4570,9 @@ namespace STK
     Scan(MTM_PRESCAN | MTM_ALL, //& ~(MTM_XFORM_INSTANCE)), //|MTM_XFORM
               NULL, WriteAccum, &ud);
   
-    fclose(fp);
+    // close the stream
+    // fclose(fp);
+    output_stream.close();
   }; // WriteAccums(...)
   
   

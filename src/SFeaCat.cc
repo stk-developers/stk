@@ -161,6 +161,9 @@ int main(int argc, char *argv[])
                                 &cmn_path, &cmn_file, &cmn_mask,
                                 &cvn_path, &cvn_file, &cvn_mask, &cvg_file,
                                 SNAME":", 0);
+                                
+  bool compress_output = (targetKind & PARAMKIND_C) != 0;
+  targetKind = targetKind & ~PARAMKIND_C;
 
   input_name     = GetParamStr(&cfg_hash, SNAME":SOURCEINPUT",     NULL);
   swap_features  =!GetParamBool(&cfg_hash,SNAME":NATURALREADORDER", isBigEndian());
@@ -331,7 +334,7 @@ int main(int argc, char *argv[])
 	  out_size,
 	  header.mNSamples - hset.mTotalDelay,
 	  header.mSamplePeriod,
-	  p_input ? (PARAMKIND_USER | targetKind & PARAMKIND_C) : targetKind,
+	  (p_input ? PARAMKIND_USER : targetKind) | (compress_output ? PARAMKIND_C : 0),
 	  swap_fea_out)) 
     {
       Error("Cannot write to output feature file: '%s'", p_out_file);

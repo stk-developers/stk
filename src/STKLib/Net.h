@@ -1307,14 +1307,14 @@ namespace STK
     public:
       typedef Network<_NodeContent, _LinkContent, _NodeContainer, _LinkContainer>
                                                                 Self;
-      typedef Node<_NodeContent, _LinkContent, _LinkContainer>  Node;
-      typedef Link<Node, _LinkContent, _LinkContainer>          LinkType;
+      typedef Node<_NodeContent, _LinkContent, _LinkContainer>  NodeType;
+      typedef Link<NodeType, _LinkContent, _LinkContainer>          LinkType;
 
 
-      typedef typename Node::NodeContent                        NodeContent;
+      typedef typename NodeType::NodeContent                        NodeContent;
       typedef _LinkContent                                      LinkContent;
 
-      typedef _NodeContainer<Node>                              NodeContainer;
+      typedef _NodeContainer<NodeType>                              NodeContainer;
       typedef _LinkContainer<LinkType>                          LinkContainer;
 
       typedef typename NodeContainer::iterator                  iterator;
@@ -1338,7 +1338,7 @@ namespace STK
        * 
        * In this case, no deallocation will take place when destructor is called
        */
-      Network(Node* pNode) 
+      Network(NodeType* pNode) 
       : NodeContainer(pNode), /*mCompactRepresentation(false),*/
         mIsExternal(true) 
       { }
@@ -1402,13 +1402,13 @@ namespace STK
 
 
       // accessors ............................................................. 
-      Node*
+      NodeType*
       pFirst()
       { 
         return &(NodeContainer::front()); 
       }
 
-      Node*
+      NodeType*
       pLast()
       { 
         //return NodeContainer::mpLast; 
@@ -1416,15 +1416,15 @@ namespace STK
       }
 
 
-      const Node*
+      const NodeType*
       pFirst() const
       { 
         return &(NodeContainer::front()); 
       }
 
 
-      Node*
-      SetFirst(Node* pFirst)
+      NodeType*
+      SetFirst(NodeType* pFirst)
       { 
         // we don't want any memory leaks
         assert(IsEmpty());
@@ -1433,8 +1433,8 @@ namespace STK
         mIsExternal = true;
       }
 
-      Node*
-      SetLast(Node* pLast)
+      NodeType*
+      SetLast(NodeType* pLast)
       { 
         NodeContainer::mpLast     = pLast; 
       }
@@ -1470,7 +1470,7 @@ namespace STK
        * consistency
        */
 //      iterator
-//      RemoveNode(Node* pNode);
+//      RemoveNode(NodeType* pNode);
 
 
       /** 
@@ -1488,7 +1488,7 @@ namespace STK
        * @param pNode 
        */
       void
-      IsolateNode(Node* pNode);
+      IsolateNode(NodeType* pNode);
 
       
       /** 

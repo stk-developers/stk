@@ -43,7 +43,7 @@
 
 #include <iostream>
 #include <string>
-//#include <sstream>
+#include <sstream>
 #include <queue>
 
 
@@ -135,23 +135,23 @@ void *accept_clients(void *);
 #endif
 
 
-#define SNAME "SEREST"
+#define SNAME "STCPACCDUMP"
 const char *optionStr =
 " -d r   SOURCEMODELDIR"
-" -o r   TARGETMODELEXT"
-" -s r   SAVESTATS"
 " -x r   SOURCEMODELEXT"
 " -D n   PRINTCONFIG=TRUE"
 " -H l   SOURCEMMF"
-" -M r   TARGETMODELDIR"
 " -T r   TRACE"
 " -V n   PRINTVERSION=TRUE";
+
+
+//" -o r   TARGETMODELEXT"
+//" -s r   SAVESTATS"
+//" -M r   TARGETMODELDIR"
 
 SOCKET sock; // Listen sockets
 pthread_cond_t cond   = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-//volatile std::queue<volatile class std::pair<SOCKET, int> > sock_queue;
-//volatile std::queue<volatile FILE *> file_queue;
 
 
 template <typename t_data>
@@ -203,7 +203,7 @@ public:
 
 volatile volatile_queue<pair<SOCKET, int> > sock_queue;
 volatile volatile_queue<FILE *> file_queue;
-char *error_message = NULL;
+char const *error_message = NULL;
 
 //******************************************************************************
 //******************************************************************************
@@ -216,20 +216,21 @@ int main(int argc, char* argv[])
     int                             fcnt = 0;
     MyHSearchData                   cfgHash;
     FLOAT                           totLogLike      = 0;
-    FLOAT                           totLogPosterior = 0;
     int                             totFrames       = 0;
     const char*                     src_hmm_list;
     const char*                     src_hmm_dir;
     const char*                     src_hmm_ext;
           char*                     src_mmf;
-    const char*                     trg_hmm_dir;
-    const char*                     trg_hmm_ext;
-    const char*                     trg_mmf;
+//    const char*                     trg_hmm_dir;
+//    const char*                     trg_hmm_ext;
+//    const char*                     trg_mmf;
     const char*                     xformList;
-    const char*                     stat_file;
-    const char*                     mix_occup_file;
+    const char*                     when_ready;
+//    const char*                     stat_file;
+//    const char*                     mix_occup_file;
     int                             trace_flag;
-    char acc_name[256];
+    int                             tcp_port;
+    std::list<std::string> read_acc_names;
 
     WORD wVersionRequested;
     WSADATA wsaData;
@@ -253,15 +254,17 @@ int main(int argc, char* argv[])
     gpHListFilter= GetParamStr(&cfgHash, SNAME":HMMLISTFILTER",   NULL);
     gpMmfFilter  = GetParamStr(&cfgHash, SNAME":HMMDEFFILTER",    NULL);
     trace_flag   = GetParamInt(&cfgHash, SNAME":TRACE",           0);
-    stat_file    = GetParamStr(&cfgHash, SNAME":SAVESTATS",       NULL);
-    mix_occup_file=GetParamStr(&cfgHash, SNAME":SAVEMIXOCCUPS",   NULL);
+//    stat_file    = GetParamStr(&cfgHash, SNAME":SAVESTATS",       NULL);
+//    mix_occup_file=GetParamStr(&cfgHash, SNAME":SAVEMIXOCCUPS",   NULL);
     src_hmm_list = GetParamStr(&cfgHash, SNAME":SOURCEHMMLIST",   NULL);
     src_hmm_dir  = GetParamStr(&cfgHash, SNAME":SOURCEMODELDIR",  NULL);
     src_hmm_ext  = GetParamStr(&cfgHash, SNAME":SOURCEMODELEXT",  NULL);
     src_mmf=(char*)GetParamStr(&cfgHash, SNAME":SOURCEMMF",       NULL);
-    trg_hmm_dir  = GetParamStr(&cfgHash, SNAME":TARGETMODELDIR",  NULL);
-    trg_hmm_ext  = GetParamStr(&cfgHash, SNAME":TARGETMODELEXT",  NULL);
-    trg_mmf      = GetParamStr(&cfgHash, SNAME":TARGETMMF",       NULL);
+//    trg_hmm_dir  = GetParamStr(&cfgHash, SNAME":TARGETMODELDIR",  NULL);
+//    trg_hmm_ext  = GetParamStr(&cfgHash, SNAME":TARGETMODELEXT",  NULL);
+//    trg_mmf      = GetParamStr(&cfgHash, SNAME":TARGETMMF",       NULL);
+    tcp_port     = GetParamInt(&cfgHash, SNAME":TCPPORT",         0);
+    when_ready   = GetParamStr(&cfgHash, SNAME":WHENREADY",       NULL);
     
     // initialize basic ModelSet
     hset.Init(MODEL_SET_WITH_ACCUM);
@@ -287,21 +290,15 @@ int main(int argc, char* argv[])
 
         if (src_mmf[0] == '@') {
           src_mmf++;
-          read_only = true;
-          std::cout << "Macros in " << src_mmf << " are marked as read-only" 
-            << std::endl;
         }
-        else {
-          std::cout << "Adding " << src_mmf << std::endl;
-        }
-
+        std::cout << "Adding " << src_mmf << std::endl;
         hset.ParseMmf(src_mmf, NULL, read_only);
       }
     }
 
     if (src_hmm_list) {
-      hset.ReadHMMList(src_hmm_list, src_hmm_dir ? src_hmm_dir : "", src_hmm_ext 
-          ? src_hmm_ext : "");
+      hset.ReadHMMList(src_hmm_list, src_hmm_dir ? src_hmm_dir : "", 
+                                     src_hmm_ext ? src_hmm_ext : "");
     }
     
     hset.ResetAccums();
@@ -309,34 +306,54 @@ int main(int argc, char* argv[])
     if (xformList != NULL) {
       hset.ReadXformList(xformList);
     }
+    hset.AllocateAccumulatorsForXformStats();
     
     wVersionRequested = MAKEWORD(2, 2);
  
     err = WSAStartup(wVersionRequested, &wsaData);
     if(err != 0) {
-      Error( "WSAStartup() failed\n" );
+      Error("WSAStartup() failed");
     }
-
-    sock = socket( AF_INET, SOCK_STREAM, 0 );
-    
-    if(sock == INVALID_SOCKET) {
+    if((sock = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
       err = WSAGetLastError();
-      Error("socket() failed %d\n", err);
+      Error("socket() failed %d", err);
     }
-  
-    memset(&addr, 0, sizeof(addr) );
+    memset(&addr, 0, sizeof(addr));
     addr.sin_family      = AF_INET;
-    addr.sin_port        = htons(2332);
+    addr.sin_port        = htons(tcp_port);
     addr.sin_addr.s_addr = INADDR_ANY;
     
     if(bind(sock, (struct sockaddr *) &addr, sizeof(addr)) == SOCKET_ERROR) {
       err = WSAGetLastError();
-      Error("bind() failed %d\n", err);
+      Error("bind() failed %d", err);
     }
-
-    if(err = listen( sock, 5 ) == SOCKET_ERROR ) {
+    if((err = listen(sock, SOMAXCONN)) == SOCKET_ERROR ) {
       err = WSAGetLastError();
-      Error("listen() failed %d\n", err);
+      Error("listen() failed %d", err);
+    }
+    
+    socklen_t namelen = sizeof(addr);
+    if((err = getsockname(sock, (struct sockaddr *) &addr, &namelen)) == SOCKET_ERROR ) {
+      err = WSAGetLastError();
+      Error("getsockname() failed %d", err);
+    }
+    tcp_port = ntohs(addr.sin_port);
+
+    if(when_ready) {  
+//      char host_name[1024] = {0};
+//      std::ostringstream host_and_port;    
+//      if(gethostname(host_name, sizeof(host_name)-1) != 0) {
+//        err = WSAGetLastError();
+//        Error("gethostkname() failed %d", err);
+//      }
+//      host_and_port << host_name << '/' << tcp_port;
+      std::ostringstream ports;
+      ports << tcp_port;
+      char *cmd = expandFilterCommand(when_ready, ports.str().c_str());
+      if(system(cmd) != 0) {
+        Error("system() failed %d");
+      }
+      free(cmd);
     }
 
 #ifdef WIN32
@@ -346,9 +363,12 @@ int main(int argc, char* argv[])
     pthread_create(&thread, NULL,  process_sock, NULL);
     pthread_create(&thread, NULL,  accept_clients, NULL);
 #endif
+    TraceLog("Listening on port: %d", tcp_port);
 
     for(;;) {
       FILE *fp;
+      char line_buff[1024];
+      int  buff_len;
       
       char *chptr;
       FLOAT P;
@@ -367,54 +387,78 @@ int main(int argc, char* argv[])
       file_queue.pop();
       pthread_mutex_unlock(&mutex);
 
-//      read(file_pipe, &fp, sizeof(fp));
-            
       if(NULL == fp
-      || NULL == fgets(acc_name, sizeof(acc_name), fp)) {
+      || NULL == fgets(line_buff, sizeof(line_buff), fp)) {
         pthread_mutex_lock(&mutex);
         if(error_message) {
           Error(error_message);
         } else {
-          Error("Cannt read accumulator stream");
+          Error("Cannt read the input TCP stream");
         } 
       }
-      if(acc_name[0] == '\n') {
+      if(line_buff[0] == 'q') {
         break;
       }
-      if(trace_flag & 1) {
-        TraceLog("Processing file %d %s", ++fcnt, acc_name);
+      if(line_buff[0] != 'r' && line_buff[0] != 'w') {
+          Error("Invalid command in the TCP stream. First line must start with 'r', 'w' or 'q'.");
       }
-      hset.ReadAccums(fp, acc_name, 1.0, &S, &P, UT_ML);
+      buff_len = strlen(line_buff);
+      if(line_buff[buff_len-1] != '\n') {
+        Error("Invalid command in the TCP stream. First line is too long");
+      }
+      line_buff[buff_len-1] = '\0';
+      
+      if(line_buff[0] == 'r') {
+        read_acc_names.push_back(string(line_buff+1));
+        
+        if(trace_flag & 1) {
+          TraceLog("Processing accumulator %d '%s'", ++fcnt, line_buff+1);
+        }
+        hset.ReadAccums(fp, line_buff+1, 1.0, &S, &P, UT_ML);
+        totFrames  += S;
+        totLogLike += P;
+
+        if (trace_flag & 1) {
+          TraceLog("[%d frames] %f", S, P/S);       
+        }
+      } else {
+        if (trace_flag & 1) {
+          TraceLog("Writing accumulator: '%s'", line_buff+1);
+        }
+        hset.WriteAccums(line_buff+1, NULL, totFrames, totLogLike);
+        
+        std::string acc_list_file = string(line_buff+1) + ".lst";
+        OStkStream  output_stream(acc_list_file.c_str());
+        
+        if (!output_stream.good()) { 
+          Error("Cannot open output accumulator list file: '%s'", acc_list_file.c_str());
+        }
+        for(std::list<std::string>::iterator it = read_acc_names.begin(); it != read_acc_names.end(); it++) {
+          output_stream << *it << std::endl;
+        }
+        output_stream.close();
+        
+        if (trace_flag & 1) {
+          TraceLog("Total number of frames: %d\nTotal log likelihood: %e", totFrames, totLogLike);
+          TraceLog("Average log likelihood per frame: %e", totLogLike/totFrames);
+        }
+      }
       fclose(fp);
 
-      totFrames  += S;
-      totLogLike += P;
-
-      if (trace_flag & 1)
-        TraceLog("[%d frames] %f", S, P/S);       
     }
-    
-    if (trace_flag & 1) {
-      TraceLog("Total number of frames: %d\nTotal log likelihood: %e",
-                totFrames, totLogLike);
-      TraceLog("Average log likelihood per frame: %e", totLogLike/totFrames);
-    }
-
+/*    
     if (stat_file)
-      hset.WriteHMMStats(stat_file);
-      
-    snprintf(acc_name, sizeof(acc_name)-1, "SER%d.acc", 0);
-    hset.WriteAccums(acc_name, trg_hmm_dir, totFrames, totLogLike);
-    
+        hset.WriteHMMStats(stat_file);
+
     if (mix_occup_file)
       hset.WriteMixtureOccups(mix_occup_file);
-
+*/
+    closesocket(sock);  
     hset.Release();
     
     for (size_t i = 0; i < cfgHash.mNEntries; i++) 
       free(cfgHash.mpEntry[i]->data);
-    
-    closesocket(sock);  
+          
     my_hdestroy_r(&cfgHash, 1);
   } // try
   catch (std::exception& rExc) {
@@ -434,7 +478,8 @@ void *process_sock(void *params)
 {
   SOCKET sck;
   int fd;
-  char buffer[2048];
+  char buffer[256*1024];
+  int buf_len = sizeof(buffer);
   
   for(;;) {
     pthread_mutex_lock(&mutex);
@@ -446,12 +491,13 @@ void *process_sock(void *params)
     fd  = sock_queue.front().second;
     sock_queue.pop();
     pthread_mutex_unlock(&mutex);
-
-//    read(sckt_pipe, &sck, sizeof(sck));
-//    read(sckt_pipe, &fd, sizeof(int));
+    
+//    socklen_t optlen = sizeof(buf_len); 
+//    if(getsockopt(sock, SOL_SOCKET, SO_RCVBUF,(char *)&buf_len, &optlen) != 0)
+//      buf_len = 4096;
 
     for(;;) {
-      ssize_t i = recv(sck, buffer, sizeof(buffer), 0);
+      ssize_t i = recv(sck, buffer, buf_len, 0);
       
       if(0 == i)
         break;
@@ -483,32 +529,21 @@ void *accept_clients(void *params)
   for(;;) {
     int filedes[2];
     FILE *fp = NULL;
-//    char *msg = NULL;
 
-    printf("listening on port: %d\n", DEFAULT_PORT);
     SOCKET socka = accept(sock, NULL, 0 );
 //    printf("\n######### accept() %d #########\n", socka);
         
     if(socka == INVALID_SOCKET ) {  
       if(WSAGetLastError() == WSAENOTSOCK) {
-        error_message = "recv or write failed\n";
+        error_message = "recv or write failed";
       } else {
-        error_message = "accept failed\n";
+        error_message = "accept failed";
       }
     } else if(0 != pipe(filedes)) {
-      error_message = "pipe failed\n";
+      error_message = "pipe failed";
     } else if(NULL == (fp = fdopen(filedes[0], "rb"))) {
-      error_message = "fdopen failed\n";
+      error_message = "fdopen failed";
     }
-    
-//    if(NULL == error_message) {
-//      write(sckt_pipe, &socka, sizeof(socka));
-//      write(sckt_pipe, &filedes[1], sizeof(int));
-//      fsync(sckt_pipe);
-//    }
-//    write(file_pipe, &fp, sizeof(fp));
-//    fsync(file_pipe);
-    
     pthread_mutex_lock(&mutex);
 
     if(NULL == error_message) {

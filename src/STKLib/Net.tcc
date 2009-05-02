@@ -56,9 +56,9 @@ namespace STK
     Network<_NodeContent, _LinkContent, _StorageType, _LinkContainer>::
     Reverse()
     {
-      Node*  node;
-      Node*  p_first = pFirst();
-      Node*  p_last = pLast();
+      NodeType*  node;
+      NodeType*  p_first = pFirst();
+      NodeType*  p_last = pLast();
       
       for (node = p_first; node != NULL; node = node->mpBackNext) 
       {
@@ -69,7 +69,7 @@ namespace STK
         node->rNLinks()       = node->rNBackLinks();
         node->rpBackLinks()   = links;
         node->rNBackLinks()   = nlinks;
-        Node*  next     = node->mpNext;
+        NodeType*  next     = node->mpNext;
         node->mpNext        = node->mpBackNext;
         node->mpBackNext    = next;
         node->mAux          = -node->mAux;
@@ -94,8 +94,8 @@ namespace STK
     {
       size_t    i;
       size_t    j;
-      Node* p_node;
-      Node* p_lastnode;
+      NodeType* p_node;
+      NodeType* p_lastnode;
 
       // Sort nodes in topological order
       // printf("Sorting nodes...\n");
@@ -104,7 +104,7 @@ namespace STK
       {
         for (i = 0; i < p_node->NLinks(); i++) 
         {
-          Node* p_link_node = p_node->rpLinks()[i].pNode();
+          NodeType* p_link_node = p_node->rpLinks()[i].pNode();
           
           if (p_link_node->mAux == 0) 
           {
@@ -191,7 +191,7 @@ namespace STK
            template<class> class _LinkContainer>
     void
     Network<_NodeContent, _LinkContent, _StorageType, _LinkContainer>::
-    IsolateNode(Node* pNode)
+    IsolateNode(NodeType* pNode)
     {
       if (pNode->rpLinks())
       {

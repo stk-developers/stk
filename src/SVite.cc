@@ -909,6 +909,9 @@ int main(int argc, char *argv[])
       TraceLog(" ==  [%d frames] %f (Act: %.1f/%.1f)", n_frames, like / n_frames,
                    (float) p_decoder->mNActiveModelsForUtterance / n_frames, 
                    (float) p_decoder->mNActiveTokensForUtterance / n_frames);
+      // TraceLog(" ==  [%d frames] %f (Act: %.1f/%.1f)", n_frames, like,
+      //              (float) p_decoder->mNActiveModelsForUtterance / n_frames, 
+      //              (float) p_decoder->mNActiveTokensForUtterance / n_frames);
     }
 
     if (!lattice.IsEmpty())

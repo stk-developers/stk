@@ -26,10 +26,10 @@ namespace SNet{
       int mNCache;           ///< Actual cache number
       
       Timers *mpTimers;                         ///< Help timers/counters
-      WindowMatrix<FLOAT>* mpInCache;           ///< Matrix of input vectors
-      WindowMatrix<FLOAT>* mpOutCache;          ///< Matrix of example output vectors
-      Matrix<FLOAT>* mpCompCachePart;           ///< Matrix of computed output vectors
-      Matrix<FLOAT>* mpError;                   ///< Neural net global output error
+      STK::WindowMatrix<FLOAT>* mpInCache;           ///< Matrix of input vectors
+      STK::WindowMatrix<FLOAT>* mpOutCache;          ///< Matrix of example output vectors
+      STK::Matrix<FLOAT>* mpCompCachePart;           ///< Matrix of computed output vectors
+      STK::Matrix<FLOAT>* mpError;                   ///< Neural net global output error
       NLayer** mpLayers;                        ///< Pointer to neural net layers
       Element *mpUpdateElement;                 ///< Pointer to element used for update matrixes which are sent to server
       Socket::Client *mpClient;                 ///< Client - used for sending updates
@@ -42,7 +42,7 @@ namespace SNet{
       
       void RandomizeIndices(int *randind, int n); ///< Makes random list 0,1,2,3...
     public:
-      NNet(CompositeXform* nn, int cacheSize, int bunchSize, bool crossValidation, ///< Constructor
+      NNet(STK::CompositeXform* nn, int cacheSize, int bunchSize, bool crossValidation, ///< Constructor
            float *learningRateList); 
       ~NNet();                                                                     ///< Destructor
       
