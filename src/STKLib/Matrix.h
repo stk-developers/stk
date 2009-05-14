@@ -60,10 +60,10 @@ namespace STK
       // HTK parameter file header (see HTK manual)
       typedef struct
       {
-              int nSamples;
-              int sampPeriod;
-              short sampSize;
-              short paramKind;
+        int   nSamples;
+        int   sampPeriod;
+        short sampSize;
+        short paramKind;
       } HtkHeader;
 
 
