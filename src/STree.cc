@@ -73,9 +73,11 @@ AdaptModel(const BDTree& rOrig, const NGramSubset& rNGrams,
     const std::string& rFileName, BDTreeBuildTraits& rTraits, 
     std::ostream* pOutVectorStream, BDTreeHeader file_header);
 
+#ifdef HAVE_HDF5
 hid_t
 H5CreateDataset(hid_t h5_file, const std::string& rFileName,
     hid_t type_id, hid_t space_id, hid_t dcpl_id);
+#endif
 
 // A helper function to simplify the main part.
 template<class T>
