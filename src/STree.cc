@@ -45,7 +45,7 @@ int main(int argc, char* argv[]) {
 
 #include <boost/program_options.hpp>
 
-#define HAVE_HDF5
+// #define HAVE_HDF5
 #ifdef HAVE_HDF5
 # include <hdf5.h>
 #endif
