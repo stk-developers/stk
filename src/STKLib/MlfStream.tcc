@@ -167,8 +167,8 @@ namespace STK
   > 
     BasicIMlfStreamBuf<_CharT, _Traits, _CharTA, ByteT, ByteAT>::
     BasicIMlfStreamBuf(IStreamReference rIStream, size_t bufferSize)
-    : mIsOpen(false), mIsHashed(false), mState(IN_HEADER_STATE), 
-      mIStream(rIStream), mLineBuffer(), mIsEof(true)
+    : mIsOpen(false), mIsHashed(false), mIsEof(true), mState(IN_HEADER_STATE), 
+      mIStream(rIStream), mLineBuffer()
     {
       // we reserve some place for the buffer...
       mLineBuffer.reserve(bufferSize);
@@ -330,6 +330,8 @@ namespace STK
     BasicIMlfStreamBuf<_CharT, _Traits, _CharTA, ByteT, ByteAT>::
     Open(const std::string& rFileName)
     {
+      BasicIMlfStreamBuf<_CharT, _Traits, _CharTA, ByteT, ByteAT>* ret_val = NULL;
+
       // this behavior is compatible with ifstream
       if (mIsOpen) {
         Close();
@@ -351,12 +353,12 @@ namespace STK
         if (!mIStream.good()) {
           mIStream.clear();
           mIsOpen = false;
-          return NULL;
+          ret_val = NULL;
         }
         else {
           mIsOpen = true;
           mIsEof = false;
-          return this;
+          ret_val = this;
         }
       }
 
@@ -364,26 +366,32 @@ namespace STK
       // we are hashed, so we can be sure, that we failed
       else if ((-1 != pos) && mIsHashed) {
         mIsOpen = false;
-        return NULL;
+        ret_val = NULL;
       }
 
       // we either have sequential stream or didn't find anything, but we can 
       // still try to sequentially go and look for it
       else {
+        bool        found = false;
         std::string aux_name;
         std::string aux_name2;
 
-        while (JumpToNextDefinition(aux_name)) {
+        while ((!found) && JumpToNextDefinition(aux_name)) {
           if (ProcessMask(rFileName, aux_name, aux_name2)) {
             mIsOpen = true;
             mIsEof  = false;
-            return this;
+            found   = true;
+            ret_val = this;
           }
         }
 
-        mIsOpen = false;
-        return NULL;
+        if (!found) {
+          mIsOpen = false;
+          ret_val = NULL;
+        }
       }
+
+      return ret_val;
     }
 
 

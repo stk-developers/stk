@@ -99,6 +99,14 @@ namespace STK
      */
     ~FeatureRepository()
     {
+      if (NULL != mpA) {
+        free(mpA);
+      }
+
+      if (NULL != mpB) {
+        free(mpB);
+      }
+
 #if FEATURE_REPOSITORY_PTHREAD_ENABLE
       delete mpRoMutex;
       delete mpRoCondNotFull;

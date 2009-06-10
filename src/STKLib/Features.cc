@@ -760,24 +760,29 @@ namespace STK
       }
       
       
-      if (ReadHTKHeader()) 
+      if (ReadHTKHeader())  {
         Error("Invalid HTK header in feature file: '%s'", file_name.c_str());
+      }
       
       if (mHeader.mSampleKind & PARAMKIND_C) 
       {
         // File is in compressed form, scale and pBias vectors
         // are appended after HTK header.
-  
         int coefs = mHeader.mSampleSize/sizeof(INT_16);
+
         mpA = (FLOAT*) realloc(mpA, coefs * sizeof(FLOAT));
         mpB = (FLOAT*) realloc(mpB, coefs * sizeof(FLOAT));
-        if (mpA == NULL || mpB == NULL) Error("Insufficient memory");
+
+        if (mpA == NULL || mpB == NULL) {
+          Error("Insufficient memory");
+        }
   
         e  = ReadHTKFeature(mpA, coefs, 0, 0, 0);
         e |= ReadHTKFeature(mpB, coefs, 0, 0, 0);
         
-        if (e) 
+        if (e) {
           Error("Cannot read feature file: '%s'", file_name.c_str());
+        }
         
         mHeader.mNSamples -= 2 * sizeof(FLOAT_32) / sizeof(INT_16);
       }
@@ -787,11 +792,12 @@ namespace STK
       mLastHeader   = mHeader;
     }
     
-    if (chptr != NULL) 
+    if (chptr != NULL) {
       *chptr = '[';
+    }
   
-    if (chptr == NULL) 
-    { // Range [s,e] was not specified
+    if (chptr == NULL) { 
+      // Range [s,e] was not specified
       from_frame = 0;
       to_frame   = mHeader.mNSamples-1;
     }

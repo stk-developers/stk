@@ -1765,26 +1765,25 @@ namespace STK
 
     // the new string will be at most as long as the original, so we allocate
     // space
-    char * new_str = new char[rIn.size() + 1];
-    strcpy(new_str, rIn.c_str());
+    char* new_str = new char[rIn.size() + 1];
 
-      // there might be some error message returned, so we reserve at least
-    // 30 bytes
-    char * tmp_str;
+    char* p_err_str;
+    char* p_htk_str = new_str;
+
+    strcpy(p_htk_str, rIn.c_str());
+    ret_val = getHTKstr(p_htk_str, &p_err_str);
 
     // call the function
-    if (!(ret_val = getHTKstr(new_str, &tmp_str)))
-    {
-      rOut = new_str;
+    if (!ret_val) {
+      rOut = p_htk_str;
     }
 
-    else if ((ret_val == -1) || (ret_val == -2))
-    {
-      throw std::logic_error(tmp_str);
-    }
+    delete [] new_str;
 
-    else
-    {
+    if ((ret_val == -1) || (ret_val == -2)) {
+      throw std::logic_error(p_err_str);
+    } 
+    else if (ret_val) {
       throw std::logic_error("Unexpected error parsing HTK string");
     }
   }

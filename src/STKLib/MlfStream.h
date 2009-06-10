@@ -568,8 +568,15 @@ namespace STK
       void
       Open(const std::string& rFileName)
       { 
-        if (NULL == BasicIMlfStreamBaseType::rdbuf()->Open(rFileName)) {
+        std::basic_streambuf<Elem, Tr>* p_buf;
+
+        p_buf = BasicIMlfStreamBaseType::rdbuf()->Open(rFileName);
+
+        if (NULL == p_buf) {
           IStreamType::clear(IStreamType::rdstate() | std::ios::failbit);
+        }
+        else {
+          IStreamType::clear();
         }
       }
 
