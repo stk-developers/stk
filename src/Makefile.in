@@ -34,7 +34,6 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
-LIBOBJDIR =
 @USE_SNET_FALSE@bin_PROGRAMS = SExpand$(EXEEXT) SERest$(EXEEXT) \
 @USE_SNET_FALSE@	SVite$(EXEEXT) SFeaCat$(EXEEXT) \
 @USE_SNET_FALSE@	SFeaStack$(EXEEXT) SLRatio$(EXEEXT) \
@@ -44,7 +43,8 @@ LIBOBJDIR =
 @USE_SNET_TRUE@	SVite$(EXEEXT) SFeaCat$(EXEEXT) \
 @USE_SNET_TRUE@	SFeaStack$(EXEEXT) SLRatio$(EXEEXT) \
 @USE_SNET_TRUE@	SResults$(EXEEXT) SRover$(EXEEXT) \
-@USE_SNET_TRUE@	STree$(EXEEXT) SNet$(EXEEXT) SFeaStat$(EXEEXT)
+@USE_SNET_TRUE@	STree$(EXEEXT) SNet$(EXEEXT) SNetStats$(EXEEXT) \
+@USE_SNET_TRUE@	SFeaStat$(EXEEXT)
 subdir = src
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -90,6 +90,11 @@ am__SNet_SOURCES_DIST = SNet.cc
 SNet_OBJECTS = $(am_SNet_OBJECTS)
 @USE_SNET_TRUE@SNet_DEPENDENCIES = $(am__DEPENDENCIES_2) \
 @USE_SNET_TRUE@	./SNetLib/libSNet.a
+am__SNetStats_SOURCES_DIST = SNetStats.cc
+@USE_SNET_TRUE@am_SNetStats_OBJECTS = SNetStats.$(OBJEXT)
+SNetStats_OBJECTS = $(am_SNetStats_OBJECTS)
+@USE_SNET_TRUE@SNetStats_DEPENDENCIES = $(am__DEPENDENCIES_2) \
+@USE_SNET_TRUE@	./SNetLib/libSNet.a
 am_SResults_OBJECTS = SResults.$(OBJEXT)
 SResults_OBJECTS = $(am_SResults_OBJECTS)
 SResults_LDADD = $(LDADD)
@@ -115,12 +120,13 @@ CXXLINK = $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) \
 	-o $@
 SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFeaCat_SOURCES) \
 	$(SFeaStack_SOURCES) $(SFeaStat_SOURCES) $(SLRatio_SOURCES) \
-	$(SNet_SOURCES) $(SResults_SOURCES) $(SRover_SOURCES) \
-	$(STree_SOURCES) $(SVite_SOURCES)
+	$(SNet_SOURCES) $(SNetStats_SOURCES) $(SResults_SOURCES) \
+	$(SRover_SOURCES) $(STree_SOURCES) $(SVite_SOURCES)
 DIST_SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFeaCat_SOURCES) \
 	$(SFeaStack_SOURCES) $(SFeaStat_SOURCES) $(SLRatio_SOURCES) \
-	$(am__SNet_SOURCES_DIST) $(SResults_SOURCES) $(SRover_SOURCES) \
-	$(STree_SOURCES) $(SVite_SOURCES)
+	$(am__SNet_SOURCES_DIST) $(am__SNetStats_SOURCES_DIST) \
+	$(SResults_SOURCES) $(SRover_SOURCES) $(STree_SOURCES) \
+	$(SVite_SOURCES)
 RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	html-recursive info-recursive install-data-recursive \
 	install-exec-recursive install-info-recursive \
@@ -162,7 +168,6 @@ EGREP = @EGREP@
 ENABLE_SSE_FALSE = @ENABLE_SSE_FALSE@
 ENABLE_SSE_TRUE = @ENABLE_SSE_TRUE@
 EXEEXT = @EXEEXT@
-GREP = @GREP@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
@@ -204,6 +209,8 @@ WANT_LIBGETOPT_FALSE = @WANT_LIBGETOPT_FALSE@
 WANT_LIBGETOPT_TRUE = @WANT_LIBGETOPT_TRUE@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
+ac_ct_RANLIB = @ac_ct_RANLIB@
+ac_ct_STRIP = @ac_ct_STRIP@
 am__fastdepCC_FALSE = @am__fastdepCC_FALSE@
 am__fastdepCC_TRUE = @am__fastdepCC_TRUE@
 am__fastdepCXX_FALSE = @am__fastdepCXX_FALSE@
@@ -216,26 +223,19 @@ am__untar = @am__untar@
 bindir = @bindir@
 build_alias = @build_alias@
 datadir = @datadir@
-datarootdir = @datarootdir@
-docdir = @docdir@
-dvidir = @dvidir@
 exec_prefix = @exec_prefix@
 host_alias = @host_alias@
-htmldir = @htmldir@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
 libdir = @libdir@
 libexecdir = @libexecdir@
-localedir = @localedir@
 localstatedir = @localstatedir@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
-pdfdir = @pdfdir@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
-psdir = @psdir@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 sysconfdir = @sysconfdir@
@@ -294,6 +294,9 @@ SFeaStat_LDADD = $(COMMONLIBS) $(BOOST_PROGRAM_OPTIONS_LIB)
 @USE_SNET_TRUE@SNet_SOURCES = SNet.cc 
 @USE_SNET_TRUE@SNet_LDFLAGS = $(COMMONLDFLAGS) -pthread
 @USE_SNET_TRUE@SNet_LDADD = $(COMMONLIBS) ./SNetLib/libSNet.a
+@USE_SNET_TRUE@SNetStats_SOURCES = SNetStats.cc 
+@USE_SNET_TRUE@SNetStats_LDFLAGS = $(COMMONLDFLAGS) -pthread
+@USE_SNET_TRUE@SNetStats_LDADD = $(COMMONLIBS) ./SNetLib/libSNet.a
 all: all-recursive
 
 .SUFFIXES:
@@ -371,6 +374,9 @@ SLRatio$(EXEEXT): $(SLRatio_OBJECTS) $(SLRatio_DEPENDENCIES)
 SNet$(EXEEXT): $(SNet_OBJECTS) $(SNet_DEPENDENCIES) 
 	@rm -f SNet$(EXEEXT)
 	$(CXXLINK) $(SNet_LDFLAGS) $(SNet_OBJECTS) $(SNet_LDADD) $(LIBS)
+SNetStats$(EXEEXT): $(SNetStats_OBJECTS) $(SNetStats_DEPENDENCIES) 
+	@rm -f SNetStats$(EXEEXT)
+	$(CXXLINK) $(SNetStats_LDFLAGS) $(SNetStats_OBJECTS) $(SNetStats_LDADD) $(LIBS)
 SResults$(EXEEXT): $(SResults_OBJECTS) $(SResults_DEPENDENCIES) 
 	@rm -f SResults$(EXEEXT)
 	$(CXXLINK) $(SResults_LDFLAGS) $(SResults_OBJECTS) $(SResults_LDADD) $(LIBS)
@@ -397,6 +403,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SFeaStat.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SLRatio.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SNet.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SNetStats.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SResults.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SRover.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STree.Po@am__quote@
