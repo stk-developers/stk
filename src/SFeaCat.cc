@@ -83,6 +83,7 @@ int main(int argc, char *argv[])
   ModelSet                hset;
   FILE*                   sfp;
   FILE*                   ofp = NULL;
+  OStkStream              o_stream;
   
 #ifndef USE_NEW_MATRIX  
   FLOAT*                  obs_mx;
@@ -137,6 +138,7 @@ int main(int argc, char *argv[])
   bool                    swap_fea_out;
   RHFBuffer               rhfbuff = {0};
 
+  std::string             output_format;
   
   if (argc == 1) 
     usage(argv[0]);
@@ -182,6 +184,7 @@ int main(int argc, char *argv[])
 
   mmf_dir        = GetParamStr(&cfg_hash, SNAME":MMFDIR",          ".");
   mmf_mask       = GetParamStr(&cfg_hash, SNAME":MMFMASK",         NULL);
+  output_format  = GetParamStr(&cfg_hash, SNAME":OUTFORMAT",       "HTK");
 
   bool print_all_options = GetParamBool(&cfg_hash,SNAME":PRINTALLOPTIONS", false);
 
@@ -287,84 +290,108 @@ int main(int argc, char *argv[])
     
     MakeFileName(p_out_file, file_name->logical, out_dir, out_ext);
 
-    if ((ofp = fopen(p_out_file, "wb")) == NULL)
+
+    o_stream.open(p_out_file);
+    if (!o_stream.good()) {
       Error("Cannot open output feature file: '%s'", p_out_file);
+    }
+
+    ofp = o_stream.file();
+    // if ((ofp = fopen(p_out_file, "wb")) == NULL)
+    //   Error("Cannot open output feature file: '%s'", p_out_file);
     
 //    header.mSampleKind = p_input ? PARAMKIND_USER : targetKind;
 //    header.mSampleSize = out_size * sizeof(float);
 //    header.mNSamples -= hset.mTotalDelay;
 
-    if (WriteHTKHeader(ofp, header, 1))
-      Error("Cannot write to output feature file: '%s'", p_out_file);
-    
+    // if (WriteHTKHeader(ofp, header, 0)) {
+    //   Error("Cannot write to output feature file: '%s'", p_out_file);
+    // }
+    // 
+    // o_stream.flush();
+
     time = -hset.mTotalDelay;
     hset.ResetXformInstances();
     
+    FLOAT *out_fea;
+    Matrix<FLOAT> out_matrix(header.mNSamples - hset.mTotalDelay, out_size);
+
     FLOAT *out_mx = (FLOAT*)  malloc((header.mNSamples - hset.mTotalDelay) * out_size * sizeof(FLOAT));
 
-    if (out_mx == NULL) Error("Insufficient memory");
+    if (out_mx == NULL) {
+      Error("Insufficient memory");
+    }
 
-    for(i = 0; i < header.mNSamples; i++) 
-    {
-#ifndef USE_NEW_MATRIX      
-      hset.UpdateStacks(obs_mx + i * vec_size, ++time, FORWARD);
-#else      
+    for(i = 0; i < header.mNSamples; i++) {
       hset.UpdateStacks(feature_matrix[i], ++time, FORWARD);
-#endif      
-      if (time <= 0) 
-        continue;
 
-#ifndef USE_NEW_MATRIX      
-      obs = XformPass(p_input, obs_mx + i * vec_size, time, FORWARD);
-#else
+      if (time <= 0) {
+        continue;
+      }
+
       obs = XformPass(p_input, feature_matrix[i], time, FORWARD);
-#endif
-      memcpy(out_mx + (time - 1) * out_size, obs, sizeof(FLOAT) * out_size);
+      // memcpy(out_mx + (time - 1) * out_size, obs, sizeof(FLOAT) * out_size);
+      memcpy(out_matrix[time - 1], obs, sizeof(FLOAT) * out_size);
 
 //      if (WriteHTKFeature (ofp, obs, out_size, swap_fea_out)) 
 //        Error("Cannot write to output feature file: '%s'", p_out_file);      
     }
     
-    if (WriteHTKFeatures(
-          ofp,
-	  out_mx,
-	  out_size,
-	  header.mNSamples - hset.mTotalDelay,
-	  header.mSamplePeriod,
-	  p_input ? (PARAMKIND_USER | targetKind & PARAMKIND_C) : targetKind,
-	  swap_fea_out)) 
-    {
-      Error("Cannot write to output feature file: '%s'", p_out_file);
+    if (output_format == "HTK") {
+      // resolve the _ANON HTK parameter
+      int this_target_kind = targetKind;
+
+      if (targetKind == PARAMKIND_ANON) {
+        this_target_kind = header.mSampleKind;
+      } 
+      else if ((targetKind & 077) == PARAMKIND_ANON) {
+        this_target_kind &= ~077;
+        this_target_kind |= header.mSampleKind & 077;
+      }
+    
+      if (WriteHTKFeatures(
+            ofp,
+            header.mSamplePeriod,
+            p_input ? (PARAMKIND_USER | this_target_kind & PARAMKIND_C) : this_target_kind,
+            swap_fea_out, 
+            out_matrix)) 
+      {
+        Error("Cannot write to output feature file: '%s'", p_out_file);
+      }
     }
+    else if (output_format == "RAWASCII") {
+      o_stream << out_matrix << std::endl;
+    } 
+    else {
+      Error("Unknown output format: '%s'", output_format.c_str());
+    }
+
     free(out_mx);
     tot_frames += header.mNSamples - hset.mTotalDelay;
 
     if(trace_flag & 1) 
       TraceLog("[%d frames]", header.mNSamples - hset.mTotalDelay);
       
-    fclose(ofp);
-#ifndef USE_NEW_MATRIX      
-    free(obs_mx);
-#else
+    o_stream.close();
     feature_matrix.Destroy();
-#endif
   }
   
-  if (trace_flag & 2) 
+  if (trace_flag & 2) {
     TraceLog("Total number of frames: %d", tot_frames);
+  }
 
   hset.Release();
   free(derivWinLengths);
 
-  while (feature_files) 
-  {
+  while (feature_files) {
     file_name = feature_files;
     feature_files = feature_files->mpNext;
     free(file_name);
   }
   
-  for (unsigned int i = 0; i < cfg_hash.mNEntries; i++)
+  for (unsigned int i = 0; i < cfg_hash.mNEntries; i++) {
     free(cfg_hash.mpEntry[i]->data);
+  }
 
   my_hdestroy_r(&cfg_hash, 1);
 

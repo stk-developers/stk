@@ -510,7 +510,7 @@ int main(int argc, char *argv[])
 
   ///***************************************************************************     
   /// DELETE SNET
-  delete prog_obj;  
+  // delete prog_obj;  
   std::cout << "SNet is Deleted... debug message\n" << std::flush;
   
   if (trace_flag & 2) {
