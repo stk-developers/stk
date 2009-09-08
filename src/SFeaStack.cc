@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
   gpFilterWldcrd = GetParamStr(&cfg_hash, SNAME":HFILTERWILDCARD", "$");
   gpScriptFilter  = GetParamStr(&cfg_hash, SNAME":HSCRIPTFILTER",   NULL);
   gpParmFilter    = GetParamStr(&cfg_hash, SNAME":HPARMFILTER",     NULL);
-  gpHListFilter  = GetParamStr(&cfg_hash, SNAME":HMMLISTFILTER",   NULL);
+//  gpHListFilter  = GetParamStr(&cfg_hash, SNAME":HMMLISTFILTER",   NULL);
   gpMmfFilter     = GetParamStr(&cfg_hash, SNAME":HMMDEFFILTER",    NULL);
   gpParmOFilter   = GetParamStr(&cfg_hash, SNAME":HPARMOFILTER",    NULL);
   out_dir        = GetParamStr(&cfg_hash, SNAME":TARGETPARAMDIR",  NULL);

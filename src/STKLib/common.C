@@ -50,13 +50,13 @@ namespace STK
 
   FLOAT           gMinLogDiff;
   
-  const char*     gpFilterWldcrd;
-  const char*     gpScriptFilter;
-  const char*     gpParmFilter;
-  const char*     gpMmfFilter;
-  const char*     gpHListOFilter;
-  const char*     gpMmfOFilter;
-  const char*     gpParmOFilter;
+  const char*     gpFilterWldcrd = "$";
+  const char*     gpScriptFilter = 0;
+  const char*     gpParmFilter = 0;
+  const char*     gpMmfFilter = 0;
+  const char*     gpHListOFilter = 0;
+  const char*     gpMmfOFilter = 0;
+  const char*     gpParmOFilter = 0;
 
     
   static const char* gpParmKindNames[] = 

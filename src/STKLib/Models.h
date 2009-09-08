@@ -449,8 +449,18 @@ namespace STK
     
     //bool                      mClusterParametersUpdate;
     bool                      mModelUpdateDoesNotNormalize;
+
+    // moved from global variables to ensure thread safety
+    int                       mCurrentMmfLine;
+    const char *              mpCurrentMmfName;                                                                                                                                                                               
+    bool                      mHmmReadBinary;                                                                                                                                                                                 
+    bool                      mStringUnget;    
+    bool                      mHmmsIgnoreMacroRedefinition;                                                                                                                                                              
+    const char *              mpKwds[KID_MaxKwdID];
+    const char *              mpHListFilter;                                    ///< HMM list Filter command
     
-    
+    ModelSet();
+
     /**
      * @name MMF output functions
      */
@@ -663,6 +673,24 @@ namespace STK
           HMMSetNodeName  nodeNameBuffer,
           ScanAction      action, 
           void *          pUserData);
+
+    // moved from global function to ensure thread safety
+    int         CheckKwd(const char* str, KeywordID kwdID);
+    void        InitKwdTable();
+    FLOAT       GetFloat(FILE* fp);
+    int         GetInt(FILE* fp);
+    char*       GetString(FILE* fp, int eofNotExpected);
+    void        RemoveSpaces(FILE* fp);
+    void        UngetString(void);
+    void        PutFlt(FILE* fp, bool binary, FLOAT f);
+    void        PutInt(FILE* fp, bool binary, int i);
+    void        PutKwd(FILE* fp, bool binary, KeywordID kwdID);
+    void        PutNLn(FILE* fp, bool binary);
+    void        PutString(FILE *fp, bool binary, const char *msg, ...);
+    KeywordID   ReadDurKind(char* str);
+    KeywordID   ReadOutPDFKind(char* str);
+    void        PutSpace(FILE *fp, bool binary);
+////
   }; // ModelSet
 
   
@@ -1449,8 +1477,8 @@ namespace STK
         FLOAT mEndValue;
         unsigned int mSeed;
         
-        void Read(FILE *fp, size_t vctSize);
-        void Write(FILE *fp, bool binary);
+        void Read(FILE *fp, size_t vctSize, ModelSet *pModelSet);
+        void Write(FILE *fp, bool binary, ModelSet *pModelSet);
         void Generate(BasicVector<FLOAT> &rVct);  
    };    
 
@@ -2015,14 +2043,13 @@ namespace STK
   /// @}
     
   
-  extern const char *   gpCurrentMmfName;
-                            
-  extern bool           gHmmsIgnoreMacroRedefinition;         ///< Controls macro redefinition behavior
-  extern const char *   gpHListFilter;                        ///< HMM list Filter command
-  extern FunctionTable  gFuncTable[];                         ///< FuncXform table (keyword Id to function mapping)
-  extern size_t         gFuncTableSize;                       ///< Number of records in gFuncTable
-  extern const char *   gpKwds[KID_MaxKwdID];                 ///< MMF keyword table
+//  extern const char *   gpCurrentMmfName;                            
+//  extern bool           gHmmsIgnoreMacroRedefinition;         ///< Controls macro redefinition behavior
+//  extern const char *   gpHListFilter;                        ///< HMM list Filter command
+//  extern const char *   gpKwds[KID_MaxKwdID];                 ///< MMF keyword table
 
+extern FunctionTable  gFuncTable[];                         ///< FuncXform table (keyword Id to function mapping)
+extern size_t         gFuncTableSize;                       ///< Number of records in gFuncTable
                   
   /**
    * @brief Passes the vector through XformInstance
@@ -2032,22 +2059,9 @@ namespace STK
   void        ReleaseMacroHash(MyHSearchData* macro_hash);
   Macro*      FindMacro(MyHSearchData* macro_hash, const char *name);
   
-  void        PutFlt(FILE* fp, bool binary, FLOAT f);
-  void        PutInt(FILE* fp, bool binary, int i);
-  void        PutKwd(FILE* fp, bool binary, KeywordID kwdID);
-  void        PutNLn(FILE* fp, bool binary);
-  
-  FLOAT       GetFloat(FILE* fp);
-  int         GetInt(FILE* fp);
-  char*       GetString(FILE* fp, int eofNotExpected);
-  void        RemoveSpaces(FILE* fp);
-  void        UngetString(void);
   
   
-  int         CheckKwd(const char* str, KeywordID kwdID);
-  void        InitKwdTable();
-  KeywordID   ReadDurKind(char* str);
-  KeywordID   ReadOutPDFKind(char* str);
+  
   
   /// Action procedures
   /// @{

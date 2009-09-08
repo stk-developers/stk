@@ -36,8 +36,8 @@
 namespace STK
 {
 
-  const char*     gpHListFilter;
-  bool            gHmmsIgnoreMacroRedefinition = true;
+//  const char*     gpHListFilter;
+//  bool            gHmmsIgnoreMacroRedefinition = true;
   FLOAT           gWeightAccumDen;
   
   
@@ -3831,8 +3831,8 @@ namespace STK
     
     //if ((macro = (Macro *) malloc(sizeof(Macro))) == NULL ||
     if ((macro->mpName = strdup(rNewName.c_str())) == NULL              
-    ||  (macro->mpFileName = NULL, gpCurrentMmfName
-    &&  (macro->mpFileName = strdup(gpCurrentMmfName)) == NULL)) 
+    ||  (macro->mpFileName = NULL, mpCurrentMmfName
+    &&  (macro->mpFileName = strdup(mpCurrentMmfName)) == NULL)) 
     {
       Error("Insufficient memory");
     }    

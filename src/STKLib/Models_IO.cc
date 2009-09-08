@@ -4,11 +4,11 @@
  
 namespace STK
 {
-  int             gCurrentMmfLine       = 1;
-  const char *    gpCurrentMmfName;
-  bool            gHmmReadBinary;
-  bool            gStringUnget          = false;
-  const char *    gpKwds[KID_MaxKwdID]  = {0};
+//  int             gCurrentMmfLine       = 1;
+//  const char *    gpCurrentMmfName;
+//  bool            gHmmReadBinary;
+//  bool            gStringUnget          = false;
+//  const char *    gpKwds[KID_MaxKwdID]  = {0};
   
   
   
@@ -20,95 +20,101 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  void InitKwdTable()
+  void
+  ModelSet::
+  InitKwdTable()
   {
-    gpKwds[KID_BeginHMM    ] = "BeginHMM";      gpKwds[KID_Use        ] = "Use";
-    gpKwds[KID_EndHMM      ] = "EndHMM";        gpKwds[KID_NumMixes   ] = "NumMixes";
-    gpKwds[KID_NumStates   ] = "NumStates";     gpKwds[KID_StreamInfo ] = "StreamInfo";
-    gpKwds[KID_VecSize     ] = "VecSize";       gpKwds[KID_NullD      ] = "NullD";
-    gpKwds[KID_PoissonD    ] = "PoissonD";      gpKwds[KID_GammaD     ] = "GammaD";
-    gpKwds[KID_RelD        ] = "RelD";          gpKwds[KID_GenD       ] = "GenD";
-    gpKwds[KID_DiagC       ] = "DiagC";         gpKwds[KID_FullC      ] = "FullC";
-    gpKwds[KID_XformC      ] = "XformC";        gpKwds[KID_State      ] = "State";
-    gpKwds[KID_TMix        ] = "TMix";          gpKwds[KID_Mixture    ] = "Mixture";
-    gpKwds[KID_Stream      ] = "Stream";        gpKwds[KID_SWeights   ] = "SWeights";
-    gpKwds[KID_Mean        ] = "Mean";          gpKwds[KID_Variance   ] = "Variance";
-    gpKwds[KID_InvCovar    ] = "InvCovar";      gpKwds[KID_Xform      ] = "Xform";
-    gpKwds[KID_GConst      ] = "GConst";        gpKwds[KID_Duration   ] = "Duration";
-    gpKwds[KID_InvDiagC    ] = "InvDiagC";      gpKwds[KID_TransP     ] = "TransP";
-    gpKwds[KID_DProb       ] = "DProb";         gpKwds[KID_LLTC       ] = "LLTC";
-    gpKwds[KID_LLTCovar    ] = "LLTCovar";      gpKwds[KID_XformKind  ] = "XformKind";
-    gpKwds[KID_ParentXform ] = "ParentXform";   gpKwds[KID_NumXforms  ] = "NumXforms";
-    gpKwds[KID_XformSet    ] = "XformSet";      gpKwds[KID_LinXform   ] = "LinXform";
-    gpKwds[KID_Offset      ] = "Offset";        gpKwds[KID_Bias       ] = "Bias";
-    gpKwds[KID_BlockInfo   ] = "BlockInfo";     gpKwds[KID_Block      ] = "Block";
-    gpKwds[KID_BaseClass   ] = "BaseClass";     gpKwds[KID_Class      ] = "Class";
-    gpKwds[KID_XformWgtSet ] = "XformWgtSet";   gpKwds[KID_ClassXform ] = "ClassXform";
-    gpKwds[KID_MMFIDMask   ] = "MMFIDMask";     gpKwds[KID_Parameters ] = "Parameters";
-    gpKwds[KID_NumClasses  ] = "NumClasses";    gpKwds[KID_AdaptKind  ] = "AdaptKind";
-    gpKwds[KID_Prequal     ] = "Prequal";       gpKwds[KID_InputXform ] = "InputXform";
-    gpKwds[KID_RClass      ] = "RClass";        gpKwds[KID_RegTree    ] = "RegTree";
-    gpKwds[KID_Node        ] = "Node";          gpKwds[KID_TNode      ] = "TNode";
-    gpKwds[KID_HMMSetID    ] = "HMMSetID";      gpKwds[KID_ParmKind   ] = "ParmKind";
+    mpKwds[KID_BeginHMM    ] = "BeginHMM";      mpKwds[KID_Use        ] = "Use";
+    mpKwds[KID_EndHMM      ] = "EndHMM";        mpKwds[KID_NumMixes   ] = "NumMixes";
+    mpKwds[KID_NumStates   ] = "NumStates";     mpKwds[KID_StreamInfo ] = "StreamInfo";
+    mpKwds[KID_VecSize     ] = "VecSize";       mpKwds[KID_NullD      ] = "NullD";
+    mpKwds[KID_PoissonD    ] = "PoissonD";      mpKwds[KID_GammaD     ] = "GammaD";
+    mpKwds[KID_RelD        ] = "RelD";          mpKwds[KID_GenD       ] = "GenD";
+    mpKwds[KID_DiagC       ] = "DiagC";         mpKwds[KID_FullC      ] = "FullC";
+    mpKwds[KID_XformC      ] = "XformC";        mpKwds[KID_State      ] = "State";
+    mpKwds[KID_TMix        ] = "TMix";          mpKwds[KID_Mixture    ] = "Mixture";
+    mpKwds[KID_Stream      ] = "Stream";        mpKwds[KID_SWeights   ] = "SWeights";
+    mpKwds[KID_Mean        ] = "Mean";          mpKwds[KID_Variance   ] = "Variance";
+    mpKwds[KID_InvCovar    ] = "InvCovar";      mpKwds[KID_Xform      ] = "Xform";
+    mpKwds[KID_GConst      ] = "GConst";        mpKwds[KID_Duration   ] = "Duration";
+    mpKwds[KID_InvDiagC    ] = "InvDiagC";      mpKwds[KID_TransP     ] = "TransP";
+    mpKwds[KID_DProb       ] = "DProb";         mpKwds[KID_LLTC       ] = "LLTC";
+    mpKwds[KID_LLTCovar    ] = "LLTCovar";      mpKwds[KID_XformKind  ] = "XformKind";
+    mpKwds[KID_ParentXform ] = "ParentXform";   mpKwds[KID_NumXforms  ] = "NumXforms";
+    mpKwds[KID_XformSet    ] = "XformSet";      mpKwds[KID_LinXform   ] = "LinXform";
+    mpKwds[KID_Offset      ] = "Offset";        mpKwds[KID_Bias       ] = "Bias";
+    mpKwds[KID_BlockInfo   ] = "BlockInfo";     mpKwds[KID_Block      ] = "Block";
+    mpKwds[KID_BaseClass   ] = "BaseClass";     mpKwds[KID_Class      ] = "Class";
+    mpKwds[KID_XformWgtSet ] = "XformWgtSet";   mpKwds[KID_ClassXform ] = "ClassXform";
+    mpKwds[KID_MMFIDMask   ] = "MMFIDMask";     mpKwds[KID_Parameters ] = "Parameters";
+    mpKwds[KID_NumClasses  ] = "NumClasses";    mpKwds[KID_AdaptKind  ] = "AdaptKind";
+    mpKwds[KID_Prequal     ] = "Prequal";       mpKwds[KID_InputXform ] = "InputXform";
+    mpKwds[KID_RClass      ] = "RClass";        mpKwds[KID_RegTree    ] = "RegTree";
+    mpKwds[KID_Node        ] = "Node";          mpKwds[KID_TNode      ] = "TNode";
+    mpKwds[KID_HMMSetID    ] = "HMMSetID";      mpKwds[KID_ParmKind   ] = "ParmKind";
   
     /* Non-HTK keywords */
-    gpKwds[KID_FrmExt      ] = "FrmExt";        gpKwds[KID_PDFObsVec  ] = "PDFObsVec";
-    gpKwds[KID_ObsCoef     ] = "ObsCoef";       gpKwds[KID_Input      ] = "Input";
-    gpKwds[KID_NumLayers   ] = "NumLayers";     gpKwds[KID_NumBlocks  ] = "NumBlocks";
-    gpKwds[KID_Layer       ] = "Layer";         gpKwds[KID_Copy       ] = "Copy";
-    gpKwds[KID_Stacking    ] = "Stacking";      gpKwds[KID_Transpose  ] = "Transpose";    
-    gpKwds[KID_Constant    ] = "Constant";
-    gpKwds[KID_XformPredef ] = "XformPredef";   gpKwds[KID_Window     ] = "Window";  
-    gpKwds[KID_WindowPredef] = "WindowPredef";  gpKwds[KID_BlockCopy  ] = "BlockCopy";       
-    gpKwds[KID_BiasPredef  ] = "BiasPredef";
+    mpKwds[KID_FrmExt      ] = "FrmExt";        mpKwds[KID_PDFObsVec  ] = "PDFObsVec";
+    mpKwds[KID_ObsCoef     ] = "ObsCoef";       mpKwds[KID_Input      ] = "Input";
+    mpKwds[KID_NumLayers   ] = "NumLayers";     mpKwds[KID_NumBlocks  ] = "NumBlocks";
+    mpKwds[KID_Layer       ] = "Layer";         mpKwds[KID_Copy       ] = "Copy";
+    mpKwds[KID_Stacking    ] = "Stacking";      mpKwds[KID_Transpose  ] = "Transpose";    
+    mpKwds[KID_Constant    ] = "Constant";
+    mpKwds[KID_XformPredef ] = "XformPredef";   mpKwds[KID_Window     ] = "Window";  
+    mpKwds[KID_WindowPredef] = "WindowPredef";  mpKwds[KID_BlockCopy  ] = "BlockCopy";       
+    mpKwds[KID_BiasPredef  ] = "BiasPredef";
         
-    gpKwds[KID_ExtendedXform  ] = "ExtendedXform";
-    gpKwds[KID_RegionDependent] = "RegionDependentXform";
-    gpKwds[KID_GmmPosteriors]   = "GmmPosteriors";
+    mpKwds[KID_ExtendedXform  ] = "ExtendedXform";
+    mpKwds[KID_RegionDependent] = "RegionDependentXform";
+    mpKwds[KID_GmmPosteriors]   = "GmmPosteriors";
     
     /* Numeric functions - FuncXform*/
-    gpKwds[KID_Sigmoid     ] = "Sigmoid";       gpKwds[KID_Log        ] = "Log";
-    gpKwds[KID_Exp         ] = "Exp";           gpKwds[KID_Sqrt       ] = "Sqrt";
-    gpKwds[KID_SoftMax     ] = "SoftMax";
+    mpKwds[KID_Sigmoid     ] = "Sigmoid";       mpKwds[KID_Log        ] = "Log";
+    mpKwds[KID_Exp         ] = "Exp";           mpKwds[KID_Sqrt       ] = "Sqrt";
+    mpKwds[KID_SoftMax     ] = "SoftMax";
     
-    gpKwds[KID_Weights     ] = "Weights";
+    mpKwds[KID_Weights     ] = "Weights";
   }
   
   
   //***************************************************************************
   //***************************************************************************
-  int CheckKwd(const char *str, KeywordID kwdID)
+  int 
+  ModelSet::
+  CheckKwd(const char *str, KeywordID kwdID)
   {
     const char *chptr;
     
     if (str[0] == ':') {
-      gHmmReadBinary = true;
+      mHmmReadBinary = true;
       return static_cast<unsigned char>(str[1]) == kwdID;
     }
   
     if (str[0] != '<') return 0;
-    for (chptr = gpKwds[kwdID], str++; *chptr; chptr++, str++) {
+    for (chptr = mpKwds[kwdID], str++; *chptr; chptr++, str++) {
       if (toupper(*chptr) != toupper(*str)) return 0;
     }
   
     if (str[0] != '>') return 0;
   
     assert(str[1] == '\0');
-    gHmmReadBinary = false;
+    mHmmReadBinary = false;
     return 1;
   }
   
   //***************************************************************************
   //***************************************************************************
-  char *GetString(FILE *fp, int eofNotExpected)
+  char *
+  ModelSet::
+  GetString(FILE *fp, int eofNotExpected)
   {
     static char buffer[1024];
     char ch, *chptr = buffer;
     int lines = 0;
   
   //  fputs("GetString: ", stdout);
-    if (gStringUnget) {
-      gStringUnget = false;
+    if (mStringUnget) {
+      mStringUnget = false;
   
   //    puts(buffer);
       return buffer;
@@ -131,13 +137,13 @@ namespace STK
       }
   
       if (ch == EOF && ferror(fp)) {
-        Error("Cannot read input file %s", gpCurrentMmfName);
+        Error("Cannot read input file %s", mpCurrentMmfName);
       }
   
       if (ch != termChar) {
-        Error("Unterminated string constant (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+        Error("Unterminated string constant (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
       }
-      gCurrentMmfLine += lines;
+      mCurrentMmfLine += lines;
     } else if (ch == '<') {
       *chptr++ = '<';
       while (((ch = getc(fp)) != EOF) &&
@@ -149,11 +155,11 @@ namespace STK
       }
   
       if (ch == EOF && ferror(fp)) {
-        Error("Cannot read input file %s", gpCurrentMmfName);
+        Error("Cannot read input file %s", mpCurrentMmfName);
       }
   
       if (ch != '>') {
-        Error("Unterminated keyword %s (%s:%d)", buffer, gpCurrentMmfName, gCurrentMmfLine);
+        Error("Unterminated keyword %s (%s:%d)", buffer, mpCurrentMmfName, mCurrentMmfLine);
       }
   
       *chptr++ = '>';
@@ -162,8 +168,8 @@ namespace STK
       *chptr++ = ch = getc(fp);
   
       if (ch == EOF){
-      if (ferror(fp)) Error("Cannot read input file %s", gpCurrentMmfName);
-      else           Error("Unexpected end of file %s", gpCurrentMmfName);
+      if (ferror(fp)) Error("Cannot read input file %s", mpCurrentMmfName);
+      else           Error("Unexpected end of file %s", mpCurrentMmfName);
       }
     } else {
       while ((ch != EOF) && (ch != '\0') &&
@@ -175,16 +181,16 @@ namespace STK
       }
   
       if (ch != EOF) {
-        if(ch != ' ' || !gHmmReadBinary) {	
+        if(ch != ' ' || !mHmmReadBinary) {	
           ungetc(ch, fp);
         }
       } else if (ferror(fp)) {
-        Error("Cannot read input file %s", gpCurrentMmfName);
+        Error("Cannot read input file %s", mpCurrentMmfName);
       }
   
       if (chptr == buffer) {
         if (eofNotExpected) {
-          Error("Unexpected end of file %s", gpCurrentMmfName);
+          Error("Unexpected end of file %s", mpCurrentMmfName);
         }
         return NULL;
       }
@@ -198,7 +204,9 @@ namespace STK
 
   //***************************************************************************
   //***************************************************************************  
-  void PutString(FILE *fp, bool binary, const char *msg, ...)
+  void
+  ModelSet::
+  PutString(FILE *fp, bool binary, const char *msg, ...)
   {
     va_list ap;
     va_start(ap, msg);
@@ -212,21 +220,25 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  void UngetString(void)
+  void 
+  ModelSet::
+  UngetString(void)
   {
-    gStringUnget = true;
+    mStringUnget = true;
   }
   
   
   //***************************************************************************
   //***************************************************************************
-  int GetInt(FILE *fp)
+  int 
+  ModelSet::
+  GetInt(FILE *fp)
   {
     int   cc;
     int   ret;
   //puts("GetInt");
     
-    if (gHmmReadBinary) {
+    if (mHmmReadBinary) {
       INT_16 i;
       cc = fread(&i, sizeof(INT_16), 1, fp);
       if (!isBigEndian()) swap2(i);
@@ -238,9 +250,9 @@ namespace STK
     
     if (cc != 1) {
       if (ferror(fp)) {
-        Error("Cannot read input file %s", gpCurrentMmfName);
+        Error("Cannot read input file %s", mpCurrentMmfName);
       }
-      Error("Integral number expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      Error("Integral number expected (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
     }
   
     return ret;
@@ -249,13 +261,15 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  FLOAT GetFloat(FILE *fp)
+  FLOAT 
+  ModelSet::
+  GetFloat(FILE *fp)
   {
     int cc;
     float ret;
   //puts("GetFloat");
     
-    if (gHmmReadBinary) {
+    if (mHmmReadBinary) {
       FLOAT_32 f;
       cc = fread(&f, sizeof(FLOAT_32), 1, fp);
       ret = f;
@@ -267,9 +281,9 @@ namespace STK
     
     if (cc != 1) {
       if (ferror(fp)) {
-        Error("Cannot read input file %s", gpCurrentMmfName);
+        Error("Cannot read input file %s", mpCurrentMmfName);
       }
-      Error("Float number expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      Error("Float number expected (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
     }
   
     return ret;
@@ -278,14 +292,16 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  void RemoveSpaces(FILE *fp)
+  void
+  ModelSet::
+  RemoveSpaces(FILE *fp)
   {
     char ch;
   
   //  puts("RemoveSpaces");
     while (isspace(ch = getc(fp))) {
       if (ch == '\n') {
-        ++gCurrentMmfLine;
+        ++mCurrentMmfLine;
       }
     }
     if (ch != EOF) {
@@ -296,7 +312,8 @@ namespace STK
   
   //*****************************************************************************
   //*****************************************************************************
-  unsigned int faddfloat(FLOAT *vec, size_t size, float mul_const, FILE *fp) 
+  unsigned int 
+  faddfloat(FLOAT *vec, size_t size, float mul_const, FILE *fp) 
   {
     size_t    i;
     FLOAT     f;
@@ -313,7 +330,9 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  KeywordID ReadOutPDFKind(char *str)
+  KeywordID
+  ModelSet::
+  ReadOutPDFKind(char *str)
   {
     if (     CheckKwd(str, KID_DiagC))    return KID_DiagC;
     else if (CheckKwd(str, KID_InvDiagC)) return KID_InvDiagC;
@@ -326,7 +345,9 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  KeywordID ReadDurKind(char *str)
+  KeywordID
+  ModelSet::
+  ReadDurKind(char *str)
   {
     if (     CheckKwd(str, KID_NullD))    return KID_NullD;
     else if (CheckKwd(str, KID_PoissonD)) return KID_PoissonD;
@@ -338,21 +359,25 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  void PutKwd(FILE *fp, bool binary, KeywordID kwdID)
+  void 
+  ModelSet::
+  PutKwd(FILE *fp, bool binary, KeywordID kwdID)
   {
     if (binary) {
       putc(':', fp);
       putc(kwdID, fp);
     } else {
       putc('<', fp);
-      fputs(gpKwds[kwdID], fp);
+      fputs(mpKwds[kwdID], fp);
       fputs("> ", fp);
     }
   }
   
   //***************************************************************************
   //***************************************************************************
-  void PutInt(FILE *fp, bool binary, int i)
+  void
+  ModelSet::
+  PutInt(FILE *fp, bool binary, int i)
   {
     if (binary) {
       INT_16 b = i;      
@@ -365,7 +390,9 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  void PutFlt(FILE *fp, bool binary, FLOAT f)
+  void
+  ModelSet::
+  PutFlt(FILE *fp, bool binary, FLOAT f)
   {
     if (binary) {
       FLOAT_32 b = f;
@@ -378,14 +405,18 @@ namespace STK
   
   //***************************************************************************
   //***************************************************************************
-  void PutNLn(FILE *fp, bool binary)
+  void
+  ModelSet::
+  PutNLn(FILE *fp, bool binary)
   {
     if (!binary) putc('\n', fp);
   }
   
   //***************************************************************************
   //***************************************************************************
-  void PutSpace(FILE *fp, bool binary)
+  void
+  ModelSet::
+  PutSpace(FILE *fp, bool binary)
   {
     if (!binary) putc(' ', fp);
   }
@@ -398,6 +429,17 @@ namespace STK
   //###########################################################################
   //###########################################################################
   
+  ModelSet::
+  ModelSet() : 
+    mCurrentMmfLine(1),
+    mpCurrentMmfName(0),
+    mHmmReadBinary(false),
+    mStringUnget(false),
+    mHmmsIgnoreMacroRedefinition(true),
+    mpHListFilter(0)
+  {
+  }
+
   //**************************************************************************  
   //**************************************************************************  
   void
@@ -416,7 +458,7 @@ namespace STK
     char                      mmfile[1024];
     FILE *                    fp;
   
-    if ((fp = my_fopen(pFileName, "rt", gpHListFilter)) == NULL) 
+    if ((fp = my_fopen(pFileName, "rt", mpHListFilter)) == NULL) 
     {
       Error("Cannot open file: '%s'", pFileName);
     }
@@ -451,13 +493,13 @@ namespace STK
       
       if (lhmm != fhmm) 
       {
-        gpCurrentMmfName = NULL; // Global variable; macro will not be written to any output MMF
+        mpCurrentMmfName = NULL; // Global variable; macro will not be written to any output MMF
         macro2 = this->pAddMacro('h', lhmm);
         assert(macro2 != NULL);
         
         if (macro2->mpData != NULL) 
         {
-          if (gHmmsIgnoreMacroRedefinition == 0) 
+          if (mHmmsIgnoreMacroRedefinition == 0) 
           {
             Error("Redefinition of HMM %s (%s:%d)", lhmm, pFileName, line_no);
           } 
@@ -498,8 +540,8 @@ namespace STK
     MacroData*    data = NULL;
     std::string   filter;
     
-    gCurrentMmfLine = 1;
-    gpCurrentMmfName = pFileName;
+    mCurrentMmfLine = 1;
+    mpCurrentMmfName = pFileName;
     
     try
     {
@@ -532,12 +574,12 @@ namespace STK
     
           if (type == 'o') {
             if (!ReadGlobalOptions(fp, readOnly)) {
-              Error("No global option defined (%s:%d)", pFileName, gCurrentMmfLine);
+              Error("No global option defined (%s:%d)", pFileName, mCurrentMmfLine);
             }
           } else {
             keyword = GetString(fp, 1);
             if ((macro = pAddMacro(type, keyword)) == NULL) {
-              Error("Unrecognized macro type ~%c (%s:%d)", type, pFileName, gCurrentMmfLine);
+              Error("Unrecognized macro type ~%c (%s:%d)", type, pFileName, mCurrentMmfLine);
             }
             
             // this is perhaps the place, where we say whether we want 
@@ -545,11 +587,11 @@ namespace STK
             macro->mReadOnly = readOnly;
     
             if (macro->mpData != NULL) {
-              if (gHmmsIgnoreMacroRedefinition == 0) {
-                Error("Redefinition of macro ~%c %s (%s:%d)", type, keyword, pFileName, gCurrentMmfLine);
+              if (mHmmsIgnoreMacroRedefinition == 0) {
+                Error("Redefinition of macro ~%c %s (%s:%d)", type, keyword, pFileName, mCurrentMmfLine);
               } else {
-                Warning("Redefinition of macro ~%c %s (%s:%d)", type, keyword, pFileName, gCurrentMmfLine);
-    //            Warning("Redefinition of macro ~%c %s (%s:%d) is ignored", type, keyword, mmFileName, gCurrentMmfLine);
+                Warning("Redefinition of macro ~%c %s (%s:%d)", type, keyword, pFileName, mCurrentMmfLine);
+    //            Warning("Redefinition of macro ~%c %s (%s:%d) is ignored", type, keyword, mmFileName, mCurrentMmfLine);
               }
             }
             switch (type)
@@ -639,7 +681,7 @@ namespace STK
                       mpClusterWeightVectors[i] = static_cast<BiasXform*>(ud.mpNewData);
                       
                       free(ud.mpNewData->mpMacro->mpFileName);
-                      if ((ud.mpNewData->mpMacro->mpFileName = strdup(gpCurrentMmfName)) == NULL)
+                      if ((ud.mpNewData->mpMacro->mpFileName = strdup(mpCurrentMmfName)) == NULL)
                       {
                         Error("Insufficient memory");
                       }
@@ -667,7 +709,7 @@ namespace STK
         } else if (CheckKwd(keyword, KID_BeginHMM)) {
           UngetString();
           if (expectHMM == NULL) {
-            Error("Macro definition expected (%s:%d)",pFileName,gCurrentMmfLine);
+            Error("Macro definition expected (%s:%d)",pFileName,mCurrentMmfLine);
           }
           //macro = AddMacroToHMMSet('h', expectHMM, hmm_set);
           macro = pAddMacro('h', expectHMM);
@@ -678,7 +720,7 @@ namespace STK
     
           macro->mpData = ReadHMM(fp, macro, readOnly);
         } else {
-          Error("Unexpected keyword %s (%s:%d)",keyword,pFileName,gCurrentMmfLine);
+          Error("Unexpected keyword %s (%s:%d)",keyword,pFileName,mCurrentMmfLine);
         }
       }
       
@@ -725,18 +767,18 @@ namespace STK
       if ((macro = FindMacro(&mHmmHash, keyword)) == NULL) 
       {
         Error("Undefined reference to macro ~h %s (%s:%d)",
-        keyword, gpCurrentMmfName, gCurrentMmfLine);
+        keyword, mpCurrentMmfName, mCurrentMmfLine);
       }
       return (Hmm *) macro->mpData;
     }
   
     if (!CheckKwd(keyword, KID_BeginHMM))
-      Error("Keyword <BeginHMM> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      Error("Keyword <BeginHMM> expected (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
   
     ReadGlobalOptions(fp, readOnly);
   
     if (mInputVectorSize == -1)
-      Error("<VecSize> is not defined yet (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      Error("<VecSize> is not defined yet (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
   
     if (mDurKind == -1) 
       mDurKind = KID_NullD;
@@ -745,12 +787,12 @@ namespace STK
     
     
     if (!CheckKwd(keyword, KID_NumStates))
-      Error("Keyword <NumStates> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      Error("Keyword <NumStates> expected (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
   
     nstates = GetInt(fp);
     
     if (nstates < 3)
-      Error("HMM must have at least 3 states (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      Error("HMM must have at least 3 states (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
       
     ret = new Hmm(nstates);  
     
@@ -763,16 +805,16 @@ namespace STK
       keyword = GetString(fp, 1);
       
       if (!CheckKwd(keyword, KID_State)) 
-        Error("Keyword <State> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+        Error("Keyword <State> expected (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
   
       state_id = GetInt(fp);
   
   //    printf("%d\n", state_id);
       if (state_id < 2 || state_id >= static_cast<int>(nstates)) 
-        Error("State number out of the range (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+        Error("State number out of the range (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
   
       if (ret->mpState[state_id-2] != NULL) 
-        Error("Redefinition of state (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+        Error("Redefinition of state (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
   
       ret->mpState[state_id-2] = ReadState(fp, NULL);
   //    printf("\n%d: %x\n", state_id-2, ret->mpState[state_id-2]);
@@ -782,12 +824,12 @@ namespace STK
     ret->mpMacro         = macro;
   
     if (ret->mpTransition->mNStates != nstates) 
-      Error("Invalid transition matrix size (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      Error("Invalid transition matrix size (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
   
     keyword = GetString(fp, 1);
     
     if (!CheckKwd(keyword, KID_EndHMM))
-      Error("Keyword <EndHMM> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      Error("Keyword <EndHMM> expected (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
     
     return ret;
   }
@@ -814,7 +856,7 @@ namespace STK
       keyword = GetString(fp, 1);
       if ((macro = FindMacro(&mStateHash, keyword)) == NULL) 
       {
-        Error("Undefined reference to macro ~s %s (%s:%d)", keyword, gpCurrentMmfName, gCurrentMmfLine);
+        Error("Undefined reference to macro ~s %s (%s:%d)", keyword, mpCurrentMmfName, mCurrentMmfLine);
       }
       return (State *) macro->mpData;
     }
@@ -851,7 +893,7 @@ namespace STK
       if (!CheckKwd(keyword, KID_ObsCoef)) 
       {
         Error("Keyword <ObsCoef> expected (%s:%d)",
-              gpCurrentMmfName, gCurrentMmfLine);
+              mpCurrentMmfName, mCurrentMmfLine);
       }
       ret->PDF_obs_coef = GetInt(fp) - 1;
       range = mpInputXform ? mpInputXform->OutSize()
@@ -859,7 +901,7 @@ namespace STK
       if (ret->PDF_obs_coef < 0 || ret->PDF_obs_coef >= range) 
       {
         Error("Parameter <ObsCoef> is out of the range 1:%d (%s:%d)",
-              range, gpCurrentMmfName, gCurrentMmfLine);
+              range, mpCurrentMmfName, mCurrentMmfLine);
       }
     } 
     else 
@@ -875,7 +917,7 @@ namespace STK
         if (GetInt(fp) != 1) 
         {
           Error("Stream number out of the range (%s:%d)",
-                gpCurrentMmfName, gCurrentMmfLine);
+                mpCurrentMmfName, mCurrentMmfLine);
         }
       } 
       else 
@@ -891,7 +933,7 @@ namespace STK
           if (num_mixes > 1) 
           {
             Error("Keyword <Mixture> expected (%s:%d)",
-                  gpCurrentMmfName, gCurrentMmfLine);
+                  mpCurrentMmfName, mCurrentMmfLine);
           }
           UngetString();
           mixture_id = 1;
@@ -906,13 +948,13 @@ namespace STK
         if (mixture_id < 1 || mixture_id > num_mixes) 
         {
           Error("Mixture number out of the range (%s:%d)",
-                gpCurrentMmfName, gCurrentMmfLine);
+                mpCurrentMmfName, mCurrentMmfLine);
         }
   
         if (ret->mpMixture[mixture_id-1].mpEstimates != NULL) 
         {
           Error("Redefinition of mixture %d (%s:%d)",
-                mixture_id, gpCurrentMmfName, gCurrentMmfLine);
+                mixture_id, mpCurrentMmfName, mCurrentMmfLine);
         }
   
         ret->mpMixture[mixture_id-1].mpEstimates  = ReadMixture(fp, NULL);
@@ -948,7 +990,7 @@ namespace STK
       
       if ((macro = FindMacro(&mMixtureHash, keyword)) == NULL)
         Error("Undefined reference to macro ~m %s (%s:%d)",
-              keyword, gpCurrentMmfName, gCurrentMmfLine);
+              keyword, mpCurrentMmfName, mCurrentMmfLine);
       
       return (Mixture *) macro->mpData;
     }
@@ -997,7 +1039,7 @@ namespace STK
   
     if (!ret->mpInputXform && (mInputVectorSize == -1))
     {
-      Error("<VecSize> is not defined yet (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      Error("<VecSize> is not defined yet (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
     } 
     
     size_t size = ret->mpInputXform ? ret->mpInputXform->OutSize() : mInputVectorSize;
@@ -1005,7 +1047,7 @@ namespace STK
     if (ret->mpMean->VectorSize()     != size || 
         ret->mpVariance->VectorSize() != size) 
     {
-      Error("Invalid mean or variance vector size (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      Error("Invalid mean or variance vector size (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
     }
   
     if ((keyword = GetString(fp, 0)) != NULL && CheckKwd(keyword, KID_GConst)) 
@@ -1048,8 +1090,8 @@ namespace STK
       {
         Error("Undefined reference to macro ~u %s (%s:%d)", 
           keyword, 
-          gpCurrentMmfName, 
-          gCurrentMmfLine);
+          mpCurrentMmfName, 
+          mCurrentMmfLine);
       }
       return  (Mean*) macro->mpData;
     }
@@ -1093,8 +1135,8 @@ namespace STK
           {
             Error("Undefined reference to macro ~x %s (%s:%d)", 
               keyword, 
-              gpCurrentMmfName, 
-              gCurrentMmfLine);
+              mpCurrentMmfName, 
+              mCurrentMmfLine);
           }
           
           xforms[xform_i] = static_cast<BiasXform *>(tmp_macro->mpData);
@@ -1107,7 +1149,7 @@ namespace STK
         }
         else
         {
-          Error("Reference to macro ~x expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+          Error("Reference to macro ~x expected (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
         }
       } //for (int xform_i; xform_i < n_xforms; xform_i++)
         
@@ -1126,7 +1168,7 @@ namespace STK
       {
         keyword = GetString(fp, 1);
         if (!CheckKwd(keyword, KID_Mean))
-          Error("Keyword <Mean> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+          Error("Keyword <Mean> expected (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
       
         vec_size = GetInt(fp);
         // maybe we haven't created any Mean object yet
@@ -1180,7 +1222,7 @@ namespace STK
     
     else
     {
-      Error("Keyword <Mean> or <Weights> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      Error("Keyword <Mean> or <Weights> expected (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
     }
     
     ret->mpMacro = macro;
@@ -1204,14 +1246,14 @@ namespace STK
     if (!strcmp(keyword, "~v")) {
       keyword = GetString(fp, 1);
       if ((macro = FindMacro(&mVarianceHash, keyword)) == NULL) {
-        Error("Undefined reference to macro ~v %s (%s:%d)", keyword, gpCurrentMmfName, gCurrentMmfLine);
+        Error("Undefined reference to macro ~v %s (%s:%d)", keyword, mpCurrentMmfName, mCurrentMmfLine);
   
       }
       return (Variance *) macro->mpData;
     }
   
     if (!CheckKwd(keyword, KID_Variance)) {
-      Error("Keyword <Variance> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      Error("Keyword <Variance> expected (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
     }
   
     vec_size = GetInt(fp);
@@ -1247,7 +1289,7 @@ namespace STK
       
       if ((macro = FindMacro(&mXformInstanceHash, keyword)) == NULL) {
         Error("Undefined reference to macro ~j %s (%s:%d)", keyword, 
-            gpCurrentMmfName, gCurrentMmfLine);
+            mpCurrentMmfName, mCurrentMmfLine);
       }
       
       return (XformInstance *) macro->mpData;
@@ -1264,7 +1306,7 @@ namespace STK
       keyword = GetString(fp, 1);
       if (strcmp(keyword, "*")) {
         Error("<MMFIdMask> different than '*' is not supported (%s:%d)", 
-            gpCurrentMmfName, gCurrentMmfLine);
+            mpCurrentMmfName, mCurrentMmfLine);
       }
   
       keyword = GetString(fp, 1);
@@ -1272,7 +1314,7 @@ namespace STK
   
     if ((i = ReadParmKind(keyword, true)) != -1) {
       if (mParamKind != -1 && mParamKind != i) {
-        Error("ParamKind mismatch (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+        Error("ParamKind mismatch (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
       }
   
       keyword = GetString(fp, 1);
@@ -1280,11 +1322,11 @@ namespace STK
   
     if (CheckKwd(keyword, KID_LinXform)) {
       keyword = GetString(fp, 1);
-  //    Error("Keyword <LinXform> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+  //    Error("Keyword <LinXform> expected (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
     }
   
     if (!CheckKwd(keyword, KID_VecSize)) {
-      Error("Keyword <VecSize> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      Error("Keyword <VecSize> expected (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
     }
   
     out_vec_size = GetInt(fp);
@@ -1297,23 +1339,23 @@ namespace STK
     
     
     if (input == NULL && mInputVectorSize == -1) {
-      Error("<VecSize> has not been defined yet (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      Error("<VecSize> has not been defined yet (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
     }
   
     if (static_cast<size_t>(out_vec_size) != ret->mpXform->mOutSize) {
       Error("XformInstance <VecSize> must equal to Xform "
-            "output size (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+            "output size (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
     }
   
     if (input == NULL) {
       if (ret->mpXform->mInSize != static_cast<size_t>(mInputVectorSize)) {
         Error("Xform input size must equal to ~o <VecSize> (%s:%d)",
-              gpCurrentMmfName, gCurrentMmfLine);
+              mpCurrentMmfName, mCurrentMmfLine);
       }
     } else {
       if (ret->mpXform->mInSize != input->OutSize()) {
         Error("Xform input size must equal to <Input> <VecSize> (%s:%d)",
-              gpCurrentMmfName, gCurrentMmfLine);
+              mpCurrentMmfName, mCurrentMmfLine);
       }
     }
   
@@ -1356,7 +1398,7 @@ namespace STK
       keyword = GetString(fp, 1);
       if ((macro = FindMacro(&mXformHash, keyword)) == NULL) {
         Error("Undefined reference to macro ~x %s (%s:%d)", keyword, 
-            gpCurrentMmfName, gCurrentMmfLine);
+            mpCurrentMmfName, mCurrentMmfLine);
       }
       return (Xform *) macro->mpData;
     }
@@ -1445,11 +1487,11 @@ namespace STK
       }
       
       Error("Invalid Extended Xform definition; unexpected keyword %s (%s:%d)", 
-        keyword, gpCurrentMmfName, gCurrentMmfLine);
+        keyword, mpCurrentMmfName, mCurrentMmfLine);
     }
     
     Error("Invalid Xform definition; unexpected keyword %s (%s:%d)", 
-      keyword, gpCurrentMmfName, gCurrentMmfLine);
+      keyword, mpCurrentMmfName, mCurrentMmfLine);
       
     return NULL;
   }; //ReadXform(FILE *fp, Macro *macro) 
@@ -1504,7 +1546,7 @@ namespace STK
       if (!CheckKwd(keyword, KID_Layer)) 
       {
         if (nlayers > 1) 
-          Error("Keyword <Layer> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+          Error("Keyword <Layer> expected (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
         
         layer_id = 1;
       } 
@@ -1515,10 +1557,10 @@ namespace STK
       }
   
       if (layer_id < 1 || static_cast<size_t>(layer_id) > nlayers)
-        Error("Layer number out of the range (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+        Error("Layer number out of the range (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
       
       if (ret->mpLayer[layer_id-1].mpBlock != NULL)
-        Error("Redefinition of mpLayer (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+        Error("Redefinition of mpLayer (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
   
       if (CheckKwd(keyword, KID_NumBlocks)) 
       {
@@ -1561,8 +1603,8 @@ namespace STK
         if (!CheckKwd(keyword, KID_Block)) 
         {
           if (nblocks > 1) {
-            Error("Keyword <Block> expected (%s:%d)", gpCurrentMmfName, 
-                gCurrentMmfLine);
+            Error("Keyword <Block> expected (%s:%d)", mpCurrentMmfName, 
+                mCurrentMmfLine);
           }
           
           UngetString();
@@ -1574,12 +1616,12 @@ namespace STK
         }
   
         if (block_id < 1 || static_cast<size_t>(block_id) > nblocks) {
-          Error("Block number out of the range (%s:%d)", gpCurrentMmfName, 
-              gCurrentMmfLine);
+          Error("Block number out of the range (%s:%d)", mpCurrentMmfName, 
+              mCurrentMmfLine);
         }
   
         if (block[block_id-1] != NULL)
-          Error("Redefinition of block (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+          Error("Redefinition of block (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
   
         block[block_id-1] = ReadXform(fp, NULL);
         ret->mMemorySize += block[block_id-1]->mMemorySize;
@@ -1611,7 +1653,7 @@ namespace STK
         if (prev_out_size < layer_in_size) 
         {
           Error("Output size of mpLayer %d (%d) is smaller then input size of mpLayer %d (%d) (%s:%d)",
-                (int) i, (int) prev_out_size, (int) i+1, (int) layer_in_size, gpCurrentMmfName, gCurrentMmfLine);
+                (int) i, (int) prev_out_size, (int) i+1, (int) layer_in_size, mpCurrentMmfName, mCurrentMmfLine);
         }
   
         //***
@@ -1663,8 +1705,8 @@ namespace STK
       
       if (!CheckKwd(keyword, KID_Block)) {
         if (nblocks > 1) {
-          Error("Keyword <Block> expected (%s:%d)", gpCurrentMmfName, 
-              gCurrentMmfLine);
+          Error("Keyword <Block> expected (%s:%d)", mpCurrentMmfName, 
+              mCurrentMmfLine);
         }
         UngetString();
         block_id = 1;
@@ -1672,11 +1714,11 @@ namespace STK
         block_id = GetInt(fp);
       }
       if (block_id < 1 || static_cast<size_t>(block_id) > nblocks) {
-        Error("Block number out of the range (%s:%d)", gpCurrentMmfName, 
-            gCurrentMmfLine);
+        Error("Block number out of the range (%s:%d)", mpCurrentMmfName, 
+            mCurrentMmfLine);
       }
       if (ret->mpBlock[block_id-1] != NULL) {
-        Error("Redefinition of block (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+        Error("Redefinition of block (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
       }
       ret->mpBlock[block_id-1] = ReadXform(fp, NULL);
       ret->mMemorySize += ret->mpBlock[block_id-1]->mMemorySize;
@@ -1732,7 +1774,7 @@ namespace STK
   
         if(out_size > in_size || (out_size == in_size && !ret->mIncludeC0))
         {
-          Error("Number of base components (%d) of DCT can not be higher then input vector size (%d) (%s:%d)", out_size, in_size, gpCurrentMmfName, gCurrentMmfLine);
+          Error("Number of base components (%d) of DCT can not be higher then input vector size (%d) (%s:%d)", out_size, in_size, mpCurrentMmfName, mCurrentMmfLine);
         }
   
         GenerateDCTMatrix(ret->mMatrix, out_size, in_size, 1, ret->mIncludeC0);	    
@@ -1762,7 +1804,7 @@ namespace STK
       }
       else 
       {
-        Error("Unknown predefined Xform %s (%s:%d)", p_tr_name, gpCurrentMmfName, gCurrentMmfLine);	  
+        Error("Unknown predefined Xform %s (%s:%d)", p_tr_name, mpCurrentMmfName, mCurrentMmfLine);	  
       }
     } 
     else
@@ -1800,7 +1842,7 @@ namespace STK
     if(predefined)
     {
       ret->mUsePredefVector = true;
-      ret->mPredefVector.Read(fp, size);
+      ret->mPredefVector.Read(fp, size, this);
       
       // This is a hack, BiasXform should have vector instead of matrix.
       // !!! It is hard to fix this in SNet
@@ -1880,9 +1922,9 @@ namespace STK
       RemoveSpaces(fp);
       if ((n = fscanf(fp, "%d:%d:%d", &from, &step, &to)) < 1) {
         if (ferror(fp)) {
-          Error("Cannot read input file %s", gpCurrentMmfName);
+          Error("Cannot read input file %s", mpCurrentMmfName);
         }
-        Error("Integral number expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+        Error("Integral number expected (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
       }
   
       if (n == 2)      { to = step; step = 1; }
@@ -1890,7 +1932,7 @@ namespace STK
   
       if (to < 1 || to > in_size) {
         Error("Copy index %d out of range (%s:%d)",
-              to, gpCurrentMmfName, gCurrentMmfLine);
+              to, mpCurrentMmfName, mCurrentMmfLine);
       }
   
       for (n = 0; n < (to-from)/step + 1; n++, i++) {
@@ -1927,16 +1969,16 @@ namespace STK
     int k;
     for(i = 0; i < n_blocks; i++)
     {
-      if(!gHmmReadBinary)
+      if(!mHmmReadBinary)
       {
         // first dimension
         RemoveSpaces(fp);
         if ((n = fscanf(fp, "%d:%d:%d", &from, &step, &to)) < 1) {
           if (ferror(fp)) {
-            Error("Cannot read input file %s", gpCurrentMmfName);
+            Error("Cannot read input file %s", mpCurrentMmfName);
           }
-          Error("Integral number expected (%s:%d)", gpCurrentMmfName, 
-              gCurrentMmfLine);
+          Error("Integral number expected (%s:%d)", mpCurrentMmfName, 
+              mCurrentMmfLine);
         }
       
         if (n == 2)      { to = step; step = 1; }
@@ -1952,9 +1994,9 @@ namespace STK
         {
           if ((n = fscanf(fp, "%d:%d:%d", &from, &step, &to)) < 1) {
             if (ferror(fp)) {
-              Error("Cannot read input file %s", gpCurrentMmfName);
+              Error("Cannot read input file %s", mpCurrentMmfName);
             }
-            Error("Integral number expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+            Error("Integral number expected (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
           }
       
           if (n == 2)      { to = step; step = 1; }
@@ -1988,12 +2030,12 @@ namespace STK
                   
       if (p_blocks[i].mToR < 1 || p_blocks[i].mToR > n_rows) {
         Error("BlockCopy index %d out of range (%s:%d)",
-              p_blocks[i].mToR, gpCurrentMmfName, gCurrentMmfLine);
+              p_blocks[i].mToR, mpCurrentMmfName, mCurrentMmfLine);
       }
       
       if (p_blocks[i].mToC < 1 || p_blocks[i].mToC > n_cols) {
         Error("BlockCopy index %d out of range (%s:%d)",
-              p_blocks[i].mToC, gpCurrentMmfName, gCurrentMmfLine);
+              p_blocks[i].mToC, mpCurrentMmfName, mCurrentMmfLine);
       }
         
       int n_vals_r = 0;
@@ -2094,7 +2136,7 @@ namespace STK
     if(predefined)
     {
       ret->mUsePredefVector = true;
-      ret->mPredefVector.Read(fp, size);
+      ret->mPredefVector.Read(fp, size, this);
       ret->mPredefVector.Generate(ret->mVector);
     } 
     else
@@ -2138,12 +2180,12 @@ namespace STK
     keyword = GetString(fp, 1);
     
     if (!CheckKwd(keyword, KID_State)) 
-      Error("Keyword <State> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      Error("Keyword <State> expected (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
   
     state_id = GetInt(fp);
  
     if (state_id !=1) 
-      Error("State number should be 1 (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      Error("State number should be 1 (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
   
     ret->mpStateFrom = ReadState(fp, NULL);
     
@@ -2151,12 +2193,12 @@ namespace STK
     keyword = GetString(fp, 1);
     
     if (!CheckKwd(keyword, KID_State)) 
-      Error("Keyword <State> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      Error("Keyword <State> expected (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
   
     state_id = GetInt(fp);
  
     if (state_id != 2) 
-      Error("State number should be 2 (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      Error("State number should be 2 (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
     
     ret->mpStateTo   = ReadState(fp, NULL);
   
@@ -2165,7 +2207,7 @@ namespace STK
     if (ret->mpStateFrom->mNMixtures != ret->mpStateTo->mNMixtures)
     {
       Error("Number of mixtures must match in the Xform states (%s:%d)", 
-        gpCurrentMmfName, gCurrentMmfLine);
+        mpCurrentMmfName, mCurrentMmfLine);
     }
     
     // restore the original input vector size value
@@ -2230,7 +2272,7 @@ namespace STK
     if (in_size % n_parts)
     {
       Error("Vector size has to be divisible by %d (%s:%d)", 
-        n_parts, gpCurrentMmfName, gCurrentMmfLine);
+        n_parts, mpCurrentMmfName, mCurrentMmfLine);
     }  
     
     // create new object
@@ -2317,7 +2359,7 @@ namespace STK
       if ((keyword = GetString(fp, 0)) == NULL) 
       {
         return ret;
-  //      Error("Unexpected end of file %s", gpCurrentMmfName);
+  //      Error("Unexpected end of file %s", mpCurrentMmfName);
       }
   
       if (CheckKwd(keyword, KID_VecSize)) 
@@ -2326,7 +2368,7 @@ namespace STK
         if (mInputVectorSize != -1 && mInputVectorSize != i) 
         {
           Error("Mismatch in <VecSize> redefinition (%s:%d)",
-                gpCurrentMmfName, gCurrentMmfLine);
+                mpCurrentMmfName, mCurrentMmfLine);
         }
   
         mInputVectorSize = i;
@@ -2337,13 +2379,13 @@ namespace STK
       {
         if (GetInt(fp) != 1) 
         {
-          Error("Unsupported definition of multistream (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+          Error("Unsupported definition of multistream (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
         }
   
         i = GetInt(fp);
         if (mInputVectorSize != -1 && mInputVectorSize != i) 
         {
-          Error("Mismatch in <VecSize> redefinition (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+          Error("Mismatch in <VecSize> redefinition (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
         }
   
         mInputVectorSize = i;
@@ -2352,7 +2394,7 @@ namespace STK
       else if ((i = ReadParmKind(keyword, true)) != -1) 
       {
         if (mParamKind != -1 && mParamKind != i) 
-          Error("Mismatch in paramKind redefinition (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+          Error("Mismatch in paramKind redefinition (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
         
         mParamKind = i;
         ret = 1;
@@ -2360,11 +2402,11 @@ namespace STK
       else if ((i = ReadOutPDFKind(keyword)) != -1) 
       {
         if (mOutPdfKind != -1 && mOutPdfKind != i) {
-          Error("Mismatch in outPDFKind redefinition (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+          Error("Mismatch in outPDFKind redefinition (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
         }
   
         if (i != KID_PDFObsVec && i != KID_DiagC) {
-          Error("Unsupported option '%s' (%s:%d)", keyword, gpCurrentMmfName, gCurrentMmfLine);
+          Error("Unsupported option '%s' (%s:%d)", keyword, mpCurrentMmfName, mCurrentMmfLine);
         }
   
         mOutPdfKind = static_cast<KeywordID> (i);
@@ -2373,10 +2415,10 @@ namespace STK
       else if ((i = ReadDurKind(keyword)) != -1) 
       {
         if (mDurKind != -1 && mDurKind != i) {
-          Error("Mismatch in durKind redefinition (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+          Error("Mismatch in durKind redefinition (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
         }
         if (i != KID_NullD) {
-          Error("Unsupported option '%s' (%s:%d)", keyword, gpCurrentMmfName, gCurrentMmfLine);
+          Error("Unsupported option '%s' (%s:%d)", keyword, mpCurrentMmfName, mCurrentMmfLine);
         }
         mDurKind = static_cast<KeywordID> (i);
         ret = 1;
@@ -2390,16 +2432,16 @@ namespace STK
         
         if (macro->mpData != NULL) 
         {
-          if (gHmmsIgnoreMacroRedefinition == 0)
+          if (mHmmsIgnoreMacroRedefinition == 0)
             Error("Redefinition of <InputXform> (%s:%d)",
-                  gpCurrentMmfName, gCurrentMmfLine);
+                  mpCurrentMmfName, mCurrentMmfLine);
         }
         
         inputXform = ReadXformInstance(fp, macro);
   
         if (macro->mpData != NULL) {
           Warning("Redefinition of <InputXform> (%s:%d)",
-                  gpCurrentMmfName, gCurrentMmfLine);
+                  mpCurrentMmfName, mCurrentMmfLine);
   
           // Macro is redefined. New item must be checked for compatibility with
           // the old one (vector size) All references to old
@@ -2455,13 +2497,13 @@ namespace STK
     if (!strcmp(keyword, "~t")) {
       keyword = GetString(fp, 1);
       if ((macro = FindMacro(&mTransitionHash, keyword)) == NULL) {
-        Error("Undefined reference to macro ~t %s (%s:%d)", keyword, gpCurrentMmfName, gCurrentMmfLine);
+        Error("Undefined reference to macro ~t %s (%s:%d)", keyword, mpCurrentMmfName, mCurrentMmfLine);
       }
       return (Transition *) macro->mpData;
     }
   
     if (!CheckKwd(keyword, KID_TransP)) {
-      Error("Keyword <TransP> expected (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      Error("Keyword <TransP> expected (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
     }
   
     nstates = GetInt(fp);
@@ -3285,7 +3327,7 @@ namespace STK
       PutKwd(fp, binary, KID_BiasPredef);
       PutInt(fp, binary, xform->mOutSize);
       
-      xform->mPredefVector.Write(fp, binary);               
+      xform->mPredefVector.Write(fp, binary, this);               
     }
     else            
     {      
@@ -3315,7 +3357,7 @@ namespace STK
       PutKwd(fp, binary, KID_WindowPredef);
       PutInt(fp, binary, xform->mOutSize);
       
-      xform->mPredefVector.Write(fp, binary);               
+      xform->mPredefVector.Write(fp, binary, this);
     }
     else            
     {      
@@ -3765,8 +3807,9 @@ namespace STK
   //###########################################################################
   
   //*****************************************************************************
-  //*****************************************************************************
-  void ReadAccum(int macro_type, HMMSetNodeName nodeName,
+  //*****************************************************************************  
+  void
+  ReadAccum(int macro_type, HMMSetNodeName nodeName,
                   MacroData * pData, void *pUserData) 
   {
     unsigned int        i;
@@ -4470,11 +4513,11 @@ namespace STK
   // PREDEFINED VECTOR
   //###########################################################################
   //##########################################################################
-  void PredefinedVector::Read(FILE *fp, size_t vctSize)
+  void PredefinedVector::Read(FILE *fp, size_t vctSize, ModelSet *pModelSet)
   {
     mSize = vctSize;
   
-    char *p_win_name = GetString(fp, false);
+    char *p_win_name = pModelSet->GetString(fp, false);
     int i;
     for(i = 0; i < strlen(p_win_name); i++)
     {
@@ -4484,93 +4527,93 @@ namespace STK
     if(!strcmp(p_win_name, "HAMMING")) 
     {
       mID = PWID_HAMMING;
-      mNRepetitions = GetInt(fp);
+      mNRepetitions = pModelSet->GetInt(fp);
             
       size_t win_len = vctSize / mNRepetitions;
       if(win_len * mNRepetitions != vctSize)
       {
-        Error("Hamming windows do not fit to the vector size (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+        Error("Hamming windows do not fit to the vector size (%s:%d)", pModelSet->mpCurrentMmfName, pModelSet->mCurrentMmfLine);
       }
     }
     else if(!strcmp(p_win_name, "TRIANG")) 
     {
       mID = PWID_TRIANG;
-      mNRepetitions = GetInt(fp);
+      mNRepetitions = pModelSet->GetInt(fp);
 
       size_t win_len = vctSize / mNRepetitions;
       if(win_len * mNRepetitions != vctSize)
       {
-        Error("Triangular windows do not fit to the vector size (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+        Error("Triangular windows do not fit to the vector size (%s:%d)", pModelSet->mpCurrentMmfName, pModelSet->mCurrentMmfLine);
       }
     }
     else if(!strcmp(p_win_name, "CONST")) 
     {
       mID = PWID_CONST;
-      mConstant = GetFloat(fp);
+      mConstant = pModelSet->GetFloat(fp);
     }
     else if(!strcmp(p_win_name, "RANDOM")) 
     {
       mID = PWID_RANDOM;
-      mMinValue = GetFloat(fp);
-      mMaxValue = GetFloat(fp);
-      mSeed = static_cast<unsigned int>(GetInt(fp));
+      mMinValue = pModelSet->GetFloat(fp);
+      mMaxValue = pModelSet->GetFloat(fp);
+      mSeed = static_cast<unsigned int>(pModelSet->GetInt(fp));
     }
     else if(!strcmp(p_win_name, "LINSPACE")) 
     {
       mID = PWID_LINSPACE;
-      mStartValue = GetFloat(fp);
-      mEndValue = GetFloat(fp);
-      mNRepetitions = GetInt(fp);
+      mStartValue = pModelSet->GetFloat(fp);
+      mEndValue = pModelSet->GetFloat(fp);
+      mNRepetitions = pModelSet->GetInt(fp);
 
       size_t win_len = vctSize / mNRepetitions;
       if(win_len * mNRepetitions != vctSize)
       {
-        Error("LinSpace windows do not fit to the vector size (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+        Error("LinSpace windows do not fit to the vector size (%s:%d)", pModelSet->mpCurrentMmfName, pModelSet->mCurrentMmfLine);
       }
     }
     else 
     {
-      Error("Unknown predefined window %s (%s:%d)", p_win_name, gpCurrentMmfName, gCurrentMmfLine);  
+      Error("Unknown predefined window %s (%s:%d)", p_win_name, pModelSet->mpCurrentMmfName, pModelSet->mCurrentMmfLine);  
     }  
   }
   
-  void PredefinedVector::Write(FILE *fp, bool binary)
+  void PredefinedVector::Write(FILE *fp, bool binary, ModelSet *pModelSet)
   {
     switch(mID)
     {
       case PWID_HAMMING:
-        PutString(fp, binary, "Hamming");
-        PutSpace(fp, binary);
-        PutInt(fp, binary, mNRepetitions);
-        PutNLn(fp, binary);
+        pModelSet->PutString(fp, binary, "Hamming");
+        pModelSet->PutSpace(fp, binary);
+        pModelSet->PutInt(fp, binary, mNRepetitions);
+        pModelSet->PutNLn(fp, binary);
         break;
       case PWID_TRIANG:
-        PutString(fp, binary, "Triang");
-        PutSpace(fp, binary);
-        PutInt(fp, binary, mNRepetitions);
-        PutNLn(fp, binary);
+        pModelSet->PutString(fp, binary, "Triang");
+        pModelSet->PutSpace(fp, binary);
+        pModelSet->PutInt(fp, binary, mNRepetitions);
+        pModelSet->PutNLn(fp, binary);
         break;
       case PWID_CONST:
-        PutString(fp, binary, "Const");
-        PutSpace(fp, binary);
-        PutFlt(fp, binary, mConstant);
-        PutNLn(fp, binary);
+        pModelSet->PutString(fp, binary, "Const");
+        pModelSet->PutSpace(fp, binary);
+        pModelSet->PutFlt(fp, binary, mConstant);
+        pModelSet->PutNLn(fp, binary);
         break;
       case PWID_RANDOM:
-        PutString(fp, binary, "Random");
-        PutSpace(fp, binary);
-        PutFlt(fp, binary, mMinValue);
-        PutFlt(fp, binary, mMaxValue);
-        PutInt(fp, binary, static_cast<int>(mSeed));
-        PutNLn(fp, binary);
+        pModelSet->PutString(fp, binary, "Random");
+        pModelSet->PutSpace(fp, binary);
+        pModelSet->PutFlt(fp, binary, mMinValue);
+        pModelSet->PutFlt(fp, binary, mMaxValue);
+        pModelSet->PutInt(fp, binary, static_cast<int>(mSeed));
+        pModelSet->PutNLn(fp, binary);
         break;
       case PWID_LINSPACE:
-        PutString(fp, binary, "LinSpace");
-        PutSpace(fp, binary);
-        PutFlt(fp, binary, mStartValue);
-        PutFlt(fp, binary, mEndValue);
-        PutInt(fp, binary, mNRepetitions);
-        PutNLn(fp, binary);
+        pModelSet->PutString(fp, binary, "LinSpace");
+        pModelSet->PutSpace(fp, binary);
+        pModelSet->PutFlt(fp, binary, mStartValue);
+        pModelSet->PutFlt(fp, binary, mEndValue);
+        pModelSet->PutInt(fp, binary, mNRepetitions);
+        pModelSet->PutNLn(fp, binary);
         break;
     }  
   }

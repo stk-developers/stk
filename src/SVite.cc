@@ -312,7 +312,7 @@ int main(int argc, char *argv[])
   gpFilterWldcrd=GetParamStr(&cfgHash, SNAME":HFILTERWILDCARD", "$");
   gpScriptFilter=GetParamStr(&cfgHash, SNAME":HSCRIPTFILTER",   NULL);
   gpParmFilter = GetParamStr(&cfgHash, SNAME":HPARMFILTER",     NULL);
-  gpHListFilter= GetParamStr(&cfgHash, SNAME":HMMLISTFILTER",   NULL);
+  hset.mpHListFilter= GetParamStr(&cfgHash, SNAME":HMMLISTFILTER",   NULL);
   gpMmfFilter  = GetParamStr(&cfgHash, SNAME":HMMDEFFILTER",    NULL);
   label_filter = GetParamStr(&cfgHash, SNAME":HLABELFILTER",    NULL);
   net_filter   = GetParamStr(&cfgHash, SNAME":HNETFILTER",      NULL);

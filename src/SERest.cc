@@ -394,7 +394,7 @@ int main(int argc, char* argv[])
                    GetParamFlt(&cfgHash, SNAME":ENDTIMESHIFT",    0.0);
     in_net_fmt.mNoAcousticLikes =
                   !GetParamBool(&cfgHash,SNAME":ADDACSCORES",     false);
-    gpHListFilter =GetParamStr(&cfgHash, SNAME":HMMLISTFILTER",  NULL);
+    hset.mpHListFilter = GetParamStr(&cfgHash, SNAME":HMMLISTFILTER",  NULL);
     gpMmfFilter   =GetParamStr(&cfgHash, SNAME":HMMDEFFILTER",   NULL);
     label_filter = GetParamStr(&cfgHash, SNAME":HLABELFILTER",    NULL);
     net_filter   = GetParamStr(&cfgHash, SNAME":HNETFILTER",      NULL);
@@ -569,6 +569,7 @@ int main(int argc, char* argv[])
     {
       hset_alig = new ModelSet;
       hset_alig->Init();
+      hset_alig->mpHListFilter  = hset.mpHListFilter;
 
       if (NULL != alg_mmf)
       {
@@ -594,6 +595,7 @@ int main(int argc, char* argv[])
     {
       hset_prior = new ModelSet;
       hset_prior->Init();
+      hset_prior->mpHListFilter = hset.mpHListFilter;
 
       for (pri_mmf = strtok(pri_mmf, ","); pri_mmf != NULL; pri_mmf=strtok(NULL, ",")) 
       {
