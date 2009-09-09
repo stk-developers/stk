@@ -458,6 +458,7 @@ namespace STK
     bool                      mHmmsIgnoreMacroRedefinition;                                                                                                                                                              
     const char *              mpKwds[KID_MaxKwdID];
     const char *              mpHListFilter;                                    ///< HMM list Filter command
+    char                      mpBuffer[1024];
     
     ModelSet();
 

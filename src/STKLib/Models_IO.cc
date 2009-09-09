@@ -108,8 +108,7 @@ namespace STK
   ModelSet::
   GetString(FILE *fp, int eofNotExpected)
   {
-    static char buffer[1024];
-    char ch, *chptr = buffer;
+    char ch, *chptr = mpBuffer;
     int lines = 0;
   
   //  fputs("GetString: ", stdout);
@@ -117,7 +116,7 @@ namespace STK
       mStringUnget = false;
   
   //    puts(buffer);
-      return buffer;
+      return mpBuffer;
     }
   
     RemoveSpaces(fp);
@@ -128,7 +127,7 @@ namespace STK
   
       while (((ch = getc(fp)) != EOF) && 
             (ch != termChar) && 
-            ((chptr-buffer) < static_cast<int>(sizeof(buffer)-1))) 
+            ((chptr-mpBuffer) < static_cast<int>(sizeof(mpBuffer)-1))) 
       {
         if (ch == '\n') {
           ++lines;
@@ -149,7 +148,7 @@ namespace STK
       while (((ch = getc(fp)) != EOF) &&
             !isspace(ch) &&
             (ch != '>')  &&
-	    (chptr-buffer) < static_cast<int>(sizeof(buffer)-1)) 
+	    (chptr-mpBuffer) < static_cast<int>(sizeof(mpBuffer)-1)) 
       {
         *chptr++ = ch;
       }
@@ -159,7 +158,7 @@ namespace STK
       }
   
       if (ch != '>') {
-        Error("Unterminated keyword %s (%s:%d)", buffer, mpCurrentMmfName, mCurrentMmfLine);
+        Error("Unterminated keyword %s (%s:%d)", mpBuffer, mpCurrentMmfName, mCurrentMmfLine);
       }
   
       *chptr++ = '>';
@@ -174,7 +173,7 @@ namespace STK
     } else {
       while ((ch != EOF) && (ch != '\0') &&
             !isspace(ch) &&
-            (chptr-buffer) < static_cast<int>(sizeof(buffer)-1)) 
+            (chptr-mpBuffer) < static_cast<int>(sizeof(mpBuffer)-1)) 
       {
         *chptr++ = ch;
         ch = getc(fp);
@@ -188,7 +187,7 @@ namespace STK
         Error("Cannot read input file %s", mpCurrentMmfName);
       }
   
-      if (chptr == buffer) {
+      if (chptr == mpBuffer) {
         if (eofNotExpected) {
           Error("Unexpected end of file %s", mpCurrentMmfName);
         }
@@ -198,7 +197,7 @@ namespace STK
   
     *chptr = '\0';
   //  puts(buffer);
-    return buffer;
+    return mpBuffer;
   
   }
 
@@ -3771,7 +3770,7 @@ namespace STK
   ModelSet::
   WriteClusterWeightsVector(size_t i)
   {
-    static char buff[1024];
+    char buff[1024];
     
     MakeFileName(buff, mpClusterWeightVectors[i]->mpMacro->mpFileName, 
       mClusterWeightsOutPath.c_str(), NULL);
