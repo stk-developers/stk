@@ -94,7 +94,7 @@
 #else /* We don't have any choice but to align manually */
 #  define stk_memalign(align,size,pp_orig) \
      (( *(pp_orig) = malloc( size + align - 1 )) ? \
-     (void *)( (((unsigned long)*(pp_orig)) + 15) & ~0xFUL ) : NULL )
+     (void *)( (((uintptr_t)*(pp_orig)) + 15) & ~0xFUL ) : NULL )
 #  define STK_MEMALIGN_MANUAL
 #endif
 
