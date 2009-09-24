@@ -36,6 +36,7 @@
 namespace STK
 {  
   static std::map<void*, int> mStatCachePtrs;
+/*
   static void
   DumpStatCachePtrs() 
   {
@@ -45,7 +46,7 @@ namespace STK
       std::cout << i->first << " " << i->second << std::endl;
     }
   }
-
+*/
 
   class ModelSetIOBase;
   class ModelSet;

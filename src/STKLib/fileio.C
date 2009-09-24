@@ -181,7 +181,7 @@ namespace STK
     Matrix<FLOAT>&        rFeatureMatrix)
   {
     HtkHeader header;
-    int i, j;
+    size_t i, j;
     FLOAT *p_scale;
     FLOAT *p_bias;
     size_t n_samples = rFeatureMatrix.Rows();

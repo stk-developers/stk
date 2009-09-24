@@ -20,7 +20,7 @@ namespace STK
     
   //***************************************************************************
   //***************************************************************************
-  /*
+#if 0
   void 
   Lattice::
   AllocateNodesForWordLinkRecords(WordLinkRecord* pWlr, 
@@ -104,7 +104,6 @@ namespace STK
       }
     }
   }
-  */
   // MakeLatticeNodesForWordLinkRecords(WordLinkRecord* pWlr, NodeType*& rpNode)
   //***************************************************************************
 
@@ -112,7 +111,6 @@ namespace STK
 
   //***************************************************************************
   //***************************************************************************
-    /*
   void 
   Lattice::
   EstablishLinks(WordLinkRecord* pWlr)
@@ -197,7 +195,7 @@ namespace STK
 
     mpLast = p_node;
   }
-  */
+#endif
   // BuildFromWlr(const WordLinkRecord* pWlr);
   // ************************************************************************
 
@@ -213,7 +211,7 @@ namespace STK
     FLOAT posteriorScale,
     bool viterbi)
   {
-    NodeType*  p_start_node;
+    //NodeType*  p_start_node;
     double      score(0.0);
 
     iterator   i_node(begin());
@@ -235,7 +233,7 @@ namespace STK
     // forward direction
     for (i_node = begin(); i_node != end(); ++i_node)
     {
-      for (size_t i = 0; i < i_node->NLinks(); i++)
+      for (int i = 0; i < i_node->NLinks(); i++)
       {
         LinkType* p_link     (&(i_node->rpLinks()[i]));
         NodeType* p_end_node (p_link->pNode());
@@ -266,7 +264,7 @@ namespace STK
     // backward direction
     for (i_node = i_rbegin; i_node != i_rend; --i_node)
     {
-      for (size_t i = 0; i < i_node->NBackLinks(); i++)
+      for (int i = 0; i < i_node->NBackLinks(); i++)
       {
         LinkType* p_link     (&(i_node->rpBackLinks()[i]));
         NodeType* p_end_node (p_link->pNode());
@@ -333,7 +331,7 @@ namespace STK
     
   // ************************************************************************
   // ************************************************************************
-  FLOAT
+  void
   Lattice::
   FreePosteriors()
   {
@@ -381,7 +379,7 @@ namespace STK
       }
 
       // ... else go through every link and prune the links
-      for (size_t i = 0; i < i_node->NLinks(); ++i)
+      for (int i = 0; i < i_node->NLinks(); ++i)
       {
         LinkType* p_link = &(i_node->rpLinks()[i]);
         iterator  p_end_node(p_link->pNode());
@@ -463,8 +461,8 @@ namespace STK
     
     TimingType current_time = -1;
 
-    FLOAT      end_alpha = pLast()->mC.mpAlphaBeta->mAlpha;
-    FLOAT      start_beta = begin()->mC.mpAlphaBeta->mBeta;
+    //FLOAT      end_alpha = pLast()->mC.mpAlphaBeta->mAlpha;
+    //FLOAT      start_beta = begin()->mC.mpAlphaBeta->mBeta;
 
     std::vector<value_type *> nodes_by_time(this->size());
     
@@ -485,7 +483,7 @@ namespace STK
       {
         std::vector<ActiveLinkRecord>::iterator i_alr;
         
-        if(active_links.size() > maxDensity)
+        if(static_cast<int>(active_links.size()) > maxDensity)
         {
           nth_element(active_links.begin(), active_links.end(), active_links.begin() + maxDensity);
 
@@ -505,7 +503,7 @@ namespace STK
           }
       }
       
-      for (size_t i = 0; i < (*i_pnode)->NLinks(); ++i)
+      for (int i = 0; i < (*i_pnode)->NLinks(); ++i)
       {    
         LinkType* p_link = &((*i_pnode)->rpLinks()[i]);
         if((*i_pnode)->mC.Start() != p_link->pNode()->mC.Start())

@@ -612,7 +612,7 @@ namespace STK
       
       assert(pWlr != NULL);
 
-      if(nbest_lattices > 1 && mpAltHyps->size() == nbest_lattices-1) // We do not want to keep more than nbest_lattices-1 alternative hyphotesis
+      if(nbest_lattices > 1 && static_cast<int>(mpAltHyps->size()) == nbest_lattices-1) // We do not want to keep more than nbest_lattices-1 alternative hyphotesis
       {
         typename AltHypList::iterator i = min_element(mpAltHyps->begin(), mpAltHyps->end());
         if(*i < tmp_wlr_ref)
@@ -1163,7 +1163,7 @@ namespace STK
                 }
               }
             } else { // mpModelSet.cmllrStats
-              int outOffset = 0;
+              size_t outOffset = 0;
               for (j = 0; j < mean->mNumberOfXformStatAccums; j++) {
                 if (mean->mpXformStatAccum[j].mpXform == xfsc->mpXform)  {
                   if(xfsc->mpXform->mOutSize != xfsc->mpXform->mInSize - 1) {
@@ -1171,7 +1171,7 @@ namespace STK
                   }
                   size_t size = xfsc->mpXform->mInSize;
                   size_t stat_size = size+size*(size+1)/2;
-                  int dim;
+                  size_t dim;
                   
                   for(dim = 0; dim < size - 1; dim++) {                  
                     for (k = 0; k < size; k++) {
@@ -1682,7 +1682,7 @@ namespace STK
     
         if (p_node->mC.mpAnr->mpExitToken->IsActive()) 
         {
-          FLOAT total_penalty;
+          //FLOAT total_penalty;
 
   //      assert(p_node->mC.mActiveNodeFlag || (p_node->mC.mType & NT_TEE && p_node->mC.mIsActive));
   //      for (Xnode = mpActiveNodes; Xnode && Xnode != p_node; Xnode = Xnode->mpNextActiveNode);
@@ -1734,10 +1734,10 @@ namespace STK
 
               if (p_node->mC.mpAnr->mpExitToken->mLike + tot_like > mBeamThresh 
                   && (((!mTimePruning
-		       || (/*links[i].pNode()->mC.Start() == UNDEF_TIME ||*/
+		       || ((/*links[i].pNode()->mC.Start() == UNDEF_TIME ||*/
                              links[i].pNode()->mC.Start() <= mTime) 
                        && (  links[i].pNode()->mC.Stop()  == UNDEF_TIME        
-                       ||    links[i].pNode()->mC.Stop()  >= mTime))
+                       ||    links[i].pNode()->mC.Stop()  >= mTime)))
                   && (mSearchPaths != SP_TRUE_ONLY
                   || (p_node->mC.mType & NT_TRUE)   
                   || !(links[i].pNode()->mC.mType & (NT_MODEL | NT_PHONE))))))
@@ -1874,10 +1874,10 @@ namespace STK
 
 //printf("%s %d %d %d", p_node->mC.mpHmm->mpMacro->mpName, (int) p_node->mC.Start(), (int) p_node->mC.Stop(), (int) mTime);
 
-        if (mTimePruning 
+        if ((mTimePruning 
 	    && ((/*p_node->Start() != UNDEF_TIME &&*/p_node->mC.Start() >= mTime)
-            ||  (  p_node->mC.Stop()  != UNDEF_TIME &&  p_node->mC.Stop()  <  mTime))
-            ||  mSearchPaths == SP_TRUE_ONLY && !(p_node->mC.mType & NT_TRUE))
+            ||  (  p_node->mC.Stop()  != UNDEF_TIME &&  p_node->mC.Stop()  <  mTime)))
+            ||  (mSearchPaths == SP_TRUE_ONLY && !(p_node->mC.mType & NT_TRUE)))
         {
           for (i = 0; i < p_hmm->mNStates-1; i++) 
           {
@@ -2100,9 +2100,9 @@ namespace STK
       
       // Do pruning, where only mMaxActiveModels models with the highest
       // likelihood tokens are left active.
-      if (0 < mMaxActiveModels && mActiveModelsBestLikes.size() > mMaxActiveModels)
+      if (0 < mMaxActiveModels && mActiveModelsBestLikes.size() > static_cast<size_t>(mMaxActiveModels))
       {
-        assert(mActiveModelsBestLikes.size() == mNActiveModelsForObservation);
+        assert(mActiveModelsBestLikes.size() == static_cast<size_t>(mNActiveModelsForObservation));
 
         // Find n-th best likelihood in the vector
         std::nth_element(mActiveModelsBestLikes.begin(),
@@ -2129,9 +2129,9 @@ namespace STK
       
       if (0 < mMinActiveModels)
       {
-        assert(mActiveModelsBestLikes.size() == mNActiveModelsForObservation);
+        assert(mActiveModelsBestLikes.size() == static_cast<size_t>(mNActiveModelsForObservation));
 
-        if(mActiveModelsBestLikes.size() < mMinActiveModels)
+        if(mActiveModelsBestLikes.size() < static_cast<size_t>(mMinActiveModels))
           mMaxThreshold = LOG_MIN;
         else
         {
@@ -2160,7 +2160,7 @@ namespace STK
     TokenPropagationDone()
     // {{{
     {
-      int     j;
+      size_t  j;
       typename NetworkType::NodeType*   node = InForwardPass() 
         ? rNetwork().pLast() 
         : rNetwork().pFirst();
@@ -2580,7 +2580,7 @@ namespace STK
       
       ModelSet*         p_hmms_alig = mpModelSet;
       ModelSet*         p_hmms_upd = mpModelSetToUpdate;
-      typename NetworkType::NodeType*             node;
+      //typename NetworkType::NodeType*             node;
       typename NetworkType::iterator              i_node;
     
       AccumType origAccumType = mAccumType;
@@ -2898,7 +2898,7 @@ extern std::map<std::string,FLOAT> state_posteriors;
       int                     k;
       ModelSet*               p_hmms_alig = mpModelSet;
       ModelSet*               p_hmms_upd = mpModelSetToUpdate;
-      typename NetworkType::NodeType*                   node;
+      //typename NetworkType::NodeType*                   node;
       typename NetworkType::iterator                    i_node;
     
       fwbw = ForwardBackward(rObsMx, nFrames);
@@ -3203,7 +3203,7 @@ extern std::map<std::string,FLOAT> state_posteriors;
       pNode->mC.mType       = pWlr->pNode()->mC.mType;
       pNode->mC.SetStart(UNDEF_TIME);
       pNode->mC.SetStop(pWlr->mTime);
-      pNode->mC.mpAlphaBeta == NULL;
+      pNode->mC.mpAlphaBeta = NULL;
         
       pNode->rNBackLinks() = pWlr->mpNext    == NULL ? 0 :
                            pWlr->mpAltHyps == NULL ? 1 : pWlr->mpAltHyps->size() + 1;
@@ -3219,13 +3219,13 @@ extern std::map<std::string,FLOAT> state_posteriors;
         Error("Insufficient memory");
           
 
-      for (size_t ii = 0; ii < pNode->NLinks(); ++ii)
+      for (int ii = 0; ii < pNode->NLinks(); ++ii)
       {
         pNode->rpLinks()[ii].mAcousticLike = LOG_0;
         pNode->rpLinks()[ii].mLmLike = LOG_0;
       }
 
-      for (size_t ii = 0; ii < pNode->NBackLinks(); ++ii)
+      for (int ii = 0; ii < pNode->NBackLinks(); ++ii)
       {
         pNode->rpBackLinks()[ii].mAcousticLike = LOG_0;
         pNode->rpBackLinks()[ii].mLmLike = LOG_0;

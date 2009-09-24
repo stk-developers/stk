@@ -92,6 +92,7 @@ namespace STK
       char*            line;
       int              line_no   =  0;
       int              nnodes    =  0;
+      char             null_char = '\0';
       char*            chptr;
       char*            valptr;
       char*            phn_marks = NULL;
@@ -133,7 +134,7 @@ namespace STK
           else if (!*valptr || IsSpace(*valptr)) 
           { // label definition (field without '=' )
             valptr = chptr;
-            chptr = "";
+            chptr = &null_char; // = "" (to make compiler happy)
           } 
           else 
           {
@@ -155,7 +156,7 @@ namespace STK
                   file_name, line_no);
             }
             state = LINE_START;
-            chptr="";
+            chptr = &null_char; // = "" (to make compiler happy)
           }
           
           if (state == LINE_START) 
@@ -407,7 +408,7 @@ namespace STK
                 if (p_node->rpLinks() == NULL) 
                   Error("Insufficient memory");              
 
-                for (size_t i_count(p_node->rNLinks()); i_count < p_node->rNLinks()
+                for (int i_count(p_node->rNLinks()); i_count < p_node->rNLinks()
                       + nl; i_count++)
                 {
                   p_node->rpLinks()[i_count].Init();
@@ -588,7 +589,7 @@ namespace STK
           if (p_node->rpBackLinks() == NULL) 
             Error("Insufficient memory");
           
-          for (size_t i_count(0); i_count < p_node->rNBackLinks(); i_count++)
+          for (int i_count(0); i_count < p_node->rNBackLinks(); i_count++)
           { 
             p_node->rpBackLinks()[i_count].Init(); 
           }
@@ -1541,7 +1542,7 @@ namespace STK
     }
 
 
-  /*
+#if 0
   //****************************************************************************
   //****************************************************************************
   template <class _NetworkType>
@@ -1694,7 +1695,7 @@ namespace STK
     }
     // WriteSTKNetwork(...
     //***************************************************************************
-  */
+#endif
 
 } // namespace STK
 

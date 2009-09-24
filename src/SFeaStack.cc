@@ -80,22 +80,22 @@ const char *optionStr =
 
 int main(int argc, char *argv[]) 
 {
-  FILE*                   sfp;
+//  FILE*                   sfp;
   FILE*                   ofp = NULL;
   
   Matrix<FLOAT>           feature_matrix1;
   Matrix<FLOAT>           feature_matrix2;
   Matrix<FLOAT>           feature_matrix3;
   
-  FLOAT*                  obs;
+//  FLOAT*                  obs;
   HtkHeader               header1;
-  HtkHeader               header2;
+//  HtkHeader               header2;
   HtkHeader               header3;
   int                     i;
   int                     fcnt = 0;
   XformInstance*          p_input = NULL;
   char                    p_line[1024];
-  char                    p_out_file[1024];
+//  char                    p_out_file[1024];
   MyHSearchData  cfg_hash;
   int                     tot_frames = 0;
   FileListElem *          feature_files = NULL;
@@ -280,7 +280,7 @@ int main(int argc, char *argv[])
     // Stack input matrices
     size_t offset = 0;
     for (size_t i_file=0; i_file< (n_file_names-1); ++i_file) {
-      for (i = 0; i< n_rows; ++i) {
+      for (size_t i = 0; i< n_rows; ++i) {
         memcpy(r_output_matrix[i] + offset, feature_matrices[i_file][i], 
             sizeof(FLOAT) * feature_matrices[i_file].Cols());
       }
@@ -301,7 +301,7 @@ int main(int argc, char *argv[])
     if (WriteHTKFeatures(
           ofp,
 	  header1.mSamplePeriod,
-	  p_input ? (PARAMKIND_USER | targetKind & PARAMKIND_C) : targetKind,
+	  p_input ? (PARAMKIND_USER | (targetKind & PARAMKIND_C)) : targetKind,
 	  swap_fea_out,
           r_output_matrix)) 
     {

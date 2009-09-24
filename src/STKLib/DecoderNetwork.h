@@ -553,9 +553,8 @@ namespace STK
     /** 
      * @brief Free records with posterior probabilities
      * 
-     * @return 
      */
-    FLOAT
+    void
     FreePosteriors();
 
     /** 

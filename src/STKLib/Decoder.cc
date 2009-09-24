@@ -69,7 +69,7 @@ int nbest_lattices = -1;
 std::map<std::string,FLOAT> state_posteriors;
 
 
-/*
+#if 0
 #if ENABLE_SSE
 # define OPTIMIZE_GAUSSIAN_COMPUTATION      
 #endif
@@ -149,7 +149,7 @@ std::map<std::string,FLOAT> state_posteriors;
     return m_like;
   } // compute_diag_c_gaussian_density(...)
   //***************************************************************************
-*/  
+#endif 
 
       
 #ifdef DEBUG_MSGS

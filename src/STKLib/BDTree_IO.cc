@@ -45,7 +45,7 @@ namespace STK
       mVec.clear();
       mVec.reserve(rHeader.mVocabSize);
 
-      bool current_zero = true;
+      //bool current_zero = true;
       // read records
       for (i = 0; i < size; ++i) 
       {
@@ -104,7 +104,7 @@ namespace STK
       for (i = mVec.begin(); i != mVec.end(); ++i) 
       {
         aux_double = *i;
-        if(aux_double != 0 || aux_double == 0 && prev_i != 0)
+        if(aux_double != 0 || (aux_double == 0 && prev_i != 0))
           counter++;
 
         prev_i = aux_double;
@@ -176,7 +176,7 @@ namespace STK
   BDTreeHeader::
   Write(std::ostream& rStream)
   {
-    char    aux_char;
+    //char    aux_char;
     INT_32  aux_int;
     std::streampos stream_pos;
 
@@ -219,7 +219,7 @@ namespace STK
   BDTreeHeader::
   Write_bin1(std::ostream& rStream)
   {
-    char    aux_char;
+    //char    aux_char;
     INT_32  aux_int;
     std::streampos stream_pos;
 

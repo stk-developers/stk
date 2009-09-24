@@ -92,8 +92,8 @@ namespace STK
     Network<_NodeContent, _LinkContent, _StorageType, _LinkContainer>::
     TopologicalSort()
     {
-      size_t    i;
-      size_t    j;
+      int       i;
+      int       j;
       NodeType* p_node;
       NodeType* p_lastnode;
 
@@ -140,7 +140,7 @@ namespace STK
     {
       if (iNode->rpLinks())
       {
-        for (size_t i(0); i< iNode->NLinks(); i++)
+        for (int i(0); i< iNode->NLinks(); i++)
         {
           LinkType* p_link = &( iNode->rpLinks()[i] );
           LinkType* p_back_link;
@@ -160,7 +160,7 @@ namespace STK
 
       if (iNode->rpBackLinks())
       {
-        for (size_t i(0); i< iNode->NBackLinks(); i++)
+        for (int i(0); i< iNode->NBackLinks(); i++)
         {
           LinkType* p_link = &( iNode->rpBackLinks()[i] );
           LinkType* p_back_link;
@@ -195,7 +195,7 @@ namespace STK
     {
       if (pNode->rpLinks())
       {
-        for (size_t i(0); i< pNode->NLinks(); i++)
+        for (int i(0); i< pNode->NLinks(); i++)
         {
           // we delete the fist link since DeleteLink shifts the links to the left
           pNode->DeleteLink(pNode->rpLinks());
@@ -214,7 +214,7 @@ namespace STK
 
       if (pNode->rpBackLinks())
       {
-        for (size_t i(0); i< pNode->NBackLinks(); i++)
+        for (int i(0); i< pNode->NBackLinks(); i++)
         {
           LinkType* p_link = &( pNode->rpBackLinks()[i] );
           LinkType* p_back_link;
@@ -232,7 +232,7 @@ namespace STK
   // IsolateNode
   //**************************************************************************
 
-/*
+#if 0
   //**************************************************************************
   //**************************************************************************
   template<typename _NodeContent, 
@@ -248,7 +248,7 @@ namespace STK
     }
   // RemoveNode(Node* pNode);
   //**************************************************************************
-*/
+#endif
 
   //**************************************************************************
   //**************************************************************************
@@ -266,10 +266,10 @@ namespace STK
   // RemoveNode(Node* pNode);
   //**************************************************************************
 
-
+#if 0
   //**************************************************************************
   //**************************************************************************
-/*  template<typename _NodeContent, 
+  template<typename _NodeContent, 
            typename _LinkContent, 
            template<class> class _StorageType, 
            template<class> class _LinkContainer>
@@ -335,7 +335,7 @@ namespace STK
     }
   // RemoveNode(Node* pNode);
   //**************************************************************************
-*/
+#endif
 
   //**************************************************************************
   //**************************************************************************

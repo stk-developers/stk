@@ -529,7 +529,7 @@ int main(int argc, char *argv[])
     p_decoder = reinterpret_cast<Decoder<DecoderNetwork>* > (&compact_decoder);
 
   
-  /*
+#if 0
   IStkStream                      input_stream;    
   input_stream.open(network_file, ios::in, transc_filter ? transc_filter : "");
   
@@ -571,7 +571,7 @@ int main(int argc, char *argv[])
   else
     SViteApp< Decoder<_CompactDecoderNetwork> >();
     */
-
+#endif
   
   if (network_file) 
   { // Unsupervised training
@@ -829,7 +829,7 @@ int main(int argc, char *argv[])
         decoder.PassTokenInModel   = baum_welch ? &Decoder<DecoderNetwork>::PassTokenSum 
                                                 : &Decoder<DecoderNetwork>::PassTokenMax;
 
-        for (i = 0; i < feature_matrix.Rows(); i++) 
+        for (i = 0; static_cast<size_t>(i) < feature_matrix.Rows(); i++) 
         {
           decoder.ViterbiStep(feature_matrix[i]);
           if (trace_flag & 4 && i >= hset.mTotalDelay) {
@@ -856,7 +856,7 @@ int main(int argc, char *argv[])
         compact_decoder.PassTokenInModel   = baum_welch ? &Decoder<_CompactDecoderNetwork>::PassTokenSum 
                                                 : &Decoder<_CompactDecoderNetwork>::PassTokenMax;
 
-        for (i = 0; i < feature_matrix.Rows(); i++) 
+        for (i = 0; static_cast<size_t>(i) < feature_matrix.Rows(); i++) 
         {
           compact_decoder.ViterbiStep(feature_matrix[i]);
           if (trace_flag & 4 && i > hset.mTotalDelay) {

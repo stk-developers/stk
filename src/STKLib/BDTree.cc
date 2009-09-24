@@ -152,7 +152,7 @@ namespace STK
   MapDistribution::
   operator [] (const NGram::TokenType& rToken) const
   {
-    assert (rToken < mVocabSize); 
+    assert (rToken < static_cast<int>(mVocabSize)); 
 
     Container::const_iterator i = mMap.find(rToken);
     if(i != mMap.end()) {
@@ -170,7 +170,7 @@ namespace STK
   MapDistribution::
   operator [] (const NGram::TokenType& rToken)
   {
-    assert (rToken < mVocabSize); 
+    assert (rToken < static_cast<int>(mVocabSize)); 
     return mMap[rToken];
   }
 
@@ -324,7 +324,7 @@ namespace STK
   VecDistribution::
   operator [] (const NGram::TokenType& rToken) const
   {
-    assert (rToken < mVec.size());
+    assert (rToken < static_cast<int>(mVec.size()));
     return mVec[rToken];
   }
 
@@ -420,7 +420,7 @@ namespace STK
   Interpolate(const Distribution& rDistr, FLOAT r)
   {
     double norm   = 0; //DBL_EPSILON;
-    double new_mn = 0; //DBL_EPSILON;
+    //double new_mn = 0; //DBL_EPSILON;
     size_t i = 0;
 
     assert(this->Size() == rDistr.Size());
@@ -451,7 +451,7 @@ namespace STK
     const VecDistribution* p_distr = dynamic_cast<const VecDistribution*>(&rDistr);
 
     double norm   = 0; //DBL_EPSILON;
-    double new_mn = 0; //DBL_EPSILON;
+    //double new_mn = 0; //DBL_EPSILON;
     VecDistribution::Container::iterator        i_this   = mVec.begin();
     VecDistribution::Container::const_iterator  i_parent = p_distr->mVec.begin();
 
@@ -715,8 +715,8 @@ namespace STK
       mpTree1    = NULL;
     }
     else if (entropy_red == 0
-      || rHeldoutNGrams != NULL && heldout_entropy_red <= 0 
-      || rHeldoutNGrams == NULL && entropy_red < rTraits.mMinReduction) 
+      || (rHeldoutNGrams != NULL && heldout_entropy_red <= 0) 
+      || (rHeldoutNGrams == NULL && entropy_red < rTraits.mMinReduction)) 
     {
       if (rTraits.mVerbosity > 0) 
       {
@@ -976,7 +976,7 @@ namespace STK
     bool    inserted  = true;
     bool    deleted   = true;
     double  e         = rNGrams.ParallelEntropy();
-    double  this_e, log_likelihood, this_log_likelihood;
+    double  this_e, this_log_likelihood; // log_likelihood
     double  mass0, mass1;
 
     //int     vocab_size = rNGrams[0].Parent().pTargetTable()->Size();
@@ -1343,7 +1343,7 @@ namespace STK
     target_voc_table = rNGrams.Parent().pTargetTable();
     predictor_voc_table = rNGrams.Parent().pPredictorTable();
 
-    double  score = 0.0, log_score;
+    double  log_score;
     int j;
     NGram::TokenType voc_index;
     std::string word_string;
@@ -1833,7 +1833,6 @@ namespace STK
   void
   SparseBigramMatrix::CreateSizeVector(const NGramSubset& rNGrams, const BSetQuestion& rQuestion, int pred, bool YesAnswer)
   {
-    int i;
     int vocab_size = rNGrams.Parent().pPredictorTable()->Size();
     bool already_seen;
     BasicVector< NGram::TokenType> seen_contexts(vocab_size);
@@ -1870,8 +1869,8 @@ namespace STK
 
       if(!already_seen)
       {
-	if(YesAnswer && rQuestion.Eval(**it)
-	  || !YesAnswer && !rQuestion.Eval(**it))
+	if((YesAnswer && rQuestion.Eval(**it))
+	  || (!YesAnswer && !rQuestion.Eval(**it)))
 	{ 
 	  mSizeVector[*predictor_token]++;
 
@@ -1921,8 +1920,8 @@ namespace STK
       }
       //assert(counts > 0); 
 
-      if(YesAnswer && rQuestion.Eval(**it)
-	  || !YesAnswer && !rQuestion.Eval(**it))
+      if((YesAnswer && rQuestion.Eval(**it))
+	  || (!YesAnswer && !rQuestion.Eval(**it)))
       {
 	bigram_found = false;
 	for(i = 0; i < mSizeVector[*predictor_token]; i++)

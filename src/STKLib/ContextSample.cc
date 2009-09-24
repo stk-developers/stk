@@ -17,7 +17,7 @@ namespace STK {
   VocabularyTable::
   IToA(const int index) const
   {
-    if (index >= mIntMap.size()) {
+    if (index >= static_cast<int>(mIntMap.size())) {
       throw std::runtime_error(std::string("Index ") + " out of bound");
     }
     return mIntMap[index][0];
@@ -184,6 +184,8 @@ namespace STK {
       }
       rOstr << r_ngram.Counts() << std::endl;
     }
+
+    return rOstr;
   }
 
 
@@ -257,7 +259,7 @@ namespace STK {
         }
 
         // try to read the desired number of tokens and counts
-        for (int i=0; i<Order(); ++i) {
+        for (size_t i=0; i<Order(); ++i) {
           line_buf_stream >> token_chunk[i];
         }
 
@@ -395,7 +397,7 @@ namespace STK {
     {
       bool different=true;
 
-      for (int j=0; j<Order() && different; ++j) {
+      for (size_t j=0; j<Order() && different; ++j) {
         // TODO
 
       }
@@ -433,7 +435,7 @@ namespace STK {
   NGramSubset::NGramCompare::
   operator()(NGram* s1, NGram* s2) const
   {
-    size_t i;
+    int i;
     assert(s1->Order() == s2->Order());
 
     for (i = 0; i < s1->Order(); ++i) {

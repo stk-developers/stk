@@ -666,7 +666,7 @@ namespace STK
       {
         int s(0);
 
-        for (size_t i(0); i < NLinks(); i++)
+        for (int i(0); i < NLinks(); i++)
         {
           if (! rpLinks()[i].PointsNowhere())
             ++s;
@@ -683,7 +683,7 @@ namespace STK
       {
         int s(0);
 
-        for (size_t i(0); i < NBackLinks(); i++)
+        for (int i(0); i < NBackLinks(); i++)
         {
           if (! rpBackLinks()[i].PointsNowhere())
             ++s;
@@ -702,7 +702,7 @@ namespace STK
       {
         LinkType* p_link;
 
-        for (size_t i(0); i < NLinks(); i++)
+        for (int i(0); i < NLinks(); i++)
         {
           p_link = &( rpLinks()[i] );
 
@@ -724,7 +724,7 @@ namespace STK
       {
         LinkType* p_link;
 
-        for (size_t i(0); i < NBackLinks(); i++)
+        for (int i(0); i < NBackLinks(); i++)
         {
           p_link = &( rpBackLinks()[i] );
 
@@ -1423,7 +1423,7 @@ namespace STK
       }
 
 
-      NodeType*
+      void
       SetFirst(NodeType* pFirst)
       { 
         // we don't want any memory leaks
@@ -1433,7 +1433,7 @@ namespace STK
         mIsExternal = true;
       }
 
-      NodeType*
+      void
       SetLast(NodeType* pLast)
       { 
         NodeContainer::mpLast     = pLast; 

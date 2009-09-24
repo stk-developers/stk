@@ -313,7 +313,7 @@ int main(int argc, char *argv[])
     time = -hset.mTotalDelay;
     hset.ResetXformInstances();
     
-    FLOAT *out_fea;
+    //FLOAT *out_fea;
     Matrix<FLOAT> out_matrix(header.mNSamples - hset.mTotalDelay, out_size);
 
     FLOAT *out_mx = (FLOAT*)  malloc((header.mNSamples - hset.mTotalDelay) * out_size * sizeof(FLOAT));
@@ -352,7 +352,7 @@ int main(int argc, char *argv[])
       if (WriteHTKFeatures(
             ofp,
             header.mSamplePeriod,
-            p_input ? (PARAMKIND_USER | this_target_kind & PARAMKIND_C) : this_target_kind,
+            p_input ? (PARAMKIND_USER | (this_target_kind & PARAMKIND_C)) : this_target_kind,
             swap_fea_out, 
             out_matrix)) 
       {

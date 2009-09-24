@@ -149,7 +149,7 @@ int main(int argc, char* argv[])
     FeatureRepository               feature_repo;
     FeatureRepository               feature_repo_alig;
 
-    FILE*                           sfp;
+  //  FILE*                           sfp;
     FILE*                           ilfp = NULL;
 
     Label*                          labels;
@@ -157,9 +157,9 @@ int main(int argc, char* argv[])
     int                             i;
     int                             fcnt = 0;
     
-    char                            line[1024];
+  //  char                            line[1024];
     char                            label_file[1024];
-    char*                           chrptr;
+  //  char*                           chrptr;
     
   //  MyHSearchData labelHash;
     MyHSearchData                   nonCDphHash;

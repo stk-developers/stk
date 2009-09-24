@@ -1743,7 +1743,7 @@ namespace STK
     LinearXform *   ret;
     int             in_size;
     int             out_size;
-    int             i;
+    size_t          i;
     int             r;
     int             c;
     FLOAT           tmp;
@@ -2225,11 +2225,11 @@ namespace STK
   {
     GmmPosteriorsXform* ret=NULL;
     int           in_size_orig;
-    char*         keyword;
-    int           state_id;
+    //char*         keyword;
+    //int           state_id;
     
     int   in_size = GetInt(fp);
-    int   n_best  = GetInt(fp);
+    size_t n_best = GetInt(fp);
     FLOAT scale   = GetFloat(fp);
 
     // create new object
@@ -3526,9 +3526,9 @@ namespace STK
   WriteBlockCopyXform(FILE *fp, bool binary, BlockCopyXform *xform)
   {
     size_t      i;
-    size_t      j;
-    int         step = 0;
-    int *       ids = xform->mpIndices;
+    //size_t      j;
+    //int         step = 0;
+    //int *       ids = xform->mpIndices;
   
     BlockCopyXform::Block *p_blocks = xform->mpBlocks;    
     
@@ -4517,7 +4517,7 @@ namespace STK
     mSize = vctSize;
   
     char *p_win_name = pModelSet->GetString(fp, false);
-    int i;
+    size_t i;
     for(i = 0; i < strlen(p_win_name); i++)
     {
       p_win_name[i] = toupper(p_win_name[i]);

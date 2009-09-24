@@ -104,7 +104,7 @@ namespace STK
   LabelContainer::
   FindInHash(const std::string & rLabel, LabelRecord & rLS)
   {
-    bool run   = true;
+    //bool run   = true;
     bool found = false;
 
     std::string str;

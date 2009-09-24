@@ -766,7 +766,7 @@ namespace STK
       FLOAT                   lmScale,
       FLOAT                   posteriorScale)
     {
-      NodeType*              p_node(pFirst());
+      //NodeType*              p_node(pFirst());
 
       if (expOptions.mNoWordExpansion  && !expOptions.mCDPhoneExpansion &&
           expOptions.mNoOptimization   && !rFormat.mNoLMLikes &&
@@ -1171,7 +1171,7 @@ namespace STK
       int     rep;
       NodeType*   p_tnode;
       int     node_removed = 0;
-      FLOAT   t_acoustic_like;
+      //FLOAT   t_acoustic_like;
       FLOAT   t_lm_like;
 
       
@@ -1999,7 +1999,7 @@ namespace STK
     int   i;
     int   j;
 
-    NodeType* node;
+    //NodeType* node;
     NodeType* tnode;
     iterator   p_node;
     

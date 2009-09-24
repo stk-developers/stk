@@ -546,7 +546,7 @@ namespace STK
       /**
        * @brief Returns true if token is active
        */
-      Token() : mLike(LOG_0), mpWlr(NULL), mpAltHyps(NULL), mpTWlr(NULL) {}
+      Token() : mLike(LOG_0), mpTWlr(NULL), mpWlr(NULL), mpAltHyps(NULL) {}
        
       inline const bool
       IsActive() const 

@@ -56,9 +56,9 @@ int main(int argc, char* argv[])
   try 
   {
     // general-purpose variables
-    bool                    swap_features;
-    int                     start_frm_ext;
-    int                     end_frm_ext;
+  //  bool                    swap_features;
+  //  int                     start_frm_ext;
+  //  int                     end_frm_ext;
     string                  target_kind;
 
     FeatureRepository       feature_repo;
@@ -300,7 +300,7 @@ TransformMatrix(const Matrix<FLOAT>& rSrc, Matrix<FLOAT>& rDest,
   rDest.Init(rSrc.Rows() + time, outSize);
 
   // we go through each feature vector and xform it
-  for (int i = 0 ; i<rSrc.Rows(); i++) {
+  for (size_t i = 0 ; i<rSrc.Rows(); i++) {
     rModels.UpdateStacks(rSrc[i], ++time, FORWARD);
 
     if (time <= 0) {

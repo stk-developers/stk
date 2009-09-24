@@ -237,7 +237,7 @@ int main(int argc, char* argv[])
     //..........................................................................
     // TRAIN
     if (action == "train") {
-      BDTree* p_newtree;
+      //BDTree* p_newtree;
 
       // check the params
       if (target_model_name.empty()) {

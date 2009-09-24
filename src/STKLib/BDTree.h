@@ -203,10 +203,10 @@ namespace STK
     int             mPresentVocabSize;
     int             mPredictorVocabSize;
     ContainerInt    mSizeVector;
-    NGram::ProbType mTotalSum;
     ContainerProb   mMarginalCountsPresent;
     ContainerProb   mMarginalCountsPredictor;
     std::vector<SparseBigramCellPntr> mPointerVector;
+    NGram::ProbType mTotalSum;
   };
 
   /** *************************************************************************

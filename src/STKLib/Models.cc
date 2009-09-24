@@ -2042,8 +2042,8 @@ namespace STK
   Print(std::ostream& rOstr)
   {
     FLOAT* p_vec = mpMatrixO;
-    int    i;
-    int    j;
+    size_t i;
+    size_t j;
 
     // go over all rows
     for (i=0; i < mNStates; i++) {
@@ -3876,7 +3876,7 @@ namespace STK
     mAllMixuresUpdatableFromStatAccums = true;
     
     if(mCmllrStats) {
-      for (int i=0; i < mNumberOfXformsToUpdate; i++) {
+      for (size_t i=0; i < mNumberOfXformsToUpdate; i++) {
         int size = mpXformToUpdate[i].mpXform->mInSize;
         mpXformToUpdate[i].mpXform->mpCmllrStats = (FLOAT *) calloc(sizeof(FLOAT), ((size+size*(size+1)/2) * (size-1) + 1));
       }

@@ -245,7 +245,7 @@ namespace STK
     rVct.Init(vct_len);
 
     size_t j;
-    int    half  = windowLen / 2;
+    size_t half  = windowLen / 2;
     if (windowLen > 1)
     {
       for (j = 0; j < half; j++)
