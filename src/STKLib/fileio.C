@@ -324,7 +324,7 @@ namespace STK
     char          dir_name[260];
     char*         chptr;
   
-    if ((chptr=strrchr(pFileName, '/')) == NULL)
+    if ((chptr=const_cast<char *> (strrchr(pFileName, '/'))) == NULL)
       return 0;
     
     
@@ -341,7 +341,7 @@ namespace STK
     
     for (;;) 
     {
-      if ((chptr=strchr(chptr, '/')) != NULL)
+      if ((chptr=const_cast<char *> (strchr(chptr, '/'))) != NULL)
         *chptr='\0';
       
       if ((access(dir_name, 0) || stat(dir_name, &stat_buff) == -1 ||
