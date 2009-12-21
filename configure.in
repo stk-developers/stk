@@ -170,8 +170,8 @@ AC_ARG_WITH([matlab-dir],
 AC_ARG_WITH([atlas],   
             [AS_HELP_STRING([--with-atlas], 
               [add support for the ATLAS library @<:@default=check@:>@])], 
-            [], 
-            [with_atlas=check]) 
+            [with_atlas=check], 
+            [with_atlas=yes]) 
 
 AC_ARG_WITH([atlas-dir], 
             [AS_HELP_STRING([--with-atlas-dir], 
@@ -209,14 +209,43 @@ AC_ARG_WITH([atlas-lib-dir],
 
 LIBATLAS=
 
+
 # At this point, Atlas include dir should have been set
+
+# check for f77blas non static linking
+AS_IF([test "x$with_atlas" != "xno" -a "x$with_atlas_static" != "xyes"], 
+      [AC_SEARCH_LIBS([xerbla_], 
+                      [f77blas],
+                      [AC_SUBST([LIBATLAS], ["-lf77blas"])],
+                      [echo -lf77blas not present, old Atlas library version on the system],
+                      [-latlas -llapack -lcblas -pthread]
+                      )
+      ])
+
+
+# check for f77blas static linking
+AS_IF([test "x$with_atlas" != "xno" -a "x$with_atlas_static" == "xyes"], 
+      #check if exists nonstatic f77blas, to see whether the Atlas verion with or without f77blas is present in the system
+      [AC_SEARCH_LIBS([xerbla_], 
+                      [f77blas],
+                      [AC_SUBST([LIBATLAS], ["$ATLASLIBDIR/libf77blas.a"]) 
+                       AC_SUBST([LIBS], [""])
+                       echo ATLAS: forcing static linkage
+                       echo ATLAS: $ATLASLIBDIR/libf77blas.a to be linked],
+                      [echo -lf77blas not present, old Atlas library version on the system],
+                      [-latlas -llapack -lcblas -pthread]
+                      )
+      ])
+
+
+# static linking, no tests
 AC_ARG_WITH([atlas-static], 
             [AS_HELP_STRING([--with-atlas-static], 
               [force static atlas linking]) 
             ], 
             [echo ATLAS: forcing static likage
              echo ATLAS: $ATLASLIBDIR/{libcblas,liblapack,libptcblas,libatlas}.a to be linked
-             AC_SUBST([LIBATLAS],["$ATLASLIBDIR/libcblas.a $ATLASLIBDIR/liblapack.a $ATLASLIBDIR/libptcblas.a $ATLASLIBDIR/libatlas.a"])
+             AC_SUBST([LIBATLAS],["$ATLASLIBDIR/libcblas.a $ATLASLIBDIR/liblapack.a $ATLASLIBDIR/libptcblas.a $ATLASLIBDIR/libatlas.a $LIBATLAS"])
              AC_DEFINE([HAVE_ATLAS], [1],
                        [Define if we have libatlas])
              with_atlas_static=yes
@@ -229,13 +258,13 @@ AC_ARG_WITH([atlas-static],
 # we choose one func from blas and one from lapack
 AS_IF([test "x$with_atlas" != "xno" -a "x$with_atlas_static" != "xyes" ],
       [AC_SEARCH_LIBS([cblas_sgemm], [cblas lapack atlas],
-                      [AC_SUBST([LIBATLAS], ["-llapack -lcblas -latlas"])
+                      [AC_SUBST([LIBATLAS], ["-llapack -lcblas -latlas $LIBATLAS"])
                        AC_DEFINE([HAVE_ATLAS], [1],
                                  [Define if we have libatlas])
                       ],
                       [if test "x$with_atlas" != "xcheck"; then
                        AC_MSG_FAILURE(
-                       [--with-atlas was given, but test for atlas failed. Try specifying the --with-atlas-dir or --with-alas-lib-dir.])
+                       [--with-atlas was implicitly given, but test for atlas failed. Try specifying the --with-atlas-dir or --with-alas-lib-dir, or disable Atlas with --with-atlas=no.])
                        fi
                       ],[-latlas -llapack -lcblas -pthread])
       ])

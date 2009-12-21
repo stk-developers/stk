@@ -6601,9 +6601,9 @@ fi;
 # Check whether --with-atlas or --without-atlas was given.
 if test "${with_atlas+set}" = set; then
   withval="$with_atlas"
-
-else
   with_atlas=check
+else
+  with_atlas=yes
 fi;
 
 
@@ -6653,14 +6653,296 @@ fi;
 
 LIBATLAS=
 
+
 # At this point, Atlas include dir should have been set
+
+# check for f77blas non static linking
+if test "x$with_atlas" != "xno" -a "x$with_atlas_static" != "xyes"; then
+  echo "$as_me:$LINENO: checking for library containing xerbla_" >&5
+echo $ECHO_N "checking for library containing xerbla_... $ECHO_C" >&6
+if test "${ac_cv_search_xerbla_+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  ac_func_search_save_LIBS=$LIBS
+ac_cv_search_xerbla_=no
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+/* Override any gcc2 internal prototype to avoid an error.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+/* We use char because int might match the return type of a gcc2
+   builtin and then its argument prototype would still apply.  */
+char xerbla_ ();
+int
+main ()
+{
+xerbla_ ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
+  (eval $ac_link) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_cxx_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest$ac_exeext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_search_xerbla_="none required"
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+fi
+rm -f conftest.err conftest.$ac_objext \
+      conftest$ac_exeext conftest.$ac_ext
+if test "$ac_cv_search_xerbla_" = no; then
+  for ac_lib in f77blas; do
+    LIBS="-l$ac_lib -latlas -llapack -lcblas -pthread
+                       $ac_func_search_save_LIBS"
+    cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+/* Override any gcc2 internal prototype to avoid an error.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+/* We use char because int might match the return type of a gcc2
+   builtin and then its argument prototype would still apply.  */
+char xerbla_ ();
+int
+main ()
+{
+xerbla_ ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
+  (eval $ac_link) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_cxx_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest$ac_exeext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_search_xerbla_="-l$ac_lib"
+break
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+fi
+rm -f conftest.err conftest.$ac_objext \
+      conftest$ac_exeext conftest.$ac_ext
+  done
+fi
+LIBS=$ac_func_search_save_LIBS
+fi
+echo "$as_me:$LINENO: result: $ac_cv_search_xerbla_" >&5
+echo "${ECHO_T}$ac_cv_search_xerbla_" >&6
+if test "$ac_cv_search_xerbla_" != no; then
+  test "$ac_cv_search_xerbla_" = "none required" || LIBS="$ac_cv_search_xerbla_ $LIBS"
+  LIBATLAS="-lf77blas"
+
+else
+  echo -lf77blas not present, old Atlas library version on the system
+fi
+
+
+fi
+
+
+
+# check for f77blas static linking
+if test "x$with_atlas" != "xno" -a "x$with_atlas_static" == "xyes"; then
+  #check if exists nonstatic f77blas, to see whether the Atlas verion with or without f77blas is present in the system
+      echo "$as_me:$LINENO: checking for library containing xerbla_" >&5
+echo $ECHO_N "checking for library containing xerbla_... $ECHO_C" >&6
+if test "${ac_cv_search_xerbla_+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  ac_func_search_save_LIBS=$LIBS
+ac_cv_search_xerbla_=no
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+/* Override any gcc2 internal prototype to avoid an error.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+/* We use char because int might match the return type of a gcc2
+   builtin and then its argument prototype would still apply.  */
+char xerbla_ ();
+int
+main ()
+{
+xerbla_ ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
+  (eval $ac_link) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_cxx_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest$ac_exeext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_search_xerbla_="none required"
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+fi
+rm -f conftest.err conftest.$ac_objext \
+      conftest$ac_exeext conftest.$ac_ext
+if test "$ac_cv_search_xerbla_" = no; then
+  for ac_lib in f77blas; do
+    LIBS="-l$ac_lib -latlas -llapack -lcblas -pthread
+                       $ac_func_search_save_LIBS"
+    cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+/* Override any gcc2 internal prototype to avoid an error.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+/* We use char because int might match the return type of a gcc2
+   builtin and then its argument prototype would still apply.  */
+char xerbla_ ();
+int
+main ()
+{
+xerbla_ ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
+  (eval $ac_link) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_cxx_werror_flag"
+			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest$ac_exeext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_search_xerbla_="-l$ac_lib"
+break
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+fi
+rm -f conftest.err conftest.$ac_objext \
+      conftest$ac_exeext conftest.$ac_ext
+  done
+fi
+LIBS=$ac_func_search_save_LIBS
+fi
+echo "$as_me:$LINENO: result: $ac_cv_search_xerbla_" >&5
+echo "${ECHO_T}$ac_cv_search_xerbla_" >&6
+if test "$ac_cv_search_xerbla_" != no; then
+  test "$ac_cv_search_xerbla_" = "none required" || LIBS="$ac_cv_search_xerbla_ $LIBS"
+  LIBATLAS="$ATLASLIBDIR/libf77blas.a"
+
+                       LIBS=""
+
+                       echo ATLAS: forcing static linkage
+                       echo ATLAS: $ATLASLIBDIR/libf77blas.a to be linked
+else
+  echo -lf77blas not present, old Atlas library version on the system
+fi
+
+
+fi
+
+
+
+# static linking, no tests
 
 # Check whether --with-atlas-static or --without-atlas-static was given.
 if test "${with_atlas_static+set}" = set; then
   withval="$with_atlas_static"
   echo ATLAS: forcing static likage
              echo ATLAS: $ATLASLIBDIR/{libcblas,liblapack,libptcblas,libatlas}.a to be linked
-             LIBATLAS="$ATLASLIBDIR/libcblas.a $ATLASLIBDIR/liblapack.a $ATLASLIBDIR/libptcblas.a $ATLASLIBDIR/libatlas.a"
+             LIBATLAS="$ATLASLIBDIR/libcblas.a $ATLASLIBDIR/liblapack.a $ATLASLIBDIR/libptcblas.a $ATLASLIBDIR/libatlas.a $LIBATLAS"
 
 
 cat >>confdefs.h <<\_ACEOF
@@ -6802,7 +7084,7 @@ echo "$as_me:$LINENO: result: $ac_cv_search_cblas_sgemm" >&5
 echo "${ECHO_T}$ac_cv_search_cblas_sgemm" >&6
 if test "$ac_cv_search_cblas_sgemm" != no; then
   test "$ac_cv_search_cblas_sgemm" = "none required" || LIBS="$ac_cv_search_cblas_sgemm $LIBS"
-  LIBATLAS="-llapack -lcblas -latlas"
+  LIBATLAS="-llapack -lcblas -latlas $LIBATLAS"
 
 
 cat >>confdefs.h <<\_ACEOF
@@ -6812,9 +7094,9 @@ _ACEOF
 
 else
   if test "x$with_atlas" != "xcheck"; then
-                       { { echo "$as_me:$LINENO: error: --with-atlas was given, but test for atlas failed. Try specifying the --with-atlas-dir or --with-alas-lib-dir.
+                       { { echo "$as_me:$LINENO: error: --with-atlas was implicitly given, but test for atlas failed. Try specifying the --with-atlas-dir or --with-alas-lib-dir, or disable Atlas with --with-atlas=no.
 See \`config.log' for more details." >&5
-echo "$as_me: error: --with-atlas was given, but test for atlas failed. Try specifying the --with-atlas-dir or --with-alas-lib-dir.
+echo "$as_me: error: --with-atlas was implicitly given, but test for atlas failed. Try specifying the --with-atlas-dir or --with-alas-lib-dir, or disable Atlas with --with-atlas=no.
 See \`config.log' for more details." >&2;}
    { (exit 1); exit 1; }; }
                        fi
