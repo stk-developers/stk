@@ -70,9 +70,10 @@ am_libSTKLib_a_OBJECTS = libSTKLib_a-BasicVector.$(OBJEXT) \
 	libSTKLib_a-DecoderNetwork_IO.$(OBJEXT) \
 	libSTKLib_a-ZNorm.$(OBJEXT) libSTKLib_a-common.$(OBJEXT) \
 	libSTKLib_a-dict.$(OBJEXT) libSTKLib_a-filmatch.$(OBJEXT) \
-	libSTKLib_a-fileio.$(OBJEXT) libSTKLib_a-getopt.$(OBJEXT) \
-	libSTKLib_a-labels.$(OBJEXT) libSTKLib_a-Tokenizer.$(OBJEXT) \
-	libSTKLib_a-Lattice.$(OBJEXT) libSTKLib_a-SigP.$(OBJEXT)
+	libSTKLib_a-strtod_lc.$(OBJEXT) libSTKLib_a-fileio.$(OBJEXT) \
+	libSTKLib_a-getopt.$(OBJEXT) libSTKLib_a-labels.$(OBJEXT) \
+	libSTKLib_a-Tokenizer.$(OBJEXT) libSTKLib_a-Lattice.$(OBJEXT) \
+	libSTKLib_a-SigP.$(OBJEXT)
 libSTKLib_a_OBJECTS = $(am_libSTKLib_a_OBJECTS)
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
@@ -219,7 +220,7 @@ libSTKLib_a_SOURCES = BasicVector.cc BasicVector.h BasicVector.tcc \
 		MlfStream.h MlfStream.cc MlfStream.tcc Models.cc  \
 		Models.h Models_IO.cc Net.h Net.cc Net.tcc Decoder.cc Decoder.tcc \
 		Decoder.h DecoderNetwork.cc DecoderNetwork.h DecoderNetwork_IO.cc DecoderNetwork_IO.tcc ZNorm.cc  \
-		ZNorm.h common.C common.h dict.C dict.h fileio.h filmatch.C filmatch.h     \
+		ZNorm.h common.C common.h dict.C dict.h fileio.h filmatch.C filmatch.h strtod_lc.C strtod_lc.h \
 		fileio.C getopt.C getopt.h labels.C labels.h stkstream.h stkstream.tcc   \
 		Tokenizer.h Tokenizer.cc \
 		Lattice.cc Lattice.h SigP.cc SigP.h
@@ -321,6 +322,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-filmatch.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-getopt.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-labels.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libSTKLib_a-strtod_lc.Po@am__quote@
 
 .C.o:
 @am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
@@ -587,6 +589,20 @@ libSTKLib_a-filmatch.obj: filmatch.C
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filmatch.C' object='libSTKLib_a-filmatch.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -c -o libSTKLib_a-filmatch.obj `if test -f 'filmatch.C'; then $(CYGPATH_W) 'filmatch.C'; else $(CYGPATH_W) '$(srcdir)/filmatch.C'; fi`
+
+libSTKLib_a-strtod_lc.o: strtod_lc.C
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -MT libSTKLib_a-strtod_lc.o -MD -MP -MF "$(DEPDIR)/libSTKLib_a-strtod_lc.Tpo" -c -o libSTKLib_a-strtod_lc.o `test -f 'strtod_lc.C' || echo '$(srcdir)/'`strtod_lc.C; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libSTKLib_a-strtod_lc.Tpo" "$(DEPDIR)/libSTKLib_a-strtod_lc.Po"; else rm -f "$(DEPDIR)/libSTKLib_a-strtod_lc.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='strtod_lc.C' object='libSTKLib_a-strtod_lc.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -c -o libSTKLib_a-strtod_lc.o `test -f 'strtod_lc.C' || echo '$(srcdir)/'`strtod_lc.C
+
+libSTKLib_a-strtod_lc.obj: strtod_lc.C
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -MT libSTKLib_a-strtod_lc.obj -MD -MP -MF "$(DEPDIR)/libSTKLib_a-strtod_lc.Tpo" -c -o libSTKLib_a-strtod_lc.obj `if test -f 'strtod_lc.C'; then $(CYGPATH_W) 'strtod_lc.C'; else $(CYGPATH_W) '$(srcdir)/strtod_lc.C'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/libSTKLib_a-strtod_lc.Tpo" "$(DEPDIR)/libSTKLib_a-strtod_lc.Po"; else rm -f "$(DEPDIR)/libSTKLib_a-strtod_lc.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='strtod_lc.C' object='libSTKLib_a-strtod_lc.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -c -o libSTKLib_a-strtod_lc.obj `if test -f 'strtod_lc.C'; then $(CYGPATH_W) 'strtod_lc.C'; else $(CYGPATH_W) '$(srcdir)/strtod_lc.C'; fi`
 
 libSTKLib_a-fileio.o: fileio.C
 @am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(libSTKLib_a_CXXFLAGS) $(CXXFLAGS) -MT libSTKLib_a-fileio.o -MD -MP -MF "$(DEPDIR)/libSTKLib_a-fileio.Tpo" -c -o libSTKLib_a-fileio.o `test -f 'fileio.C' || echo '$(srcdir)/'`fileio.C; \
