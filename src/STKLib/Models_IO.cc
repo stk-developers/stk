@@ -1,5 +1,6 @@
 #include "Models.h"
 #include "SigP.h"
+#include "strtod_lc.h"
 #include <stdarg.h>
  
 namespace STK
@@ -275,7 +276,13 @@ namespace STK
       if (!isBigEndian()) swap4(ret);  
     } else {
       RemoveSpaces(fp);
-      cc = fscanf(fp, "%f", &ret);
+      char pstr[128];
+      if ((cc = fscanf(fp, "%127[-+.0-9eE]", pstr)) == 1)
+      {
+        char *pptr;
+        ret = strtod_lc(pstr, &pptr);
+        cc = (*pptr == '\0');
+      }
     }
     
     if (cc != 1) {

@@ -12,6 +12,7 @@
 
 #include "DecoderNetwork.h"
 
+#include "strtod_lc.h"
 #include <sstream>
 
 
@@ -85,7 +86,7 @@ namespace STK
   float 
   getFloat(char *str, char **endPtr, const char *file_name, int line_no)
   {
-    double d = strtod(str, endPtr);
+    double d = strtod_lc(str, endPtr);
   
     if (str == *endPtr || (**endPtr && !isspace(**endPtr))) {
       Error("Invalid float value (%s:%d)", file_name, line_no);
