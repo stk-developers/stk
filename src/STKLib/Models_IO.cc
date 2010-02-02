@@ -109,7 +109,8 @@ namespace STK
   ModelSet::
   GetString(FILE *fp, int eofNotExpected)
   {
-    char ch, *chptr = mpBuffer;
+    char* chptr = mpBuffer;
+    int ch;
     int lines = 0;
   
   //  fputs("GetString: ", stdout);
@@ -124,7 +125,7 @@ namespace STK
   
     ch = getc(fp);
     if (ch == '\"' || ch == '\'' ) {
-      char termChar = ch;
+      int termChar = ch;
   
       while (((ch = getc(fp)) != EOF) && 
             (ch != termChar) && 
@@ -302,7 +303,7 @@ namespace STK
   ModelSet::
   RemoveSpaces(FILE *fp)
   {
-    char ch;
+    int ch;
   
   //  puts("RemoveSpaces");
     while (isspace(ch = getc(fp))) {
@@ -576,7 +577,7 @@ namespace STK
         
         if (keyword[0] == '~' && keyword[2] == '\0' ) 
         {
-          char type = keyword[1];
+          int type = keyword[1];
     
           if (type == 'o') {
             if (!ReadGlobalOptions(fp, readOnly)) {
