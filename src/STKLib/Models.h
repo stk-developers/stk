@@ -1317,7 +1317,12 @@ namespace STK
     Xform() : MacroData(), mpCmllrStats(NULL) {}
     
     virtual 
-    ~Xform() {}
+    ~Xform() {
+      if (NULL != mpCmllrStats) {
+        free(mpCmllrStats);
+        mpCmllrStats = NULL;
+      }
+    }
     
     /**
      * @brief Interface to the evaluation procedure of a concrete Xform

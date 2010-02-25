@@ -3877,8 +3877,10 @@ namespace STK
     
     if(mCmllrStats) {
       for (size_t i=0; i < mNumberOfXformsToUpdate; i++) {
-        int size = mpXformToUpdate[i].mpXform->mInSize;
-        mpXformToUpdate[i].mpXform->mpCmllrStats = (FLOAT *) calloc(sizeof(FLOAT), ((size+size*(size+1)/2) * (size-1) + 1));
+        if (NULL == mpXformToUpdate[i].mpXform->mpCmllrStats) {
+          int size = mpXformToUpdate[i].mpXform->mInSize;
+          mpXformToUpdate[i].mpXform->mpCmllrStats = (FLOAT *) calloc(sizeof(FLOAT), ((size+size*(size+1)/2) * (size-1) + 1));
+        }
       }
     }
     
