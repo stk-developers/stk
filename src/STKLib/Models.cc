@@ -2692,6 +2692,12 @@ namespace STK
            char*      pMemory,
            PropagDirectionType  direction)
   {
+    // make the 1x1 matrices multiply fast!!!
+    if(mInSize == 1  &&  mOutSize == 1) {
+      pOutputVector[0] = *(mMatrix[0]) * pInputVector[0];
+      return pOutputVector;
+    }
+
 #ifdef HAVE_ATLAS
     memset(pOutputVector, 0, mOutSize*sizeof(FLOAT));
 # if DOUBLEPRECISION
@@ -2702,6 +2708,7 @@ namespace STK
         mMatrix.pData(), mMatrix.Stride(), pInputVector, 1, 1.0F, pOutputVector, 1);
 # endif
 #else
+
     size_t c; // column counter
     size_t r; // row counter
     
@@ -3877,10 +3884,8 @@ namespace STK
     
     if(mCmllrStats) {
       for (size_t i=0; i < mNumberOfXformsToUpdate; i++) {
-        if (NULL == mpXformToUpdate[i].mpXform->mpCmllrStats) {
-          int size = mpXformToUpdate[i].mpXform->mInSize;
-          mpXformToUpdate[i].mpXform->mpCmllrStats = (FLOAT *) calloc(sizeof(FLOAT), ((size+size*(size+1)/2) * (size-1) + 1));
-        }
+        int size = mpXformToUpdate[i].mpXform->mInSize;
+        mpXformToUpdate[i].mpXform->mpCmllrStats = (FLOAT *) calloc(sizeof(FLOAT), ((size+size*(size+1)/2) * (size-1) + 1));
       }
     }
     
