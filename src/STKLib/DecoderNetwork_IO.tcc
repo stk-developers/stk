@@ -495,10 +495,11 @@ namespace STK
               
               time = -FLT_MAX;
               
-              while (sscanf(phn_marks, ":%[^,:]%n,%f%n", name, &n, &time, &n) > 0) 
+              while (sscanf(phn_marks, ":%[^,:]%n,%n", name, &n, &n) > 0)
               {
                 _node_type* tnode;
                 phn_marks+=n;
+                Str2Number(phn_marks, &time, &phn_marks);
     
                 if ((tnode = (_node_type *) calloc(1, sizeof(_node_type))) == NULL
                 || (tnode->rpLinks()  = (_link_type *) malloc(sizeof(_link_type))) 
@@ -1245,9 +1246,10 @@ namespace STK
           fputs(" t=", pFp);
     
           if (p_node->mC.Start() != UNDEF_TIME && format.mStartTimes) {
-            fprintf(pFp,"%g,", p_node->mC.Start() * 1.0e-7 * sampPeriod);
+            WriteNumber(pFp, p_node->mC.Start() * 1.0e-7 * sampPeriod);
+            fputc(',', pFp);
           }
-          fprintf(  pFp,"%g",  p_node->mC.Stop()  * 1.0e-7 * sampPeriod);
+          WriteNumber(pFp, p_node->mC.Stop() * 1.0e-7 * sampPeriod);
         }
 
         if (!(p_node->mC.mType & NT_WORD && p_node->mC.mpPronun == NULL)
@@ -1278,12 +1280,14 @@ namespace STK
         
         if (format.mPosteriors) {
           assert(NULL != p_node->mC.mpAlphaBeta);
-          fprintf(pFp," P="FLOAT_FMT, exp(p_node->mC.mpAlphaBeta->mAlpha + 
+          fprintf(pFp," P=");
+          WriteNumber(pFp, exp(p_node->mC.mpAlphaBeta->mAlpha + 
                 p_node->mC.mpAlphaBeta->mBeta - tot_log_like));
         }
 	
         if (p_node->mC.mType & NT_PHONE && p_node->mC.PhoneAccuracy() != 1.0) {
-          fprintf(pFp," p="FLOAT_FMT, p_node->mC.PhoneAccuracy());
+          fprintf(pFp," p=");
+          WriteNumber(pFp, p_node->mC.PhoneAccuracy());
         }
 
         if (!format.mArcDefsToEnd) 
@@ -1315,7 +1319,8 @@ namespace STK
 	      } else if (p_end_node->mC.mType & NT_WORD &&  p_end_node->mC.mpPronun != NULL) {
                 score += wordPenalty * posteriorScale;
 	      }
-              fprintf(pFp," P="FLOAT_FMT, exp(score - tot_log_like));
+              fprintf(pFp," P=");
+              WriteNumber(pFp, exp(score - tot_log_like));
             }
 
 // THIS WOULD UN-SCALE THE SCORES, BUT THIS NOW HAPPENS JUST AFTER LATTICE
@@ -1332,14 +1337,16 @@ namespace STK
             if ((!close_enough(lm_score, 0.0, 10)) 
             &&  (!format.mNoLMLikes))
             {
-              fprintf(pFp," l="FLOAT_FMT, lm_score);
+              fprintf(pFp," l=");
+              WriteNumber(pFp, lm_score);
             }
 
             // output acoustic probability
             if ((!close_enough(p_node->rpLinks()[j].AcousticLike(), 0.0, 10)) 
             && !(format.mNoAcousticLikes))
             {
-              fprintf(pFp," a="FLOAT_FMT, p_node->rpLinks()[j].AcousticLike());
+              fprintf(pFp," a=");
+              WriteNumber(pFp, p_node->rpLinks()[j].AcousticLike());
             }
           }
         }
@@ -1389,7 +1396,8 @@ namespace STK
 	      } else if (p_end_node->mC.mType & NT_WORD &&  p_end_node->mC.mpPronun != NULL) {
                 score += wordPenalty * posteriorScale;
 	      }
-              fprintf(pFp," P="FLOAT_FMT, exp(score - tot_log_like));
+              fprintf(pFp," P=");
+              WriteNumber(pFp, exp(score - tot_log_like));
             }
 
 // THIS WOULD UN-SCALE THE SCORES, BUT THIS NOW HAPPENS JUST AFTER LATTICE
@@ -1408,14 +1416,16 @@ namespace STK
             if ((!close_enough(lm_score, 0.0, 10)) 
             && (!format.mNoLMLikes))
             {
-              fprintf(pFp," l="FLOAT_FMT, lm_score );
+              fprintf(pFp," l=");
+              WriteNumber(pFp, lm_score);
             }
 
             // output acoustic probability
             if ((!close_enough(p_node->rpLinks()[j].AcousticLike(), 0.0, 10)) 
             && !(format.mNoAcousticLikes))
             {
-              fprintf(pFp," a="FLOAT_FMT, ac_score);
+              fprintf(pFp," a=");
+              WriteNumber(pFp, ac_score);
             }
 
             fputs("\n", pFp);
@@ -1499,15 +1509,17 @@ namespace STK
           if (p_node->mC.mpPronun->prob != 0.0 
           ||  p_node->mC.mpPronun->mpWord->npronuns > 1) 
           {
-            fprintf(pFp," {%d "FLOAT_FMT"}",
-                    p_node->mC.mpPronun->variant_no,
-                    p_node->mC.mpPronun->prob);
+            fprintf(pFp," {%d ", p_node->mC.mpPronun->variant_no);
+            WriteNumber(pFp, p_node->mC.mpPronun->prob);
+            fputc('}', pFp);
           }
         }
 
         if (p_node->mC.mType & NT_PHONE && p_node->mC.PhoneAccuracy() != 1.0) 
         {
-          fprintf(pFp," {"FLOAT_FMT"}", p_node->mC.PhoneAccuracy());
+          fprintf(pFp," {");
+          WriteNumber(pFp, p_node->mC.PhoneAccuracy());
+          fputc('}', pFp);
         }
 
         if (!(labelFormat.mNoTimes) &&
@@ -1529,7 +1541,9 @@ namespace STK
           fprintf(pFp," %d",p_node->rpLinks()[j].pNode()->mAux);
           if (p_node->rpLinks()[j].LmLike() != 0.0) 
           {
-            fprintf(pFp," {"FLOAT_FMT"}", p_node->rpLinks()[j].LmLike());
+            fprintf(pFp," {");
+            WriteNumber(pFp, p_node->rpLinks()[j].LmLike());
+            fputc('}', pFp);
           }
         }
 
@@ -1579,9 +1593,10 @@ namespace STK
           fputs(" t=", pFp);
     
           if (p_node->Start() != UNDEF_TIME && format.mStartTimes) {
-            fprintf(pFp,"%g,", p_node->Start() * 1.0e-7 * sampPeriod);
+            WriteNumber(pFp, p_node->Start() * 1.0e-7 * sampPeriod);
+            fputc(',', pFp);
           }
-          fprintf(  pFp,"%g",  p_node->Stop()  * 1.0e-7 * sampPeriod);
+          WriteNumber(pFp, p_node->Stop() * 1.0e-7 * sampPeriod);
         }
 
         if (!(p_node->mType & NT_WORD && p_node->mpPronun == NULL)
@@ -1613,7 +1628,8 @@ namespace STK
         }
 
         if (p_node->mType & NT_PHONE && p_node->mPhoneAccuracy != 1.0) {
-          fprintf(pFp," p="FLOAT_FMT, p_node->mPhoneAccuracy);
+          fprintf(pFp," p=");
+          WriteNumber(pFp, p_node->mPhoneAccuracy);
         }
 
         if (!format.mArcDefsToEnd) 
@@ -1631,14 +1647,16 @@ namespace STK
             if ((!close_enough(p_node->rpLinks()[j].mLmLike, 0.0, 10)) 
             &&  (!format.mNoLMLikes))
             {
-              fprintf(pFp," l="FLOAT_FMT, p_node->rpLinks()[j].mLmLike);
+              fprintf(pFp," l=");
+              WriteNumber(pFp, p_node->rpLinks()[j].mLmLike);
             }
 
             // output acoustic probability
             if ((p_node->rpLinks()[j].AcousticLike() != 0.0) 
             && !(format.mNoAcousticLikes))
             {
-              fprintf(pFp," a="FLOAT_FMT, p_node->rpLinks()[j].mAcousticLike);
+              fprintf(pFp," a=");
+              WriteNumber(pFp, p_node->rpLinks()[j].mAcousticLike);
             }
           }
         }
@@ -1674,14 +1692,16 @@ namespace STK
             if ((!close_enough(p_node->rpLinks()[j].mLmLike, 0.0, 10)) 
             && (!format.mNoLMLikes))
             {
-              fprintf(pFp," l="FLOAT_FMT, p_node->rpLinks()[j].mLmLike);
+              fprintf(pFp," l=");
+              WriteNumber(pFp, p_node->rpLinks()[j].mLmLike);
             }
 
             // output acoustic probability
             if ((p_node->rpLinks()[j].mAcousticLike != 0.0) 
             && !(format.mNoAcousticLikes))
             {
-              fprintf(pFp," a="FLOAT_FMT, p_node->rpLinks()[j].mAcousticLike);
+              fprintf(pFp," a=");
+              WriteNumber(pFp, p_node->rpLinks()[j].mAcousticLike);
             }
 
             fputs("\n", pFp);

@@ -736,7 +736,9 @@ namespace STK
     if (i == nxfsa) 
       return;
   
-    if (fprintf(file->mpOccupP, "%s "FLOAT_FMT"\n", nodeName, xfsa[i].mNorm) < 0) 
+    if (fprintf(file->mpOccupP, "%s ", nodeName) < 0 ||
+        WriteNumber(file->mpOccupP, xfsa[i].mNorm) < 0 ||
+        fputs("\n", file->mpOccupP) == EOF)
     {
       Error("Cannot write to file: %s", file->mpOccupN);
     }
@@ -761,7 +763,8 @@ namespace STK
       {
         for (j=0;j<size;j++) 
         {
-          cc |= fprintf(file->mpStatsP, FLOAT_FMT" ", mean[j]) < 0;
+          cc |= WriteNumber(file->mpStatsP, mean[j]) < 0;
+          cc |= fputc(' ', file->mpStatsP) == EOF;
         }
         
         cc |= fputs("\n", file->mpStatsP) == EOF;
@@ -781,11 +784,13 @@ namespace STK
         for (k=0; k < size; k++) 
         {
           for (j=0;j<=k;j++) {
-            cc |= fprintf(file->mpStatsP, FLOAT_FMT" ", cov[k*(k+1)/2+j]) < 0;
+            cc |= WriteNumber(file->mpStatsP, cov[k*(k+1)/2+j]) < 0;
+            cc |= fputc(' ', file->mpStatsP) == EOF;
           }
   
           for (;j<size; j++) {
-            cc |= fprintf(file->mpStatsP, FLOAT_FMT" ", cov[j*(j+1)/2+k]) < 0;
+            cc |= WriteNumber(file->mpStatsP, cov[j*(j+1)/2+k]) < 0;
+            cc |= fputc(' ', file->mpStatsP) == EOF;
           }
   
           cc |= fputs("\n", file->mpStatsP) == EOF;
@@ -839,7 +844,9 @@ namespace STK
     if (i == nxfsa) 
       return;
   
-    j = fscanf(file->mpOccupP, "%128s "FLOAT_FMT"\n", buff, &xfsa[i].mNorm);
+    j = fscanf(file->mpOccupP, "%128s", buff);
+    j += ReadNumber(file->mpOccupP, &xfsa[i].mNorm);
+    fscanf(file->mpOccupP, "\n");
     
     if (j < 1) 
       Error("Unexpected end of file: %s", file->mpOccupN);
@@ -866,7 +873,8 @@ namespace STK
       {
         for (j=0;j<size;j++)
         {
-          cc |= (fscanf(file->mpStatsP, FLOAT_FMT" ", &mean[j]) != 1);
+          cc |= !ReadNumber(file->mpStatsP, &mean[j]);
+          fscanf(file->mpStatsP, " ");
         }
       }
     } 
@@ -886,7 +894,8 @@ namespace STK
         {
           for (j=0;j<k;j++) 
           {
-            cc |= (fscanf(file->mpStatsP, FLOAT_FMT" ", &f) != 1);
+            cc |= !ReadNumber(file->mpStatsP, &f);
+            fscanf(file->mpStatsP, " ");
             if (f != cov[k*(k+1)/2+j]) 
             {
               Error("Covariance matrix '%s' in file '%s' must be symetric",
@@ -895,7 +904,8 @@ namespace STK
           }
   
           for (;j<size; j++) {
-            cc |= (fscanf(file->mpStatsP, FLOAT_FMT" ", &cov[j*(j+1)/2+k]) != 1);
+            cc |= !ReadNumber(file->mpStatsP, &cov[j*(j+1)/2+k]);
+            fscanf(file->mpStatsP, " ");
           }
         }
       }
@@ -4011,16 +4021,14 @@ namespace STK
         
         FLOAT norm = userData.mpXform->mpCmllrStats[stat_size * out_size];
         
-        if (fprintf(userData.mMeanFile.mpOccupP, 
-                    "%s "FLOAT_FMT"\n", 
-                    userData.mpXform->mpMacro->mpName,
-                    (double) norm) < 0) {
+        if (fprintf(userData.mMeanFile.mpOccupP, "%s ", userData.mpXform->mpMacro->mpName) < 0 ||
+            WriteNumber(userData.mMeanFile.mpOccupP, norm) < 0 ||
+            fputs("\n", userData.mMeanFile.mpOccupP) == EOF) {
           Error("Cannot write to file: %s", userData.mMeanFile.mpOccupN);
         }
-        if (fprintf(userData.mCovFile.mpOccupP, 
-                    "%s "FLOAT_FMT"\n", 
-                    userData.mpXform->mpMacro->mpName,
-                    norm) < 0) {
+        if (fprintf(userData.mMeanFile.mpOccupP, "%s ", userData.mpXform->mpMacro->mpName) < 0 ||
+            WriteNumber(userData.mMeanFile.mpOccupP, norm) < 0 ||
+            fputs("\n", userData.mMeanFile.mpOccupP) == EOF) {
           Error("Cannot write to file: %s", userData.mCovFile.mpOccupN);
         }
 
@@ -4040,7 +4048,8 @@ namespace STK
           } else {
             size_t j;
             for (j=0;j<k_size;j++) {
-              cc |= fprintf(userData.mMeanFile.mpStatsP, FLOAT_FMT" ", out_vec[j]) < 0;
+              cc |= WriteNumber(userData.mMeanFile.mpStatsP, out_vec[j]) < 0;
+              cc |= fputc(' ', userData.mMeanFile.mpStatsP) == EOF;
             }
             cc |= fputs("\n", userData.mMeanFile.mpStatsP) == EOF;
           }
@@ -4059,10 +4068,12 @@ namespace STK
             size_t k, j;
             for (k=0; k < k_size; k++) {
               for (j=0;j<=k;j++) {
-                cc |= fprintf(userData.mCovFile.mpStatsP, FLOAT_FMT" ", out_vec[k*(k+1)/2+j]) < 0;
+                cc |= WriteNumber(userData.mCovFile.mpStatsP, out_vec[k*(k+1)/2+j]) < 0;
+                cc |= fputc(' ', userData.mCovFile.mpStatsP) == EOF;
               }
               for (;j<k_size; j++) {
-                cc |= fprintf(userData.mCovFile.mpStatsP, FLOAT_FMT" ", out_vec[j*(j+1)/2+k]) < 0;
+                cc |= WriteNumber(userData.mCovFile.mpStatsP, out_vec[j*(j+1)/2+k]) < 0;
+                cc |= fputc(' ', userData.mCovFile.mpStatsP) == EOF;
               }
               cc |= fputs("\n", userData.mCovFile.mpStatsP) == EOF;
             }
@@ -4090,9 +4101,9 @@ namespace STK
       {
         for (j=0; j < userData.mpXform->mInSize; j++) 
         {
-          fprintf(fp, " "FLOAT_FMT,
-                  //userData.mpXform->mpMatrixO[i*userData.mpXform->mInSize+j]);
-                  userData.mpXform->mMatrix[i][j]);
+          fputc(' ', fp);
+          WriteNumber(fp, userData.mpXform->mMatrix[i][j]);
+                       //userData.mpXform->mpMatrixO[i*userData.mpXform->mInSize+j]);
         }
         fputs("\n", fp);
       }
@@ -4231,14 +4242,15 @@ namespace STK
       
       //for (i=0; i < userData.mpXform->mOutSize * userData.mpXform->mInSize; i++) 
       //{
-      //  c |= fscanf(fp, FLOAT_FMT, &userData.mpXform->mpMatrixO[i]) != 1;
+      //  c |= !ReadNumber(fp, &userData.mpXform->mpMatrixO[i]);
+      //  fscanf(fp, " ");
       //}
       
       for (size_t i=0; i < userData.mpXform->mOutSize; i++)
       {
         for (size_t j=0; j < userData.mpXform->mInSize; j++) 
         {
-          c |= fscanf(fp, FLOAT_FMT, &userData.mpXform->mMatrix[i][j]) != 1;
+          c |= !ReadNumber(fp, &userData.mpXform->mMatrix[i][j]);
         }
       }
       
@@ -4291,7 +4303,8 @@ namespace STK
         {
           stOccP += state->mpMixture[k].mWeightAccum;
         }
-        fprintf(fp, " %10.6f", stOccP);
+        fputc(' ', fp);
+        WriteNumber(fp, stOccP, 10, 6);
       }
       fputs("\n", fp);
     }

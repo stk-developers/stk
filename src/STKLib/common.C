@@ -1106,7 +1106,7 @@ namespace STK
     if (ep == NULL) return default_value;
   
     const char *val = 2 + (char *) ep->data;
-    default_value = strtod(val, &chrptr);
+    Str2Number(val, &default_value, &chrptr);
     if (!*val || *chrptr) {
       Error("Decimal number expected for %s but found '%s'", OptOrParStr(ep),val);
     }

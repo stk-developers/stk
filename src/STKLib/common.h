@@ -22,6 +22,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <float.h>
 #include <math.h>
 
@@ -33,6 +34,7 @@
 
 #include <limits.h>
 #include <string>
+#include <sstream>
 
 
 
@@ -491,6 +493,188 @@ namespace STK
     MyHSearchData*  cfgHash);
   
   FileListElem **AddFileElem(FileListElem **last, char *fileElem);
+
+  /**
+   * @brief Converts initial portion of a string to a number using 'C' locale
+   *
+   * @param pStr String to convert
+   * @param pValue Pointer where to store converted number
+   * @param pRetStr A pointer to the character after the last character used in
+   *                the conversion or @c pStr if no conversion is performed
+   *
+   * @return true if the conversion was successful, false otherwise
+   *
+   * Use this function instead of standard strtod(), strtof(), etc. if you want
+   * it to behave independently of current locale settings
+   */
+  template <typename _T>
+  bool Str2Number(const char *pStr, _T *pValue, char **pRetStr = 0)
+  {
+    std::streampos offset = 0;
+    bool result = true;
+  
+    try
+    {
+      _T value;
+      std::istringstream stream(pStr);
+      stream.exceptions(std::ios::failbit | std::ios::badbit);
+      stream.imbue(std::locale("C"));
+      stream >> value;
+      *pValue = value;
+      offset = stream.tellg();
+    }
+    catch (...)
+    {
+      result = false;
+    }
+  
+    if (pRetStr)
+      *pRetStr = const_cast<char *>(pStr) + offset;
+  
+    return result;
+  }
+
+  /**
+   * @brief Converts number to string using 'C' locale
+   *
+   * @param value Number to convert
+   * @param pStr String where to store converted number
+   * @param maxLen Maximum number of characters that can be stored to @c pStr
+   * @param fieldWidth Minimum number of characters used in output string,
+   *                   if converted number has less characters it is padded
+   *                   with spaces from left
+   * @param precision Number of digits after the decimal point
+   *
+   * @return String containing converted number, i.e. @c pStr
+   *
+   * Use this function instead of standard snprintf(), e.g. for float:
+   * snprintf(pStr, maxLen, "%W.Pf", value); (W ... fieldWidth, P ... precision)
+   * if you want it to behave independently of current locale settings
+   */
+  template <typename _T>
+  char *Number2Str(_T value, char *pStr, size_t maxLen, int fieldWidth, int precision)
+  {
+    try
+    {
+      std::ostringstream stream;
+      stream.width(fieldWidth);
+      stream.precision(precision);
+      stream.setf(std::ios::fixed, std::ios::floatfield);
+      stream.exceptions(std::ios::failbit | std::ios::badbit);
+      stream.imbue(std::locale("C"));
+      stream << value;
+      pStr[maxLen - 1] = '\0';
+      strncpy(pStr, stream.str().c_str(), maxLen - 1);
+    }
+    catch (...)
+    {
+      pStr[0] = '\0';
+    }
+    return pStr;
+  }
+
+  /**
+   * @brief Converts number to string using 'C' locale
+   *
+   * @param value Number to convert
+   * @param pStr String where to store converted number
+   * @param maxLen Maximum number of characters that can be stored to @c pStr
+   *
+   * @return String containing converted number, i.e. @c pStr
+   *
+   * Use this function instead of standard snprintf(), e.g. for float:
+   * snprintf(pStr, maxLen, "%g", value);
+   * if you want it to behave independently of current locale settings
+   */
+  template <typename _T>
+  char *Number2Str(_T value, char *pStr, size_t maxLen)
+  {
+    try
+    {
+      std::ostringstream stream;
+      stream.exceptions(std::ios::failbit | std::ios::badbit);
+      stream.imbue(std::locale("C"));
+      stream << value;
+      pStr[maxLen - 1] = '\0';
+      strncpy(pStr, stream.str().c_str(), maxLen - 1);
+    }
+    catch (...)
+    {
+      pStr[0] = '\0';
+    }
+    return pStr;
+  }
+
+  /**
+   * @brief Reads number from the stream using 'C' locale
+   *
+   * @param pFile Pointer to the open stream
+   * @param pValue Pointer where to store the number
+   *
+   * @return true if the operation was successful, false otherwise
+   *
+   * Use this function instead of standard fscanf() if you want
+   * it to behave independently of current locale settings
+   */
+  template <typename _T>
+  bool ReadNumber(FILE *pFile, _T *pValue)
+  {
+    char pnumber[256];
+    pnumber[sizeof(pnumber) - 1] = '\0';
+    if (fscanf(pFile, " %255[-+.0-9eE]", pnumber) != 1)
+      return false;
+    char *pend_ptr;
+    bool result = Str2Number(pnumber, pValue, &pend_ptr);
+    if (*pend_ptr != '\0')
+      fseek(pFile, pend_ptr - pnumber - strlen(pnumber), SEEK_CUR);
+    return result;
+  }
+
+  /**
+   * @brief Writes number to the stream using 'C' locale
+   *
+   * @param pFile Pointer to the open stream
+   * @param value Number to be written
+   * @param fieldWidth Minimum number of characters used in output,
+   *                   if converted number has less characters it is padded
+   *                   with spaces from left
+   * @param precision Number of digits after the decimal point
+   *
+   * @return Number of characters written. If an output error is encountered,
+   *         a negative value is returned.
+   *
+   * Use this function instead of standard fprintf(), e.g. for float:
+   * fprintf(pFile, "%W.Pf", value); (W ... fieldWidth, P ... precision)
+   * if you want it to behave independently of current locale settings
+   */
+  template <typename _T>
+  int WriteNumber(FILE *pFile, _T value, int fieldWidth, int precision)
+  {
+    char pnumber[256];
+    Number2Str(value, pnumber, sizeof(pnumber), fieldWidth, precision);
+    return fprintf(pFile, "%s", pnumber);
+  }
+
+  /**
+   * @brief Writes number to the stream using 'C' locale
+   *
+   * @param pFile Pointer to the open stream
+   * @param value Number to be written
+   *
+   * @return Number of characters written. If an output error is encountered,
+   *         a negative value is returned.
+   *
+   * Use this function instead of standard fprintf(), e.g. for float:
+   * fprintf(pFile, "%g", value);
+   * if you want it to behave independently of current locale settings
+   */
+  template <typename _T>
+  int WriteNumber(FILE *pFile, _T value)
+  {
+    char pnumber[256];
+    Number2Str(value, pnumber, sizeof(pnumber));
+    return fprintf(pFile, "%s", pnumber);
+  }
 }
   
   int npercents(const char *str);

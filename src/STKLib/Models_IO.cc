@@ -1,6 +1,5 @@
 #include "Models.h"
 #include "SigP.h"
-#include "strtod_lc.h"
 #include <stdarg.h>
  
 namespace STK
@@ -267,7 +266,7 @@ namespace STK
   GetFloat(FILE *fp)
   {
     int cc;
-    float ret;
+    FLOAT ret;
   //puts("GetFloat");
     
     if (mHmmReadBinary) {
@@ -277,13 +276,7 @@ namespace STK
       if (!isBigEndian()) swap4(ret);  
     } else {
       RemoveSpaces(fp);
-      char pstr[128];
-      if ((cc = fscanf(fp, "%127[-+.0-9eE]", pstr)) == 1)
-      {
-        char *pptr;
-        ret = strtod_lc(pstr, &pptr);
-        cc = (*pptr == '\0');
-      }
+      cc = ReadNumber(fp, &ret);
     }
     
     if (cc != 1) {
@@ -406,7 +399,8 @@ namespace STK
       if (!isBigEndian()) swap4(b);
       fwrite(&b, sizeof(FLOAT_32), 1, fp);
     } else {
-      fprintf(fp, FLOAT_FMT" ", f);
+      WriteNumber(fp, f);
+      fputc(' ', fp);
     }
   }
   

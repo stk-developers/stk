@@ -636,7 +636,7 @@ namespace STK
         _ElemT*   row = (*this)[i];
         
         for(j=0; j<this->mStride; j++){
-          fprintf(f, "%20.17f ",row[j]);
+          WriteNumber(f, row[j], 20, 17);
         }
         fprintf(f, "\n");
       }
@@ -660,7 +660,8 @@ namespace STK
         _ElemT*   row = (*this)[i];
         
         for(j=0; j<this->mStride; j++){
-          fscanf(f, "%f ",&row[j]);
+          ReadNumber(f, &row[j]);
+          fscanf(f, " ");
         }
         //fprintf(f, "\n");
       }

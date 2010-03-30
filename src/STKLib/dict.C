@@ -92,7 +92,7 @@ void ReadDictionary(
       new_pronun->outSymbol = *model_name != '\0' ?  strdup(model_name) : NULL;
     }
 
-    new_pronun->prob = strtod(chrptr, &tchrptr);
+    Str2Number(chrptr, &new_pronun->prob, &tchrptr);
     
     if(tchrptr != chrptr) {
       new_pronun->prob = log(new_pronun->prob);

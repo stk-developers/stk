@@ -1305,7 +1305,7 @@ namespace STK
     
     for (i = 0; i < coefs; i++) 
     {
-      if (fscanf(fp, " "FLOAT_FMT, *vec_buff+i) != 1) 
+      if (!ReadNumber(fp, *vec_buff+i))
       {
         if (fscanf(fp, "%64s", s2) == 1) 
         {

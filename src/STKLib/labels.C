@@ -178,7 +178,8 @@ void WriteLabels(
       }
       if (!(labelFormat.mNoAcousticLikes || labelFormat.mNoLMLikes) /* && level->mScore != 0.0*/) {
         // !!! only acoustic scores should be normalized !!!
-        fprintf(lfp, " %g", labelFormat.mScoreNorm
+        fputc(' ', lfp);
+        WriteNumber(lfp, labelFormat.mScoreNorm
                             ? level->mScore / (level->mStop - level->mStart)
                             : level->mScore);
       }
@@ -431,7 +432,7 @@ ReadLabels(
   char *chptr, *endptr;
   Label *prev, *current = NULL;
   long long llv;
-  double dv;
+  FLOAT dv;
 
   if (stats != NULL) {
     stats->endTime      = UNDEF_TIME;
@@ -527,10 +528,10 @@ ReadLabels(
     }
 
     if (stats != NULL) stats->nLabelsRead++;
-    dv = strtod(chptr, &endptr);
+    Str2Number(chptr, &dv, &endptr);
     if (endptr != chptr) {
       current->mScore = dv;
-      chptr = chptr;
+      chptr = endptr;
     }
 
     if (prev) {
