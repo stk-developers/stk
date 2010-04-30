@@ -6,6 +6,9 @@
 
 #include "Matrix.h"
 
+#ifdef USE_MKL
+  #include "mkl_lapack.h"  // replace CLAPACK with MKL LAPACK in case of Intel MKL
+#endif
 
 namespace STK
 {
@@ -361,12 +364,26 @@ namespace STK
     Invert()
     { 
       assert(Rows() == Cols());
-      
-#ifdef HAVE_ATLAS
+
+#if defined(HAVE_ATLAS) || defined(USE_MKL)
+  #ifdef USE_MKL
+      int* pivot = new int[mMRows];
+      MKL_INT info;
+      MKL_INT nrows = static_cast<MKL_INT>(Rows());
+      MKL_INT ncols = static_cast<MKL_INT>(Cols());
+      MKL_INT stride = static_cast<MKL_INT>(mStride);
+      sgetrf(&nrows, &ncols, mpData, &stride, static_cast<MKL_INT *>(pivot), &info);
+      MKL_INT lwork = static_cast<MKL_INT>(nrows * 16);  // mNRows * blocksize{16:64}, see MKL manual
+      float *pwork_place = new float [lwork];
+      sgetri(&nrows, mpData, &stride, static_cast<MKL_INT *>(pivot), pwork_place, &lwork, &info);
+      delete [] pwork_place;
+      delete [] pivot;
+  #else
       int* pivot = new int[mMRows];
       clapack_sgetrf(CblasColMajor, Rows(), Cols(), mpData, mStride, pivot);
       clapack_sgetri(CblasColMajor, Rows(), mpData, mStride, pivot);
       delete [] pivot;
+  #endif
 #else
       Error("Method not implemented without BLAS");
 #endif
@@ -381,12 +398,26 @@ namespace STK
     Invert()
     { 
       assert(Rows() == Cols());
-      
-#ifdef HAVE_ATLAS
+
+#if defined(HAVE_ATLAS) || defined(USE_MKL)
+  #ifdef USE_MKL
+      int* pivot = new int[mMRows];
+      MKL_INT info;
+      MKL_INT nrows = static_cast<MKL_INT>(Rows());
+      MKL_INT ncols = static_cast<MKL_INT>(Cols());
+      MKL_INT stride = static_cast<MKL_INT>(mStride);
+      dgetrf(&nrows, &ncols, mpData, &stride, static_cast<MKL_INT *>(pivot), &info);
+      MKL_INT lwork = static_cast<MKL_INT>(nrows * 16);  // mNRows * blocksize{16:64}, see MKL manual
+      double *pwork_place = new double [lwork];
+      dgetri(&nrows, mpData, &stride, static_cast<MKL_INT *>(pivot), pwork_place, &lwork, &info);
+      delete [] pwork_place;
+      delete [] pivot;
+  #else
       int* pivot = new int[mMRows];
       clapack_dgetrf(CblasColMajor, Rows(), Cols(), mpData, mStride, pivot);
       clapack_dgetri(CblasColMajor, Rows(), mpData, mStride, pivot);
       delete [] pivot;
+  #endif
 #else
       Error("Method not implemented without BLAS");
 #endif

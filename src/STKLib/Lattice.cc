@@ -11,6 +11,7 @@
  ***************************************************************************/
 
 #include "Lattice.h"
+#include "mymath.h"
 #include <algorithm>
 #include <vector>
 #include <list>
@@ -320,7 +321,7 @@ namespace STK
 //      countMap.insert(std::make_pair(node_name, 0.0)).first->second
 //        += exp(i_node->mC.mpAlphaBeta->mAlpha + i_node->mC.mpAlphaBeta->mBeta - tot_log_like);
 	
-      countMap[node_name] += exp(i_node->mC.mpAlphaBeta->mAlpha + i_node->mC.mpAlphaBeta->mBeta - tot_log_like);
+      countMap[node_name] += my_exp(i_node->mC.mpAlphaBeta->mAlpha + i_node->mC.mpAlphaBeta->mBeta - tot_log_like);
 	
     }
   }

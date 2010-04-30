@@ -11,6 +11,7 @@
 //#pragma GCC system_header
 
 #include "common.h"
+#include "mymath.h"
 #define _XOPEN_SOURCE 600
 #include <cstdlib>
 #include <cassert>
@@ -508,7 +509,7 @@ namespace STK
       for (i = 0; i < mMRows; ++i) {
         for (j = 0; j < mMCols; ++j) {
           if ((*this)[i][j] > DBL_EPSILON) {
-            (*this)[i][j] = log((*this)[i][j]);
+            (*this)[i][j] = my_log((*this)[i][j]);
           }
           else if ((*this)[i][j] < -DBL_EPSILON) {
             STK::Error("Sigmoid only implemented for float");

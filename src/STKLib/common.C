@@ -12,6 +12,7 @@
 
 #include "common.h"
 #include "filmatch.h"
+#include "mymath.h"
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -342,7 +343,7 @@ namespace STK
   void 
   InitLogMath()
   {
-    gMinLogDiff = log(DBL_EPSILON);
+    gMinLogDiff = my_log(DBL_EPSILON);
   }
   
   
@@ -368,7 +369,7 @@ namespace STK
       return  x;
     }
   
-    return x + log(1.0 + exp(diff));
+    return x + my_log(1.0 + my_exp(diff));
     //return x + log(1.0 + FAST_EXP(diff));
   }
   
@@ -388,7 +389,7 @@ namespace STK
         return  x;
     }
   
-    return x + log(1.0 - exp(diff));
+    return x + my_log(1.0 - my_exp(diff));
   }
   
   //***************************************************************************
@@ -444,7 +445,7 @@ namespace STK
   void 
   sigmoid_vec(float* pIn, float* pOut, int size)
   {
-    while (size--) *pOut++ = 1.0/(1.0 + expf(-*pIn++));
+    while (size--) *pOut++ = 1.0/(1.0 + my_expf(-*pIn++));
   }
 
   //***************************************************************************
@@ -452,7 +453,7 @@ namespace STK
   void 
   sigmoid_vec(double* pIn, double* pOut, int size)
   {
-    while (size--) *pOut++ = 1.0/(1.0 + exp(-*pIn++));
+    while (size--) *pOut++ = 1.0/(1.0 + my_exp(-*pIn++));
   }
 
   
@@ -488,7 +489,7 @@ namespace STK
     float sum = 0.0;
     for (i = 0; i < size; i++)
     {
-       pOut[i] = expf(pIn[i] - maxa);
+       pOut[i] = my_expf(pIn[i] - maxa);
        sum += pOut[i];
     }
     sum = 1.0 / sum;
@@ -504,7 +505,7 @@ namespace STK
     double sum = 0.0;
     for (i = 0; i < size; i++)
     {
-       pOut[i] = exp(pIn[i] - maxa);
+       pOut[i] = my_exp(pIn[i] - maxa);
        sum += pOut[i];
     }
     sum = 1.0 / sum;

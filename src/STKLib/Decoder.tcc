@@ -1,4 +1,5 @@
 #include "Lattice.h"
+#include "mymath.h"
 #include <map>
 #include <algorithm>
 
@@ -1071,7 +1072,7 @@ namespace STK
           }*/
     
           // the real state occupation probability
-          Lqjmt = exp(Lqjmt) * updateDir;
+          Lqjmt = my_exp(Lqjmt) * updateDir;
     
           // Update
           for (i = 0; i < vec_size; i++) 
@@ -1425,7 +1426,7 @@ namespace STK
         }
     
     //    if (!mmi_den_pass) { // So far we dont do any MMI estimation of trasitions
-        LOG_INC(aqacc[currstate * Nq + currstate], log(duration-1));
+        LOG_INC(aqacc[currstate * Nq + currstate], my_log(duration-1));
         LOG_INC(aqacc[currstate * Nq + nextstate], 0 /*ln(1)*/);
     //    }
     
@@ -1525,7 +1526,7 @@ namespace STK
 	
 	if(poster_score) {
 	  assert(wlr->pNode()->mC.mpAlphaBeta);
-	  tmp->mScore = exp(wlr->pNode()->mC.mpAlphaBeta->mAlpha + 
+	  tmp->mScore = my_exp(wlr->pNode()->mC.mpAlphaBeta->mAlpha + 
                             wlr->pNode()->mC.mpAlphaBeta->mBeta - tot_log_like);
 	}
         tmp->mId    = wlr->mStateIdx;
@@ -1893,7 +1894,7 @@ namespace STK
         if (mAccumType == AT_MPE && InForwardPass() && p_node->mC.mpAnr->mpTokens[0].IsActive()) 
         {
           FloatInLog fil_lmpa =
-            {p_node->mC.mpAnr->mpTokens[0].mLike + log(fabs(p_node->mC.PhoneAccuracy())),
+            {p_node->mC.mpAnr->mpTokens[0].mLike + my_log(fabs(p_node->mC.PhoneAccuracy())),
              p_node->mC.PhoneAccuracy() < 0};
     
           p_node->mC.mpAnr->mpTokens[0].mAccuracy = FIL_Add(p_node->mC.mpAnr->mpTokens[0].mAccuracy, fil_lmpa);
@@ -2076,7 +2077,7 @@ namespace STK
           if (mAccumType == AT_MPE && !InForwardPass()) 
           {
             FloatInLog fil_lmpa =
-              {p_node->mC.mpAnr->mpTokens[p_hmm->mNStates - 1].mLike + log(fabs(p_node->mC.PhoneAccuracy())),
+              {p_node->mC.mpAnr->mpTokens[p_hmm->mNStates - 1].mLike + my_log(fabs(p_node->mC.PhoneAccuracy())),
                p_node->mC.PhoneAccuracy() < 0};
     
             p_node->mC.mpAnr->mpTokens[p_hmm->mNStates - 1].mAccuracy =
@@ -2628,7 +2629,7 @@ namespace STK
       {
         F = TP - LogSub(P, TP);
         printf("MCE distance: %g; ", F);
-        F = exp(-sigSlope * F);
+        F = my_exp(-sigSlope * F);
         F = (sigSlope*F) / SQR(1+F);
         printf("weight: %g\n", F);
         weight *= F;
@@ -3005,10 +3006,10 @@ extern std::map<std::string,FLOAT> state_posteriors;
                 ocprob[mNumberOfNetStates * (mTime+1) + 
                   i_node->mC.mEmittingStateId + j]
   //            = i_node->mC.mPhoneAccuracy;
-                = exp(st[j].mAlpha+st[j].mBeta-P) *
-                  ((1-2*static_cast<int>(st[j].mAlphaAccuracy.negative)) * exp(st[j].mAlphaAccuracy.logvalue - st[j].mAlpha) +
-                  (1-2*static_cast<int>(st[j].mBetaAccuracy.negative))  * exp(st[j].mBetaAccuracy.logvalue  - st[j].mBeta)
-                  - (1-2*static_cast<int>(fwbw.avgAccuracy.negative)) * exp(fwbw.avgAccuracy.logvalue)
+                = my_exp(st[j].mAlpha+st[j].mBeta-P) *
+                  ((1-2*static_cast<int>(st[j].mAlphaAccuracy.negative)) * my_exp(st[j].mAlphaAccuracy.logvalue - st[j].mAlpha) +
+                  (1-2*static_cast<int>(st[j].mBetaAccuracy.negative))  * my_exp(st[j].mBetaAccuracy.logvalue  - st[j].mBeta)
+                  - (1-2*static_cast<int>(fwbw.avgAccuracy.negative)) * my_exp(fwbw.avgAccuracy.logvalue)
                   );
     
 #endif
@@ -3038,16 +3039,16 @@ extern std::map<std::string,FLOAT> state_posteriors;
     
                 if (mAccumType == AT_MFE || mAccumType == AT_MPE) 
                 {
-                  update_dir = (1-2*static_cast<int>(st[j].mAlphaAccuracy.negative)) * exp(st[j].mAlphaAccuracy.logvalue - st[j].mAlpha) +
-                               (1-2*static_cast<int>(st[j].mBetaAccuracy.negative))  * exp(st[j].mBetaAccuracy.logvalue  - st[j].mBeta)  -
-                               (1-2*static_cast<int>(fwbw.avgAccuracy.negative))     * exp(fwbw.avgAccuracy.logvalue);
+                  update_dir = (1-2*static_cast<int>(st[j].mAlphaAccuracy.negative)) * my_exp(st[j].mAlphaAccuracy.logvalue - st[j].mAlpha) +
+                               (1-2*static_cast<int>(st[j].mBetaAccuracy.negative))  * my_exp(st[j].mBetaAccuracy.logvalue  - st[j].mBeta)  -
+                               (1-2*static_cast<int>(fwbw.avgAccuracy.negative))     * my_exp(fwbw.avgAccuracy.logvalue);
                 } 
                 else 
                 {
                   update_dir = 1.0;
                 }
 //string state_name = i_node->mC.mpHmm->mpState[j - 1]->mpMacro->mpName;
-//state_posteriors[state_name.substr(0, state_name.find('_'))] += exp(st[j].mAlpha + st[j].mBeta - P);
+//state_posteriors[state_name.substr(0, state_name.find('_'))] += my_exp(st[j].mAlpha + st[j].mBeta - P);
 
                 ReestState(
                   &(*i_node), 

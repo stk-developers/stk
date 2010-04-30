@@ -13,6 +13,7 @@
 #include "BDTree.h"
 #include "Matrix.h"
 #include "common.h"
+#include "mymath.h"
 
 #include <vector>
 #include <iostream>
@@ -257,7 +258,7 @@ namespace STK
 
     for (i=mVec.begin(); i!=mVec.end(); ++i) {
       if (*i > 0) {
-        e -= static_cast<double>(*i) * log(static_cast<double>(*i));
+        e -= static_cast<double>(*i) * my_log(static_cast<double>(*i));
       }
     }
     
@@ -1323,7 +1324,7 @@ namespace STK
 
       // we don't score the n-grams, whose prob is 0
       if (n_gram_score > 0) {
-        score += (*i)->Counts() * log(n_gram_score);
+        score += (*i)->Counts() * my_log(n_gram_score);
       }
     }
 
@@ -1355,7 +1356,7 @@ namespace STK
 	log_score = -99;
       else
       {
-	log_score = log(n_gram_score);
+	log_score = my_log(n_gram_score);
 	log_score /= log_e_10;
       }
 
@@ -2028,9 +2029,9 @@ namespace STK
       count_A_ = SecondSet.mMarginalCountsPresent[i];
 
       if(count_A > 0)
-        log_likelihood += count_A  * log(count_A);
+        log_likelihood += count_A  * my_log(count_A);
       if(count_A_ > 0)
-	log_likelihood += count_A_ * log(count_A_);
+	log_likelihood += count_A_ * my_log(count_A_);
     }
     total_A  = this->mTotalSum;
     total_A_ = SecondSet.mTotalSum;
@@ -2045,10 +2046,10 @@ namespace STK
     assert(total_A >= 0 && total_A_ >= 0);
 
     if(total_A > 0) {
-      log_likelihood -= total_A  * log(total_A);
+      log_likelihood -= total_A  * my_log(total_A);
     }
     if(total_A_ > 0) {
-      log_likelihood -= total_A_ * log(total_A_);
+      log_likelihood -= total_A_ * my_log(total_A_);
     }
 
     return log_likelihood;

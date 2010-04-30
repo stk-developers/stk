@@ -12,6 +12,7 @@
 
 #include "dict.h"
 #include "common.h"
+#include "mymath.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -95,7 +96,7 @@ void ReadDictionary(
     Str2Number(chrptr, &new_pronun->prob, &tchrptr);
     
     if(tchrptr != chrptr) {
-      new_pronun->prob = log(new_pronun->prob);
+      new_pronun->prob = my_log(new_pronun->prob);
       chrptr = tchrptr;
     }
 

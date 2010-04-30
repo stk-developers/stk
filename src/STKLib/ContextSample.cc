@@ -2,6 +2,7 @@
 #include "BasicVector.h"
 #include "Matrix.h"
 #include "stkstream.h"
+#include "mymath.h"
 
 #include <sstream>
 #include <exception>
@@ -509,10 +510,10 @@ namespace STK {
     double acc = 0;
 
     for (i_vocab=vocab.begin(); i_vocab!=vocab.end(); ++i_vocab) {
-      acc += i_vocab->second * log(i_vocab->second);
+      acc += i_vocab->second * my_log(i_vocab->second);
     }
 
-    return -acc/N + log(N);
+    return -acc/N + my_log(N);
   }
 
 
@@ -554,19 +555,19 @@ namespace STK {
 
     for (i=0; i<vocab_size; ++i) {
       if (vocab0[i] > 0) {
-        acc0 += vocab0[i] * log(vocab0[i]);
+        acc0 += vocab0[i] * my_log(vocab0[i]);
       }
     }
     for (i=0; i<vocab_size; ++i) {
       if (vocab1[i] > 0) {
-        acc1 += vocab1[i] * log(vocab1[i]);
+        acc1 += vocab1[i] * my_log(vocab1[i]);
       }
     }
     
     double p0 = N0/(N0+N1);
     double p1 = N1/(N0+N1);
 
-    return p0*(-acc0/N0 + log(N0)) + p1*(-acc1/N1 + log(N1));
+    return p0*(-acc0/N0 + my_log(N0)) + p1*(-acc1/N1 + my_log(N1));
   }
 
 
@@ -840,7 +841,7 @@ namespace STK {
       for (j = 0; j < m_vocab.Cols(); ++j) {
         double p = m_vocab[i][j] / n_all;
         if (p > 0.0) {
-          e += p * log(p);
+          e += p * my_log(p);
         }
       }
     }
@@ -900,11 +901,11 @@ namespace STK {
         
         if (p0 > DBL_EPSILON && N0_all > DBL_EPSILON) {
           p0 /= N0_all;
-          e0 += p0 * log(p0);
+          e0 += p0 * my_log(p0);
         }
         if (p1 > DBL_EPSILON && N1_all > DBL_EPSILON) {
           p1 /= N1_all;
-          e1 += p1 * log(p1);
+          e1 += p1 * my_log(p1);
         }
       }
     }
@@ -956,7 +957,7 @@ namespace STK {
     // compute the entropy
     for (i = 0; i < vocab_size; ++i) {
       if (vocab_all[i] > 0.0) {
-        e -= vocab_all[i] * log(vocab_all[i]);
+        e -= vocab_all[i] * my_log(vocab_all[i]);
       }
     }
 
@@ -1070,10 +1071,10 @@ namespace STK {
     // compute the MMI
     for (i = 0; i < vocab_size; ++i) {
       if (vocab_all0[i] > 0.0) {
-        e0 += vocab_all0[i] * log(vocab_all0[i]);
+        e0 += vocab_all0[i] * my_log(vocab_all0[i]);
       }
       if (vocab_all1[i] > 0.0) {
-        e1 += vocab_all1[i] * log(vocab_all1[i]);
+        e1 += vocab_all1[i] * my_log(vocab_all1[i]);
       }
     }
 

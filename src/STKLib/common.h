@@ -19,6 +19,7 @@
 #endif /* HAVE_CONFIG_H */
 
 #include "Error.h"
+#include "mymath.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -173,19 +174,19 @@ typedef union
 #  define EPSILON DBL_EPSILON
 #  define FLOAT_FMT "%lg"
 #  define swapFLOAT swap8
-#  define _ABS  fabs
-#  define _EXP  exp
-#  define _LOG  log
-#  define _SQRT sqrt
+#  define _ABS  my_fabs
+#  define _EXP  my_exp
+#  define _LOG  my_log
+#  define _SQRT my_sqrt
 #else
 #  define FLOAT float
 #  define EPSILON FLT_EPSILON
 #  define FLOAT_FMT "%g"
 #  define swapFLOAT swap4
-#  define _ABS  fabsf
-#  define _EXP  expf
-#  define _LOG  logf
-#  define _SQRT sqrtf
+#  define _ABS  my_fabsf
+#  define _EXP  my_expf
+#  define _LOG  my_logf
+#  define _SQRT my_sqrtf
 #endif
 
 

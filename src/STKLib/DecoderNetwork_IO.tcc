@@ -5,6 +5,7 @@
  */
 
 #include <sstream>
+#include "mymath.h"
 
 #define INIT_NODE_HASH_SIZE 1000
 
@@ -1281,7 +1282,7 @@ namespace STK
         if (format.mPosteriors) {
           assert(NULL != p_node->mC.mpAlphaBeta);
           fprintf(pFp," P=");
-          WriteNumber(pFp, exp(p_node->mC.mpAlphaBeta->mAlpha + 
+          WriteNumber(pFp, my_exp(p_node->mC.mpAlphaBeta->mAlpha + 
                 p_node->mC.mpAlphaBeta->mBeta - tot_log_like));
         }
 	
@@ -1320,7 +1321,7 @@ namespace STK
                 score += wordPenalty * posteriorScale;
 	      }
               fprintf(pFp," P=");
-              WriteNumber(pFp, exp(score - tot_log_like));
+              WriteNumber(pFp, my_exp(score - tot_log_like));
             }
 
 // THIS WOULD UN-SCALE THE SCORES, BUT THIS NOW HAPPENS JUST AFTER LATTICE
@@ -1397,7 +1398,7 @@ namespace STK
                 score += wordPenalty * posteriorScale;
 	      }
               fprintf(pFp," P=");
-              WriteNumber(pFp, exp(score - tot_log_like));
+              WriteNumber(pFp, my_exp(score - tot_log_like));
             }
 
 // THIS WOULD UN-SCALE THE SCORES, BUT THIS NOW HAPPENS JUST AFTER LATTICE

@@ -13,7 +13,9 @@
 #include "Models.h"
 #include "Decoder.h"
 #include "stkstream.h"
+#include "mymath.h"
 #include "common.h"
+#include "mymath.h"
 
 // MATLAB Engine
 #ifdef MATLAB_ENGINE
@@ -1119,7 +1121,7 @@ namespace STK
     {
       // old vector
       //cov_det -= log(mpVariance->mpVectorO[i]);
-      cov_det -= log(mpVariance->mVector[i]);
+      cov_det -= my_log(mpVariance->mVector[i]);
     }
     mGConst = cov_det + M_LOG_2PI * mpVariance->VectorSize();
   }  
@@ -2139,7 +2141,7 @@ namespace STK
           }
           else
           {
-            mpMixture[i].mWeightAccum = exp(mpPrior->mpMixture[i].mWeight);
+            mpMixture[i].mWeightAccum = my_exp(mpPrior->mpMixture[i].mWeight);
           }
         }
 /*
@@ -2224,7 +2226,7 @@ namespace STK
   //      printf("Weight Acc: %f\n", (float) state->mpMixture[i].mWeightAccum);
         if (pModelSet->mUpdateMask & UM_WEIGHT) 
         {
-          mpMixture[i].mWeight = log(mpMixture[i].mWeightAccum / accum_sum);
+          mpMixture[i].mWeight = my_log(mpMixture[i].mWeightAccum / accum_sum);
         }
         
         if (!mpMixture[i].mpEstimates->mpMacro) 
@@ -3213,7 +3215,7 @@ namespace STK
     }
     for (i = 0; i < mpState->mNMixtures; i++) {
       if(pOutputVector[i] >= min_like) {
-        pOutputVector[i] = exp(pOutputVector[i]-like_sum);
+        pOutputVector[i] = my_exp(pOutputVector[i]-like_sum);
       } else {
         pOutputVector[i] = 0;
       }

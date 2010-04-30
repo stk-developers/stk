@@ -1,4 +1,5 @@
 #include "Models.h"
+#include "mymath.h"
 #include "SigP.h"
 #include <stdarg.h>
  
@@ -959,7 +960,7 @@ namespace STK
         }
   
         ret->mpMixture[mixture_id-1].mpEstimates  = ReadMixture(fp, NULL);
-        ret->mpMixture[mixture_id-1].mWeight      = log(mixture_weight);
+        ret->mpMixture[mixture_id-1].mWeight      = my_log(mixture_weight);
         ret->mpMixture[mixture_id-1].mWeightAccum = 0.0;
       }
     }
@@ -2524,7 +2525,7 @@ namespace STK
     
     for (i=0; i < SQR(nstates); i++) {
       ret->mpMatrixO[i] = GetFloat(fp);
-      ret->mpMatrixO[i] = (float) ret->mpMatrixO[i] != 0.0 ? log(ret->mpMatrixO[i]) : LOG_0;
+      ret->mpMatrixO[i] = (float) ret->mpMatrixO[i] != 0.0 ? my_log(ret->mpMatrixO[i]) : LOG_0;
     }
   
     ret->mpMacro = macro;
@@ -2841,7 +2842,7 @@ namespace STK
         {
           PutKwd(fp, binary, KID_Mixture);
           PutInt(fp, binary, i+1);
-          PutFlt(fp, binary, exp(state->mpMixture[i].mWeight));
+          PutFlt(fp, binary, my_exp(state->mpMixture[i].mWeight));
           PutNLn(fp, binary);
         }
   
@@ -2871,7 +2872,7 @@ namespace STK
     {
       for (i=0; i < state->mNMixtures; i++) 
       {
-        PutFlt(fp, binary, exp(state->mpMixture[i].mWeight));
+        PutFlt(fp, binary, my_exp(state->mpMixture[i].mWeight));
         PutNLn(fp, binary);
   
         if (!state->mpMixture[i].mpEstimates->mpMacro) {
@@ -3080,7 +3081,7 @@ namespace STK
       for (j=0; j < transition->mNStates; j++) 
       {
         FLOAT logtp = transition->mpMatrixO[i * transition->mNStates + j];
-        PutFlt(fp, binary, logtp > LOG_MIN ? exp(logtp) : 0.0);
+        PutFlt(fp, binary, logtp > LOG_MIN ? my_exp(logtp) : 0.0);
       }
   
       PutNLn(fp, binary);
@@ -3997,7 +3998,7 @@ namespace STK
         Error("Incompatible accumulator file: '%s'", ud->mpFileName);
         }
         if (!ud->mMmi) { // MMI estimation of transition probabilities has not been implemented yet
-          f += log(ud->mWeight);
+          f += my_log(ud->mWeight);
           LOG_INC(vector[i], f);
         }
       }

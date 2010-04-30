@@ -20,7 +20,7 @@
 #include "Lattice.h"
 #include "labels.h"
 #include "common.h"
-
+#include "mymath.h"
 
 //#############################################################################
 //#############################################################################
@@ -405,10 +405,10 @@ std::map<std::string,FLOAT> state_posteriors;
                 case 0:
                   break;
                 case 1:
-                tmpf = log((tmpf / -0.5) - node->mpHmm->mpState[j]->mpMixture[0].mpEstimates->GConst()) * -0.5;
+                tmpf = my_log((tmpf / -0.5) - node->mpHmm->mpState[j]->mpMixture[0].mpEstimates->GConst()) * -0.5;
                 break;
                 case 2:
-                tmpf = log((tmpf / -0.5) - node->mpHmm->mpState[j]->mpMixture[0].mpEstimates->GConst()) * -1;
+                tmpf = my_log((tmpf / -0.5) - node->mpHmm->mpState[j]->mpMixture[0].mpEstimates->GConst()) * -1;
                 break;
                 case 3:
                 tmpf += node->mpHmm->mpState[j]->mpMixture[0].mpEstimates->GConst() * 0.5;
