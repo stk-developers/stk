@@ -12,8 +12,12 @@
 
 #ifdef HAVE_ATLAS
 extern "C"{
-  #include <cblas.h>
-  #include <clapack.h>
+  #ifdef USE_MKL
+    #include "mkl.h"
+  #else
+    #include <cblas.h>
+    #include <clapack.h>
+  #endif
 }
 #endif
 
