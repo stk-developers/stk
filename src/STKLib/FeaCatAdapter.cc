@@ -58,7 +58,7 @@ namespace STK {
     //It's terribly slow, why??? 
     out = XformPass(mpXformInstance, in_vec, mTime, FORWARD);
 
-    if(time <= 0) { return NULL; }
+    if(mTime <= 0) { return NULL; }
 
     return out;
   }

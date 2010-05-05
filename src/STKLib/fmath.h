@@ -27,17 +27,10 @@
 #include <limits>
 #include <stdlib.h>
 #include <float.h>
-#ifdef _WIN32
-	#include <intrin.h>
-	#ifndef MIE_ALIGN
-		#define MIE_ALIGN(x) __declspec(align(x))
-	#endif
-#else
-	#include <xmmintrin.h>
-//	#include <nmmintrin.h>
-	#ifndef MIE_ALIGN
-		#define MIE_ALIGN(x) __attribute__((aligned(x)))
-	#endif
+#include <xmmintrin.h>
+//#include <nmmintrin.h>
+#ifndef MIE_ALIGN
+	#define MIE_ALIGN(x) __attribute__((aligned(x)))
 #endif
 #ifndef MIE_PACK
 	#define MIE_PACK(x, y, z, w) ((x) * 64 + (y) * 16 + (z) * 4 + (w))
