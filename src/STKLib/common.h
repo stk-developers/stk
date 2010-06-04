@@ -535,6 +535,14 @@ namespace STK
     return result;
   }
 
+  // FIXME: specific function for float, this is necessary because using
+  //        istringstream on Win32 in multithread process causes SIGSEGV
+  bool Str2Number(const char *pStr, float *pValue, char **pRetStr = 0);
+
+  // FIXME: specific function for double, this is necessary because using
+  //        istringstream on Win32 in multithread process causes SIGSEGV
+  bool Str2Number(const char *pStr, double *pValue, char **pRetStr = 0);
+
   /**
    * @brief Converts number to string using 'C' locale
    *

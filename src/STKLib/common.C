@@ -13,6 +13,7 @@
 #include "common.h"
 #include "filmatch.h"
 #include "mymath.h"
+#include "strtod_lc.h"
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -1500,6 +1501,21 @@ namespace STK
     return optind;
   }
   
+  //***************************************************************************
+  //***************************************************************************
+  bool Str2Number(const char *pStr, float *pValue, char **pRetStr /* = 0 */)
+  {
+    *pValue = strtod_lc(pStr, pRetStr);
+    return (pStr != *pRetStr);
+  }
+
+  //***************************************************************************
+  //***************************************************************************
+  bool Str2Number(const char *pStr, double *pValue, char **pRetStr /* = 0 */)
+  {
+    *pValue = strtod_lc(pStr, pRetStr);
+    return (pStr != *pRetStr);
+  }
 
   //***************************************************************************
   //***************************************************************************
