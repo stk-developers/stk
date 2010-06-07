@@ -1505,16 +1505,22 @@ namespace STK
   //***************************************************************************
   bool Str2Number(const char *pStr, float *pValue, char **pRetStr /* = 0 */)
   {
-    *pValue = strtod_lc(pStr, pRetStr);
-    return (pStr != *pRetStr);
+    char *pend_ptr;
+    *pValue = strtod_lc(pStr, &pend_ptr);
+    if (pRetStr)
+      *pRetStr = pend_ptr;
+    return (pStr != pend_ptr);
   }
 
   //***************************************************************************
   //***************************************************************************
   bool Str2Number(const char *pStr, double *pValue, char **pRetStr /* = 0 */)
   {
-    *pValue = strtod_lc(pStr, pRetStr);
-    return (pStr != *pRetStr);
+    char *pend_ptr;
+    *pValue = strtod_lc(pStr, &pend_ptr);
+    if (pRetStr)
+      *pRetStr = pend_ptr;
+    return (pStr != pend_ptr);
   }
 
   //***************************************************************************
