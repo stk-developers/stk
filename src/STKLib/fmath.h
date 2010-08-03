@@ -40,6 +40,8 @@
 	#include "xbyak/xbyak_util.h"
 #endif
 
+#define FMATH_MAX_EXP_ARG   80.0f
+
 #ifdef DEBUG
 static inline void put(const void *p)
 {
@@ -360,7 +362,7 @@ static inline float exp(float x)
 	int u = r >> expVar.s;
 	fi fi;
 	fi.i = ((u + 127) << 23) | expVar.tbl[v];
-	return (1 + t) * fi.f;
+	return (x < FMATH_MAX_EXP_ARG) ? ((1 + t) * fi.f) : FLT_MAX;
 #else
 	x = std::min(x, expVar.maxX[0]);
 	x = std::max(x, expVar.minX[0]);
