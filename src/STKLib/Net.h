@@ -207,8 +207,7 @@ namespace STK
 
       ~Array()
       {
-        if (NULL != mpPtr)
-          free(mpPtr);
+        clear();
       }
 
 
@@ -317,7 +316,12 @@ namespace STK
       clear()
       {
         if (NULL != mpPtr)
+        {
+          for (iterator i_tmp = begin(); i_tmp != end(); i_tmp++)
+            i_tmp->~value_type();
+
           free(mpPtr);
+        }
         
         mpPtr = NULL;
         mSize = 0;
