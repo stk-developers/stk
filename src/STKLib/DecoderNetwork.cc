@@ -313,6 +313,8 @@ namespace STK
           prev = pronun_prev;
         }
         prev->mpNext = node->mpNext;
+        delete node->mC.mpAlphaBeta;
+        node->mC.mpAlphaBeta = NULL;
         free(node->rpLinks());
         free(node->rpBackLinks());
         free(node);
@@ -456,6 +458,8 @@ namespace STK
             }
           }
           prev->mpNext = p_node->mpNext;
+          delete p_node->mC.mpAlphaBeta;
+          p_node->mC.mpAlphaBeta = NULL;
           free(p_node->rpLinks());
           free(p_node->rpBackLinks());
           free(p_node);
@@ -622,6 +626,8 @@ namespace STK
           }
         }
         prev->mpNext = p_node->mpNext;
+        delete p_node->mC.mpAlphaBeta;
+        p_node->mC.mpAlphaBeta = NULL;
         free(p_node->rpLinks());
         free(p_node->rpBackLinks());
         free(p_node);
@@ -1074,6 +1080,8 @@ namespace STK
           NodeType *tnode = node->mpBackNext;
           node->mpBackNext = node->mpBackNext->mpBackNext;
           unreachable++;
+          delete tnode->mC.mpAlphaBeta;
+          tnode->mC.mpAlphaBeta = NULL;
           free(tnode->rpLinks());
           free(tnode->rpBackLinks());
           free(tnode);
@@ -1441,6 +1449,8 @@ namespace STK
             
             inode->mC.mType |= jnode->mC.mType & NT_TRUE;
             
+            delete jnode->mC.mpAlphaBeta;
+            jnode->mC.mpAlphaBeta = NULL;
             free(jnode->rpLinks());
             free(jnode->rpBackLinks());
             free(jnode.mpPtr);
@@ -1699,6 +1709,8 @@ namespace STK
       while (pNode) 
       {
         tnode = pNode->mpNext;
+        delete pNode->mC.mpAlphaBeta;
+        pNode->mC.mpAlphaBeta = NULL;
         free(pNode->rpLinks());
         free(pNode->rpBackLinks());
         free(pNode);
@@ -1979,6 +1991,8 @@ namespace STK
         p_node->mpNext->mpBackNext = p_node->mpBackNext;
         tnode = p_node;
         p_node = p_node->mpBackNext;
+        delete tnode->mC.mpAlphaBeta;
+        tnode->mC.mpAlphaBeta = NULL;
         free(tnode->rpLinks());
         free(tnode->rpBackLinks());
         free(tnode);
