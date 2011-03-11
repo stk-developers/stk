@@ -368,6 +368,10 @@ namespace STK
       BaumWelchReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, 
           int nFrames, FLOAT weight, BasicVector<FLOAT>* pWeightVector);
 
+      FLOAT 
+      GetMpeGamma(const Matrix<FLOAT>& rObsMx, Matrix<FLOAT>& rGamma, 
+          int nFrames, FLOAT weight, BasicVector<FLOAT>* pWeightVector);
+
 
 
       static int               

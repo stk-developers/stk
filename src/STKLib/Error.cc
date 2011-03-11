@@ -47,8 +47,10 @@ namespace STK
   
   //****************************************************************************
   //****************************************************************************
-  void TraceLog(const char *msg, ...) 
+  void _TraceLog_(const char *func, const char *file, int line, const char *msg, ...)
   {
+    //HINT: We're not using func, file, line
+    //Arguments are necessary for macro compatibility with TNet
     va_list ap;
     va_start(ap, msg);
     fflush(stderr);
