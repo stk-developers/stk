@@ -369,7 +369,7 @@ namespace STK
           int nFrames, FLOAT weight, BasicVector<FLOAT>* pWeightVector);
 
       FLOAT 
-      GetMpeGamma(const Matrix<FLOAT>& rObsMx, Matrix<FLOAT>& rGamma, 
+      GetMpeGamma(const Matrix<FLOAT>& rObsMx, Matrix<FLOAT>& rGamma, FLOAT& avgAcc, 
           int nFrames, FLOAT weight, BasicVector<FLOAT>* pWeightVector);
 
 

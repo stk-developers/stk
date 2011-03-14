@@ -3130,7 +3130,7 @@ extern std::map<std::string,FLOAT> state_posteriors;
   template<typename _NetworkType>
     FLOAT 
     Decoder<_NetworkType>::
-    GetMpeGamma(const Matrix<FLOAT>& rObsMx, Matrix<FLOAT>& rGamma, 
+    GetMpeGamma(const Matrix<FLOAT>& rObsMx, Matrix<FLOAT>& rGamma, FLOAT& avgAcc, 
         int nFrames, FLOAT weight, BasicVector<FLOAT>* pWeightVector)
     {
       struct FWBWRet          fwbw;
@@ -3146,6 +3146,8 @@ extern std::map<std::string,FLOAT> state_posteriors;
     
       fwbw = ForwardBackward(rObsMx, nFrames);
       P    = fwbw.totLike;
+      avgAcc = (1-2*static_cast<int>(fwbw.avgAccuracy.negative))
+                 * my_exp(fwbw.avgAccuracy.logvalue);
 
       rGamma.Init(nFrames,mpModelSet->mNStates);
       
