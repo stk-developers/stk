@@ -50,6 +50,7 @@ namespace STK {
   FeaCatAdapter::
   XPass(float* in_vec)
   {
+#if DOUBLEPRECISION==0
     const float* out;
     mTime++;
     mNframes++;
@@ -61,6 +62,10 @@ namespace STK {
     if(mTime <= 0) { return NULL; }
 
     return out;
+#else
+    Error("FeaCatAdapter in double precision not supported!!!");
+    return NULL;
+#endif
   }
 
 
