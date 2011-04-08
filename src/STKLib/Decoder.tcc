@@ -928,9 +928,12 @@ namespace STK
     Decoder<_NetworkType>::
     DiagCGaussianMixtureDensity(State* state, FLOAT* pObs, Decoder* net)
     {
-      size_t  i;
-      FLOAT   m_like = LOG_0;
-      FLOAT*  l_obs;
+      size_t              i;
+      FLOAT               m_like     = LOG_0;
+      FLOAT*              l_obs;
+      int                 time       = net ? net->mTime      : UNDEF_TIME;
+      PropagDirectionType propag_dir = net ? net->mPropagDir : FORWARD;
+      
       
       assert(state->mOutPdfKind == KID_DiagC);
           
@@ -943,15 +946,18 @@ namespace STK
       {
         for (i = 0; i < state->mNMixtures; i++) 
         {
+          FLOAT *posters = NULL;
           FLOAT    glike;
           Mixture* mix = state->mpMixture[i].mpEstimates;
       
-          l_obs = XformPass(mix->mpInputXform, pObs,
-                            net ? net->mTime : UNDEF_TIME,
-                            net ? net->mPropagDir : FORWARD);
+          l_obs = XformPass(mix->mpInputXform, pObs, time, propag_dir);
           
           assert(l_obs != NULL);
-          glike = DiagCGaussianDensity(mix, l_obs, net);
+          
+          glike = (mix->mpGaussianSelectionInputXform == NULL ||
+                   XformPass(mix->mpGaussianSelectionInputXform, pObs, time, propag_dir)[mix->mGaussianSelectionIndex-1] > 0.0)
+                  ? DiagCGaussianDensity(mix, l_obs, net) : LOG_0;
+
           m_like  = LogAdd(m_like, glike + state->mpMixture[i].mWeight);
         }
       
@@ -970,7 +976,6 @@ namespace STK
     }
 
 
-
   //***************************************************************************
   //***************************************************************************
   template<typename _NetworkType>
@@ -978,12 +983,27 @@ namespace STK
     Decoder<_NetworkType>::
     FromObservationAtStateId(State *state, FLOAT *obs, Decoder *net)
     {
-      obs = XformPass(net->mpModelSet->mpInputXform, obs,
-                      net ? net->mTime : UNDEF_TIME,
-                      net ? net->mPropagDir : FORWARD);
-      assert(obs != NULL);
-      return obs[state->PDF_obs_coef];
+
+      if (net && net->mpOutPCache[state->mID].mTime == net->mTime) 
+      {
+        return net->mpOutPCache[state->mID].mValue;
+      }
+      else
+      {
+        obs = XformPass(net->mpModelSet->mpInputXform, obs,
+                        net ? net->mTime : UNDEF_TIME,
+                        net ? net->mPropagDir : FORWARD);
+        assert(obs != NULL);
+
+        if (net) 
+        {
+          net->mpOutPCache[state->mID].mTime = net->mTime;
+          net->mpOutPCache[state->mID].mValue = obs[state->PDF_obs_coef]; 
+        }
+        return obs[state->PDF_obs_coef]; 
+      }
     }
+
 
   
   //***************************************************************************
@@ -1032,7 +1052,9 @@ namespace STK
           Mixture *mix  = state->mpMixture[m].mpEstimates;
           FLOAT  cjm    = state->mpMixture[m].mWeight;
           FLOAT* xobs   = XformPass(mix->mpInputXform, pObs, mTime, FORWARD);
-          FLOAT  bjmtO  = DiagCGaussianDensity(mix, xobs, this);
+          FLOAT  bjmtO  = (mix->mpGaussianSelectionInputXform == NULL ||
+                           XformPass(mix->mpGaussianSelectionInputXform, pObs, mTime, FORWARD)[mix->mGaussianSelectionIndex-1] > 0.0)
+                          ? DiagCGaussianDensity(mix, xobs, this) : LOG_0;
           bjtO          = LogAdd(bjtO, cjm + bjmtO);
         }
       }
@@ -1047,7 +1069,10 @@ namespace STK
           Mixture*  mix   = state->mpMixture[m].mpEstimates;
           FLOAT     cjm   = state->mpMixture[m].mWeight;
           FLOAT*    xobs  = XformPass(mix->mpInputXform, pObs, mTime, FORWARD);
-          FLOAT     bjmtO = DiagCGaussianDensity(mix, xobs, this);
+          FLOAT     bjmtO  = (mix->mpGaussianSelectionInputXform == NULL ||
+                              XformPass(mix->mpGaussianSelectionInputXform, pObs, mTime, FORWARD)[mix->mGaussianSelectionIndex-1] > 0.0)
+                             ? DiagCGaussianDensity(mix, xobs, this) : LOG_0;
+
           
           Lqjmt +=  -bjtO + cjm + bjmtO;
         }
@@ -2914,7 +2939,7 @@ namespace STK
       }
     
       mAccumType = origAccumType;
-      return TP;
+      return TP - P;
     } 
   // MCEReest
   //***************************************************************************
@@ -2941,9 +2966,9 @@ extern std::map<std::string,FLOAT> state_posteriors;
       typename NetworkType::iterator                    i_node;
     
       fwbw = ForwardBackward(rObsMx, nFrames);
-      P    = fwbw.totLike;
-      
-      if (P < LOG_MIN)
+
+
+      if (fwbw.totLike < LOG_MIN)
         return LOG_0;
     
 #ifdef MOTIF
@@ -3027,24 +3052,24 @@ extern std::map<std::string,FLOAT> state_posteriors;
             st = i_node->mC.rpAlphaBetaList()->mpState;
     
             if (//!mmi_den_pass &&
-              st[Nq-1].mAlpha + st[Nq-1].mBeta - P > MIN_LOG_WEGIHT) 
+              st[Nq-1].mAlpha + st[Nq-1].mBeta - fwbw.totLike > MIN_LOG_WEGIHT) 
             {
               for (i = 0; i < Nq - 1; i++) 
               {
                 LOG_INC(aqacc[i * Nq + Nq-1], aq[i * Nq + Nq-1]  * mTranScale +
-                    (st[i].mAlpha + st[Nq-1].mBeta - P) * mOcpScale);
+                    (st[i].mAlpha + st[Nq-1].mBeta - fwbw.totLike) * mOcpScale);
               }
             }
     
             for (j = 1; j < Nq - 1; j++) 
             { //for every emitting state
-              if (st[j].mAlpha + st[j].mBeta - P > MIN_LOG_WEGIHT) 
+              if (st[j].mAlpha + st[j].mBeta - fwbw.totLike > MIN_LOG_WEGIHT) 
               {
 #ifdef MOTIF
                 ocprob[mNumberOfNetStates * (mTime+1) + 
                   i_node->mC.mEmittingStateId + j]
   //            = i_node->mC.mPhoneAccuracy;
-                = exp(st[j].mAlpha+st[j].mBeta-P) *
+                = exp(st[j].mAlpha+st[j].mBeta-fwbw.totLike) *
                   ((1-2*static_cast<int>(st[j].mAlphaAccuracy.negative)) * exp(st[j].mAlphaAccuracy.logvalue - st[j].mAlpha) +
                   (1-2*static_cast<int>(st[j].mBetaAccuracy.negative))  * exp(st[j].mBetaAccuracy.logvalue  - st[j].mBeta)
                   - (1-2*static_cast<int>(fwbw.avgAccuracy.negative)) * exp(fwbw.avgAccuracy.logvalue)
@@ -3062,8 +3087,8 @@ extern std::map<std::string,FLOAT> state_posteriors;
        mTime,
        i_node->mC.mpHmm->mpMacro->mpName, j, 
        i_node->mC.rpAlphaBetaListReverse()->mpState[j].mAlpha,
-       i_node->mC.rpAlphaBetaListReverse()->mpState[j].mBeta, P,
-       st[j].mAlpha + st[j].mBeta - P);*/
+       i_node->mC.rpAlphaBetaListReverse()->mpState[j].mBeta, fwbw.totLike,
+       st[j].mAlpha + st[j].mBeta - fwbw.totLike);*/
 
   //            if (!mmi_den_pass) {
                 for (i = 0; i < Nq - 1; i++) 
@@ -3071,7 +3096,7 @@ extern std::map<std::string,FLOAT> state_posteriors;
                   LOG_INC(aqacc[i * Nq + j],
                           aq[i * Nq + j] * mTranScale +
                           (i_node->mC.rpAlphaBetaListReverse()->mpState[i].mAlpha +
-                          bjtO * mOutpScale + st[j].mBeta - P) * mOcpScale);
+                          bjtO * mOutpScale + st[j].mBeta - fwbw.totLike) * mOcpScale);
                 }
   //            }
     
@@ -3086,12 +3111,12 @@ extern std::map<std::string,FLOAT> state_posteriors;
                   update_dir = 1.0;
                 }
 //string state_name = i_node->mC.mpHmm->mpState[j - 1]->mpMacro->mpName;
-//state_posteriors[state_name.substr(0, state_name.find('_'))] += exp(st[j].mAlpha + st[j].mBeta - P);
+//state_posteriors[state_name.substr(0, state_name.find('_'))] += exp(st[j].mAlpha + st[j].mBeta - fwbw.totLike);
 
                 ReestState(
                   &(*i_node), 
                   j - 1,
-                  (st[j].mAlpha + st[j].mBeta - P)  * mOcpScale,
+                  (st[j].mAlpha + st[j].mBeta - fwbw.totLike)  * mOcpScale,
                   update_dir*weight*frame_weight, 
                   obs, 
                   obs2);
@@ -3170,7 +3195,7 @@ extern std::map<std::string,FLOAT> state_posteriors;
                    p_stats[offset + j] += xfsa_inst->mpStats[rd_xform->mOutSize + j] * region_weights[i];
                   }
                   
-                  // Accumulator for average varian of the i-th region dependent transform input
+                  // Accumulator for average variance of the i-th region dependent transform input
                   offset += rd_xform->mpBlock[i]->mOutSize;
                   for(int j = 0; j < rd_xform->mpBlock[i]->mInSize; j++) {
                    p_stats[offset + j] += SQR(input_vector[j]) * region_weights[i];
@@ -3243,9 +3268,151 @@ extern std::map<std::string,FLOAT> state_posteriors;
       free(ocprob);
 #endif
     
+      mExpectedCorrectnessForUtterance = (1-2*static_cast<int>(fwbw.avgAccuracy.negative)) * exp(fwbw.avgAccuracy.logvalue);
+      mLogLikelihoodForUtterance       = fwbw.totLike;
+      
+      return (mAccumType == AT_MFE || mAccumType == AT_MPE) ? mExpectedCorrectnessForUtterance : mLogLikelihoodForUtterance;
+    }
+    //***************************************************************************
+    
+    
+  //***************************************************************************
+  //***************************************************************************
+  template<typename _NetworkType>
+    FLOAT 
+    Decoder<_NetworkType>::
+    GetMpeGamma(const Matrix<FLOAT>& rObsMx, Matrix<FLOAT>& rGamma, FLOAT& avgAcc, 
+        int nFrames, FLOAT weight, BasicVector<FLOAT>* pWeightVector)
+    {
+      struct FWBWRet          fwbw;
+      FLOAT                   P;
+      FLOAT                   update_dir;
+      int                     i;
+      int                     j;
+      int                     k;
+      ModelSet*               p_hmms_alig = mpModelSet;
+      ModelSet*               p_hmms_upd = mpModelSetToUpdate;
+      //typename NetworkType::NodeType*                   node;
+      typename NetworkType::iterator                    i_node;
+    
+      fwbw = ForwardBackward(rObsMx, nFrames);
+      P    = fwbw.totLike;
+      avgAcc = (1-2*static_cast<int>(fwbw.avgAccuracy.negative))
+                 * exp(fwbw.avgAccuracy.logvalue);
+
+      rGamma.Init(nFrames,mpModelSet->mNStates);
+      
+      if (P < LOG_MIN) 
+        return LOG_0;
+    
+      for (i_node = rNetwork().begin(); i_node != rNetwork().end(); ++i_node) 
+      {
+        if (i_node->mC.mType & NT_MODEL && i_node->mC.rpAlphaBetaList() != NULL &&
+          i_node->mC.rpAlphaBetaList()->mTime == 0) 
+        {
+          //store top of the stack of AlphaBeta
+          i_node->mC.rpAlphaBetaListReverse() = i_node->mC.rpAlphaBetaList();
+          //pop the stack AlphaBeta
+          i_node->mC.rpAlphaBetaList() = i_node->mC.rpAlphaBetaList()->mpNext;
+        }
+      }
+    
+           
+      // Compute gammas:
+      // We assume the AlphaBeta stack has earliest time on top,
+      // for each frame we pop a AlphaBeta record of each model,
+      // if the model was active at the time
+      for (mTime = 0; mTime < nFrames; mTime++) 
+      { //for every frame
+        FLOAT  frame_weight = (NULL == pWeightVector) ? 1.0 :
+             (*pWeightVector)[mTime];
+        
+        for (i_node = rNetwork().begin(); i_node != rNetwork().end(); ++i_node) 
+        { //for every model
+          if (i_node->mC.mType & NT_MODEL &&
+            i_node->mC.rpAlphaBetaList() != NULL &&
+            i_node->mC.rpAlphaBetaList()->mTime == mTime+1) 
+          {
+            struct AlphaBetaMPE *st;
+            int Nq       = i_node->mC.mpHmm->mNStates;
+            st = i_node->mC.rpAlphaBetaList()->mpState;
+    
+            for (j = 1; j < Nq - 1; j++) 
+            { //for every emitting state
+              if (st[j].mAlpha + st[j].mBeta - P > MIN_LOG_WEGIHT) 
+              {
+#ifdef MOTIF
+                ocprob[mNumberOfNetStates * (mTime+1) + 
+                  i_node->mC.mEmittingStateId + j]
+  //            = i_node->mC.mPhoneAccuracy;
+                = exp(st[j].mAlpha+st[j].mBeta-P) *
+                  ((1-2*static_cast<int>(st[j].mAlphaAccuracy.negative)) * exp(st[j].mAlphaAccuracy.logvalue - st[j].mAlpha) +
+                  (1-2*static_cast<int>(st[j].mBetaAccuracy.negative))  * exp(st[j].mBetaAccuracy.logvalue  - st[j].mBeta)
+                  - (1-2*static_cast<int>(fwbw.avgAccuracy.negative)) * exp(fwbw.avgAccuracy.logvalue)
+                  );
+    
+#endif
+                    
+                assert(i_node->mC.rpAlphaBetaListReverse()->mTime == mTime);
+    
+                update_dir = exp(st[j].mAlpha + st[j].mBeta - P); //update_dir = gama_q
+    
+                if (mAccumType == AT_MFE || mAccumType == AT_MPE) 
+                {
+                  //update_dir = gama_q^MPE = gama_q * (aplha_q'+beata_q' -c_avg)
+                  update_dir *= (1-2*static_cast<int>(st[j].mAlphaAccuracy.negative)) * exp(st[j].mAlphaAccuracy.logvalue - st[j].mAlpha) +
+                                (1-2*static_cast<int>(st[j].mBetaAccuracy.negative))  * exp(st[j].mBetaAccuracy.logvalue  - st[j].mBeta)  -
+                                (1-2*static_cast<int>(fwbw.avgAccuracy.negative))     * exp(fwbw.avgAccuracy.logvalue);
+                } 
+                //store the gamma
+                size_t PDF_obs_coef = i_node->mC.mpHmm->mpState[j-1]->PDF_obs_coef;
+                rGamma(mTime, PDF_obs_coef) += weight*frame_weight*update_dir;
+              }
+            }
+            
+             if (i_node->mC.rpAlphaBetaListReverse()) 
+              free(i_node->mC.rpAlphaBetaListReverse());
+              
+            i_node->mC.rpAlphaBetaListReverse() = i_node->mC.rpAlphaBetaList();
+            i_node->mC.rpAlphaBetaList() = i_node->mC.rpAlphaBetaList()->mpNext;
+          }
+        }
+      }
+      for (i_node = rNetwork().begin(); i_node != rNetwork().end(); ++i_node) 
+      {
+        if (i_node->mC.rpAlphaBetaListReverse() != NULL)
+          free(i_node->mC.rpAlphaBetaListReverse());
+      }
+    
+#ifdef MOTIF
+      FLOAT max = LOG_0;
+      printf("mTranScale: %f\noutpScale: %f\n",mTranScale, mOutpScale);
+      for (i = 0; i < mNumberOfNetStates * (nFrames+1); i++) 
+        max = HIGHER_OF(max, ocprob[i]);
+    
+      imagesc(ocprob, mNumberOfNetStates, (nFrames+1),
+              sizeof(FLOAT) == 4 ? "float" : "double",
+              NULL,  cm_color, "OccProb");
+    
+      for (j=0; j<nFrames+1; j++) 
+      {
+        for (i=0; i<mNumberOfNetStates; i++) 
+        {
+          printf("%6.3g ", (ocprob[mNumberOfNetStates * j + i]));
+        }
+        printf("\n");
+      }
+  //  for (i = 0; i < mNumberOfNetStates * (nFrames+1); i++) {
+  //    if (ocprob[i] < LOG_MIN) ocprob[i] = max;
+  //  }
+  //  imagesc(ocprob, mNumberOfNetStates, (nFrames+1), STR(FLOAT), NULL, cm_color, "Log OccProb");
+      free(ocprob);
+#endif
+    
       return P;
     }
     //***************************************************************************
+
 
 
   //***************************************************************************

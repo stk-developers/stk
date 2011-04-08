@@ -20,7 +20,7 @@ namespace STK {
     if (index >= mIntMap.size()) {
       throw std::runtime_error(std::string("Index ") + " out of bound");
     }
-    return mIntMap[index];
+    return mIntMap[index][0];
   } // IToA(..)
 
 
@@ -51,7 +51,7 @@ namespace STK {
   //***************************************************************************/
   VocabularyTable&
   VocabularyTable::
-  LoadFromFile(const std::string& rFName) 
+  LoadFromFile(const std::string& rFName, bool isExtended) 
   {
     try {
       // open stream
@@ -62,7 +62,12 @@ namespace STK {
         throw std::runtime_error(std::string("Cannot open vocabulary file ") + rFName);
       }
 
-      LoadFromStream(stream);
+      if (isExtended) {
+        LoadFromStreamExtended(stream);
+      }
+      else {
+        LoadFromStream(stream);
+      }
 
       stream.close();
       return *this;
@@ -82,17 +87,76 @@ namespace STK {
   {
     try {
       int i=0;
-      std::string tmp_str;
+      std::vector<std::string> tmp_vec;
+    
+      tmp_vec.push_back("");
 
       while (!rIStream.eof()) {
-        rIStream >> tmp_str >> std::ws; 
+        rIStream >> tmp_vec[0] >> std::ws; 
 
         if (rIStream.bad() || rIStream.fail()) {
           throw std::runtime_error("Cannot read here...");
         }
 
-        mStrMap[tmp_str] = i;
-        mIntMap.push_back(tmp_str);
+        mStrMap[tmp_vec[0]] = i;
+        mIntMap.push_back(tmp_vec);
+        i++;
+      }
+      return *this;
+    }
+    catch (std::runtime_error& rError) {
+      RethrowMessage("");
+      throw;
+    }
+  }
+
+
+
+  //***************************************************************************/
+  //***************************************************************************/
+  VocabularyTable&
+  VocabularyTable::
+  LoadFromStreamExtended(std::istream& rIStream)
+  {
+    try {
+      int i=0;
+      std::string tmp_line;
+      std::string tmp_str;
+
+      std::cout << "Extended... "  << std::endl;
+
+      // skip file initial white spaces
+      rIStream >>std::ws;
+
+      // read line by line until the end
+      while (!rIStream.eof()) {
+        std::vector<std::string> tmp_collection;
+
+        std::getline(rIStream, tmp_line);
+
+        if (rIStream.bad() || rIStream.fail()) {
+          throw std::runtime_error("Cannot read here...");
+        }
+        
+        // skip trailing whitespaces so that eof detection works correctly
+        rIStream >> std::ws;
+
+        std::stringstream line_stream(tmp_line);
+        line_stream >> std::ws;
+
+        while (!line_stream.eof()) {
+          line_stream >> tmp_str >> std::ws; 
+
+          if (line_stream.bad() || line_stream.fail()) {
+            throw std::runtime_error("Cannot read here...");
+          }
+
+          std::cout << tmp_str << "===" << i << std::endl;
+          mStrMap[tmp_str] = i;
+          tmp_collection.push_back(tmp_str);
+        }
+
+        mIntMap.push_back(tmp_collection);
         i++;
       }
       return *this;

@@ -8,7 +8,6 @@
 #ifndef STK_StkStream_h
 #define STK_StkStream_h
 
-#include "common.h"
 #include <fstream>
 #include <string>
 

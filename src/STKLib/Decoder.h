@@ -368,6 +368,9 @@ namespace STK
       BaumWelchReest(const Matrix<FLOAT>& rObsMx, const Matrix<FLOAT>& rObsMx2, 
           int nFrames, FLOAT weight, BasicVector<FLOAT>* pWeightVector);
 
+      FLOAT 
+      GetMpeGamma(const Matrix<FLOAT>& rObsMx, Matrix<FLOAT>& rGamma, FLOAT& avgAcc, 
+          int nFrames, FLOAT weight, BasicVector<FLOAT>* pWeightVector);
 
 
       static int               
@@ -420,6 +423,9 @@ namespace STK
       int                         mNActiveModelsForUtterance;
       int                         mNActiveTokensForObservation;
       int                         mNActiveModelsForObservation;
+      
+      FLOAT                       mLogLikelihoodForUtterance;       // Filled by ForwardBackward()
+      FLOAT                       mExpectedCorrectnessForUtterance; // Filled by ForwardBackward() in MPE mode
                               
       int                         mNumberOfNetStates; // Not used for anything important
       Token*                      mpAuxTokens;

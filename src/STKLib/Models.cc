@@ -624,7 +624,7 @@ namespace STK
       {
         int instanceContainXfrom = IsXformIn1stLayer(xtuit->mpXform, xfi->mpXform);
   
-        //Does instance one level up contain cache for this xform
+        //Does instance one level up contain cache for this xform?
         XformStatCache *upperLevelCache = NULL;
         if (xfi->mpInput != NULL) {
           upperLevelCache = xfi->mpInput->FindXformStatCache(xtuit->mpXform, xtuit->mStatType);

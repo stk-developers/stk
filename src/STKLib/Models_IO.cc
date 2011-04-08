@@ -971,18 +971,24 @@ namespace STK
     }
   
     // create new mixture object
-    ret = new Mixture;  
+    ret = new Mixture;
   
-    if (CheckKwd(keyword, KID_InputXform)) 
-    {
+    if (CheckKwd(keyword, KID_InputXform)) {
       ret->mpInputXform = ReadXformInstance(fp, NULL);
-    } 
-    else 
-    {
+      keyword = GetString(fp, 1);
+    } else {
       ret->mpInputXform = this->mpInputXform;
+    }
+    if (CheckKwd(keyword, KID_ClassXform)) {
+      ret->mGaussianSelectionIndex       = GetInt(fp);
+      ret->mpGaussianSelectionInputXform = ReadXformInstance(fp, NULL);
+      if(ret->mGaussianSelectionIndex > ret->mpGaussianSelectionInputXform->OutSize()) {
+        Error("Gaussian selection index out of Gaussian selection xform size (%s:%d)", gpCurrentMmfName, gCurrentMmfLine);
+      }
+    } else {
       UngetString();
     }
-  
+    
     //
     ret->mpMean = ReadMean(fp, NULL);
     
@@ -999,7 +1005,7 @@ namespace STK
       // per-speaker partial accumulators
       ret->mPartialAccumG = 0.0;
       ret->mPartialAccumK.Init(ret->mpMean->mClusterMatrixT.Cols());
-      
+
       // for discriminative training
       if (UT_EBW == mUpdateType)
       {
@@ -2875,21 +2881,26 @@ namespace STK
     // The mixture->mpInputXform should never be null, however with feature
     // mapping, it is. Temporary solution is to test it for NULL...
     if (mixture->mpInputXform != mpInputXform
-    &&  NULL != mixture->mpInputXform) 
-    {
+    &&  NULL != mixture->mpInputXform) {
       PutKwd(fp, binary, KID_InputXform);
       
-      if (mixture->mpInputXform->mpMacro) 
-      {
+      if (mixture->mpInputXform->mpMacro) {
         fprintf(fp, "~j \"%s\"", mixture->mpInputXform->mpMacro->mpName);
         PutNLn(fp, binary);
-      } 
-      else 
-      {
+      } else {
         WriteXformInstance(fp, binary, mixture->mpInputXform);
       }
     }
-    
+    if (NULL != mixture->mpGaussianSelectionInputXform) {
+      PutKwd(fp, binary, KID_ClassXform);
+      PutInt(fp, binary, mixture->mGaussianSelectionIndex);
+      if (mixture->mpGaussianSelectionInputXform->mpMacro) {
+        fprintf(fp, "~j \"%s\"", mixture->mpGaussianSelectionInputXform->mpMacro->mpName);
+        PutNLn(fp, binary);
+      } else {
+        WriteXformInstance(fp, binary, mixture->mpGaussianSelectionInputXform);
+      }
+    }
     if (mixture->mpMean->mpMacro) 
     {
       fprintf(fp, "~u \"%s\"", mixture->mpMean->mpMacro->mpName);
@@ -3696,7 +3707,7 @@ namespace STK
       if(!(iss >> token)) {
         mxfc.mStatType = ST_HLDA;
       } else {
-        if("HLDA"           == token) mxfc.mStatType = ST_HLDA;
+        if     ("HLDA"           == token) mxfc.mStatType = ST_HLDA;
         else if("CMLLR"          == token) mxfc.mStatType = ST_CMLLR;
         else if("RDMPE_DIRECT"   == token) mxfc.mStatType = ST_RDMPE_DIRECT;
         else if("RDMPE_INDIRECT" == token) mxfc.mStatType = ST_RDMPE_INDIRECT;
@@ -3722,9 +3733,9 @@ namespace STK
             mxfc.mpShellCommand = token;
           }
           Trim(mxfc.mpShellCommand);
-        }
-        mpXformToUpdate.push_back(mxfc);      
+        }  
       }
+      mpXformToUpdate.push_back(mxfc);
       if(mxfc.mStatType == ST_RDMPE_INDIRECT) {
         if(mxfc.mStringArgs.size() < 2) {
           Error("ReadXformList: File names with occupation counts and I, G, Fi statistics are expected at line %d in file %s",

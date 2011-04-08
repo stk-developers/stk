@@ -199,6 +199,16 @@ namespace STK
 
   //***************************************************************************/
   //***************************************************************************/
+  VecDistribution*
+  VecDistribution::
+  Clone()
+  {
+    return new VecDistribution(*this);
+  }
+
+
+  //***************************************************************************/
+  //***************************************************************************/
   void
   VecDistribution::
   Fix()
@@ -322,16 +332,18 @@ namespace STK
   //***************************************************************************/
   void
   VecDistribution::
-  Merge(const VecDistribution& rDistr)
+  Merge(const Distribution& rDistr)
   {
+    const VecDistribution* p_distr = dynamic_cast<const VecDistribution*>(&rDistr);
+
     double norm = 0.0;
     VecDistribution::Container::iterator i_this = mVec.begin();
-    VecDistribution::Container::const_iterator i_parent = rDistr.mVec.begin();
+    VecDistribution::Container::const_iterator i_parent = p_distr->mVec.begin();
 
-    assert(mVec.size() == rDistr.mVec.size());
+    assert(mVec.size() == p_distr->mVec.size());
 
     while (i_this != mVec.end()) {
-      *i_this = mN * (*i_this) + rDistr.mN * (*i_parent);
+      *i_this = mN * (*i_this) + p_distr->mN * (*i_parent);
       norm += *i_this;
 
       ++i_this;
@@ -345,7 +357,7 @@ namespace STK
       }
     }
 
-    mN += rDistr.mN;
+    mN += p_distr->mN;
   }
 
   //***************************************************************************/
@@ -367,14 +379,16 @@ namespace STK
   //***************************************************************************/
   void
   VecDistribution::
-  Smooth(const VecDistribution& rDistr, FLOAT r)
+  Smooth(const Distribution& rDistr, FLOAT r)
   {
+    const VecDistribution* p_distr = dynamic_cast<const VecDistribution*>(&rDistr);
+
     double norm   = 0; //DBL_EPSILON;
     double new_mn = 0; //DBL_EPSILON;
     VecDistribution::Container::iterator        i_this   = mVec.begin();
-    VecDistribution::Container::const_iterator  i_parent = rDistr.mVec.begin();
+    VecDistribution::Container::const_iterator  i_parent = p_distr->mVec.begin();
 
-    assert(mVec.size() == rDistr.mVec.size());
+    assert(mVec.size() == p_distr->mVec.size());
 
     while (i_this != mVec.end()) {
       // compute weight
@@ -382,11 +396,11 @@ namespace STK
 
       *i_this = b * (*i_this) + (1-b) * (*i_parent);
       norm    += *i_this;
-      new_mn  += b * (*i_this * mN) + (1-b) * (*i_parent * rDistr.mN);
+      new_mn  += b * (*i_this * mN) + (1-b) * (*i_parent * p_distr->mN);
 
       ++i_this;
       ++i_parent;
-    } // while (i_this != mVec.end() && i_parent != rDistr.mVec.end()) {
+    } // while (i_this != mVec.end() && i_parent != p_distr->mVec.end()) {
 
     if (norm > 0) {
       // normalize
@@ -431,14 +445,16 @@ namespace STK
   //***************************************************************************/
   void
   VecDistribution::
-  MapAdapt(const VecDistribution& rDistr, FLOAT r)
+  MapAdapt(const Distribution& rDistr, FLOAT r)
   {
+    const VecDistribution* p_distr = dynamic_cast<const VecDistribution*>(&rDistr);
+
     double norm   = 0; //DBL_EPSILON;
     double new_mn = 0; //DBL_EPSILON;
     VecDistribution::Container::iterator        i_this   = mVec.begin();
-    VecDistribution::Container::const_iterator  i_parent = rDistr.mVec.begin();
+    VecDistribution::Container::const_iterator  i_parent = p_distr->mVec.begin();
 
-    assert(mVec.size() == rDistr.mVec.size());
+    assert(mVec.size() == p_distr->mVec.size());
 
     while (i_this != mVec.end()) {
       // compute weight
@@ -449,7 +465,7 @@ namespace STK
 
       ++i_this;
       ++i_parent;
-    } // while (i_this != mVec.end() && i_parent != rDistr.mVec.end()) {
+    } // while (i_this != mVec.end() && i_parent != p_distr->mVec.end()) {
 
     if (norm > 0) {
       // normalize
@@ -1579,7 +1595,7 @@ namespace STK
       dynamic_cast<VecDistribution*>(leaves.front()->mpDist);
 
     if (NULL == p_aux_distr) {
-      throw std::runtime_error("Cannot collect couns for non-vector distribution implementations");
+      throw std::runtime_error("Cannot collect counts for non-vector distribution implementations");
     }
 
     vocab_size  = p_aux_distr->mVec.size();

@@ -435,8 +435,9 @@ namespace STK
      * @param rDistr distribution to merge with
      */
     virtual void
-    Merge(const Distribution& rDistr)
-    { }
+    Merge(const Distribution& rDistr) = 0;
+
+
 
     virtual ProbType
     operator [] (const NGram::TokenType& rToken) const = 0;
@@ -467,8 +468,7 @@ namespace STK
      * b = #(s) / (#(s)+r)
      */
     virtual void
-    Smooth(const Distribution& rDistr, FLOAT r)
-    { }
+    Smooth(const Distribution& rDistr, FLOAT r) = 0;
 
 
     /** 
@@ -484,8 +484,7 @@ namespace STK
      * b = N / (N+r)
      */
     virtual void
-    MapAdapt(const Distribution& rDistr, FLOAT r)
-    { }
+    MapAdapt(const Distribution& rDistr, FLOAT r) = 0;
 
     /** 
      * @brief Smoothes distribution by another distribution
@@ -539,7 +538,7 @@ namespace STK
     ~MapDistribution()
     {}
 
-    MapDistribution*
+    virtual MapDistribution*
     Clone() 
     {
       return new MapDistribution(*this);
@@ -603,8 +602,8 @@ namespace STK
      * @brief Merges another distribution
      * @param rDistr distribution to merge with
      */
-    void
-    Merge(const MapDistribution& rDistr);
+    virtual void
+    Merge(const Distribution& rDistr);
 
       
     /** 
@@ -620,7 +619,7 @@ namespace STK
      * b = #(s) / (#(s)+r)
      */
     virtual void
-    Smooth(const MapDistribution& rDistr, FLOAT r);
+    Smooth(const Distribution& rDistr, FLOAT r);
 
 
     /** 
@@ -636,7 +635,7 @@ namespace STK
      * b = N / (N+r)
      */
     virtual void
-    MapAdapt(const MapDistribution& rDistr, FLOAT r);
+    MapAdapt(const Distribution& rDistr, FLOAT r);
 
 
     /** 
@@ -695,11 +694,8 @@ namespace STK
     ~VecDistribution()
     {}
 
-    VecDistribution*
-    Clone() 
-    {
-      return new VecDistribution(*this);
-    }
+    virtual VecDistribution*
+    Clone();
 
     /** 
      * @brief Dumps the question to a stream
@@ -783,8 +779,8 @@ namespace STK
      * @brief Merges another distribution
      * @param rDistr distribution to merge with
      */
-    void
-    Merge(const VecDistribution& rDistr);
+    virtual void
+    Merge(const Distribution& rDistr);
 
       
     /** 
@@ -800,7 +796,7 @@ namespace STK
      * b = #(s) / (#(s)+r)
      */
     virtual void
-    Smooth(const VecDistribution& rDistr, FLOAT r);
+    Smooth(const Distribution& rDistr, FLOAT r);
 
 
     /** 
@@ -816,7 +812,7 @@ namespace STK
      * b = N / (N+r)
      */
     virtual void
-    MapAdapt(const VecDistribution& rDistr, FLOAT r);
+    MapAdapt(const Distribution& rDistr, FLOAT r);
 
 
     /** 

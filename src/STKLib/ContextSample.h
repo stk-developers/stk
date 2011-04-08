@@ -76,7 +76,7 @@ namespace STK
   {
   public:
     typedef std::map<std::string,int> StringMapType;
-    typedef std::vector<std::string>  IntMapType;
+    typedef std::vector< std::vector<std::string> >  IntMapType;
 
     VocabularyTable()
     : mStrMap(), mIntMap(), mStrictMode(true)
@@ -92,11 +92,15 @@ namespace STK
     
     /// loads the vocab from a file
     VocabularyTable&
-    LoadFromFile(const std::string& rFName);
+    LoadFromFile(const std::string& rFName, bool isExtended);
 
     /// loads the vocab from a stream
     VocabularyTable&
     LoadFromStream(std::istream& rIStream);
+
+    /// loads the vocab from a stream with the support of tying phones
+    VocabularyTable&
+    LoadFromStreamExtended(std::istream& rIStream);
 
     ///
     const size_t

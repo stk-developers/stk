@@ -861,7 +861,7 @@ namespace STK
   {
   public:
     /// The (empty) constructor
-    Mixture(): mID(0), mpMean(NULL), mpVariance(NULL), mpInputXform(NULL), 
+    Mixture(): mID(0), mpMean(NULL), mpVariance(NULL), mpInputXform(NULL), mpGaussianSelectionInputXform(NULL),
       mAccumG(), mAccumK(), mAccumL(), mPartialAccumG(0), 
       mPartialAccumK(), mPartialAccumGd(0), mAccumGd()
     {};
@@ -877,6 +877,9 @@ namespace STK
     Mean*                     mpMean;
     Variance*                 mpVariance;
     XformInstance*            mpInputXform;
+
+    XformInstance*            mpGaussianSelectionInputXform;
+    int                       mGaussianSelectionIndex;
     
     //: KLUDGE:
     // get rid of this... 
