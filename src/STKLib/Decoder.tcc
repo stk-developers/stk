@@ -1707,12 +1707,13 @@ namespace STK
           {
             if (mCollectAlphaBeta) 
             {
-              if (InForwardPass()) 
+              if (InForwardPass()) {
                 WriteAlpha(mTime, p_node, p_node->mC.mpHmm->mNStates-1, p_node->mC.mpAnr->mpExitToken);
-              else 
+                p_node->mC.mpAnr->mpExitToken->Penalize(mMPenalty);
+              } else {
                 WriteBeta(mTime, p_node, 0, p_node->mC.mpAnr->mpExitToken);
+              }
             }
-            p_node->mC.mpAnr->mpExitToken->Penalize(mMPenalty);
           }
           else if (p_node->mC.mType & NT_WORD && p_node->mC.mpPronun != NULL) 
           {
@@ -1817,8 +1818,9 @@ namespace STK
             if (/*!(p_node->mC.mType & NT_MODEL) ||*/ p_node->mC.mpAnr->mpTokens[0].mLike < LOG_MIN
               || BackwardPruning(mTime, p_node, p_node->mC.mpHmm->mNStates-1)) 
               continue;
-              
-            WriteBeta(mTime, p_node, p_node->mC.mpHmm->mNStates-1, &p_node->mC.mpAnr->mpTokens[0]);          
+
+            p_node->mC.mpAnr->mpTokens[0].Penalize(mMPenalty);              
+            WriteBeta(mTime, p_node, p_node->mC.mpHmm->mNStates-1, &p_node->mC.mpAnr->mpTokens[0]);
           }
         }
       }
