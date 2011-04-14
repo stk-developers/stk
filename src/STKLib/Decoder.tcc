@@ -578,6 +578,7 @@ namespace STK
     Penalize(LikeType penalty)
     {
       mLike += penalty;
+      mAccuracy.logvalue += penalty;
 
       if (NULL != mpAltHyps)
       {
