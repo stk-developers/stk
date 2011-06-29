@@ -170,7 +170,7 @@ AC_ARG_WITH([matlab-dir],
 AC_ARG_WITH([atlas],   
             [AS_HELP_STRING([--with-atlas], 
               [add support for the ATLAS library @<:@default=check@:>@])], 
-            [with_atlas=check], 
+            [], 
             [with_atlas=yes]) 
 
 AC_ARG_WITH([atlas-dir], 

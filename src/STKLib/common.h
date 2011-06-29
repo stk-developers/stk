@@ -64,7 +64,7 @@
 #endif /* !DIR_SEPARATOR_CHAR */
 
 
-#if !HAVE_REENTRANT_SEARCH || !HAVE_SEARCH_H
+#if !HAVE_REENTRANT_SEARCH || !HAVE_SEARCH_H || _WIN32
 #  include <gnusearch.h>
 #else
 #  include <search.h>
@@ -72,6 +72,9 @@
 
 #include <vector>
 
+#if defined USE_MKL && !defined HAVE_ATLAS
+#  define HAVE_ATLAS 1
+#endif 
 
 
 /* Alignment of critical dynamic data structure
