@@ -304,8 +304,9 @@ namespace STK
 
       iterator
       erase(iterator pos)
-      {
+      { // TODO: Implement this
         assert(false);
+        return pos;
       }
 
       
@@ -1390,6 +1391,7 @@ namespace STK
       NodeTo(link_iterator iLink)
       { // TODO: Implement this
         assert(false); 
+        return Iterator(); 
       }
 
 /*      const bool

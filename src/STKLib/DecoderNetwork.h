@@ -172,15 +172,15 @@ namespace STK
 
       Hmm*&
       rpHmmToUpdate()
-      { assert(false); }
+      { assert(false); static Hmm *pdummy; return pdummy; }   // TODO: Implement this
 
       FWBWR*&
       rpAlphaBetaList()
-      { assert(false); }
+      { assert(false); static FWBWR *pdummy; return pdummy; } // TODO: Implement this
     
       FWBWR*&
       rpAlphaBetaListReverse()
-      { assert(false); }
+      { assert(false); static FWBWR *pdummy; return pdummy; } // TODO: Implement this
 
     public:
       union 
