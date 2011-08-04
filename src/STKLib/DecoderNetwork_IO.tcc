@@ -1146,7 +1146,7 @@ namespace STK
       typename _NetworkType::Iterator         p_node;
       typedef typename _NetworkType::NodeType    _node_type;
 //      float                                   lm_scale(lmScale);
-      FLOAT                                   tot_log_like;
+      FLOAT                                   tot_log_like = LOG_0;
     
       // use the mAux field to index the nodes
       for (n = 0, p_node = rNetwork.Begin(); p_node != rNetwork.End(); ++p_node)

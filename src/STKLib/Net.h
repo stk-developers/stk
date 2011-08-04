@@ -80,7 +80,7 @@ namespace STK
 
     public:
       /// default constructor
-      ArrayIterator() 
+      ArrayIterator() : mpPtr() 
       { }
 
       /// copy constructor
