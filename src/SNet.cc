@@ -495,7 +495,9 @@ int main(int argc, char *argv[])
     // this returns true, if last vector
     ///*************************************************************************
     }
-
+    
+    //    std::cout << "Entropy: "<<  prog_obj->GetCrossEntropyAcc() << std::endl;
+    
     totFrames  += n_frames;
     //TraceLog("[%d frames]", n_frames);
     
@@ -510,13 +512,16 @@ int main(int argc, char *argv[])
   // MAIN FILE LOOP END
 
   ///***************************************************************************     
+  if (trace_flag & 2) {
+    TraceLog("Total number of frames: %d", totFrames);
+    double totEntropy = -(prog_obj->GetCrossEntropyAcc())/ (double)totFrames;
+    TraceLog("Total cross-entropy: %g", totEntropy);
+  }
+
   /// DELETE SNET
   delete prog_obj;  
   std::cout << "SNet is Deleted... debug message\n" << std::flush;
   
-  if (trace_flag & 2) {
-    TraceLog("Total number of frames: %d", totFrames);
-  }
   NNet_instance->mpInput = NNet_input;
 
   if(!cross_validation)  

@@ -73,6 +73,7 @@ namespace STK
   class FeatureMappingXform;
   class GmmPosteriorsXform;
   class FrantaProductXform;
+  class FilterXform;
   class FuncXform;
   class LinearXform;
   class MatlabXform;
@@ -258,9 +259,14 @@ namespace STK
     KID_NumClasses,  KID_AdaptKind,  KID_Prequal,    KID_InputXform,
     KID_RClass  =110,KID_RegTree,    KID_Node,       KID_TNode,
     KID_HMMSetID=119,KID_ParmKind,
+    /* TODO: put it into table
+      mpKwds[KID_Filter     ] = "Filter"; dat to pred 200 (190...)
+      mpKwds[KID_FrantaProduct] = "FrantaProduct";
+    */
   
     /* Non-HTK keywords */
     // TODO: Check KID_Constant
+    KID_FrantaProduct  =190, KID_Filter,
     KID_FrmExt  =200,KID_PDFObsVec,  KID_ObsCoef,     KID_Input,    KID_NumLayers,
     KID_NumBlocks,   KID_Layer,      KID_Copy,        KID_Stacking, KID_Constant,
     KID_Transpose,   
@@ -274,7 +280,7 @@ namespace STK
     KID_RegionDependent,
     KID_GmmPosteriors,
     
-    KID_Weights = 253,
+     KID_Weights = 253,
   
     KID_MaxKwdID
   };
@@ -350,6 +356,7 @@ namespace STK
     FeatureMappingXform* ReadFeatureMappingXform     (FILE* fp, Macro* macro);
     GmmPosteriorsXform* ReadGmmPosteriorsXform     (FILE* fp, Macro* macro);
     FrantaProductXform*  ReadFrantaProductXform      (FILE* fp, Macro* macro);
+    FilterXform*    ReadFilterXform   (FILE* fp, Macro* macro);
     MatlabXform*    ReadMatlabXform(FILE* fp, Macro* macro);
     BiasXform*      ReadBiasXform     (FILE* fp, Macro* macro, bool preddefined);
     FuncXform*      ReadFuncXform     (FILE* fp, Macro* macro, int funcId);
@@ -382,6 +389,7 @@ namespace STK
     void   WriteFeatureMappingXform (FILE* fp, bool binary, FeatureMappingXform* xform);
     void   WriteGmmPosteriorsXform  (FILE* fp, bool binary, GmmPosteriorsXform* xform);
     void   WriteFrantaProductXform  (FILE* fp, bool binary, FrantaProductXform* xform);
+    void   WriteFilterXform  (FILE* fp, bool binary,    FilterXform* xform);
     void   WriteFuncXform    (FILE* fp, bool binary,      FuncXform*  xform);
     void   WriteBiasXform    (FILE* fp, bool binary,      BiasXform*  xform);
     void   WriteStackingXform(FILE* fp, bool binary,  StackingXform*  xform);
@@ -1293,6 +1301,7 @@ namespace STK
     XT_FEATURE_MAPPING,
     XT_GMM_POSTERIORS,
     XT_FRANTA_PRODUCT,
+    XT_FILTER,
     XT_MATLAB,
     XT_TRANSPOSE,
     XT_WINDOW,
@@ -1900,6 +1909,51 @@ namespace STK
              
   private:
     size_t        mNParts;           
+  };
+
+  /** *************************************************************************
+   ** *************************************************************************
+   *  @brief Filter Xform representation
+   *
+   *  This transform filters each paramweter by given filter
+   */
+  class FilterXform : public Xform 
+  {                                     
+  public:
+    /**
+     * @brief The constructor
+     * @param inSize input vector size
+     * @param ASize number of parameters in A part of the filter
+     * @param BSize number of parameters in B part of the filter
+     */
+    FilterXform(size_t inSize, size_t BSize, size_t ASize);
+    
+    virtual
+    ~FilterXform();
+    
+    BasicVector<FLOAT>      mBCoef;
+    BasicVector<FLOAT>      mACoef;
+    Matrix<FLOAT>           mXMemMatr;
+    Matrix<FLOAT>           mYMemMatr;
+    size_t                  mBSize;           
+    size_t                  mASize;           
+   
+    /**
+     * @brief Filter Xform evaluation 
+     * @param pInputVector pointer to the input vector
+     * @param pOutputVector pointer to the output vector
+     * @param pMemory pointer to the extra memory needed by the operation
+     * @param direction propagation direction (forward/backward)
+     */
+    virtual FLOAT* 
+    Evaluate(FLOAT*     pInputVector, 
+             FLOAT*     pOutputVector,
+             char*      pMemory,
+             PropagDirectionType  direction);  
+             
+  private:
+    size_t        mPosA;           
+    size_t        mPosB;           
   };
   
   

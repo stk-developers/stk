@@ -63,6 +63,9 @@ void usage(char *progname)
 "\n"
 "\n"
 "SNet based parameters:\n"
+"--CONFUSMATRIX                                              NULL\n"
+"--MEANVARSTATS                                              NULL\n"
+""
 "--CROSSVALIDATION                                           false\n"
 "--CACHESIZE                                                 12000\n"
 "--BUNCHSIZE                                                 1000\n"
@@ -129,6 +132,8 @@ int main(int argc, char *argv[])
   const char *src_lbl_dir;
   const char *src_lbl_ext;
   const char *src_mlf;
+  std::string confmatr_name;
+  std::string meanvar_name;
   char *script;
   
         char *        cmn_path;
@@ -200,22 +205,6 @@ int main(int argc, char *argv[])
     nfeature_files++;
   }
 
-  outlabel_map = GetParamStr(&cfgHash, SNAME":OUTPUTLABELMAP",  NULL);
-  
-  target_kind   = GetDerivParams(&cfgHash, &derivOrder, &derivWinLengths,
-                                &startFrmExt, &endFrmExt,
-                                &cmn_path, &cmn_file, &cmn_mask,
-                                &cvn_path, &cvn_file, &cvn_mask, &cvg_file,
-                                SNAME":",  !outlabel_map ? 1 : 0);
-  if(!outlabel_map)
-  {
-    target_kind_out = GetDerivParams(&cfgHash, &derivOrder_out, &derivWinLengths_out,
-                                    &startFrmExt_out, &endFrmExt_out,
-                                    &cmn_path_out, &cmn_file_out, &cmn_mask_out,
-                                    &cvn_path_out, &cvn_file_out, &cvn_mask_out,
-                                    &cvg_file_out, SNAME":",  2);
-  }
-  
   in_lbl_fmt.mStartTimeShift = 
     GetParamFlt(&cfgHash, SNAME":STARTTIMESHIFT",  0.0);
   in_lbl_fmt.mEndTimeShift = 
@@ -238,7 +227,7 @@ int main(int argc, char *argv[])
   gpMmfOFilter  = GetParamStr(&cfgHash, SNAME":HMMDEFOFILTER",   NULL);
 //  out_dir      = GetParamStr(&cfgHash, SNAME":TARGETPARAMDIR",  NULL);
 //  out_ext      = GetParamStr(&cfgHash, SNAME":TARGETPARAMEXT",  NULL);
-  src_mlf      = GetParamStr(&cfgHash, SNAME":SOURCEMLF",       NULL);
+  src_mlf        = GetParamStr(&cfgHash, SNAME":SOURCEMLF",       NULL);
   src_lbl_dir  = GetParamStr(&cfgHash, SNAME":SOURCETRANSCDIR", NULL);
   src_lbl_ext  = GetParamStr(&cfgHash, SNAME":SOURCETRANSCEXT", "lab");
   trace_flag   = GetParamInt(&cfgHash, SNAME":TRACE",           0);
@@ -264,8 +253,35 @@ int main(int argc, char *argv[])
   port = GetParamInt(&cfgHash, SNAME":PORT",            2020);
   seed = GetParamInt(&cfgHash, SNAME":SEED",            0);
   ncumrbu = GetParamInt(&cfgHash, SNAME":NCUMRBU",            clients);
-  expand_predef_xforms = GetParamBool(&cfgHash,SNAME":EXPANDPREDEFXFORMS", true);
   // NCUMRBU == number of client update matrixes received before update in async version
+  expand_predef_xforms = GetParamBool(&cfgHash,SNAME":EXPANDPREDEFXFORMS", true);
+  confmatr_name  = GetParamStr(&cfgHash, SNAME":CONFUSMATRIX",    "");
+  meanvar_name  = GetParamStr(&cfgHash, SNAME":MEANVARSTATS",    "");
+  bool comp_confusion = false;
+  bool comp_meanvar = false;
+  if (confmatr_name.length() > 0) {
+    comp_confusion = true;
+  }
+  if (meanvar_name.length() > 0) {
+    comp_meanvar = true;
+  }
+
+  outlabel_map = GetParamStr(&cfgHash, SNAME":OUTPUTLABELMAP",  NULL);
+
+  target_kind   = GetDerivParams(&cfgHash, &derivOrder, &derivWinLengths,
+                                &startFrmExt, &endFrmExt,
+                                &cmn_path, &cmn_file, &cmn_mask,
+                                &cvn_path, &cvn_file, &cvn_mask, &cvg_file,
+                                SNAME":",  !outlabel_map ? 1 : 0);
+  if(!outlabel_map)
+    {
+      target_kind_out = GetDerivParams(&cfgHash, &derivOrder_out, &derivWinLengths_out,
+				       &startFrmExt_out, &endFrmExt_out,
+				       &cmn_path_out, &cmn_file_out, &cmn_mask_out,
+				       &cvn_path_out, &cvn_file_out, &cvn_mask_out,
+				       &cvg_file_out, SNAME":",  2);
+    }
+
   
   if(clients != 0 && script != NULL) Error("Server should not have input data.");
   
@@ -274,7 +290,6 @@ int main(int argc, char *argv[])
 //                              "HTK", TF_HTK, "STK", TF_STK, NULL);
 
   bool print_all_options = GetParamBool(&cfgHash,SNAME":PRINTALLOPTIONS", false);
-
 
   if (GetParamBool(&cfgHash, SNAME":PRINTCONFIG", false)) {
     PrintConfig(&cfgHash);
@@ -334,23 +349,35 @@ int main(int argc, char *argv[])
     labelHash = readLabelList(outlabel_map);
     
     if (NNet_instance->OutSize() != labelHash.mNEntries) {
-        Error("Number of entries [%d] in file '%s' does not match with NNet output size [%d]",
-              labelHash.mNEntries, outlabel_map, NNet_instance->OutSize());
-      }
-
+	Error("Number of entries [%d] in file '%s' does not match with NNet output size [%d]",
+	      labelHash.mNEntries, outlabel_map, NNet_instance->OutSize());
+    }
+    
     //Allocate buffer, to which example of output vector will be created
     //according to labels
     obs_out = (FLOAT *)malloc(NNet_instance->OutSize() * sizeof(FLOAT));
     if (!obs_out) Error("Insufficient memory");
   }
-  
+    
   ilfp = OpenInputMLF(src_mlf);
-  
+
+
 ///***************************************************************************
 ///Here starts the processing of files
 ///************************************************************************************************
 
   int Hits=0;
+  Matrix<FLOAT> * ConfMatr_soft=new Matrix<FLOAT>;
+  Matrix<FLOAT> * ConfMatr_hard=new Matrix<FLOAT>;
+  int vecsize = NNet_instance->OutSize();
+  Matrix<FLOAT> * meanvar_x=new Matrix<FLOAT>;
+  Matrix<FLOAT> * meanvar_xx=new Matrix<FLOAT>;
+
+  ConfMatr_soft->Init(vecsize, vecsize+1);
+  ConfMatr_hard->Init(vecsize, vecsize+1);
+  meanvar_x->Init(1, vecsize+1);
+  meanvar_xx->Init(1, vecsize+1);
+
   // main file loop
   for (file_name = feature_files;
        file_name != NULL;
@@ -399,33 +426,33 @@ int main(int argc, char *argv[])
     n_frames = header.mNSamples - (NNet_input ? NNet_input->mTotalDelay : 0);
 
     if (!outlabel_map) 
-    { // If output examples are given by features
-      // read the second set of features ...
-      if (cmn_mask_out) process_mask(file_name->logical, cmn_mask_out, cmn_file_out);
-      if (cvn_mask_out) process_mask(file_name->logical, cvn_mask_out, cvn_file_out);
-      
-      ReadHTKFeatures(file_name->mpPhysical, swap_features_out,
-                      startFrmExt_out, endFrmExt_out, target_kind_out,
-                      derivOrder_out, derivWinLengths_out, &header_out,
-                      cmn_path_out, cvn_path_out, cvg_file_out, &rhfbuff_out,
-                      feature_matrix_out);
-
-      if (n_frames != header_out.mNSamples) 
-      {
-        Error("Mismatch in number of frames in input/output feature file pair: "
-              "'%s' <-> '%s'.", file_name->mpNext->mpPhysical, file_name->mpPhysical);
-      }
-      
-    } 
+      { // If output examples are given by features
+	// read the second set of features ...
+	if (cmn_mask_out) process_mask(file_name->logical, cmn_mask_out, cmn_file_out);
+	if (cvn_mask_out) process_mask(file_name->logical, cvn_mask_out, cvn_file_out);
+	
+	ReadHTKFeatures(file_name->mpPhysical, swap_features_out,
+			startFrmExt_out, endFrmExt_out, target_kind_out,
+			derivOrder_out, derivWinLengths_out, &header_out,
+			cmn_path_out, cvn_path_out, cvg_file_out, &rhfbuff_out,
+			feature_matrix_out);
+	  
+	if (n_frames != header_out.mNSamples) 
+	  {
+	    Error("Mismatch in number of frames in input/output feature file pair: "
+		  "'%s' <-> '%s'.", file_name->mpNext->mpPhysical, file_name->mpPhysical);
+	  }
+	
+      } 
     else 
-    { // ... otherwise, read corresponding label file           
-      strcpy(label_file, file_name->logical);
-      ilfp = OpenInputLabelFile(label_file, src_lbl_dir, src_lbl_ext, ilfp, src_mlf);
-      labels = ReadLabels(ilfp, &labelHash, UL_WARN, in_lbl_fmt, header.mSamplePeriod,
-                          label_file, src_mlf, NULL);      
-      CloseInputLabelFile(ilfp, src_mlf);
-    }
-
+      { // ... otherwise, read corresponding label file           
+	strcpy(label_file, file_name->logical);
+	ilfp = OpenInputLabelFile(label_file, src_lbl_dir, src_lbl_ext, ilfp, src_mlf);
+	labels = ReadLabels(ilfp, &labelHash, UL_WARN, in_lbl_fmt, header.mSamplePeriod,
+			    label_file, src_mlf, NULL);      
+	CloseInputLabelFile(ilfp, src_mlf);
+      }
+  
     // Initialize all transformation instances (including NN_instance)
     hset.ResetXformInstances();
     Label  *lbl_ptr = labels;
@@ -450,27 +477,27 @@ int main(int argc, char *argv[])
       }
 
       if (outlabel_map) {
-        // Create NN output example vector from lables
-        for (j = 0; j < NNet_instance->OutSize(); j++) {
-          obs_out[j] = 0;
-        }
-
-        while (lbl_ptr && lbl_ptr->mStop < time) {
-          lbl_ptr = lbl_ptr->mpNext;
-        }
-
-        if (lbl_ptr && lbl_ptr->mStart <= time) {
-          // TODO: Don't know what this hack is... Find out!!! Caused
-          // troubles on 64bit compilation
-          obs_out[reinterpret_cast<size_t>(lbl_ptr->mpData) - 1] = 1;
-        }
+	// Create NN output example vector from lables
+	for (j = 0; j < NNet_instance->OutSize(); j++) {
+	  obs_out[j] = 0;
+	}
+	
+	while (lbl_ptr && lbl_ptr->mStop < time) {
+	  lbl_ptr = lbl_ptr->mpNext;
+	}
+	
+	if (lbl_ptr && lbl_ptr->mStart <= time) {
+	  // TODO: Don't know what this hack is... Find out!!! Caused
+	  // troubles on 64bit compilation
+	  obs_out[reinterpret_cast<size_t>(lbl_ptr->mpData) - 1] = 1;
+	}
       } 
       else 
-      {
-        // Get NN output example vector from obsMx_out matrix
-        obs_out = feature_matrix_out[time-1];
-      }
-      
+	{
+	  // Get NN output example vector from feature_matrix_out matrix
+	  obs_out = feature_matrix_out[time-1];
+	}
+
       ///***********************************************************************
       /// For EACH NEW VECTOR - give it to SNet
       // file_name->logical    - filename (logical)
@@ -481,17 +508,39 @@ int main(int argc, char *argv[])
       // this returns true, if last vector
       ///*************************************************************************
 
-      // just find max in both vec, add 1 if both on the same place
-      // acctually computing accuracy...
-      int max_ind_obs=0;
-      int max_ind_obs_out=0;
-      for (unsigned int kk=0; kk<NNet_input->OutSize(); kk++) {
-	if (obs[kk] > obs[max_ind_obs]) {max_ind_obs=kk;}
-	if (obs_out[kk] > obs_out[max_ind_obs_out]) {max_ind_obs_out=kk;}
+      if (comp_confusion) {
+	// compute confussion matrix - hard and soft
+	// last colum,n is count
+	int max_ind_obs=0;
+	int max_ind_obs_out=0;
+	for (unsigned int kk=0; kk<vecsize; kk++) {
+	  if (obs[kk] > obs[max_ind_obs]) {max_ind_obs=kk;}
+	  if (obs_out[kk] > obs_out[max_ind_obs_out]) {max_ind_obs_out=kk;}
+	}
+	if (max_ind_obs == max_ind_obs_out) {Hits++;}
+	(*ConfMatr_hard)(max_ind_obs_out, max_ind_obs) +=1;
+	(*ConfMatr_hard)(max_ind_obs_out, vecsize) +=1;
+	float * soft_row = (*ConfMatr_soft)[max_ind_obs_out];
+	for (unsigned int kk=0; kk < vecsize; kk++) {
+	  *soft_row += obs[kk];
+	  soft_row ++;
+	}
+	*soft_row += 1;
       }
-      if (max_ind_obs == max_ind_obs_out) {Hits++;}
-      printf ("NN outputs = %i\tmax obs: %i\t label: %i\n", NNet_input->OutSize(),max_ind_obs,max_ind_obs_out);
-
+      if (comp_meanvar) {
+	// gather statistic for mean and variance computation
+	float * row_x = (*meanvar_x)[0];
+	float * row_xx = (*meanvar_xx)[0];
+	for (unsigned int kk=0; kk<vecsize; kk++) {
+	  *row_x += obs[kk]; 
+	  *row_xx += obs[kk]*obs[kk]; 
+	  row_x++;
+	  row_xx++;
+	}
+	*row_x += 1;
+  	*row_xx += 1;
+      }
+      
     } //End of loop over all feature frames
 
 
@@ -508,11 +557,34 @@ int main(int argc, char *argv[])
   }
   // MAIN FILE LOOP END
 
-  ///***************************************************************************     
-  /// DELETE SNET
-  // delete prog_obj;  
-  std::cout << "SNet is Deleted... debug message\n" << std::flush;
+//  ///***************************************************************************     
+//  /// DELETE SNET
+//  delete prog_obj;  
+//  std::cout << "SNet is Deleted... debug message\n" << std::flush;
   
+  std::cout << "total frames: " << totFrames << "; Hist: "<< Hits << std::endl;
+  if (comp_confusion) {
+    std::string file_out = confmatr_name + "_hard";
+    ConfMatr_hard->PrintOut(file_out.c_str());
+    file_out = confmatr_name + "_soft";
+    ConfMatr_soft->PrintOut(file_out.c_str());
+  }
+  if (comp_meanvar) {
+      Matrix<FLOAT> * mean = new Matrix<FLOAT>;
+      Matrix<FLOAT> * var = new Matrix<FLOAT>;
+      mean->Init(1, vecsize);
+      var->Init(1, vecsize);
+      for (int kk = 0; kk < vecsize; kk++) {
+	float mm =  (*meanvar_x)(0,kk)/(*meanvar_x)(0,vecsize);
+	(*mean)(0,kk) = mm;
+	(*var)(0,kk) = (*meanvar_xx)(0,kk)/(*meanvar_xx)(0,vecsize) - (mm * mm);
+      }
+      std::string file_out = meanvar_name + "_mean";
+      mean->PrintOut(file_out.c_str());
+      file_out = meanvar_name + "_var";
+      var->PrintOut(file_out.c_str());
+  }
+
   if (trace_flag & 2) {
     TraceLog("Total number of frames: %d", totFrames);
   }
@@ -530,15 +602,16 @@ int main(int argc, char *argv[])
   free(derivWinLengths);
   if (src_mlf) fclose(ilfp);
   
+  // free the stuff only if it was used
   if (outlabel_map) 
-  {
-    my_hdestroy_r(&labelHash, 1);
-    free(obs_out);
-  } 
+    {
+      my_hdestroy_r(&labelHash, 1);
+      free(obs_out);
+    } 
   else 
-  {
-    free(derivWinLengths_out);
-  }
+    {
+      free(derivWinLengths_out);
+    }
   
   while (feature_files) 
   {

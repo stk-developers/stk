@@ -66,6 +66,7 @@ namespace SNet{
       bool Server() const {return mServer;};
       bool Client() const {return mClient;};
       Timers* TimersGet() const {return mpNNet->TimersGet();};
+      double GetCrossEntropyAcc(){return mpNNet->GetCrossEntropyAcc();};
   };
 } // namespace
 #endif

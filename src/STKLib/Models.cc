@@ -3276,6 +3276,102 @@ namespace STK
   }; //Evaluate(...)
 
   
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  // FilterXform section
+  //**************************************************************************  
+  //**************************************************************************  
+  FilterXform::
+  FilterXform(size_t inSize, size_t BSize,  size_t ASize) :
+    mACoef(ASize),
+    mBCoef(BSize),
+    mXMemMatr(BSize, inSize),
+    mYMemMatr(ASize, inSize)
+ {
+    mOutSize      = inSize;
+    mInSize       = inSize;
+    mASize        = ASize;
+    mBSize        = BSize;
+    mPosA         = ASize - 1;
+    mPosB         = BSize - 1;
+    mDelay        = 0;
+    mMemorySize   = 0;
+    mXformType    = XT_FILTER;
+  }
+  
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  FilterXform::
+  ~ FilterXform()
+  {
+  }
+  
+  
+  //**************************************************************************  
+  //**************************************************************************  
+  //virtual 
+  FLOAT*
+  FilterXform::
+  Evaluate(FLOAT*     pInputVector, 
+           FLOAT*     pOutputVector,
+           char*      pMemory,
+           PropagDirectionType  direction)
+  {
+    size_t i;
+    size_t j;
+    size_t accpos;
+
+    // put the input data to xpXMemMatr
+    for (i = 0; i < mOutSize; i++)
+    {
+      mXMemMatr[i][mPosB] = pInputVector[i];
+    }
+
+    // compute the outputs
+    for (i = 0; i < mOutSize; i++) // row counter
+    {
+      pOutputVector[i] = 0.0;
+      for (j = 0; j < mBSize; j++) // column counter
+      {
+	accpos = (mPosB +j) % mBSize;
+	pOutputVector[i] += mBCoef[j] * mXMemMatr[i][accpos];
+      }
+      for (j = 1; j < mASize; j++)
+      {
+	accpos = (mPosA +j) % mASize;
+	pOutputVector[i] -= mACoef[j] * mYMemMatr[i][accpos];
+      }
+    }
+
+    // put the output data into mpYMemMatr
+    for (i = 0; i < mOutSize; i++)
+    {
+      mYMemMatr[i][mPosA] = pOutputVector[i];
+    }
+
+    // move the position in X and Y memories
+    if (mPosB == 0)
+    {
+      mPosB = mBSize - 1;
+    } 
+    else 
+    {
+      mPosB --;
+    }
+
+    if (mPosA == 0)
+    {
+      mPosA = mASize - 1;
+    }
+    else 
+    {
+      mPosA--;
+    }	
+    
+    return pOutputVector;
+  }; //Evaluate(...)
     
 
   //**************************************************************************  

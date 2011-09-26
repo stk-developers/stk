@@ -630,7 +630,7 @@ namespace STK
   template<typename _ElemT>
     void 
     Matrix<_ElemT>::
-    PrintOut(char* file)
+    PrintOutStride(const char* file)
     {
       FILE* f = fopen(file, "w");
       unsigned i,j;
@@ -649,10 +649,32 @@ namespace STK
       fclose(f);
     }
 
+  template<typename _ElemT>
+    void 
+    Matrix<_ElemT>::
+    PrintOut(const char* file)
+    {
+      FILE* f = fopen(file, "w");
+      unsigned i,j;
+      fprintf(f, "%dx%d\n", this->mMRows, this->mMCols);
+      
+      for(i=0; i<this->mMRows; i++)
+      {
+        _ElemT*   row = (*this)[i];
+        
+        for(j=0; j<this->mMCols; j++){
+          fprintf(f, "%20.17f ",row[j]);
+        }
+        fprintf(f, "\n");
+      }
+      
+      fclose(f);
+    }
+
       template<typename _ElemT>
     void 
     Matrix<_ElemT>::
-    ReadIn(char* file)
+    ReadIn(const char* file)
     {
       FILE* f = fopen(file, "r");
       int  i = 0;

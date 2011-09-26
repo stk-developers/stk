@@ -34,6 +34,7 @@ SNet::NNet::NNet(CompositeXform* nn, int cacheSize, int bunchSize, bool crossVal
   mGood = 0;
   mNCache = 0;  
   mpUpdateElement = NULL;
+  mCrossEntropyAcc = 0.0;
   
   // Create cache
   int in_cols =  (static_cast<LinearXform*>(nn->mpLayer[0].mpBlock[0]))->mMatrix.Cols();              // get number of columns
@@ -205,6 +206,12 @@ void SNet::NNet::GetAccuracy(){
       if(a2[i] > a2[maxPos2]){
         maxPos2 = i;
       }
+      // cross entropy computation
+      if (a1[i] > EPSILON_ENT) {
+	mCrossEntropyAcc += a2[i] * log(a1[i]);
+      } else {
+	mCrossEntropyAcc += a2[i] * LOG_EPSILON_ENT;
+      }
     }
     
     if(maxPos1 == maxPos2) {
@@ -216,6 +223,27 @@ void SNet::NNet::GetAccuracy(){
 void SNet::NNet::ComputeGlobalError(){
   // Matrix computation -- E = C - O
   mpError->RepMMSub(*mpCompCachePart, *mpOutCache);
+  // computing cross entropy accumulator
+  /*
+  // entropy computation is moved to subrutine GetAccuracy
+  float * tmp_CompElement;
+  float * tmp_OutElement;
+  for (int ii=0; ii < mpOutCache->Rows(); ii++) {
+    tmp_OutElement = (*mpOutCache)[ii];
+    tmp_CompElement = (*mpCompCachePart)[ii];
+    for (int iii = 0; iii<mpOutCache->Cols(); iii++) {
+      // compute it over all outputs to be more general
+      // -- we may have output defined by another vector
+      if (*tmp_CompElement > EPSILON_ENT) {
+	mCrossEntropyAcc += *tmp_OutElement * log(*tmp_CompElement);
+      } else {
+	mCrossEntropyAcc += *tmp_OutElement * LOG_EPSILON_ENT;
+      }
+      tmp_OutElement++;
+      tmp_CompElement++;
+    }
+  }
+  */
 }
 
 void SNet::NNet::ComputeUpdates(){

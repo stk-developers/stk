@@ -8,6 +8,10 @@
 #include<queue>
 
 #define DEBUG_PROG 0
+// This is small value substitued for NN output smaller than thet, when entropy is computed
+#define EPSILON_ENT 0.0000001
+#define LOG_EPSILON_ENT -16.1181
+
 
 namespace SNet{
   //! Main neural net class
@@ -24,7 +28,8 @@ namespace SNet{
       float *mpLearningRateList;      ///< Neural net training rates
       bool mCrossValidation; ///< Only compute cross-validation
       int mNCache;           ///< Actual cache number
-      
+      double mCrossEntropyAcc; ///< Cross Entropy accumulator -- for objective function computation
+
       Timers *mpTimers;                         ///< Help timers/counters
       STK::WindowMatrix<FLOAT>* mpInCache;           ///< Matrix of input vectors
       STK::WindowMatrix<FLOAT>* mpOutCache;          ///< Matrix of example output vectors
@@ -76,8 +81,9 @@ namespace SNet{
       void Mutexes(pthread_mutex_t *free, pthread_mutex_t *received, barrier_t *barrier, bool *sync){ ///< Sets sync objects  
                    mpFreeMutex = free; mpReceivedMutex = received; mpBarrier = barrier; mpSync = sync;}; 
       void Good(int good){mGood = good;};
-      void Vectors(int vectors){mVectors = vectors;}
+      void Vectors(int vectors){mVectors = vectors;};
       void Discarded(int discarded){mDiscarded = discarded;};
+      double GetCrossEntropyAcc(){return mCrossEntropyAcc;};
   };
 } // namespace
 #endif

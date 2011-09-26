@@ -55,6 +55,7 @@ namespace STK
     mpKwds[KID_HMMSetID    ] = "HMMSetID";      mpKwds[KID_ParmKind   ] = "ParmKind";
   
     /* Non-HTK keywords */
+    mpKwds[KID_FrantaProduct] = "FrantaProduct"; mpKwds[KID_Filter    ] = "Filter";
     mpKwds[KID_FrmExt      ] = "FrmExt";        mpKwds[KID_PDFObsVec  ] = "PDFObsVec";
     mpKwds[KID_ObsCoef     ] = "ObsCoef";       mpKwds[KID_Input      ] = "Input";
     mpKwds[KID_NumLayers   ] = "NumLayers";     mpKwds[KID_NumBlocks  ] = "NumBlocks";
@@ -63,8 +64,8 @@ namespace STK
     mpKwds[KID_Constant    ] = "Constant";
     mpKwds[KID_XformPredef ] = "XformPredef";   mpKwds[KID_Window     ] = "Window";  
     mpKwds[KID_WindowPredef] = "WindowPredef";  mpKwds[KID_BlockCopy  ] = "BlockCopy";       
-    mpKwds[KID_BiasPredef  ] = "BiasPredef";
-        
+    mpKwds[KID_BiasPredef  ] = "BiasPredef";   
+
     mpKwds[KID_ExtendedXform  ] = "ExtendedXform";
     mpKwds[KID_RegionDependent] = "RegionDependentXform";
     mpKwds[KID_GmmPosteriors]   = "GmmPosteriors";
@@ -608,6 +609,7 @@ namespace STK
               case 'x': data =  ReadXform        (fp, macro); break;
               default : data =  NULL; break;
             }  
+
     
             assert(data != NULL);
             
@@ -1338,7 +1340,7 @@ namespace STK
 
     // read instance from file    
     ret->mpXform = ReadXform(fp, NULL);
-    
+ 
     
     if (input == NULL && mInputVectorSize == -1) {
       Error("<VecSize> has not been defined yet (%s:%d)", mpCurrentMmfName, mCurrentMmfLine);
@@ -1440,6 +1442,15 @@ namespace STK
       return (Xform *) ReadWindowXform(fp, macro, true);
     }
     
+    if (CheckKwd(keyword, KID_FrantaProduct))
+    {
+      return (Xform*) ReadFrantaProductXform(fp, macro);
+    }
+
+    if (CheckKwd(keyword, KID_Filter)) {
+      return (Xform*) ReadFilterXform(fp, macro);
+    }
+
     if (CheckKwd(keyword, KID_Stacking)) {
       return (Xform *) ReadStackingXform(fp, macro);
     }
@@ -1476,11 +1487,6 @@ namespace STK
       if (!strcmp(keyword, "FeatureMapping"))
       {
         return (Xform *) ReadFeatureMappingXform(fp, macro);
-      }
-      
-      if (!strcmp(keyword, "FrantaProduct"))
-      {
-        return static_cast<Xform*>(ReadFrantaProductXform(fp, macro));
       }
       
       if (!strcmp(keyword, "Matlab"))
@@ -2283,6 +2289,46 @@ namespace STK
     ret->mpMacro      = macro;
     return ret;
   }; //ReadFrantaProductXform(FILE *fp, Macro *macro)
+  
+
+  //***************************************************************************
+  //***************************************************************************
+  FilterXform*
+  ModelSet::
+  ReadFilterXform(FILE* fp, Macro* macro)
+  {
+    FilterXform*   ret;
+    size_t         in_size;
+    size_t         ASize;
+    size_t         BSize;
+    size_t         i;
+
+    in_size = GetInt(fp);
+    BSize = GetInt(fp);
+    ASize = GetInt(fp);
+
+    if ((BSize < 1) || (ASize < 1)) 
+    {
+      Error("number of B (%d) and A (%d) coefficient has to be at least 1. (%s:%d)", 
+	    BSize, ASize, mpCurrentMmfName, mCurrentMmfLine);
+    }
+    
+    // create new object
+    ret = new FilterXform(in_size, BSize, ASize);
+
+    // fill the object with data    
+    for (i=0; i < BSize; i++) 
+    {
+      ret->mBCoef[i] = GetFloat(fp);
+    }
+    for (i=0; i < ASize; i++) 
+    {
+      ret->mACoef[i] = GetFloat(fp);
+    }
+
+    ret->mpMacro      = macro;
+    return ret;
+  }; //ReadFilterXform(FILE *fp, Macro *macro)
   
   
   //***************************************************************************
@@ -3180,6 +3226,7 @@ namespace STK
       case XT_GMM_POSTERIORS:  WriteGmmPosteriorsXform (fp, binary, static_cast<GmmPosteriorsXform  *>(xform)); break;
       case XT_FEATURE_MAPPING: WriteFeatureMappingXform(fp, binary, static_cast<FeatureMappingXform *>(xform)); break;
       case XT_FRANTA_PRODUCT : WriteFrantaProductXform (fp, binary, static_cast<FrantaProductXform  *>(xform)); break;
+      case XT_FILTER    : WriteFilterXform   (fp, binary, static_cast<FilterXform *>(xform)); break;
       case XT_FUNC      : WriteFuncXform     (fp, binary, static_cast<FuncXform *>(xform)); break;
       case XT_BIAS      : WriteBiasXform     (fp, binary, static_cast<BiasXform *>(xform)); break;
       case XT_STACKING  : WriteStackingXform (fp, binary, static_cast<StackingXform *>(xform)); break;
@@ -3657,6 +3704,33 @@ namespace STK
   
     fputs("\n", fp);
   } //WriteFrantaProductXform(FILE *fp, bool binary, FrantaProductXform *xform)
+
+  
+  //*****************************************************************************
+  //*****************************************************************************  
+  void
+  ModelSet::
+  WriteFilterXform(FILE* fp, bool binary, FilterXform* xform)
+  {
+    size_t  i;
+    PutKwd(fp, binary, KID_Filter);
+    PutInt(fp, binary, xform->mOutSize);
+    PutInt(fp, binary, xform->mBSize);
+    PutInt(fp, binary, xform->mASize);
+    PutNLn(fp, binary);
+    // save raw data
+    for (i=0; i < xform->mBSize; i++) 
+    {
+      PutFlt(fp, binary, xform->mBCoef[i]);
+    }
+    PutNLn(fp, binary);
+    for (i=0; i < xform->mASize; i++) 
+    {
+      PutFlt(fp, binary, xform->mACoef[i]);
+    }
+    PutNLn(fp, binary);
+
+  } //WriteFilterXform(FILE *fp, bool binary, FilterXform *xform)
 
   
   //###########################################################################################################

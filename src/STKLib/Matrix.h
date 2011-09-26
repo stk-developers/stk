@@ -328,8 +328,9 @@ namespace STK
       operator << <> (std::ostream & out, ThisType & m);
 
             
-      void PrintOut(char *file);
-      void ReadIn(char *file);
+      void PrintOutStride(const char *file);
+      void PrintOut(const char *file);
+      void ReadIn(const char *file);
 
       /**
        * @brief Returns a matrix sub-range
