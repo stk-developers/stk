@@ -3552,7 +3552,10 @@ extern std::map<std::string,FLOAT> state_posteriors;
 
 #  if !DOUBLEPRECISION
     // this is a stric optimization
-    f4vector        l = {{0.0F}}; 
+    
+    // aligning accumulator 'l' to 32-byte instead of 16-byte boundary is a
+    // workaround to be possible to run the lib with MSVC compiled binaries
+    f4vector        l __attribute__ ((aligned (32))) = {{0.0F}}; 
     const f4vector* o = reinterpret_cast<const f4vector*>(pObs); 
     const f4vector* m = reinterpret_cast<const f4vector*>(pMean);
     const f4vector* v = reinterpret_cast<const f4vector*>(pVar);
@@ -3575,7 +3578,10 @@ extern std::map<std::string,FLOAT> state_posteriors;
     m_like = l.f[0] + l.f[1] + l.f[2] + l.f[3];
 #  else
     // this is a stric optimization
-    d2vector        l = {{0.0F}}; 
+
+    // aligning accumulator 'l' to 32-byte instead of 16-byte boundary is a
+    // workaround to be possible to run the lib with MSVC compiled binaries
+    d2vector        l __attribute__ ((aligned (32))) = {{0.0F}}; 
     const d2vector* o = reinterpret_cast<const d2vector*>(pObs); 
     const d2vector* m = reinterpret_cast<const d2vector*>(pMean);
     const d2vector* v = reinterpret_cast<const d2vector*>(pVar);
