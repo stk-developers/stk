@@ -33,6 +33,10 @@
 #  define _GNU_SOURCE
 #endif
 
+#if !defined _XOPEN_SOURCE || _XOPEN_SOURCE < 600
+#  define _XOPEN_SOURCE 600
+#endif
+
 #include <limits.h>
 #include <string>
 #include <sstream>

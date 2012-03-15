@@ -1823,11 +1823,7 @@ cat >>confdefs.h <<\_ACEOF
 #define _REENTRANT
 _ACEOF
 
-
-cat >>confdefs.h <<\_ACEOF
-#define _XOPEN_SOURCE 600
-_ACEOF
-
+#AC_DEFINE([_XOPEN_SOURCE], [600],     [select additionaly reentrant object])
 
 cat >>confdefs.h <<\_ACEOF
 #define _LARGE_FILE_SOURCE

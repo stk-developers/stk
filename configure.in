@@ -18,7 +18,7 @@ AC_PREFIX_DEFAULT([/usr/local/share/STK])
 # We're building GNU source, so let's define it
 #AC_DEFINE([_GNU_SOURCE], [],          [declare the GNU extensions])
 AC_DEFINE([_REENTRANT], [],           [select additionaly reentrant object])
-AC_DEFINE([_XOPEN_SOURCE], [600],     [select additionaly reentrant object])
+#AC_DEFINE([_XOPEN_SOURCE], [600],     [select additionaly reentrant object])
 AC_DEFINE([_LARGE_FILE_SOURCE], [],   [select additionaly reentrant object])
 AC_DEFINE([_FILE_OFFSET_BITS], [64],   [select additionaly reentrant object])
 #k-DDOUBLEPRECISION=0 -D_REENTRANT -DUSE_BLAS -D_XOPEN_SOURCE=600 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
