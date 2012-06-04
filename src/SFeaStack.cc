@@ -255,6 +255,26 @@ int main(int argc, char *argv[])
 
     // read feature matrices
     for (size_t i_file=0; i_file< (n_file_names-1); ++i_file) {
+
+
+      const char *pFileName = file_names[i_file].c_str();
+      char *chptr;
+ 
+      // Check frame range definition ( physical_file.fea[s,e] )
+      chptr = strrchr(pFileName, '[');
+      // End it on end fyz name for reading of correct targetkind
+      if ( chptr != NULL ) 
+	*chptr = '\0';
+      FILE *pFile  = fopen(pFileName, "rb");
+      if (ReadHTKHeader(pFile, &header1, swap_features)) 
+        Error("Invalid HTK header in feature file: '%s'", file_names[i_file].c_str());
+      targetKind = header1.mSampleKind;
+      fclose(pFile);
+
+      // Extend it back
+      if ( chptr != NULL ) 
+	*chptr = '[';
+
       ReadHTKFeatures(file_names[i_file].c_str(), swap_features,
                       startFrmExt, endFrmExt, targetKind,
                       derivOrder, derivWinLengths, &header1,
@@ -297,7 +317,8 @@ int main(int argc, char *argv[])
       Error("Cannot write to output feature file: '%s'", r_output_file.c_str());
     }
     
-    targetKind = header1.mSampleKind;
+    //targetKind = header1.mSampleKind;
+    targetKind = 1024 + 9; // Compresed USER
     if (WriteHTKFeatures(
           ofp,
 	  header1.mSamplePeriod,
