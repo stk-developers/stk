@@ -348,7 +348,8 @@ static inline float exp(float x)
 	const ExpVar<>& expVar = C<>::expVar;
 
 #if 1
-	__m128 x1 = _mm_set_ss(x);
+	float x_in __attribute__ ((aligned (32))) = x;
+	__m128 x1 = _mm_set_ss(x_in);
 
 	int limit = _mm_cvtss_si32(x1) & 0x7fffffff;
 	if (limit > ExpVar<>::f88) {
