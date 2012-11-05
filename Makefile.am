@@ -1,3 +1,5 @@
+ACLOCAL_AMFLAGS = -I m4
+
 EXTRA_DIST = doc m4 utils reconf README ToDo.txt 
 
 SUBDIRS = lib src 
