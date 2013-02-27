@@ -211,11 +211,11 @@ namespace STK
 
       BasicStkIos() 
       : mBuf() 
-      { init(&mBuf) ;};
+      { this->init(&mBuf) ;};
 
       BasicStkIos(const char* fName, std::ios::openmode m, const char* pFilter) 
       : mBuf(fName, m, pFilter) 
-      { init(&mBuf) ; }
+      { this->init(&mBuf) ; }
 
       StkBufType*
       rdbuf() 
