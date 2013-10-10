@@ -257,7 +257,7 @@ int main(int argc, char *argv[])
     for (size_t i_file=0; i_file< (n_file_names-1); ++i_file) {
 
 
-      const char *pFileName = file_names[i_file].c_str();
+      char *pFileName = const_cast<char*>(file_names[i_file].c_str());
       char *chptr;
  
       // Check frame range definition ( physical_file.fea[s,e] )
