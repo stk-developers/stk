@@ -536,8 +536,7 @@ namespace STK
   ModelSet::
   ParseMmf(const char * pFileName, char * expectHMM, bool readOnly)
   {
-    IStkStream    input_stream;
-    FILE*         fp;
+    FILE*         fp = NULL;
     char*         keyword;
     Macro*        macro;
     MacroData*    data = NULL;
@@ -551,12 +550,11 @@ namespace STK
       filter = (NULL != gpMmfFilter) ? gpMmfFilter : "";
       
       // try to open the stream
-      input_stream.open(pFileName, std::ios::in|std::ios::binary, gpMmfFilter);
-      if (!input_stream.good())
+      fp = fopen(pFileName, "rb");
+      if (!fp)
       {
         Error("Cannot open input MMF %s", pFileName);
       }
-      fp = input_stream.file();    
       
       for (;;) 
       {
@@ -566,7 +564,9 @@ namespace STK
           {
             Error("Cannot read input MMF", pFileName);
           }
-          input_stream.close();
+
+          fclose(fp);
+          fp = NULL;
           return;
         }
     
@@ -728,18 +728,20 @@ namespace STK
         }
       }
       
-      if (input_stream.is_open())
+      if (fp)
       {
-        input_stream.close();
+        fclose(fp);
+        fp = NULL;
       }
       
     } // try
     
     catch (...)
     {
-      if (input_stream.is_open())
+      if (fp)
       {
-        input_stream.close();
+        fclose(fp);
+        fp = NULL;
       }
 
       // if cluster weights update
