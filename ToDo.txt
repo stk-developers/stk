@@ -87,8 +87,6 @@ Ideas for MPE:
   E * den -> E * num+den
   minocc based on num+den for MPE or num for MMI
 
-
-
 ToDo(extra):
 - Expansion and optimization - add scaling params
 - Descale scores in lattices after their generation
@@ -97,5 +95,3 @@ ToDo(extra):
 - use DEFINE on template network... 
 - separate decoder from network a bit more...
 - fix FeatureRepository
-                                           
-

@@ -54,9 +54,9 @@ INCLUDES    = $(ATLASINCLUDEDIR) -I. -I$(top_builddir) -I$(top_srcdir) \
 # These are the programs that we want to build in this directory
 # bin_PROGRAMS = SExpand SERest SVite $(SNETF) SFeaCat SLRatio SResults SRover 
 if USE_SNET
-bin_PROGRAMS = SExpand SERest SVite SFeaCat SFeaStack SLRatio SResults SRover STree SNet SFeaStat STcpAccDump
+bin_PROGRAMS = SExpand SERest SVite SFeaCat SFeaStack SLRatio SResults SRover STree SNet SFeaStat STcpAccDump SWE SWE_sg SWE_ubmstats SFDTW
 else
-bin_PROGRAMS = SExpand SERest SVite SFeaCat SFeaStack SLRatio SResults SRover STree SFeaStat STcpAccDump
+bin_PROGRAMS = SExpand SERest SVite SFeaCat SFeaStack SLRatio SResults SRover STree SFeaStat STcpAccDump SWE SWE_sg SWE_ubmstats SFDTW
 endif
 
 
@@ -68,6 +68,7 @@ SExpand_SOURCES   = SExpand.cc
 SFeaCat_SOURCES   = SFeaCat.cc
 SFeaStack_SOURCES   = SFeaStack.cc
 SLRatio_SOURCES   = SLRatio.cc
+SFDTW_SOURCES   = SFDTW.cc
 SResults_SOURCES  = SResults.cc
 SRover_SOURCES    = SRover.cc
 STree_SOURCES     = STree.cc
@@ -75,7 +76,9 @@ STree_LDADD       = $(COMMONLIBS) $(BOOST_PROGRAM_OPTIONS_LIB)
 SFeaStat_SOURCES  = SFeaStat.cc
 SFeaStat_LDADD    = $(COMMONLIBS) $(BOOST_PROGRAM_OPTIONS_LIB)
 # SWEChCoFast_SOURCES = SWEChCoFast.cc
-# SWE_SOURCES       = SWE.cc
+SWE_SOURCES       = SWE.cc
+SWE_sg_SOURCES    = SWE_sg.cc
+SWE_ubmstats_SOURCES = SWE_ubmstats.cc
 
 #SERest_DEPENDENCIES    = $(RECURSIVE_TARGETS) 
 #SVite_DEPENDENCIES     = $(RECURSIVE_TARGETS)

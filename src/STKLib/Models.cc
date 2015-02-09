@@ -1143,7 +1143,7 @@ namespace STK
     }
   
     if (!mpTransition->mpMacro) 
-      mpTransition->UpdateFromAccums(pModelSet);
+      mpTransition->UpdateFromAccums(pModelSet, this);
   } // UpdateFromAccums(const ModelSet * pModelSet)
 
   //*****************************************************************************
@@ -1989,29 +1989,36 @@ namespace STK
   //**************************************************************************  
   void
   Transition::
-  UpdateFromAccums(const ModelSet * pModelSet)
+  UpdateFromAccums(const ModelSet * pModelSet, const Hmm * pHmm)
   {
     int       i;
     int       j;
     int       nstates = mNStates;
     FLOAT *   vec = mpMatrixO;
     FLOAT *   acc = mpMatrixO + 1 * SQR(mNStates);
-  
-    if (pModelSet->mUpdateMask & UM_TRANSITION) 
-    {
-      for (i=0; i < nstates; i++) 
-      {
-        FLOAT nrm = LOG_0;
-        for (j=0; j < nstates; j++) 
-        {
+    
+    if (pModelSet->mUpdateMask & UM_TRANSITION) {
+      FLOAT nrm = LOG_0;
+      for (i=0; i < nstates; i++) {
+        for (j=0; j < nstates; j++) {
+          LOG_INC(nrm, acc[i * nstates + j]);
+        }
+      }
+      if(nrm == LOG_0) {
+        Warning("No occupation of '%s', transition is not updated",
+                mpMacro ? mpMacro->mpName : (std::string(pHmm->mpMacro->mpName)+".TransP").c_str());
+          return;
+      }
+      for (i=0; i < nstates; i++) {
+        nrm = LOG_0;
+        for (j=0; j < nstates; j++) {
           LOG_INC(nrm, acc[i * nstates + j]);
         }
         
-        if (nrm == LOG_0) 
+        if (nrm == LOG_0) {
           nrm = 0;
-        
-        for (j=0; j < nstates; j++) 
-        {
+        }
+        for (j=0; j < nstates; j++) {
           vec[i * nstates + j] = acc[i * nstates + j] - nrm; // it is in log
         }
       }
@@ -3760,7 +3767,7 @@ static int cnt = 0;
       } 
       else 
       {
-        ((Transition *) macro->mpData)->UpdateFromAccums(this);
+        ((Transition *) macro->mpData)->UpdateFromAccums(this, NULL);
       }
     }               
       

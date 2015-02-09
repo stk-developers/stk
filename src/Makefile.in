@@ -39,13 +39,17 @@ POST_UNINSTALL = :
 @USE_SNET_FALSE@	SFeaStack$(EXEEXT) SLRatio$(EXEEXT) \
 @USE_SNET_FALSE@	SResults$(EXEEXT) SRover$(EXEEXT) \
 @USE_SNET_FALSE@	STree$(EXEEXT) SFeaStat$(EXEEXT) \
-@USE_SNET_FALSE@	STcpAccDump$(EXEEXT)
+@USE_SNET_FALSE@	STcpAccDump$(EXEEXT) SWE$(EXEEXT) \
+@USE_SNET_FALSE@	SWE_sg$(EXEEXT) SWE_ubmstats$(EXEEXT) \
+@USE_SNET_FALSE@	SFDTW$(EXEEXT)
 @USE_SNET_TRUE@bin_PROGRAMS = SExpand$(EXEEXT) SERest$(EXEEXT) \
 @USE_SNET_TRUE@	SVite$(EXEEXT) SFeaCat$(EXEEXT) \
 @USE_SNET_TRUE@	SFeaStack$(EXEEXT) SLRatio$(EXEEXT) \
 @USE_SNET_TRUE@	SResults$(EXEEXT) SRover$(EXEEXT) \
 @USE_SNET_TRUE@	STree$(EXEEXT) SNet$(EXEEXT) SFeaStat$(EXEEXT) \
-@USE_SNET_TRUE@	STcpAccDump$(EXEEXT)
+@USE_SNET_TRUE@	STcpAccDump$(EXEEXT) SWE$(EXEEXT) \
+@USE_SNET_TRUE@	SWE_sg$(EXEEXT) SWE_ubmstats$(EXEEXT) \
+@USE_SNET_TRUE@	SFDTW$(EXEEXT)
 subdir = src
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -71,6 +75,10 @@ am_SExpand_OBJECTS = SExpand.$(OBJEXT)
 SExpand_OBJECTS = $(am_SExpand_OBJECTS)
 SExpand_LDADD = $(LDADD)
 SExpand_DEPENDENCIES = $(am__DEPENDENCIES_2)
+am_SFDTW_OBJECTS = SFDTW.$(OBJEXT)
+SFDTW_OBJECTS = $(am_SFDTW_OBJECTS)
+SFDTW_LDADD = $(LDADD)
+SFDTW_DEPENDENCIES = $(am__DEPENDENCIES_2)
 am_SFeaCat_OBJECTS = SFeaCat.$(OBJEXT)
 SFeaCat_OBJECTS = $(am_SFeaCat_OBJECTS)
 SFeaCat_LDADD = $(LDADD)
@@ -110,6 +118,18 @@ am_SVite_OBJECTS = SVite.$(OBJEXT)
 SVite_OBJECTS = $(am_SVite_OBJECTS)
 SVite_LDADD = $(LDADD)
 SVite_DEPENDENCIES = $(am__DEPENDENCIES_2)
+am_SWE_OBJECTS = SWE.$(OBJEXT)
+SWE_OBJECTS = $(am_SWE_OBJECTS)
+SWE_LDADD = $(LDADD)
+SWE_DEPENDENCIES = $(am__DEPENDENCIES_2)
+am_SWE_sg_OBJECTS = SWE_sg.$(OBJEXT)
+SWE_sg_OBJECTS = $(am_SWE_sg_OBJECTS)
+SWE_sg_LDADD = $(LDADD)
+SWE_sg_DEPENDENCIES = $(am__DEPENDENCIES_2)
+am_SWE_ubmstats_OBJECTS = SWE_ubmstats.$(OBJEXT)
+SWE_ubmstats_OBJECTS = $(am_SWE_ubmstats_OBJECTS)
+SWE_ubmstats_LDADD = $(LDADD)
+SWE_ubmstats_DEPENDENCIES = $(am__DEPENDENCIES_2)
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
 am__depfiles_maybe = depfiles
@@ -118,14 +138,18 @@ CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
 CXXLD = $(CXX)
 CXXLINK = $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) \
 	-o $@
-SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFeaCat_SOURCES) \
-	$(SFeaStack_SOURCES) $(SFeaStat_SOURCES) $(SLRatio_SOURCES) \
-	$(SNet_SOURCES) $(SResults_SOURCES) $(SRover_SOURCES) \
-	$(STcpAccDump_SOURCES) $(STree_SOURCES) $(SVite_SOURCES)
-DIST_SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFeaCat_SOURCES) \
-	$(SFeaStack_SOURCES) $(SFeaStat_SOURCES) $(SLRatio_SOURCES) \
-	$(am__SNet_SOURCES_DIST) $(SResults_SOURCES) $(SRover_SOURCES) \
-	$(STcpAccDump_SOURCES) $(STree_SOURCES) $(SVite_SOURCES)
+SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFDTW_SOURCES) \
+	$(SFeaCat_SOURCES) $(SFeaStack_SOURCES) $(SFeaStat_SOURCES) \
+	$(SLRatio_SOURCES) $(SNet_SOURCES) $(SResults_SOURCES) \
+	$(SRover_SOURCES) $(STcpAccDump_SOURCES) $(STree_SOURCES) \
+	$(SVite_SOURCES) $(SWE_SOURCES) $(SWE_sg_SOURCES) \
+	$(SWE_ubmstats_SOURCES)
+DIST_SOURCES = $(SERest_SOURCES) $(SExpand_SOURCES) $(SFDTW_SOURCES) \
+	$(SFeaCat_SOURCES) $(SFeaStack_SOURCES) $(SFeaStat_SOURCES) \
+	$(SLRatio_SOURCES) $(am__SNet_SOURCES_DIST) \
+	$(SResults_SOURCES) $(SRover_SOURCES) $(STcpAccDump_SOURCES) \
+	$(STree_SOURCES) $(SVite_SOURCES) $(SWE_SOURCES) \
+	$(SWE_sg_SOURCES) $(SWE_ubmstats_SOURCES)
 RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
 	html-recursive info-recursive install-data-recursive \
 	install-exec-recursive install-info-recursive \
@@ -273,6 +297,7 @@ SExpand_SOURCES = SExpand.cc
 SFeaCat_SOURCES = SFeaCat.cc
 SFeaStack_SOURCES = SFeaStack.cc
 SLRatio_SOURCES = SLRatio.cc
+SFDTW_SOURCES = SFDTW.cc
 SResults_SOURCES = SResults.cc
 SRover_SOURCES = SRover.cc
 STree_SOURCES = STree.cc
@@ -280,7 +305,9 @@ STree_LDADD = $(COMMONLIBS) $(BOOST_PROGRAM_OPTIONS_LIB)
 SFeaStat_SOURCES = SFeaStat.cc
 SFeaStat_LDADD = $(COMMONLIBS) $(BOOST_PROGRAM_OPTIONS_LIB)
 # SWEChCoFast_SOURCES = SWEChCoFast.cc
-# SWE_SOURCES       = SWE.cc
+SWE_SOURCES = SWE.cc
+SWE_sg_SOURCES = SWE_sg.cc
+SWE_ubmstats_SOURCES = SWE_ubmstats.cc
 
 #SERest_DEPENDENCIES    = $(RECURSIVE_TARGETS) 
 #SVite_DEPENDENCIES     = $(RECURSIVE_TARGETS)
@@ -356,6 +383,9 @@ SERest$(EXEEXT): $(SERest_OBJECTS) $(SERest_DEPENDENCIES)
 SExpand$(EXEEXT): $(SExpand_OBJECTS) $(SExpand_DEPENDENCIES) 
 	@rm -f SExpand$(EXEEXT)
 	$(CXXLINK) $(SExpand_LDFLAGS) $(SExpand_OBJECTS) $(SExpand_LDADD) $(LIBS)
+SFDTW$(EXEEXT): $(SFDTW_OBJECTS) $(SFDTW_DEPENDENCIES) 
+	@rm -f SFDTW$(EXEEXT)
+	$(CXXLINK) $(SFDTW_LDFLAGS) $(SFDTW_OBJECTS) $(SFDTW_LDADD) $(LIBS)
 SFeaCat$(EXEEXT): $(SFeaCat_OBJECTS) $(SFeaCat_DEPENDENCIES) 
 	@rm -f SFeaCat$(EXEEXT)
 	$(CXXLINK) $(SFeaCat_LDFLAGS) $(SFeaCat_OBJECTS) $(SFeaCat_LDADD) $(LIBS)
@@ -386,6 +416,15 @@ STree$(EXEEXT): $(STree_OBJECTS) $(STree_DEPENDENCIES)
 SVite$(EXEEXT): $(SVite_OBJECTS) $(SVite_DEPENDENCIES) 
 	@rm -f SVite$(EXEEXT)
 	$(CXXLINK) $(SVite_LDFLAGS) $(SVite_OBJECTS) $(SVite_LDADD) $(LIBS)
+SWE$(EXEEXT): $(SWE_OBJECTS) $(SWE_DEPENDENCIES) 
+	@rm -f SWE$(EXEEXT)
+	$(CXXLINK) $(SWE_LDFLAGS) $(SWE_OBJECTS) $(SWE_LDADD) $(LIBS)
+SWE_sg$(EXEEXT): $(SWE_sg_OBJECTS) $(SWE_sg_DEPENDENCIES) 
+	@rm -f SWE_sg$(EXEEXT)
+	$(CXXLINK) $(SWE_sg_LDFLAGS) $(SWE_sg_OBJECTS) $(SWE_sg_LDADD) $(LIBS)
+SWE_ubmstats$(EXEEXT): $(SWE_ubmstats_OBJECTS) $(SWE_ubmstats_DEPENDENCIES) 
+	@rm -f SWE_ubmstats$(EXEEXT)
+	$(CXXLINK) $(SWE_ubmstats_LDFLAGS) $(SWE_ubmstats_OBJECTS) $(SWE_ubmstats_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -395,6 +434,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SERest.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SExpand.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SFDTW.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SFeaCat.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SFeaStack.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SFeaStat.Po@am__quote@
@@ -405,6 +445,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STcpAccDump.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/STree.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SVite.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SWE.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SWE_sg.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SWE_ubmstats.Po@am__quote@
 
 .cc.o:
 @am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \

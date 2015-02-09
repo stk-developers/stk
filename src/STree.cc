@@ -1,3 +1,24 @@
+
+/***************************************************************************
+ *   copyright            : (C) 2004 by Lukas Burget,UPGM,FIT,VUT,Brno     *
+ *   email                : burget@fit.vutbr.cz                            *
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+
+#define SVN_DATE       "$Date: 2009-03-27 09:52:26 +0100 (Fri, 27 Mar 2009) $"
+#define SVN_AUTHOR     "$Author: glembek $"
+#define SVN_REVISION   "$Revision: 276 $"
+#define SVN_ID         "$Id: SERest.cc 276 2009-03-27 08:52:26Z glembek $"
+
+#define MODULE_VERSION "2.0.7 "__TIME__" "__DATE__" "SVN_ID  
+
+
 #include <STKLib/common.h>
 #include <STKLib/stkstream.h>
 #include <STKLib/BDTree.h>
@@ -24,7 +45,10 @@ int main(int argc, char* argv[]) {
 
 #include <boost/program_options.hpp>
 
-// #define HAVE_HDF5
+#define HAVE_HDF5
+#ifdef HAVE_HDF5
+# include <hdf5.h>
+#endif
 #ifdef HAVE_HDF5
 #include <hdf5.h>
 #endif
@@ -79,6 +103,7 @@ int main(int argc, char* argv[])
     string                  config_file;
     string                  action;
     string                  predictor_vocab_fname;
+    bool                    predictor_vocab_extended = false;
     VocabularyTable         predictor_vocabulary;
     string                  target_vocab_fname;
     VocabularyTable*        target_vocabulary = NULL;
@@ -131,6 +156,7 @@ int main(int argc, char* argv[])
       ("outvectors",    po::value<string>(),                                  "Cluster vector output file")
       ("outvectorsh5",  po::value<string>(),                                  "Cluster vector output hdf5 file")
       ("predvoc",       po::value<string>(&predictor_vocab_fname),            "Predictor vocabulary file")
+      ("predvocext",    po::value<bool>(&predictor_vocab_extended),           "Whether to use extended predictor vocab file")
       ("script,S",      po::value<string>(),                                  "Source data script")
       ("smoothr",       po::value<FLOAT >(&new_tree_traits.mSmoothR),         "Smooth r factor")
       ("srcmodel",      po::value<string>(&source_model_name),                "Source model file name")
@@ -223,7 +249,8 @@ int main(int argc, char* argv[])
 
       // load the predictor vocabulary
       if (var_map.count("predvoc")) {
-        predictor_vocabulary.LoadFromFile(predictor_vocab_fname);
+        predictor_vocabulary.LoadFromFile(predictor_vocab_fname,
+            predictor_vocab_extended);
         // target vocab will be the same by default
         target_vocabulary = &predictor_vocabulary;
       }
@@ -234,7 +261,8 @@ int main(int argc, char* argv[])
       // if target vocabulary specified, then read it
       if (var_map.count("tgtvoc")) {
         target_vocabulary = new VocabularyTable();
-        target_vocabulary->LoadFromFile(target_vocab_fname);
+        target_vocabulary->LoadFromFile(target_vocab_fname,
+            predictor_vocab_extended);
       }
 
       NGramSubsets heldout_collection;
@@ -416,7 +444,8 @@ int main(int argc, char* argv[])
 
       // load the predictor vocabulary
       if (var_map.count("predvoc")) {
-        predictor_vocabulary.LoadFromFile(predictor_vocab_fname);
+        predictor_vocabulary.LoadFromFile(predictor_vocab_fname,
+            predictor_vocab_extended);
         // target vocab will be the same by default
         target_vocabulary = &predictor_vocabulary;
       }
@@ -427,7 +456,8 @@ int main(int argc, char* argv[])
       // if target vocabulary specified, then read it
       if (var_map.count("tgtvoc")) {
         target_vocabulary = new VocabularyTable();
-        target_vocabulary->LoadFromFile(target_vocab_fname);
+        target_vocabulary->LoadFromFile(target_vocab_fname,
+            predictor_vocab_extended);
       }
 
       // prepare data pool
@@ -487,6 +517,9 @@ int main(int argc, char* argv[])
         list_stream >> std::ws;
 
         FileListElem new_record(line_buf);
+
+        std::cout << "Scoring " << new_record.Physical() << " as " 
+          << new_record.Logical() << std::endl;
         
         if (var_map.count("inputmlf")) {
           // we'll be adding from stream if MLF specified
@@ -587,7 +620,7 @@ int main(int argc, char* argv[])
         // this vector will be filled with stacked leaf dists
         BasicVector<FLOAT> super_vector;
         // stack the leaves to the supervector
-        new_tree.FillLeafSupervector(super_vector, true, var_map.count("includecounts"));
+        new_tree.FillLeafSupervector(super_vector, new_tree_traits.mSmoothR > 0.0, var_map.count("includecounts"));
         // write to stream
         out_vector_stream << super_vector << std::endl;
         out_vector_stream.close();
@@ -627,7 +660,8 @@ int main(int argc, char* argv[])
 
       // load the predictor vocabulary
       if (var_map.count("predvoc")) {
-        predictor_vocabulary.LoadFromFile(predictor_vocab_fname);
+        predictor_vocabulary.LoadFromFile(predictor_vocab_fname,
+            predictor_vocab_extended);
         // target vocab will be the same by default
         target_vocabulary = &predictor_vocabulary;
       }
@@ -638,7 +672,8 @@ int main(int argc, char* argv[])
       // if target vocabulary specified, then read it
       if (var_map.count("tgtvoc")) {
         target_vocabulary = new VocabularyTable();
-        target_vocabulary->LoadFromFile(target_vocab_fname);
+        target_vocabulary->LoadFromFile(target_vocab_fname,
+            predictor_vocab_extended);
       }
 
       // open stream
@@ -924,7 +959,8 @@ int main(int argc, char* argv[])
 
       // load the predictor vocabulary
       if (var_map.count("predvoc")) {
-        predictor_vocabulary.LoadFromFile(predictor_vocab_fname);
+        predictor_vocabulary.LoadFromFile(predictor_vocab_fname,
+            predictor_vocab_extended);
         // target vocab will be the same by default
         target_vocabulary = &predictor_vocabulary;
       }
@@ -939,7 +975,8 @@ int main(int argc, char* argv[])
       // if target vocabulary specified, then read it
       if (var_map.count("tgtvoc")) {
         target_vocabulary = new VocabularyTable();
-        target_vocabulary->LoadFromFile(target_vocab_fname);
+        target_vocabulary->LoadFromFile(target_vocab_fname,
+            predictor_vocab_extended);
       }
 
 
@@ -979,7 +1016,7 @@ int main(int argc, char* argv[])
           dynamic_cast<const VecDistribution*>(leaves.front()->cpDistribution());
 
         if (NULL == p_aux_distr) {
-          throw std::runtime_error("Cannot collect couns for non-vector distribution implementations");
+          throw std::runtime_error("Cannot collect counts for non-vector distribution implementations");
         }
 
         dim_size    = p_aux_distr->Size();
@@ -1017,25 +1054,6 @@ int main(int argc, char* argv[])
          */
         h5_file = H5Fcreate(output_file.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
 
-        /*
-         * Describe the size of the array and create the data space for fixed
-         * size dataset. 
-         */
-        h5_dataspace = H5Screate_simple(1, &vec_size, NULL); 
-
-        /* 
-         * Define datatype for the data in the file.
-         * We will store little endian INT numbers.
-         */
-        h5_datatype = H5Tcopy(H5T_NATIVE_FLOAT);
-        h5_status  = H5Tset_order(h5_datatype, H5T_ORDER_LE);
-
-        /*
-         * Define property list for dataset---we want to compress the files
-         */
-        h5_plist = H5Pcreate(H5P_DATASET_CREATE);
-        H5Pset_chunk(h5_plist, 1, &dim_size);
-        H5Pset_deflate(h5_plist, 6);
 
         // browse the list
         string line_buf;
@@ -1061,7 +1079,27 @@ int main(int argc, char* argv[])
           // stack the leaves to the supervector
           new_tree.FillLeafSupervector(super_vector, false, false);
 
-           /*
+          /*
+           * Describe the size of the array and create the data space for fixed
+           * size dataset. 
+           */
+          h5_dataspace = H5Screate_simple(1, &vec_size, NULL); 
+
+          /* 
+           * Define datatype for the data in the file.
+           * We will store little endian INT numbers.
+           */
+          h5_datatype = H5Tcopy(H5T_NATIVE_FLOAT);
+          h5_status  = H5Tset_order(h5_datatype, H5T_ORDER_LE);
+
+          /*
+           * Define property list for dataset---we want to compress the files
+           */
+          h5_plist = H5Pcreate(H5P_DATASET_CREATE);
+          H5Pset_chunk(h5_plist, 1, &dim_size);
+          H5Pset_deflate(h5_plist, 6);
+
+          /*
            * Create a new dataset within the file using defined dataspace and
            * datatype and default dataset creation properties.
            */
@@ -1089,14 +1127,15 @@ int main(int argc, char* argv[])
           /*
            * Close/release resources.
            */
+          H5Sclose(h5_dataspace);
+          H5Tclose(h5_datatype);
+          H5Pclose(h5_plist);
           H5Dclose(h5_dataset);
         }
 
         /*
          * Close/release resources.
          */
-        H5Sclose(h5_dataspace);
-        H5Tclose(h5_datatype);
         H5Fclose(h5_file);
 
         /* Restore previous error handler */
@@ -1304,7 +1343,6 @@ AdaptModel(const BDTree& rOrig, const NGramSubset& rNGrams,
   }
 }
 
-
 #ifdef HAVE_HDF5
 hid_t 
 H5RCreateDataset(hid_t h5_location, const char* pFileName,
@@ -1350,6 +1388,8 @@ H5RCreateDataset(hid_t h5_location, const char* pFileName,
 
     h5_dataset = H5RCreateDataset(h5_location, p_last_pos+1, type_id,
         space_id, dcpl_id);
+    
+    H5Gclose(h5_location);
   }
 
   return h5_dataset;
@@ -1367,7 +1407,7 @@ H5CreateDataset(hid_t h5_file, const std::string& rFileName,
 
   return H5RCreateDataset(h5_file, p_file_name, type_id, space_id, dcpl_id);
 }
-#endif //HAVE_HDF5
+#endif
 
 #endif //boost 
 

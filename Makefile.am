@@ -5,7 +5,7 @@ SUBDIRS = lib src
 dist-hook:
 	rm -rf `find $(distdir)/doc -name .svn`
 
-SLRatio SRover SResults SFeaCat SExpand SERest SVite STree SFeaStack:
+SLRatio SRover SResults SFeaCat SExpand SERest SVite STree SFeaStack SFDTW:
 	cd src; cd STKLib; make; cd ..;  make $@; cd .. 
 
 SNet:

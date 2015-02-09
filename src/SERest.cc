@@ -1,4 +1,3 @@
-
 /***************************************************************************
  *   copyright            : (C) 2004 by Lukas Burget,UPGM,FIT,VUT,Brno     *
  *   email                : burget@fit.vutbr.cz                            *
@@ -1113,10 +1112,11 @@ int main(int argc, char* argv[])
         {
           totFrames  += n_frames;
           totLogLike += P;
-          if (trace_flag & 1) 
+          if (trace_flag & 1) {
             TraceLog("[%d frames] %f (Act: %f/%f)", n_frames, P/n_frames,
                      (float) decoder.mNActiveModelsForUtterance / n_frames, 
                      (float) decoder.mNActiveTokensForUtterance / n_frames);
+          }
         }
         
         feature_matrix.Destroy();
@@ -1142,12 +1142,16 @@ int main(int argc, char* argv[])
     
     if (trace_flag & 1) 
     {
-      TraceLog("Total number of frames: %d\nTotal log likelihood: %e",
-                totFrames, totLogLike);
-      TraceLog("Average log likelihood per frame: %e", totLogLike/totFrames);
-
-      if (0 == parallel_mode && UT_TwoAccumSetEBW == update_type)
+      if (UT_EBW != update_type) {
+        TraceLog("Total number of frames: %d\nTotal log likelihood: %e", totFrames, totLogLike);
+        TraceLog("Average log likelihood per frame: %e",                 totLogLike/totFrames);
+      } else {
+        TraceLog("Total number of frames: %d\nTotal objective: %e",      totFrames, totLogLike);
+        TraceLog("Average objective per frame: %e",                      totLogLike/totFrames);
+      }
+      if (0 == parallel_mode && UT_TwoAccumSetEBW == update_type) {
         TraceLog("Total log posterior: %e", totLogPosterior);
+      }
     }
     
     if (stat_file)

@@ -1148,7 +1148,7 @@ namespace STK
      * @param rModelSet ModelSet object which holds the accumulator configuration
      */
     void
-    UpdateFromAccums(const ModelSet * pModelSet);
+    UpdateFromAccums(const ModelSet * pModelSet, const Hmm * pHmm);
     
     /**
      * 

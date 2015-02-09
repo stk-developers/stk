@@ -151,8 +151,8 @@ namespace STK
 	  if(pOut[j*nCoeffs+i] > xmax) xmax = pOut[j*nCoeffs+i];
 	  if(pOut[j*nCoeffs+i] < xmin) xmin = pOut[j*nCoeffs+i];
 	}
-	pScale[i] = (2*32767) / (xmax - xmin);
-        pBias[i]  = pScale[i] * (xmax + xmin) / 2;
+	pScale[i] = xmax > xmin ? (2*32767) / (xmax - xmin) : 1;
+        pBias[i]  = xmax > xmin ? pScale[i] * (xmax + xmin) / 2 : xmax;
 	
 	
       }
