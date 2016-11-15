@@ -209,11 +209,27 @@ namespace STK
       swap2(mHeader.mSampleSize);
       swap2(mHeader.mSampleKind);
     }
-  
-    if (mHeader.mSamplePeriod < 0 
-    ||  mHeader.mSamplePeriod > 100000 
-    ||  mHeader.mNSamples     < 0 
-    ||  mHeader.mSampleSize   < 0) 
+
+    // Extra BSAPI header to be able to read long feature vectors
+    mHeaderExt.mSampSize = -1;
+    if(mHeader.mSampleSize == -1)
+    {
+      if(!fread(&mHeaderExt.mHeaderSize, sizeof(INT_32), 1, fp)) return -1;
+      if(!fread(&mHeaderExt.mVersion, sizeof(INT_32), 1, fp)) return -1;
+      if(!fread(&mHeaderExt.mSampSize, sizeof(INT_32), 1, fp)) return -1;
+
+      if (mSwapFeatures)
+      {
+        swap4(mHeaderExt.mHeaderSize);
+        swap4(mHeaderExt.mVersion);
+        swap4(mHeaderExt.mSampSize);
+      }
+    }
+
+    if (mHeader.mSamplePeriod < 0
+    ||  mHeader.mSamplePeriod > 100000
+    ||  mHeader.mNSamples     < 0
+    ||  (mHeader.mSampleSize   < 0 && mHeaderExt.mSampSize < 0))
     {
       return -1;
     }
@@ -742,6 +758,7 @@ namespace STK
     &&  (mLastFileName == file_name)) 
     {
       mHeader = mLastHeader;
+      mHeaderExt = mLastHeaderExt;
     } 
     else 
     {
@@ -768,7 +785,11 @@ namespace STK
       {
         // File is in compressed form, scale and pBias vectors
         // are appended after HTK header.
-        int coefs = mHeader.mSampleSize/sizeof(INT_16);
+        int coefs;
+        if(mHeader.mSampleSize != -1) 
+          coefs = mHeader.mSampleSize / sizeof(INT_16);
+        else
+          coefs = mHeaderExt.mSampSize;
 
         mpA = (FLOAT*) realloc(mpA, coefs * sizeof(FLOAT));
         mpB = (FLOAT*) realloc(mpB, coefs * sizeof(FLOAT));
@@ -790,6 +811,7 @@ namespace STK
       // remember current settings
       mLastFileName = file_name;
       mLastHeader   = mHeader;
+      mLastHeaderExt = mHeaderExt;
     }
     
     if (chptr != NULL) {
@@ -827,12 +849,19 @@ namespace STK
     trg_N =((PARAMKIND_N & mTargetKind) != 0) * (trg_E + trg_0);
   
     coef_size     = comp ? sizeof(INT_16) : sizeof(FLOAT_32);
-    coefs         = (mHeader.mSampleSize/coef_size + src_N) / 
+
+    int n_base_coeffs;
+    if(mHeader.mSampleSize != -1)
+      n_base_coeffs = mHeader.mSampleSize / coef_size;
+    else
+      n_base_coeffs = mHeaderExt.mSampSize;
+
+    coefs         = (n_base_coeffs + src_N) / 
                     (src_deriv_order+1) - src_E - src_0;
     src_vec_size  = (coefs + src_E + src_0) * (src_deriv_order+1) - src_N;
-  
+
     //Is coefs dividable by 1 + number of derivatives specified in header
-    if (src_vec_size * coef_size != mHeader.mSampleSize) 
+    if (src_vec_size * coef_size != (mHeader.mSampleSize != -1 ? mHeader.mSampleSize : mHeaderExt.mSampSize * coef_size))
     {
       Error("Invalid HTK header in feature file: '%s'. "
             "mSampleSize do not match with parmKind", file_name.c_str());
@@ -1003,7 +1032,8 @@ namespace STK
     }
     
     mHeader.mNSamples    = tot_frames;
-    mHeader.mSampleSize  = trg_vec_size * sizeof(FLOAT_32);
+    mHeader.mSampleSize  = -1;
+    mHeaderExt.mSampSize = trg_vec_size;
     mHeader.mSampleKind  = mTargetKind & ~(PARAMKIND_D | PARAMKIND_A | PARAMKIND_T);
   
 

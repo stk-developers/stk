@@ -360,6 +360,7 @@ namespace STK
     FLOAT*                      mpCvn;
     FLOAT*                      mpCvg;
     HtkHeader                   mLastHeader;
+    HtkHeaderExt                mLastHeaderExt;
     FLOAT*                      mpA;
     FLOAT*                      mpB;
 
