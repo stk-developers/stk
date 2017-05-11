@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
   char ref_lab_fn[1024];
   char *chrptr;
   char *in_lbl_dir = NULL;
-  char *in_lbl_ext = "lab";
+  const char *in_lbl_ext = "lab";
   char *ref_MLF_fn   = NULL;
   FILE *ref_MLF_fp  = NULL;
   char *rec_MLF_fn = NULL;

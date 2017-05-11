@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
   STKNetworkOutputFormat in_lbl_frm = {0};
   STKNetworkOutputFormat out_lbl_frm = {0};
   char *out_lbl_dir    = NULL;
-  char *out_lbl_ext    = "alg";
+  const char *out_lbl_ext    = "alg";
   char *out_MLF_fn     = NULL;
   int  *lab2cand       = NULL; // label index to candidate index mapping (used for voting)
 //  char **labelList     = NULL;

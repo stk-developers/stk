@@ -21,6 +21,7 @@ AC_DEFINE([_REENTRANT], [],           [select additionaly reentrant object])
 #AC_DEFINE([_XOPEN_SOURCE], [600],     [select additionaly reentrant object])
 AC_DEFINE([_LARGE_FILE_SOURCE], [],   [select additionaly reentrant object])
 AC_DEFINE([_FILE_OFFSET_BITS], [64],   [select additionaly reentrant object])
+AC_DEFINE([D_GLIBCXX_USE_CXX11_ABI], [1], [std::string ABI used in C++ libraries])
 #k-DDOUBLEPRECISION=0 -D_REENTRANT -DUSE_BLAS -D_XOPEN_SOURCE=600 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64
 
 

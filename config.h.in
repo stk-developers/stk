@@ -3,6 +3,9 @@
 /* disable double precision */
 #undef DOUBLEPRECISION
 
+/* std::string ABI used in C++ libraries */
+#undef D_GLIBCXX_USE_CXX11_ABI
+
 /* disable sse support */
 #undef ENABLE_SSE
 
