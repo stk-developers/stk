@@ -230,6 +230,7 @@ const char *optionStr =
 int main(int argc, char *argv[]) 
 {
   HtkHeader header;
+  HtkHeaderExt header_ext;
   ModelSet hset;
   Decoder<DecoderNetwork> decoder;
   FILE*           sfp;
@@ -518,14 +519,14 @@ int main(int argc, char *argv[])
     
     ReadHTKFeatures(file_name->mpPhysical, swap_features,
                     startFrmExt, endFrmExt, targetKind,
-                    derivOrder, derivWinLengths, &header,
+                    derivOrder, derivWinLengths, &header, &header_ext,
                     cmn_path, cvn_path, cvg_file, &rhfbuff, feature_matrix);
 
-    if (hset.mInputVectorSize != static_cast<int>(header.mSampleSize 
-          / sizeof(float))) 
+    int samp_size = (header.mSampleSize != -1 ? header.mSampleSize / sizeof(float) : header_ext.mSampSize);
+    if (hset.mInputVectorSize != samp_size) 
     {
       Error("Vector size [%d] in '%s' is incompatible with HMM set [%d]",
-            header.mSampleSize/sizeof(float), file_name->mpPhysical, 
+            samp_size, file_name->mpPhysical, 
             hset.mInputVectorSize);
     }
 

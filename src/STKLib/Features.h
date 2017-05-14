@@ -17,6 +17,11 @@
 #define FEATURE_REPOSITORY_PTHREAD_ENABLE 0
 #define FEATURE_REPOSITORY_DEFAULT_READ_OVERHEAD
 
+// HTK extension header
+#define HTK_HAS_EXT_HEADER   -1     // mSampleSize value meaning ext. header is used
+#define HTK_EXT_HEADER_VER    1     // version of extended HTK header
+#define HTK_STD_MAX_COLUMNS   8190  // max. number of columns for which ext. header is not needed
+
 //*****************************************************************************
 //*****************************************************************************
 // Specific includes

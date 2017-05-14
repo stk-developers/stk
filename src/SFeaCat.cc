@@ -93,6 +93,7 @@ int main(int argc, char *argv[])
   
   FLOAT*                  obs;
   HtkHeader               header;
+  HtkHeaderExt            header_ext;
   int                     i;
   int                     fcnt = 0;
   XformInstance*          p_input = NULL;
@@ -263,17 +264,24 @@ int main(int argc, char *argv[])
 
     ReadHTKFeatures(file_name->mpPhysical, swap_features,
                     startFrmExt, endFrmExt, targetKind,
-                    derivOrder, derivWinLengths, &header,
+                    derivOrder, derivWinLengths, &header, &header_ext,
                     cmn_path, cvn_path, cvg_file, &rhfbuff, feature_matrix);
                             
 
-    vec_size = header.mSampleSize / sizeof(float);
+    vec_size = (header.mSampleSize != -1 ? header.mSampleSize / sizeof(float) : header_ext.mSampSize);
     out_size = p_input ? p_input->OutSize() : vec_size;
+
+/*
+    printf("vec_size %d\n", vec_size);
+    for(int k = 0; k < vec_size; k++)
+      printf(" %f", feature_matrix[0][k]);
+    printf("\n");
+*/
 
     if (hset.mInputVectorSize != -1 && hset.mInputVectorSize != vec_size) 
     {
       Error("Vector size [%d] in '%s' is incompatible with HMM set [%d]",
-            header.mSampleSize/sizeof(float), file_name->mpPhysical, hset.mInputVectorSize);
+            vec_size, file_name->mpPhysical, hset.mInputVectorSize);
     }
     
     if(mmf_mask != NULL) {

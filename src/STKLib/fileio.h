@@ -56,6 +56,7 @@ namespace STK
     FLOAT*    cvn;
     FLOAT*    cvg;
     HtkHeader last_header;
+    HtkHeaderExt last_header_ext;
     FLOAT*    A;
     FLOAT*    B;
   } ;
@@ -82,7 +83,7 @@ namespace STK
   int WriteHTKHeader  (FILE * fp_out, HtkHeader header, bool swap);
   int WriteHTKFeature (FILE * fp_out, FLOAT *out, size_t fea_len, bool swap, bool compress, FLOAT* pScale, FLOAT* pBias);
   int WriteHTKFeatures(FILE * pOutFp, FLOAT * pOut, int nCoeffs, int nSamples, int samplePeriod, int targetKind, bool swap);
-  int ReadHTKHeader   (FILE * fp_in, HtkHeader *header, bool swap);
+  int ReadHTKHeader   (FILE * fp_in, HtkHeader *header, HtkHeaderExt *pHeaderExt, bool swap);
   int ReadHTKFeature  (FILE * fp_in, FLOAT *in, size_t fea_len, bool swap,
                        bool   decompress, FLOAT *A, FLOAT *B);
   
@@ -106,6 +107,7 @@ namespace STK
     int           derivOrder,
     int*          derivWinLen,
     HtkHeader*    header,
+    HtkHeaderExt* pHeaderExt,
     const char*   cmn_file,
     const char*   cvn_file,
     const char*   cvg_file,
@@ -121,6 +123,7 @@ namespace STK
     int                   derivOrder,
     int*                  derivWinLen,
     HtkHeader*            pHeader,
+    HtkHeaderExt*         pHeaderExt,
     const char*           pCmnFile,
     const char*           pCvnFile,
     const char*           pCvgFile,

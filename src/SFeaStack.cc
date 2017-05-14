@@ -89,8 +89,10 @@ int main(int argc, char *argv[])
   
 //  FLOAT*                  obs;
   HtkHeader               header1;
+  HtkHeaderExt            header1_ext;
 //  HtkHeader               header2;
   HtkHeader               header3;
+  HtkHeaderExt            header3_ext;
   int                     i;
   int                     fcnt = 0;
   XformInstance*          p_input = NULL;
@@ -266,7 +268,7 @@ int main(int argc, char *argv[])
       if ( chptr != NULL ) 
 	*chptr = '\0';
       FILE *pFile  = fopen(pFileName, "rb");
-      if (ReadHTKHeader(pFile, &header1, swap_features)) 
+      if (ReadHTKHeader(pFile, &header1, &header1_ext, swap_features)) 
         Error("Invalid HTK header in feature file: '%s'", file_names[i_file].c_str());
       targetKind = header1.mSampleKind;
       fclose(pFile);
@@ -277,7 +279,7 @@ int main(int argc, char *argv[])
 
       ReadHTKFeatures(file_names[i_file].c_str(), swap_features,
                       startFrmExt, endFrmExt, targetKind,
-                      derivOrder, derivWinLengths, &header1,
+                      derivOrder, derivWinLengths, &header1, &header1_ext,
                       cmn_path, cvn_path, cvg_file, &rhfbuff, 
                       feature_matrices[i_file]);
 

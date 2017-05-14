@@ -231,6 +231,17 @@ namespace STK
     ||  mHeader.mNSamples     < 0
     ||  (mHeader.mSampleSize   < 0 && mHeaderExt.mSampSize < 0))
     {
+      fprintf(stderr, "HTK feature header\n");
+      fprintf(stderr, "mHeader.mNSamples      %d\n", mHeader.mNSamples);
+      fprintf(stderr, "mHeader.mSamplePeriod  %d\n", mHeader.mSamplePeriod);
+      fprintf(stderr, "mHeader.mSampleSize    %d\n", mHeader.mSampleSize);
+      fprintf(stderr, "mHeader.mSampleKind    %d\n", mHeader.mSampleKind);
+      if(mHeader.mSampleSize == -1)
+      {
+        fprintf(stderr, "mHeaderExt.mHeaderSize %d\n", mHeaderExt.mHeaderSize);
+        fprintf(stderr, "mHeaderExt.mVersion    %d\n", mHeaderExt.mVersion);
+        fprintf(stderr, "mHeaderExt.mSampSize   %d\n", mHeaderExt.mSampSize);
+      }      
       return -1;
     }
   
@@ -912,11 +923,16 @@ namespace STK
       FLOAT* mxPtr  = rFeatureMatrix[i+ext_left];
       
       // seek to the desired position
-      fseek(mStream.fp(), 
-          sizeof(HtkHeader) + (comp ? src_vec_size * 2 * sizeof(FLOAT_32) : 0)
-          + (from_frame + i) * src_vec_size * coef_size, 
-          SEEK_SET);
-  
+      long pos = sizeof(HtkHeader) + (mHeader.mSampleSize == -1 ? sizeof(HtkHeaderExt) : 0) +
+                               (comp ? src_vec_size * 2 * sizeof(FLOAT_32) : 0) +
+                               (from_frame + i) * src_vec_size * coef_size;
+      fseek(mStream.fp(), pos, SEEK_SET);
+
+      //fseek(mStream.fp(), 
+      //      sizeof(HtkHeader) + (comp ? src_vec_size * 2 * sizeof(FLOAT_32) : 0)
+      //      + (from_frame + i) * src_vec_size * coef_size, 
+      //      SEEK_SET);
+ 
       e = ReadHTKFeature(mxPtr, coefs, comp, A, B);
       
       mxPtr += coefs; 
@@ -1032,8 +1048,16 @@ namespace STK
     }
     
     mHeader.mNSamples    = tot_frames;
-    mHeader.mSampleSize  = -1;
-    mHeaderExt.mSampSize = trg_vec_size;
+    if(trg_vec_size <= 8190)
+    {
+      mHeader.mSampleSize  = trg_vec_size * sizeof(FLOAT_32);
+      mHeaderExt.mSampSize = -1;
+    }
+    else
+    {
+      mHeader.mSampleSize  = -1;
+      mHeaderExt.mSampSize = trg_vec_size;
+    }    
     mHeader.mSampleKind  = mTargetKind & ~(PARAMKIND_D | PARAMKIND_A | PARAMKIND_T);
   
 

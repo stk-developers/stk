@@ -107,8 +107,10 @@ int main(int argc, char *argv[])
   Matrix<FLOAT>   feature_matrix_out;
 
   FLOAT *         obs_out   = NULL;
-  HtkHeader       header, 
+  HtkHeader       header,
                   header_out;
+  HtkHeaderExt    header_ext,
+                  header_out_ext;
   Label *         labels    = NULL;
   int i, fcnt = 0;
   char line[1024];
@@ -401,13 +403,14 @@ int main(int argc, char *argv[])
 
     ReadHTKFeatures(phys_fn, swap_features,
                     startFrmExt, endFrmExt, target_kind,
-                    derivOrder, derivWinLengths, &header,
+                    derivOrder, derivWinLengths, &header, &header_ext,
                     cmn_path, cvn_path, cvg_file, &rhfbuff,feature_matrix);
 
-    if ((size_t) hset.mInputVectorSize != header.mSampleSize / sizeof(float)) 
+    int samp_size = (header.mSampleSize != -1 ? header.mSampleSize / sizeof(float) : header_ext.mSampSize);
+    if ((size_t) hset.mInputVectorSize != samp_size) 
     {
       Error("Vector size [%d] in '%s' is incompatible with source HMM set [%d]",
-            header.mSampleSize/sizeof(float), phys_fn, hset.mInputVectorSize);
+            samp_size, phys_fn, hset.mInputVectorSize);
     }
 
     n_frames = header.mNSamples - (NNet_input ? NNet_input->mTotalDelay : 0);
@@ -420,7 +423,7 @@ int main(int argc, char *argv[])
       
       ReadHTKFeatures(file_name->mpPhysical, swap_features_out,
                       startFrmExt_out, endFrmExt_out, target_kind_out,
-                      derivOrder_out, derivWinLengths_out, &header_out,
+                      derivOrder_out, derivWinLengths_out, &header_out, &header_out_ext,
                       cmn_path_out, cvn_path_out, cvg_file_out, &rhfbuff_out,
                       feature_matrix_out);
 

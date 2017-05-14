@@ -230,7 +230,7 @@ namespace STK
   //***************************************************************************
   //***************************************************************************
   int 
-  ReadHTKHeader (FILE * pInFp, HtkHeader * pHeader, bool swap)
+  ReadHTKHeader (FILE * pInFp, HtkHeader * pHeader, HtkHeaderExt *pHeaderExt, bool swap)
   {
     if (!fread(&pHeader->mNSamples,     sizeof(INT_32),  1, pInFp)) return -1;
     if (!fread(&pHeader->mSamplePeriod, sizeof(INT_32),  1, pInFp)) return -1;
@@ -244,13 +244,43 @@ namespace STK
       swap2(pHeader->mSampleSize);
       swap2(pHeader->mSampleKind);
     }
-  
-    if (pHeader->mSamplePeriod < 0 || pHeader->mSamplePeriod > 100000 ||
-        pHeader->mNSamples     < 0 || pHeader->mSampleSize   < 0) 
+    
+    // Extra BSAPI header to be able to read long feature vectors
+    pHeaderExt->mSampSize = -1;
+    if(pHeader->mSampleSize == -1)
     {
-      return -1;
+      if(!fread(&pHeaderExt->mHeaderSize, sizeof(INT_32), 1, pInFp)) return -1;
+      if(!fread(&pHeaderExt->mVersion, sizeof(INT_32), 1, pInFp)) return -1;
+      if(!fread(&pHeaderExt->mSampSize, sizeof(INT_32), 1, pInFp)) return -1;
+
+      if (swap)
+      {
+        swap4(pHeaderExt->mHeaderSize);
+        swap4(pHeaderExt->mVersion);
+        swap4(pHeaderExt->mSampSize);
+      }
     }
-  
+
+    if (pHeader->mSamplePeriod < 0
+    ||  pHeader->mSamplePeriod > 100000
+    ||  pHeader->mNSamples     < 0
+    ||  (pHeader->mSampleSize   < 0 && pHeaderExt->mSampSize < 0))
+    {
+      fprintf(stderr, "HTK feature header\n");
+      fprintf(stderr, "mHeader.mNSamples      %d\n", pHeader->mNSamples);
+      fprintf(stderr, "mHeader.mSamplePeriod  %d\n", pHeader->mSamplePeriod);
+      fprintf(stderr, "mHeader.mSampleSize    %d\n", pHeader->mSampleSize);
+      fprintf(stderr, "mHeader.mSampleKind    %d\n", pHeader->mSampleKind);
+      if(pHeader->mSampleSize == -1)
+      {
+        fprintf(stderr, "mHeaderExt.mHeaderSize %d\n", pHeaderExt->mHeaderSize);
+        fprintf(stderr, "mHeaderExt.mVersion    %d\n", pHeaderExt->mVersion);
+        fprintf(stderr, "mHeaderExt.mSampSize   %d\n", pHeaderExt->mSampSize);
+      }      
+      
+      return -1;
+    }    
+      
     return 0;
   }
   
@@ -481,6 +511,7 @@ namespace STK
     int                   derivOrder,
     int *                 derivWinLen,
     HtkHeader *           pHeader,
+    HtkHeaderExt *        pHeaderExt,
     const char *          pCmnFile,
     const char *          pCvnFile,
     const char *          pCvgFile,
@@ -532,6 +563,7 @@ namespace STK
     &&  (!strcmp(pBuff->mpLastFileName, pFileName))) 
     {
       *pHeader = pBuff->last_header;
+      *pHeaderExt = pBuff->last_header_ext;
     } 
     else 
     {
@@ -560,7 +592,7 @@ namespace STK
       pBuff->mpFp = istr.file();  
       */
       
-      if (ReadHTKHeader(pBuff->mpFp, pHeader, swap)) 
+      if (ReadHTKHeader(pBuff->mpFp, pHeader, pHeaderExt, swap)) 
         Error("Invalid HTK header in feature file: '%s'", pFileName);
       
       if (pHeader->mSampleKind & PARAMKIND_C) 
@@ -568,7 +600,12 @@ namespace STK
         // File is in compressed form, scale and pBias vectors
         // are appended after HTK header.
   
-        int coefs = pHeader->mSampleSize/sizeof(INT_16);
+        int coefs;
+        if(pHeader->mSampleSize != -1) 
+          coefs = pHeader->mSampleSize / sizeof(INT_16);
+        else
+          coefs = pHeaderExt->mSampSize;
+  
         pBuff->A = (FLOAT*) realloc(pBuff->A, coefs * sizeof(FLOAT)); // PODIVAT!!!
         pBuff->B = (FLOAT*) realloc(pBuff->B, coefs * sizeof(FLOAT)); // PODIVAT!!!
         if (pBuff->A == NULL || pBuff->B == NULL) Error("Insufficient memory");
@@ -585,7 +622,8 @@ namespace STK
       if ((pBuff->mpLastFileName = strdup(pFileName)) == NULL) 
         Error("Insufficient memory");
       
-      pBuff->last_header = * pHeader;
+      pBuff->last_header = *pHeader;
+      pBuff->last_header_ext = *pHeaderExt;
     }
     
     if (chptr != NULL) 
@@ -622,6 +660,25 @@ namespace STK
     trg_N =((PARAMKIND_N & targetKind) != 0) * (trg_E + trg_0);
   
     coef_size     = comp ? sizeof(INT_16) : sizeof(FLOAT_32);
+    
+    int n_base_coeffs;
+    if(pHeader->mSampleSize != -1)
+      n_base_coeffs = pHeader->mSampleSize / coef_size;
+    else
+      n_base_coeffs = pHeaderExt->mSampSize;
+
+    coefs         = (n_base_coeffs + src_N) / 
+                    (src_deriv_order+1) - src_E - src_0;
+    src_vec_size  = (coefs + src_E + src_0) * (src_deriv_order+1) - src_N;
+
+    //Is coefs dividable by 1 + number of derivatives specified in header
+    if (src_vec_size * coef_size != (pHeader->mSampleSize != -1 ? pHeader->mSampleSize : pHeaderExt->mSampSize * coef_size))
+    {
+      Error("Invalid HTK header in feature file: '%s'. "
+            "mSampleSize do not match with parmKind", pFileName);
+    }
+    
+    /*
     coefs         = (pHeader->mSampleSize/coef_size + src_N) / 
                     (src_deriv_order+1) - src_E - src_0;
     src_vec_size  = (coefs + src_E + src_0) * (src_deriv_order+1) - src_N;
@@ -632,6 +689,7 @@ namespace STK
       Error("Invalid HTK header in feature file: '%s'. "
             "mSampleSize do not match with parmKind", pFileName);
     }
+    */
     
     if (derivOrder < 0) 
       derivOrder = src_deriv_order;
@@ -675,10 +733,10 @@ namespace STK
       FLOAT *A = pBuff->A, *B = pBuff->B;
       FLOAT *mxPtr = fea_mx + trg_vec_size * (i+extLeft);
       
-      fseek(pBuff->mpFp, sizeof(HtkHeader) + 
+      long pos = sizeof(HtkHeader) + (pHeader->mSampleSize == -1 ? sizeof(HtkHeaderExt) : 0) +
                          (comp ? src_vec_size * 2 * sizeof(FLOAT_32) : 0) +
-                         (from_frame + i) * src_vec_size * coef_size, 
-            SEEK_SET);
+                         (from_frame + i) * src_vec_size * coef_size;
+      fseek(pBuff->mpFp, pos, SEEK_SET);
   
       e  = ReadHTKFeature(pBuff->mpFp, mxPtr, coefs, swap, comp, A, B);
       
@@ -784,9 +842,18 @@ namespace STK
         }
       }
     }
-    
+        
     pHeader->mNSamples    = tot_frames;
-    pHeader->mSampleSize  = trg_vec_size * sizeof(FLOAT_32);
+    if(trg_vec_size <= 8190)
+    {
+      pHeader->mSampleSize  = trg_vec_size * sizeof(FLOAT_32);
+      pHeaderExt->mSampSize = -1;
+    }
+    else
+    {
+      pHeader->mSampleSize  = -1;
+      pHeaderExt->mSampSize = trg_vec_size;
+    }
     pHeader->mSampleKind  = targetKind & ~(PARAMKIND_D | PARAMKIND_A | PARAMKIND_T);
   
     /////////////// Cepstral mean and variance normalization ///////////////////
@@ -852,6 +919,7 @@ namespace STK
     int                   derivOrder,
     int*                  derivWinLen,
     HtkHeader*            pHeader,
+    HtkHeaderExt*         pHeaderExt,
     const char*           pCmnFile,
     const char*           pCvnFile,
     const char*           pCvgFile,
@@ -906,6 +974,7 @@ namespace STK
     &&  (!strcmp(pBuff->mpLastFileName, p_file_name))) 
     {
       *pHeader = pBuff->last_header;
+      *pHeaderExt = pBuff->last_header_ext;
     } 
     else 
     {
@@ -934,7 +1003,7 @@ namespace STK
       pBuff->mpFp = istr.file();  
       */
       
-      if (ReadHTKHeader(pBuff->mpFp, pHeader, swap)) 
+      if (ReadHTKHeader(pBuff->mpFp, pHeader, pHeaderExt, swap)) 
         Error("Invalid HTK header in feature file: '%s'", p_file_name);
       
       if (pHeader->mSampleKind & PARAMKIND_C) 
@@ -942,7 +1011,12 @@ namespace STK
         // File is in compressed form, scale and pBias vectors
         // are appended after HTK header.
   
-        int coefs = pHeader->mSampleSize/sizeof(INT_16);
+        int coefs;
+        if(pHeader->mSampleSize != -1) 
+          coefs = pHeader->mSampleSize / sizeof(INT_16);
+        else
+          coefs = pHeaderExt->mSampSize;
+
         pBuff->A = (FLOAT*) realloc(pBuff->A, coefs * sizeof(FLOAT)); //PODIVAT!!!
         pBuff->B = (FLOAT*) realloc(pBuff->B, coefs * sizeof(FLOAT)); //PODIVAT!!!
         if (pBuff->A == NULL || pBuff->B == NULL) Error("Insufficient memory");
@@ -959,7 +1033,8 @@ namespace STK
       if ((pBuff->mpLastFileName = strdup(p_file_name)) == NULL) 
         Error("Insufficient memory");
       
-      pBuff->last_header = * pHeader;
+      pBuff->last_header = *pHeader;
+      pBuff->last_header_ext = *pHeaderExt;
     }
     
     if (chptr != NULL) 
@@ -996,6 +1071,26 @@ namespace STK
     trg_N =((PARAMKIND_N & targetKind) != 0) * (trg_E + trg_0);
   
     coef_size     = comp ? sizeof(INT_16) : sizeof(FLOAT_32);
+    
+    int n_base_coeffs;
+    if(pHeader->mSampleSize != -1)
+      n_base_coeffs = pHeader->mSampleSize / coef_size;
+    else
+      n_base_coeffs = pHeaderExt->mSampSize;
+
+    coefs         = (n_base_coeffs + src_N) / 
+                    (src_deriv_order+1) - src_E - src_0;
+
+    src_vec_size  = (coefs + src_E + src_0) * (src_deriv_order+1) - src_N;
+
+    //Is coefs dividable by 1 + number of derivatives specified in header
+    if (src_vec_size * coef_size != (pHeader->mSampleSize != -1 ? pHeader->mSampleSize : pHeaderExt->mSampSize * coef_size))
+    {
+      Error("Invalid HTK header in feature file: '%s'. "
+            "mSampleSize do not match with parmKind", pFileName);
+    }    
+    
+    /*
     coefs         = (pHeader->mSampleSize/coef_size + src_N) / 
                     (src_deriv_order+1) - src_E - src_0;
     src_vec_size  = (coefs + src_E + src_0) * (src_deriv_order+1) - src_N;
@@ -1006,6 +1101,7 @@ namespace STK
       Error("Invalid HTK header in feature file: '%s'. "
             "mSampleSize do not match with parmKind", p_file_name);
     }
+    */
     
     if (derivOrder < 0) 
       derivOrder = src_deriv_order;
@@ -1050,7 +1146,7 @@ namespace STK
     
     // initialize matrix instead
     rFeatureMatrix.Init(tot_frames, trg_vec_size);
-        
+//    printf("matrix size %d %d\n", tot_frames, trg_vec_size);
     
     for (i = 0; i <= to_frame - from_frame; i++) 
     {
@@ -1059,12 +1155,12 @@ namespace STK
       FLOAT* mxPtr  = rFeatureMatrix[i+extLeft];
       //FLOAT *mxPtr = fea_mx + trg_vec_size * (i+extLeft);
       
-      fseek(
-          pBuff->mpFp, 
-          sizeof(HtkHeader) + (comp ? src_vec_size * 2 * sizeof(FLOAT_32) : 0)
-          + (from_frame + i) * src_vec_size * coef_size, 
-          SEEK_SET);
-  
+      long pos = sizeof(HtkHeader) + (pHeader->mSampleSize == -1 ? sizeof(HtkHeaderExt) : 0) +
+                 (comp ? src_vec_size * 2 * sizeof(FLOAT_32) : 0) +
+                 (from_frame + i) * src_vec_size * coef_size;
+      fseek(pBuff->mpFp, pos, SEEK_SET);
+
+//      printf("coefs %d\n", coefs);
       e  = ReadHTKFeature(pBuff->mpFp, mxPtr, coefs, swap, comp, A, B);
       
       mxPtr += coefs; 
@@ -1196,7 +1292,16 @@ namespace STK
     }
     
     pHeader->mNSamples    = tot_frames;
-    pHeader->mSampleSize  = trg_vec_size * sizeof(FLOAT_32);
+    if(trg_vec_size <= 8190)
+    {
+      pHeader->mSampleSize  = trg_vec_size * sizeof(FLOAT_32);
+      pHeaderExt->mSampSize = -1;
+    }
+    else
+    {
+      pHeader->mSampleSize  = -1;
+      pHeaderExt->mSampSize = trg_vec_size;
+    }        
     pHeader->mSampleKind  = targetKind & ~(PARAMKIND_D | PARAMKIND_A | PARAMKIND_T);
   
     /////////////// Cepstral mean and variance normalization ///////////////////
