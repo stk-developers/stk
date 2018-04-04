@@ -324,7 +324,7 @@ namespace STK
     char          dir_name[260];
     char*         chptr;
   
-    if ((chptr=strrchr(pFileName, '/')) == NULL)
+    if ((chptr=strrchr(const_cast<char*>(pFileName), '/')) == NULL)
       return 0;
     
     

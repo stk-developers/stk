@@ -726,7 +726,7 @@ namespace STK
   
    
     // read frame range definition if any ( physical_file.fea[s,e] )
-    if ((chptr = strrchr(file_name.c_str(), '[')) == NULL ||
+    if ((chptr = strrchr(const_cast<char*>(file_name.c_str()), '[')) == NULL ||
         ((i=0), sscanf(chptr, "[%d,%d]%n", &from_frame, &to_frame, &i), 
          chptr[i] != '\0')) 
     {

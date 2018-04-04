@@ -1427,7 +1427,7 @@ namespace STK
       }
       if (opt == 'A') continue;
   
-      chptr = strstr(pOptionMapping, tstr);
+      chptr = strstr(const_cast<char*>(pOptionMapping), tstr);
       if (chptr == NULL) Error("Invalid command line option '-%c'", opt);
   
       chptr += 3;

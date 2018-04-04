@@ -464,7 +464,7 @@ namespace STK
       BasicIMlfStreamBase( IStreamReference rIStream,
           size_t bufferSize)
       : mBuf(rIStream, bufferSize)
-      { init(&mBuf ); };
+      { this->init(&mBuf ); };
       
       IMlfStreamBufType* 
       rdbuf() 
